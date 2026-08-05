@@ -22,15 +22,15 @@ export const ROLE_PERMISSIONS: Record<Role, Set<string>> = {
     'reports:create',
     'reports:update',
     'reports:delete',
-    'submissions:read',
-    'submissions:create',
-    'submissions:update',
-    'submissions:delete',
-    'maillogs:read',
-    'maillogs:create',
-    'maillogs:update',
-    'maillogs:delete',
-    'bulk:import',
+    'sendhistory:read',
+    'sendhistory:create',
+    'sendhistory:update',
+    'sendhistory:delete',
+    'emaillog:read',
+    'emaillog:create',
+    'emaillog:update',
+    'emaillog:delete',
+    'bulk:write',
     'audit:read',
   ]),
   operator: new Set([
@@ -43,57 +43,51 @@ export const ROLE_PERMISSIONS: Record<Role, Set<string>> = {
     'reports:read',
     'reports:create',
     'reports:update',
-    'submissions:read',
-    'submissions:create',
-    'submissions:update',
-    'maillogs:read',
-    'maillogs:create',
-    'bulk:import',
+    'sendhistory:read',
+    'sendhistory:create',
+    'sendhistory:update',
+    'emaillog:read',
+    'emaillog:create',
+    'emaillog:update',
+    'bulk:write',
     'audit:read',
   ]),
   viewer: new Set([
     'users:read',
     'departments:read',
     'reports:read',
-    'submissions:read',
-    'maillogs:read',
+    'sendhistory:read',
+    'emaillog:read',
     'audit:read',
   ]),
 };
 
 export function extractAuthContext(event: APIGatewayProxyEvent): AuthContext {
-  const authHeader = event.headers['Authorization'] || event.headers['authorization'] || '';
-  const match = authHeader.match(/Bearer\s+(.+)/);
-  const token = match ? match[1] : '';
-
-  const decoded = parseJwt(token);
-  return {
-    userId: decoded.userId || 'unknown',
-    role: (decoded.role || 'viewer') as Role,
-    departmentId: decoded.departmentId,
-  };
-}
-
-export function hasPermission(context: AuthContext, permission: string): boolean {
-  const permissions = ROLE_PERMISSIONS[context.role];
-  return permissions.has(permission);
-}
-
-export function requirePermission(context: AuthContext, permission: string): void {
-  if (!hasPermission(context, permission)) {
-    throw new ForbiddenError(`Permission denied: ${permission}`);
+  const authHeader = event.headers?.Authorization || event.headers?.authorization || '';
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
+    return {
+      userId: decoded.userId || 'unknown',
+      role: (decoded.role || 'viewer') as Role,
+      departmentId: decoded.departmentId,
+    };
+  } catch {
+    return {
+      userId: 'unknown',
+      role: 'viewer',
+    };
   }
 }
 
-function parseJwt(token: string): Record<string, unknown> {
-  if (!token) return {};
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return {};
-    const decoded = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-    return decoded;
-  } catch {
-    return {};
+export function hasPermission(role: Role, permission: string): boolean {
+  return ROLE_PERMISSIONS[role]?.has(permission) ?? false;
+}
+
+export function requirePermission(role: Role, permission: string): void {
+  if (!hasPermission(role, permission)) {
+    throw new ForbiddenError(`Permission denied: ${permission}`);
   }
 }
 
