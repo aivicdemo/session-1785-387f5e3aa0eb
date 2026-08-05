@@ -13,29 +13,30 @@ import {
   ScanCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import {
   extractAuthContext,
   requirePermission,
-  AuthContext,
   ForbiddenError,
   NotFoundError,
   ValidationError,
 } from './rbac';
 
-const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
+const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const tableName = process.env.MAIN_TABLE || 'morning-report-table';
+const TABLE_NAME = process.env.MAIN_TABLE || 'morning-report-table';
 
 interface ApiResponse {
   statusCode: number;
   body: string;
+  headers?: Record<string, string>;
 }
 
 function response(statusCode: number, data: unknown): ApiResponse {
   return {
     statusCode,
     body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
   };
 }
 
@@ -44,27 +45,25 @@ function errorResponse(statusCode: number, message: string): ApiResponse {
 }
 
 async function createAuditLog(
-  context: AuthContext,
   action: string,
-  resourceType: string,
-  resourceId: string,
+  resource: string,
+  userId: string,
   details: Record<string, unknown>
 ): Promise<void> {
-  const auditId = uuidv4();
+  const auditId = randomUUID();
   const now = new Date().toISOString();
+  
   await docClient.send(
     new PutCommand({
-      TableName: tableName,
+      TableName: TABLE_NAME,
       Item: {
         pk: 'AUDIT',
         sk: `${now}#${auditId}`,
         auditId,
-        userId: context.userId,
         action,
-        resourceType,
-        resourceId,
+        resource,
+        userId,
         details,
-        timestamp: now,
         createdAt: now,
         updatedAt: now,
       },
@@ -72,20 +71,20 @@ async function createAuditLog(
   );
 }
 
-async function getResources(event: APIGatewayProxyEvent): Promise<ApiResponse> {
+// GET /resources - List all resources
+async function handleGetResources(
+  event: APIGatewayProxyEvent
+): Promise<ApiResponse> {
   try {
-    const context = extractAuthContext(event);
-    requirePermission(context, 'users:read');
+    const authContext = extractAuthContext(event);
+    requirePermission(authContext.role, 'users:read');
 
     const result = await docClient.send(
       new ScanCommand({
-        TableName: tableName,
-        FilterExpression: 'attribute_exists(#pk) AND begins_with(#pk, :prefix)',
-        ExpressionAttributeNames: {
-          '#pk': 'pk',
-        },
+        TableName: TABLE_NAME,
+        FilterExpression: 'attribute_exists(pk) AND pk <> :audit',
         ExpressionAttributeValues: {
-          ':prefix': 'USER#',
+          ':audit': 'AUDIT',
         },
       })
     );
@@ -98,96 +97,49 @@ async function getResources(event: APIGatewayProxyEvent): Promise<ApiResponse> {
     if (error instanceof ForbiddenError) {
       return errorResponse(403, error.message);
     }
-    if (error instanceof ValidationError) {
-      return errorResponse(400, error.message);
-    }
-    console.error('Error in getResources:', error);
+    console.error('Error in handleGetResources:', error);
     return errorResponse(500, 'Internal server error');
   }
 }
 
-async function bulkImportUsers(
-  event: APIGatewayProxyEvent,
-  context: AuthContext
+// POST /api/users/bulk - Bulk import users
+async function handleBulkUsers(
+  event: APIGatewayProxyEvent
 ): Promise<ApiResponse> {
   try {
-    requirePermission(context, 'bulk:import');
+    const authContext = extractAuthContext(event);
+    requirePermission(authContext.role, 'bulk:write');
 
     const body = JSON.parse(event.body || '{}');
     const items = body.items || [];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return errorResponse(400, 'Invalid request: items must be a non-empty array');
+    if (!Array.isArray(items)) {
+      return errorResponse(400, 'items must be an array');
     }
 
     const now = new Date().toISOString();
     const processedItems = items.map((item: Record<string, unknown>) => ({
       ...item,
-      pk: `USER#${item.userId || uuidv4()}`,
-      sk: `METADATA#${item.userId || uuidv4()}`,
-      id: item.userId || uuidv4(),
+      pk: 'USER',
+      sk: item.userId || randomUUID(),
+      id: item.userId || randomUUID(),
       createdAt: now,
       updatedAt: now,
     }));
 
-    const chunks = [];
-    for (let i = 0; i < processedItems.length; i += 25) {
-      chunks.push(processedItems.slice(i, i + 25));
-    }
+    const { imported, failed, errors } = await batchWrite(
+      processedItems,
+      'USER'
+    );
 
-    let imported = 0;
-    const errors: string[] = [];
+    await createAuditLog(
+      'BULK_IMPORT',
+      'users',
+      authContext.userId,
+      { imported, failed, itemCount: items.length }
+    );
 
-    for (const chunk of chunks) {
-      const writeRequests = chunk.map((item) => ({
-        PutRequest: {
-          Item: {
-            pk: { S: item.pk },
-            sk: { S: item.sk },
-            ...Object.entries(item).reduce(
-              (acc, [key, value]) => {
-                if (key !== 'pk' && key !== 'sk') {
-                  if (typeof value === 'string') {
-                    acc[key] = { S: value };
-                  } else if (typeof value === 'number') {
-                    acc[key] = { N: value.toString() };
-                  } else if (typeof value === 'boolean') {
-                    acc[key] = { BOOL: value };
-                  }
-                }
-                return acc;
-              },
-              {} as Record<string, unknown>
-            ),
-          },
-        },
-      }));
-
-      const batchInput: BatchWriteItemCommandInput = {
-        RequestItems: {
-          [tableName]: writeRequests,
-        },
-      };
-
-      try {
-        await client.send(new BatchWriteItemCommand(batchInput));
-        imported += chunk.length;
-      } catch (err) {
-        errors.push(`Batch write failed: ${String(err)}`);
-      }
-    }
-
-    await createAuditLog(context, 'BULK_IMPORT', 'USER', 'BATCH', {
-      imported,
-      total: items.length,
-      errors,
-    });
-
-    return response(200, {
-      imported,
-      failed: items.length - imported,
-      errors,
-    });
+    return response(200, { imported, failed, errors });
   } catch (error) {
     if (error instanceof ForbiddenError) {
       return errorResponse(403, error.message);
@@ -195,93 +147,49 @@ async function bulkImportUsers(
     if (error instanceof ValidationError) {
       return errorResponse(400, error.message);
     }
-    console.error('Error in bulkImportUsers:', error);
+    console.error('Error in handleBulkUsers:', error);
     return errorResponse(500, 'Internal server error');
   }
 }
 
-async function bulkImportDepartments(
-  event: APIGatewayProxyEvent,
-  context: AuthContext
+// POST /api/departments/bulk - Bulk import departments
+async function handleBulkDepartments(
+  event: APIGatewayProxyEvent
 ): Promise<ApiResponse> {
   try {
-    requirePermission(context, 'bulk:import');
+    const authContext = extractAuthContext(event);
+    requirePermission(authContext.role, 'bulk:write');
 
     const body = JSON.parse(event.body || '{}');
     const items = body.items || [];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return errorResponse(400, 'Invalid request: items must be a non-empty array');
+    if (!Array.isArray(items)) {
+      return errorResponse(400, 'items must be an array');
     }
 
     const now = new Date().toISOString();
     const processedItems = items.map((item: Record<string, unknown>) => ({
       ...item,
-      pk: `DEPT#${item.departmentId || uuidv4()}`,
-      sk: `METADATA#${item.departmentId || uuidv4()}`,
-      id: item.departmentId || uuidv4(),
+      pk: 'DEPARTMENT',
+      sk: item.departmentId || randomUUID(),
+      id: item.departmentId || randomUUID(),
       createdAt: now,
       updatedAt: now,
     }));
 
-    const chunks = [];
-    for (let i = 0; i < processedItems.length; i += 25) {
-      chunks.push(processedItems.slice(i, i + 25));
-    }
+    const { imported, failed, errors } = await batchWrite(
+      processedItems,
+      'DEPARTMENT'
+    );
 
-    let imported = 0;
-    const errors: string[] = [];
+    await createAuditLog(
+      'BULK_IMPORT',
+      'departments',
+      authContext.userId,
+      { imported, failed, itemCount: items.length }
+    );
 
-    for (const chunk of chunks) {
-      const writeRequests = chunk.map((item) => ({
-        PutRequest: {
-          Item: {
-            pk: { S: item.pk },
-            sk: { S: item.sk },
-            ...Object.entries(item).reduce(
-              (acc, [key, value]) => {
-                if (key !== 'pk' && key !== 'sk') {
-                  if (typeof value === 'string') {
-                    acc[key] = { S: value };
-                  } else if (typeof value === 'number') {
-                    acc[key] = { N: value.toString() };
-                  } else if (typeof value === 'boolean') {
-                    acc[key] = { BOOL: value };
-                  }
-                }
-                return acc;
-              },
-              {} as Record<string, unknown>
-            ),
-          },
-        },
-      }));
-
-      const batchInput: BatchWriteItemCommandInput = {
-        RequestItems: {
-          [tableName]: writeRequests,
-        },
-      };
-
-      try {
-        await client.send(new BatchWriteItemCommand(batchInput));
-        imported += chunk.length;
-      } catch (err) {
-        errors.push(`Batch write failed: ${String(err)}`);
-      }
-    }
-
-    await createAuditLog(context, 'BULK_IMPORT', 'DEPARTMENT', 'BATCH', {
-      imported,
-      total: items.length,
-      errors,
-    });
-
-    return response(200, {
-      imported,
-      failed: items.length - imported,
-      errors,
-    });
+    return response(200, { imported, failed, errors });
   } catch (error) {
     if (error instanceof ForbiddenError) {
       return errorResponse(403, error.message);
@@ -289,93 +197,49 @@ async function bulkImportDepartments(
     if (error instanceof ValidationError) {
       return errorResponse(400, error.message);
     }
-    console.error('Error in bulkImportDepartments:', error);
+    console.error('Error in handleBulkDepartments:', error);
     return errorResponse(500, 'Internal server error');
   }
 }
 
-async function bulkImportReports(
-  event: APIGatewayProxyEvent,
-  context: AuthContext
+// POST /api/reports/bulk - Bulk import reports
+async function handleBulkReports(
+  event: APIGatewayProxyEvent
 ): Promise<ApiResponse> {
   try {
-    requirePermission(context, 'bulk:import');
+    const authContext = extractAuthContext(event);
+    requirePermission(authContext.role, 'bulk:write');
 
     const body = JSON.parse(event.body || '{}');
     const items = body.items || [];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return errorResponse(400, 'Invalid request: items must be a non-empty array');
+    if (!Array.isArray(items)) {
+      return errorResponse(400, 'items must be an array');
     }
 
     const now = new Date().toISOString();
     const processedItems = items.map((item: Record<string, unknown>) => ({
       ...item,
-      pk: `REPORT#${item.reportId || uuidv4()}`,
-      sk: `METADATA#${item.reportId || uuidv4()}`,
-      id: item.reportId || uuidv4(),
+      pk: 'REPORT',
+      sk: item.reportId || randomUUID(),
+      id: item.reportId || randomUUID(),
       createdAt: now,
       updatedAt: now,
     }));
 
-    const chunks = [];
-    for (let i = 0; i < processedItems.length; i += 25) {
-      chunks.push(processedItems.slice(i, i + 25));
-    }
+    const { imported, failed, errors } = await batchWrite(
+      processedItems,
+      'REPORT'
+    );
 
-    let imported = 0;
-    const errors: string[] = [];
+    await createAuditLog(
+      'BULK_IMPORT',
+      'reports',
+      authContext.userId,
+      { imported, failed, itemCount: items.length }
+    );
 
-    for (const chunk of chunks) {
-      const writeRequests = chunk.map((item) => ({
-        PutRequest: {
-          Item: {
-            pk: { S: item.pk },
-            sk: { S: item.sk },
-            ...Object.entries(item).reduce(
-              (acc, [key, value]) => {
-                if (key !== 'pk' && key !== 'sk') {
-                  if (typeof value === 'string') {
-                    acc[key] = { S: value };
-                  } else if (typeof value === 'number') {
-                    acc[key] = { N: value.toString() };
-                  } else if (typeof value === 'boolean') {
-                    acc[key] = { BOOL: value };
-                  }
-                }
-                return acc;
-              },
-              {} as Record<string, unknown>
-            ),
-          },
-        },
-      }));
-
-      const batchInput: BatchWriteItemCommandInput = {
-        RequestItems: {
-          [tableName]: writeRequests,
-        },
-      };
-
-      try {
-        await client.send(new BatchWriteItemCommand(batchInput));
-        imported += chunk.length;
-      } catch (err) {
-        errors.push(`Batch write failed: ${String(err)}`);
-      }
-    }
-
-    await createAuditLog(context, 'BULK_IMPORT', 'REPORT', 'BATCH', {
-      imported,
-      total: items.length,
-      errors,
-    });
-
-    return response(200, {
-      imported,
-      failed: items.length - imported,
-      errors,
-    });
+    return response(200, { imported, failed, errors });
   } catch (error) {
     if (error instanceof ForbiddenError) {
       return errorResponse(403, error.message);
@@ -383,93 +247,49 @@ async function bulkImportReports(
     if (error instanceof ValidationError) {
       return errorResponse(400, error.message);
     }
-    console.error('Error in bulkImportReports:', error);
+    console.error('Error in handleBulkReports:', error);
     return errorResponse(500, 'Internal server error');
   }
 }
 
-async function bulkImportSubmissions(
-  event: APIGatewayProxyEvent,
-  context: AuthContext
+// POST /api/sendhistory/bulk - Bulk import send history
+async function handleBulkSendHistory(
+  event: APIGatewayProxyEvent
 ): Promise<ApiResponse> {
   try {
-    requirePermission(context, 'bulk:import');
+    const authContext = extractAuthContext(event);
+    requirePermission(authContext.role, 'bulk:write');
 
     const body = JSON.parse(event.body || '{}');
     const items = body.items || [];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return errorResponse(400, 'Invalid request: items must be a non-empty array');
+    if (!Array.isArray(items)) {
+      return errorResponse(400, 'items must be an array');
     }
 
     const now = new Date().toISOString();
     const processedItems = items.map((item: Record<string, unknown>) => ({
       ...item,
-      pk: `SUBMISSION#${item.submissionId || uuidv4()}`,
-      sk: `METADATA#${item.submissionId || uuidv4()}`,
-      id: item.submissionId || uuidv4(),
+      pk: 'SENDHISTORY',
+      sk: item.sendHistoryId || randomUUID(),
+      id: item.sendHistoryId || randomUUID(),
       createdAt: now,
       updatedAt: now,
     }));
 
-    const chunks = [];
-    for (let i = 0; i < processedItems.length; i += 25) {
-      chunks.push(processedItems.slice(i, i + 25));
-    }
+    const { imported, failed, errors } = await batchWrite(
+      processedItems,
+      'SENDHISTORY'
+    );
 
-    let imported = 0;
-    const errors: string[] = [];
+    await createAuditLog(
+      'BULK_IMPORT',
+      'sendhistory',
+      authContext.userId,
+      { imported, failed, itemCount: items.length }
+    );
 
-    for (const chunk of chunks) {
-      const writeRequests = chunk.map((item) => ({
-        PutRequest: {
-          Item: {
-            pk: { S: item.pk },
-            sk: { S: item.sk },
-            ...Object.entries(item).reduce(
-              (acc, [key, value]) => {
-                if (key !== 'pk' && key !== 'sk') {
-                  if (typeof value === 'string') {
-                    acc[key] = { S: value };
-                  } else if (typeof value === 'number') {
-                    acc[key] = { N: value.toString() };
-                  } else if (typeof value === 'boolean') {
-                    acc[key] = { BOOL: value };
-                  }
-                }
-                return acc;
-              },
-              {} as Record<string, unknown>
-            ),
-          },
-        },
-      }));
-
-      const batchInput: BatchWriteItemCommandInput = {
-        RequestItems: {
-          [tableName]: writeRequests,
-        },
-      };
-
-      try {
-        await client.send(new BatchWriteItemCommand(batchInput));
-        imported += chunk.length;
-      } catch (err) {
-        errors.push(`Batch write failed: ${String(err)}`);
-      }
-    }
-
-    await createAuditLog(context, 'BULK_IMPORT', 'SUBMISSION', 'BATCH', {
-      imported,
-      total: items.length,
-      errors,
-    });
-
-    return response(200, {
-      imported,
-      failed: items.length - imported,
-      errors,
-    });
+    return response(200, { imported, failed, errors });
   } catch (error) {
     if (error instanceof ForbiddenError) {
       return errorResponse(403, error.message);
@@ -477,93 +297,49 @@ async function bulkImportSubmissions(
     if (error instanceof ValidationError) {
       return errorResponse(400, error.message);
     }
-    console.error('Error in bulkImportSubmissions:', error);
+    console.error('Error in handleBulkSendHistory:', error);
     return errorResponse(500, 'Internal server error');
   }
 }
 
-async function bulkImportMailLogs(
-  event: APIGatewayProxyEvent,
-  context: AuthContext
+// POST /api/emaillog/bulk - Bulk import email logs
+async function handleBulkEmailLog(
+  event: APIGatewayProxyEvent
 ): Promise<ApiResponse> {
   try {
-    requirePermission(context, 'bulk:import');
+    const authContext = extractAuthContext(event);
+    requirePermission(authContext.role, 'bulk:write');
 
     const body = JSON.parse(event.body || '{}');
     const items = body.items || [];
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return errorResponse(400, 'Invalid request: items must be a non-empty array');
+    if (!Array.isArray(items)) {
+      return errorResponse(400, 'items must be an array');
     }
 
     const now = new Date().toISOString();
     const processedItems = items.map((item: Record<string, unknown>) => ({
       ...item,
-      pk: `MAILLOG#${item.mailLogId || uuidv4()}`,
-      sk: `METADATA#${item.mailLogId || uuidv4()}`,
-      id: item.mailLogId || uuidv4(),
+      pk: 'EMAILLOG',
+      sk: item.emailLogId || randomUUID(),
+      id: item.emailLogId || randomUUID(),
       createdAt: now,
       updatedAt: now,
     }));
 
-    const chunks = [];
-    for (let i = 0; i < processedItems.length; i += 25) {
-      chunks.push(processedItems.slice(i, i + 25));
-    }
+    const { imported, failed, errors } = await batchWrite(
+      processedItems,
+      'EMAILLOG'
+    );
 
-    let imported = 0;
-    const errors: string[] = [];
+    await createAuditLog(
+      'BULK_IMPORT',
+      'emaillog',
+      authContext.userId,
+      { imported, failed, itemCount: items.length }
+    );
 
-    for (const chunk of chunks) {
-      const writeRequests = chunk.map((item) => ({
-        PutRequest: {
-          Item: {
-            pk: { S: item.pk },
-            sk: { S: item.sk },
-            ...Object.entries(item).reduce(
-              (acc, [key, value]) => {
-                if (key !== 'pk' && key !== 'sk') {
-                  if (typeof value === 'string') {
-                    acc[key] = { S: value };
-                  } else if (typeof value === 'number') {
-                    acc[key] = { N: value.toString() };
-                  } else if (typeof value === 'boolean') {
-                    acc[key] = { BOOL: value };
-                  }
-                }
-                return acc;
-              },
-              {} as Record<string, unknown>
-            ),
-          },
-        },
-      }));
-
-      const batchInput: BatchWriteItemCommandInput = {
-        RequestItems: {
-          [tableName]: writeRequests,
-        },
-      };
-
-      try {
-        await client.send(new BatchWriteItemCommand(batchInput));
-        imported += chunk.length;
-      } catch (err) {
-        errors.push(`Batch write failed: ${String(err)}`);
-      }
-    }
-
-    await createAuditLog(context, 'BULK_IMPORT', 'MAILLOG', 'BATCH', {
-      imported,
-      total: items.length,
-      errors,
-    });
-
-    return response(200, {
-      imported,
-      failed: items.length - imported,
-      errors,
-    });
+    return response(200, { imported, failed, errors });
   } catch (error) {
     if (error instanceof ForbiddenError) {
       return errorResponse(403, error.message);
@@ -571,52 +347,108 @@ async function bulkImportMailLogs(
     if (error instanceof ValidationError) {
       return errorResponse(400, error.message);
     }
-    console.error('Error in bulkImportMailLogs:', error);
+    console.error('Error in handleBulkEmailLog:', error);
     return errorResponse(500, 'Internal server error');
   }
 }
 
-export async function handler(event: APIGatewayProxyEvent): Promise<ApiResponse> {
-  const context = extractAuthContext(event);
+async function batchWrite(
+  items: Record<string, unknown>[],
+  resourceType: string
+): Promise<{ imported: number; failed: number; errors: string[] }> {
+  const errors: string[] = [];
+  let imported = 0;
+  let failed = 0;
+
+  const chunks = [];
+  for (let i = 0; i < items.length; i += 25) {
+    chunks.push(items.slice(i, i + 25));
+  }
+
+  for (const chunk of chunks) {
+    const writeRequests = chunk.map((item) => ({
+      PutRequest: {
+        Item: {
+          pk: { S: item.pk as string },
+          sk: { S: item.sk as string },
+          ...Object.entries(item).reduce(
+            (acc, [key, value]) => {
+              if (key !== 'pk' && key !== 'sk') {
+                acc[key] = { S: String(value) };
+              }
+              return acc;
+            },
+            {} as Record<string, { S: string }>
+          ),
+        },
+      },
+    }));
+
+    const params: BatchWriteItemCommandInput = {
+      RequestItems: {
+        [TABLE_NAME]: writeRequests,
+      },
+    };
+
+    try {
+      const result = await client.send(new BatchWriteItemCommand(params));
+      imported += chunk.length - (result.UnprocessedItems?.[TABLE_NAME]?.length || 0);
+      failed += result.UnprocessedItems?.[TABLE_NAME]?.length || 0;
+
+      if (result.UnprocessedItems?.[TABLE_NAME]?.length) {
+        errors.push(
+          `${result.UnprocessedItems[TABLE_NAME].length} items failed to write`
+        );
+      }
+    } catch (error) {
+      failed += chunk.length;
+      errors.push(`Batch write failed: ${String(error)}`);
+    }
+  }
+
+  return { imported, failed, errors };
+}
+
+// Main Lambda handler
+export async function handler(
+  event: APIGatewayProxyEvent
+): Promise<ApiResponse> {
   const path = event.path || '';
   const method = event.httpMethod || 'GET';
 
   try {
+    // GET /resources
     if (method === 'GET' && path === '/resources') {
-      return await getResources(event);
+      return await handleGetResources(event);
     }
 
-    if (method === 'POST' && path === '/api/0/bulk') {
-      return await bulkImportUsers(event, context);
+    // POST /api/users/bulk
+    if (method === 'POST' && path === '/api/users/bulk') {
+      return await handleBulkUsers(event);
     }
 
-    if (method === 'POST' && path === '/api/1/bulk') {
-      return await bulkImportDepartments(event, context);
+    // POST /api/departments/bulk
+    if (method === 'POST' && path === '/api/departments/bulk') {
+      return await handleBulkDepartments(event);
     }
 
-    if (method === 'POST' && path === '/api/2/bulk') {
-      return await bulkImportReports(event, context);
+    // POST /api/reports/bulk
+    if (method === 'POST' && path === '/api/reports/bulk') {
+      return await handleBulkReports(event);
     }
 
-    if (method === 'POST' && path === '/api/3/bulk') {
-      return await bulkImportSubmissions(event, context);
+    // POST /api/sendhistory/bulk
+    if (method === 'POST' && path === '/api/sendhistory/bulk') {
+      return await handleBulkSendHistory(event);
     }
 
-    if (method === 'POST' && path === '/api/4/bulk') {
-      return await bulkImportMailLogs(event, context);
+    // POST /api/emaillog/bulk
+    if (method === 'POST' && path === '/api/emaillog/bulk') {
+      return await handleBulkEmailLog(event);
     }
 
     return errorResponse(404, 'Not found');
   } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return errorResponse(403, error.message);
-    }
-    if (error instanceof NotFoundError) {
-      return errorResponse(404, error.message);
-    }
-    if (error instanceof ValidationError) {
-      return errorResponse(400, error.message);
-    }
     console.error('Unhandled error:', error);
     return errorResponse(500, 'Internal server error');
   }
