@@ -1,0 +1,403 @@
+[
+  {
+    "systemId": "itg-1",
+    "systemName": "朝会報告管理システム",
+    "screens": [
+      {
+        "id": "scr-1785921335709",
+        "name": "日報入力・送信画面",
+        "purpose": "ユーザーが日報を入力・編集し、送信時に送信者本人と部長宛に自動確認メールを配信する機能を提供する画面。送信履歴とメール送信ログを記録する。",
+        "items": [
+          "日報入力フォーム",
+          "報告内容テキストエリア",
+          "報告日付選択",
+          "部門選択ドロップダウン",
+          "下書き保存ボタン",
+          "報告内容編集ボタン",
+          "送信ボタン",
+          "送信確認ダイアログ",
+          "送信者メールアドレス表示",
+          "部長メールアドレス表示",
+          "送信履歴一覧",
+          "送信日時表示"
+        ]
+      },
+      {
+        "id": "scr-1785921347004",
+        "name": "日報提出状況ダッシュボード",
+        "purpose": "朝会報告の提出状況を部門別・ユーザー別に可視化し、未提出者を把握して提出促進を支援する",
+        "items": [
+          "提出期限表示",
+          "部門別提出状況サマリー",
+          "ユーザー別提出状況一覧",
+          "未提出者リスト",
+          "提出率グラフ",
+          "本日の提出数カウンター",
+          "部門フィルター",
+          "ユーザーフィルター",
+          "提出状況ステータス表示",
+          "集計データテーブル",
+          "未提出者への通知ボタン",
+          "詳細表示リンク"
+        ]
+      },
+      {
+        "id": "scr-1785921357094",
+        "name": "日報データ照会画面",
+        "purpose": "過去の日報データを検索・フィルタリングして詳細を確認し、報告送信履歴とメール送信ログを一元管理する照会画面",
+        "items": [
+          "日報検索フォーム",
+          "報告日付範囲指定",
+          "部門フィルタ",
+          "ユーザー名フィルタ",
+          "キーワード検索欄",
+          "検索実行ボタン",
+          "日報一覧テーブル",
+          "日報詳細表示パネル",
+          "報告内容表示エリア",
+          "報告送信履歴タブ",
+          "送信日時表示",
+          "送信ユーザー表示"
+        ]
+      }
+    ],
+    "tableDefinitions": [
+      {
+        "tableName": "ユーザー",
+        "purpose": "朝会報告管理システムのユーザー情報を管理し、ユーザー認証、権限管理、報告者情報の基盤となるマスタテーブル",
+        "columns": [
+          {
+            "name": "ユーザーID",
+            "type": "uuid",
+            "required": true,
+            "description": "ユーザーの一意識別子"
+          },
+          {
+            "name": "ユーザー名",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "ユーザーのログインID"
+          },
+          {
+            "name": "表示名",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "朝会報告に表示されるユーザーの名前"
+          },
+          {
+            "name": "メールアドレス",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "ユーザーのメールアドレス"
+          },
+          {
+            "name": "パスワードハッシュ",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "ユーザーのパスワードハッシュ値"
+          },
+          {
+            "name": "役割",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "ユーザーの権限レベル（管理者、報告者等）"
+          },
+          {
+            "name": "部門",
+            "type": "varchar(100)",
+            "required": false,
+            "description": "ユーザーが属する部門"
+          },
+          {
+            "name": "有効フラグ",
+            "type": "boolean",
+            "required": true,
+            "description": "ユーザーが有効かどうか"
+          },
+          {
+            "name": "作成日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "ユーザーレコードの作成日時"
+          },
+          {
+            "name": "更新日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "ユーザーレコードの最終更新日時"
+          }
+        ]
+      },
+      {
+        "tableName": "部門",
+        "purpose": "朝会報告管理システムにおける組織の部門情報を管理するマスタテーブル。部門の基本情報、階層構造、および状態を保持し、ユーザーと朝会報告の部門別集計・フィルタリングに使用される。",
+        "columns": [
+          {
+            "name": "部門ID",
+            "type": "uuid",
+            "required": true,
+            "description": "部門を一意に識別するプライマリキー"
+          },
+          {
+            "name": "部門名",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "部門の名称"
+          },
+          {
+            "name": "部門コード",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "部門を識別するコード、ユーザーインターフェースでの検索・フィルタリングに使用"
+          },
+          {
+            "name": "親部門ID",
+            "type": "uuid",
+            "required": false,
+            "description": "上位部門のID、部門の階層構造を表現するための外部キー"
+          },
+          {
+            "name": "説明",
+            "type": "text",
+            "required": false,
+            "description": "部門の説明や備考"
+          },
+          {
+            "name": "表示順序",
+            "type": "integer",
+            "required": false,
+            "description": "UI上での部門表示順序"
+          },
+          {
+            "name": "有効フラグ",
+            "type": "boolean",
+            "required": true,
+            "description": "部門が有効かどうかを示すフラグ、無効な部門は朝会報告の対象外となる"
+          },
+          {
+            "name": "作成日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "部門レコードの作成日時"
+          },
+          {
+            "name": "更新日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "部門レコードの最終更新日時"
+          },
+          {
+            "name": "作成者ID",
+            "type": "uuid",
+            "required": true,
+            "description": "部門を作成したユーザーのID、ユーザーテーブルへの外部キー"
+          },
+          {
+            "name": "更新者ID",
+            "type": "uuid",
+            "required": true,
+            "description": "部門を最後に更新したユーザーのID、ユーザーテーブルへの外部キー"
+          }
+        ]
+      },
+      {
+        "tableName": "朝会報告",
+        "purpose": "朝会での報告内容を記録・管理し、部門別の進捗状況や課題を追跡するためのシステム",
+        "columns": [
+          {
+            "name": "報告ID",
+            "type": "uuid",
+            "required": true,
+            "description": "朝会報告の一意識別子"
+          },
+          {
+            "name": "報告日",
+            "type": "timestamp",
+            "required": true,
+            "description": "朝会が実施された日時"
+          },
+          {
+            "name": "部門ID",
+            "type": "uuid",
+            "required": true,
+            "description": "報告を行った部門への外部キー参照"
+          },
+          {
+            "name": "報告者ID",
+            "type": "uuid",
+            "required": true,
+            "description": "報告を行ったユーザーへの外部キー参照"
+          },
+          {
+            "name": "報告内容",
+            "type": "text",
+            "required": true,
+            "description": "朝会での報告の詳細内容"
+          },
+          {
+            "name": "進捗状況",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "進捗の状態（予定通り、遅延、完了など）"
+          },
+          {
+            "name": "課題",
+            "type": "text",
+            "required": false,
+            "description": "報告時に挙げられた課題や問題点"
+          },
+          {
+            "name": "対応予定",
+            "type": "text",
+            "required": false,
+            "description": "課題に対する対応予定や次のアクション"
+          },
+          {
+            "name": "作成日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "レコード作成日時"
+          },
+          {
+            "name": "更新日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "レコード最終更新日時"
+          }
+        ]
+      },
+      {
+        "tableName": "報告送信履歴",
+        "purpose": "朝会報告の送信状況を記録し、送信日時、送信者、送信ステータスを管理するための履歴テーブル",
+        "columns": [
+          {
+            "name": "送信履歴ID",
+            "type": "uuid",
+            "required": true,
+            "description": "送信履歴を一意に識別するプライマリキー"
+          },
+          {
+            "name": "朝会報告ID",
+            "type": "uuid",
+            "required": true,
+            "description": "朝会報告テーブルへの外部キー参照"
+          },
+          {
+            "name": "ユーザーID",
+            "type": "uuid",
+            "required": true,
+            "description": "送信者のユーザーID、ユーザーテーブルへの外部キー参照"
+          },
+          {
+            "name": "送信日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "報告が送信された日時"
+          },
+          {
+            "name": "送信ステータス",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "送信ステータス（成功、失敗、保留中など）"
+          },
+          {
+            "name": "エラーメッセージ",
+            "type": "text",
+            "required": false,
+            "description": "送信失敗時のエラー内容"
+          },
+          {
+            "name": "作成日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "レコード作成日時"
+          },
+          {
+            "name": "更新日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "レコード最終更新日時"
+          }
+        ]
+      },
+      {
+        "tableName": "メール送信ログ",
+        "purpose": "朝会報告システムにおけるメール送信の履歴を記録し、送信状況の追跡と送信失敗時の対応を管理するためのトランザクションテーブル",
+        "columns": [
+          {
+            "name": "メール送信ログID",
+            "type": "uuid",
+            "required": true,
+            "description": "メール送信ログの一意識別子"
+          },
+          {
+            "name": "朝会報告ID",
+            "type": "uuid",
+            "required": true,
+            "description": "朝会報告テーブルへの外部キー参照"
+          },
+          {
+            "name": "報告送信履歴ID",
+            "type": "uuid",
+            "required": false,
+            "description": "報告送信履歴テーブルへの外部キー参照"
+          },
+          {
+            "name": "送信先メールアドレス",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "メール送信先のメールアドレス"
+          },
+          {
+            "name": "送信元メールアドレス",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "メール送信元のメールアドレス"
+          },
+          {
+            "name": "メール件名",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "送信されたメールの件名"
+          },
+          {
+            "name": "送信ステータス",
+            "type": "varchar(100)",
+            "required": true,
+            "description": "メール送信の状態(成功/失敗/保留中等)"
+          },
+          {
+            "name": "送信日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "メール送信を試みた日時"
+          },
+          {
+            "name": "エラーメッセージ",
+            "type": "text",
+            "required": false,
+            "description": "送信失敗時のエラー内容"
+          },
+          {
+            "name": "再試行回数",
+            "type": "integer",
+            "required": true,
+            "description": "メール送信の再試行回数"
+          },
+          {
+            "name": "作成日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "ログレコード作成日時"
+          },
+          {
+            "name": "更新日時",
+            "type": "timestamp",
+            "required": true,
+            "description": "ログレコード最終更新日時"
+          }
+        ]
+      }
+    ]
+  }
+]

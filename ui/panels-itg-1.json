@@ -1,0 +1,1045 @@
+{
+  "systemId": "itg-1",
+  "systemName": "朝会報告管理システム",
+  "cssTheme": "```css\n:root {\n  /* 色彩体系 */\n  --primary: #8b6f47;\n  --primary-hover: #a0845a;\n  --bg-main: #f5f1ed;\n  --bg-card: #ede8e3;\n  --bg-sidebar: #e8e3dd;\n  --border: #d4ccc4;\n  --text: #3e3b38;\n  --text-muted: #8b8680;\n  --top-bar-bg: #e0d9d0;\n  --top-bar-border: #d0c8bf;\n\n  /* タイポグラフィ */\n  --font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Hiragino Sans\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Meiryo\", sans-serif;\n\n  /* 形状・寸法 */\n  --radius-card: 6px;\n  --radius-control: 4px;\n  --border-width: 1px;\n  --control-height: 36px;\n  --space-unit: 8px;\n\n  /* 影・深さ */\n  --shadow-card: 0 2px 8px rgba(62, 59, 56, 0.08), 0 1px 3px rgba(62, 59, 56, 0.04);\n\n  /* アニメーション */\n  --motion-duration: 200ms;\n\n  /* 質感・テクスチャ */\n  --surface-texture: \n    repeating-linear-gradient(\n      90deg,\n      transparent,\n      transparent 2px,\n      rgba(139, 111, 71, 0.02) 2px,\n      rgba(139, 111, 71, 0.02) 4px\n    ),\n    repeating-linear-gradient(\n      0deg,\n      transparent,\n      transparent 1px,\n      rgba(139, 111, 71, 0.01) 1px,\n      rgba(139, 111, 71, 0.01) 2px\n    );\n  --surface-texture-size: 100% 100%;\n  --surface-texture-position: 0 0;\n}\n```",
+  "screens": [
+    {
+      "id": "scr-1785921335709",
+      "name": "日報入力・送信画面",
+      "purpose": "ユーザーが日報を入力・編集し、送信時に送信者本人と部長宛に自動確認メールを配信する機能を提供する画面。送信履歴とメール送信ログを記録する。",
+      "items": [
+        "日報入力フォーム",
+        "報告内容テキストエリア",
+        "報告日付選択",
+        "部門選択ドロップダウン",
+        "下書き保存ボタン",
+        "報告内容編集ボタン",
+        "送信ボタン",
+        "送信確認ダイアログ",
+        "送信者メールアドレス表示",
+        "部長メールアドレス表示",
+        "送信履歴一覧",
+        "送信日時表示"
+      ]
+    },
+    {
+      "id": "scr-1785921347004",
+      "name": "日報提出状況ダッシュボード",
+      "purpose": "朝会報告の提出状況を部門別・ユーザー別に可視化し、未提出者を把握して提出促進を支援する",
+      "items": [
+        "提出期限表示",
+        "部門別提出状況サマリー",
+        "ユーザー別提出状況一覧",
+        "未提出者リスト",
+        "提出率グラフ",
+        "本日の提出数カウンター",
+        "部門フィルター",
+        "ユーザーフィルター",
+        "提出状況ステータス表示",
+        "集計データテーブル",
+        "未提出者への通知ボタン",
+        "詳細表示リンク"
+      ]
+    },
+    {
+      "id": "scr-1785921357094",
+      "name": "日報データ照会画面",
+      "purpose": "過去の日報データを検索・フィルタリングして詳細を確認し、報告送信履歴とメール送信ログを一元管理する照会画面",
+      "items": [
+        "日報検索フォーム",
+        "報告日付範囲指定",
+        "部門フィルタ",
+        "ユーザー名フィルタ",
+        "キーワード検索欄",
+        "検索実行ボタン",
+        "日報一覧テーブル",
+        "日報詳細表示パネル",
+        "報告内容表示エリア",
+        "報告送信履歴タブ",
+        "送信日時表示",
+        "送信ユーザー表示"
+      ]
+    }
+  ],
+  "screenPanels": [
+    {
+      "screenId": "scr-1785921335709",
+      "panelHtml": "<div style=\"display: flex; flex-direction: column; height: 100%; background: var(--bg-main);\">\n  <!-- ヘッダー領域 -->\n  <div style=\"padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-card);\">\n    <div style=\"font-size: 12px; color: var(--text-muted); margin-bottom: 8px;\">\n      にっぽーていおー / 朝会報告管理システム / 日報入力・送信画面\n    </div>\n    <h1 style=\"font-size: 20px; font-weight: 600; color: var(--text); margin: 0;\">日報入力・送信</h1>\n  </div>\n\n  <!-- メインコンテンツ -->\n  <div style=\"flex: 1; overflow-y: auto; padding: 16px;\">\n    <div style=\"max-width: 800px; margin: 0 auto;\">\n      \n      <!-- 日報入力フォーム -->\n      <div class=\"card\" style=\"padding: 16px; margin-bottom: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card);\">\n        <h2 style=\"font-size: 14px; font-weight: 600; color: var(--text); margin: 0 0 16px 0;\">日報情報</h2>\n        \n        <!-- 報告日付 -->\n        <div style=\"margin-bottom: 16px;\">\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">報告日付</label>\n          <input \n            type=\"date\" \n            data-testid=\"report-date-input\"\n            name=\"reportDate\"\n            style=\"width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 14px; font-family: var(--font-family);\"\n          />\n        </div>\n\n        <!-- 部門選択 -->\n        <div style=\"margin-bottom: 16px;\">\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">部門</label>\n          <select \n            data-testid=\"department-select\"\n            name=\"departmentId\"\n            style=\"width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 14px; font-family: var(--font-family);\"\n          >\n            <option value=\"\">選択してください</option>\n            <option value=\"dept-001\">営業部</option>\n            <option value=\"dept-002\">企画部</option>\n            <option value=\"dept-003\">技術部</option>\n            <option value=\"dept-004\">運用部</option>\n          </select>\n        </div>\n\n        <!-- 報告内容 -->\n        <div style=\"margin-bottom: 16px;\">\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">報告内容</label>\n          <textarea \n            data-testid=\"report-content-textarea\"\n            name=\"reportContent\"\n            placeholder=\"本日の進捗状況、課題、対応予定などを入力してください\"\n            style=\"width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 14px; font-family: var(--font-family); min-height: 120px; resize: vertical;\"\n          ></textarea>\n        </div>\n\n        <!-- 進捗状況 -->\n        <div style=\"margin-bottom: 16px;\">\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">進捗状況</label>\n          <select \n            data-testid=\"progress-status-select\"\n            name=\"progressStatus\"\n            style=\"width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 14px; font-family: var(--font-family);\"\n          >\n            <option value=\"\">選択してください</option>\n            <option value=\"on-track\">予定通り</option>\n            <option value=\"delayed\">遅延</option>\n            <option value=\"completed\">完了</option>\n            <option value=\"on-hold\">保留中</option>\n          </select>\n        </div>\n\n        <!-- 課題 -->\n        <div style=\"margin-bottom: 16px;\">\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">課題（任意）</label>\n          <textarea \n            data-testid=\"issues-textarea\"\n            name=\"issues\"\n            placeholder=\"報告時に挙げられた課題や問題点を入力してください\"\n            style=\"width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 14px; font-family: var(--font-family); min-height: 80px; resize: vertical;\"\n          ></textarea>\n        </div>\n\n        <!-- 対応予定 -->\n        <div style=\"margin-bottom: 0;\">\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">対応予定（任意）</label>\n          <textarea \n            data-testid=\"action-plan-textarea\"\n            name=\"actionPlan\"\n            placeholder=\"課題に対する対応予定や次のアクションを入力してください\"\n            style=\"width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 14px; font-family: var(--font-family); min-height: 80px; resize: vertical;\"\n          ></textarea>\n        </div>\n      </div>\n\n      <!-- 送信者情報 -->\n      <div class=\"card\" style=\"padding: 16px; margin-bottom: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card);\">\n        <h2 style=\"font-size: 14px; font-weight: 600; color: var(--text); margin: 0 0 12px 0;\">送信情報</h2>\n        <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;\">\n          <div>\n            <div style=\"color: var(--text-muted); margin-bottom: 4px;\">送信者</div>\n            <div data-testid=\"sender-name\" style=\"color: var(--text); font-weight: 500;\">—</div>\n          </div>\n          <div>\n            <div style=\"color: var(--text-muted); margin-bottom: 4px;\">送信者メール</div>\n            <div data-testid=\"sender-email\" style=\"color: var(--text); font-weight: 500; word-break: break-all;\">—</div>\n          </div>\n          <div>\n            <div style=\"color: var(--text-muted); margin-bottom: 4px;\">部長メール</div>\n            <div data-testid=\"manager-email\" style=\"color: var(--text); font-weight: 500; word-break: break-all;\">—</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- アクションボタン -->\n      <div style=\"display: flex; gap: 8px; margin-bottom: 16px;\">\n        <button \n          data-testid=\"save-draft-button\"\n          class=\"action-btn secondary\"\n          style=\"flex: 1; padding: 10px 12px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n        >\n          下書き保存\n        </button>\n        <button \n          data-testid=\"submit-button\"\n          class=\"action-btn\"\n          style=\"flex: 1; padding: 10px 12px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n        >\n          送信\n        </button>\n      </div>\n\n      <!-- 送信履歴セクション -->\n      <div class=\"card\" style=\"padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card);\">\n        <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;\">\n          <h2 style=\"font-size: 14px; font-weight: 600; color: var(--text); margin: 0;\">送信履歴</h2>\n          <button \n            data-testid=\"view-history-button\"\n            style=\"padding: 6px 12px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-control); font-size: 12px; cursor: pointer; transition: all var(--motion-duration);\"\n          >\n            詳細を確認\n          </button>\n        </div>\n        <div id=\"history-list\" style=\"font-size: 13px;\">\n          <div style=\"color: var(--text-muted); padding: 12px 0; text-align: center;\">送信履歴がありません</div>\n        </div>\n      </div>\n    </div>\n  </div>\n</div>\n\n<!-- 送信確認ダイアログ -->\n<div \n  id=\"submit-confirm-dialog\"\n  class=\"modal-overlay\"\n  style=\"display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center;\"\n>\n  <div style=\"background: var(--bg-card); color: var(--text); padding: 24px; border-radius: 8px; max-width: 90vw; max-height: 90vh; overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); min-width: 320px;\">\n    <h3 style=\"font-size: 16px; font-weight: 600; margin: 0 0 16px 0;\">日報を送信しますか？</h3>\n    <div style=\"font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6;\">\n      <p style=\"margin: 0 0 8px 0;\">以下のメールアドレスに確認メールが送信されます：</p>\n      <ul style=\"margin: 8px 0; padding-left: 20px;\">\n        <li id=\"confirm-sender-email\" style=\"margin-bottom: 4px;\">—</li>\n        <li id=\"confirm-manager-email\" style=\"margin-bottom: 4px;\">—</li>\n      </ul>\n    </div>\n    <div style=\"display: flex; gap: 8px; justify-content: flex-end;\">\n      <button \n        id=\"confirm-cancel-button\"\n        style=\"padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n      >\n        キャンセル\n      </button>\n      <button \n        id=\"confirm-submit-button\"\n        style=\"padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n      >\n        送信する\n      </button>\n    </div>\n  </div>\n</div>\n\n<!-- 送信完了ダイアログ -->\n<div \n  id=\"submit-success-dialog\"\n  class=\"modal-overlay\"\n  style=\"display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center;\"\n>\n  <div style=\"background: var(--bg-card); color: var(--text); padding: 24px; border-radius: 8px; max-width: 90vw; max-height: 90vh; overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); min-width: 320px; text-align: center;\">\n    <div style=\"font-size: 48px; margin-bottom: 12px;\">✓</div>\n    <h3 style=\"font-size: 16px; font-weight: 600; margin: 0 0 8px 0;\">日報を送信しました</h3>\n    <p style=\"font-size: 13px; color: var(--text-muted); margin: 0 0 20px 0;\">確認メールが送信されました</p>\n    <div style=\"display: flex; gap: 8px; justify-content: center;\">\n      <button \n        data-testid=\"complete-button\"\n        style=\"padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n      >\n        送信完了\n      </button>\n      <button \n        id=\"view-history-from-success\"\n        style=\"padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n      >\n        送信履歴を確認\n      </button>\n    </div>\n  </div>\n</div>\n\n<!-- エラーダイアログ -->\n<div \n  id=\"error-dialog\"\n  class=\"modal-overlay\"\n  style=\"display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center;\"\n>\n  <div style=\"background: var(--bg-card); color: var(--text); padding: 24px; border-radius: 8px; max-width: 90vw; max-height: 90vh; overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); min-width: 320px;\">\n    <h3 style=\"font-size: 16px; font-weight: 600; margin: 0 0 12px 0; color: #d32f2f;\">エラーが発生しました</h3>\n    <p id=\"error-message\" style=\"font-size: 13px; color: var(--text-muted); margin: 0 0 20px 0;\"></p>\n    <div style=\"display: flex; justify-content: flex-end;\">\n      <button \n        id=\"error-close-button\"\n        style=\"padding: 8px 16px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 14px; font-weight: 500; cursor: pointer; transition: all var(--motion-duration);\"\n      >\n        閉じる\n      </button>\n    </div>\n  </div>\n</div>",
+      "initJs": "function(container, apiUrl, tables) {\n  const reportDateInput = container.querySelector('[data-testid=\"report-date-input\"]');\n  const departmentSelect = container.querySelector('[data-testid=\"department-select\"]');\n  const reportContentTextarea = container.querySelector('[data-testid=\"report-content-textarea\"]');\n  const progressStatusSelect = container.querySelector('[data-testid=\"progress-status-select\"]');\n  const issuesTextarea = container.querySelector('[data-testid=\"issues-textarea\"]');\n  const actionPlanTextarea = container.querySelector('[data-testid=\"action-plan-textarea\"]');\n  const saveDraftButton = container.querySelector('[data-testid=\"save-draft-button\"]');\n  const submitButton = container.querySelector('[data-testid=\"submit-button\"]');\n  const viewHistoryButton = container.querySelector('[data-testid=\"view-history-button\"]');\n  const senderNameEl = container.querySelector('[data-testid=\"sender-name\"]');\n  const senderEmailEl = container.querySelector('[data-testid=\"sender-email\"]');\n  const managerEmailEl = container.querySelector('[data-testid=\"manager-email\"]');\n  const historyList = container.querySelector('#history-list');\n  \n  const submitConfirmDialog = container.querySelector('#submit-confirm-dialog');\n  const confirmCancelButton = container.querySelector('#confirm-cancel-button');\n  const confirmSubmitButton = container.querySelector('#confirm-submit-button');\n  const confirmSenderEmail = container.querySelector('#confirm-sender-email');\n  const confirmManagerEmail = container.querySelector('#confirm-manager-email');\n  \n  const submitSuccessDialog = container.querySelector('#submit-success-dialog');\n  const completeButton = container.querySelector('[data-testid=\"complete-button\"]');\n  const viewHistoryFromSuccess = container.querySelector('#view-history-from-success');\n  \n  const errorDialog = container.querySelector('#error-dialog');\n  const errorMessage = container.querySelector('#error-message');\n  const errorCloseButton = container.querySelector('#error-close-button');\n\n  // テーブルインデックス\n  const userTableIndex = tables.findIndex(t => t.tableName === 'ユーザー');\n  const departmentTableIndex = tables.findIndex(t => t.tableName === '部門');\n  const reportTableIndex = tables.findIndex(t => t.tableName === '朝会報告');\n  const submissionHistoryTableIndex = tables.findIndex(t => t.tableName === '報告送信履歴');\n  const emailLogTableIndex = tables.findIndex(t => t.tableName === 'メール送信ログ');\n\n  // 初期化処理\n  async function init() {\n    // 本日の日付をセット\n    const today = new Date().toISOString().split('T')[0];\n    reportDateInput.value = today;\n\n    // 部門一覧を取得してセレクトに追加\n    if (departmentTableIndex >= 0) {\n      const departments = await window.aivicApi.list(departmentTableIndex);\n      if (departments && departments.length > 0) {\n        departments.forEach(dept => {\n          const option = document.createElement('option');\n          option.value = dept.id || dept.部門ID;\n          option.textContent = dept.部門名 || dept.name;\n          departmentSelect.appendChild(option);\n        });\n      }\n    }\n\n    // ユーザー情報を取得して送信者情報を表示\n    if (userTableIndex >= 0) {\n      const users = await window.aivicApi.list(userTableIndex);\n      if (users && users.length > 0) {\n        const currentUser = users[0]; // 実際にはセッション情報から取得すべき\n        senderNameEl.textContent = currentUser.表示名 || currentUser.displayName || '—';\n        senderEmailEl.textContent = currentUser.メールアドレス || currentUser.email || '—';\n        \n        // 部長メールアドレスを取得（同じ部門の上位ユーザーなど）\n        const managerEmail = users.find(u => u.役割 === '部長' || u.role === 'manager');\n        managerEmailEl.textContent = managerEmail ? (managerEmail.メールアドレス || managerEmail.email) : '—';\n      }\n    }\n\n    // 送信履歴を表示\n    await loadSubmissionHistory();\n  }\n\n  // 送信履歴を読み込んで表示\n  async function loadSubmissionHistory() {\n    if (submissionHistoryTableIndex >= 0) {\n      const history = await window.aivicApi.list(submissionHistoryTableIndex);\n      if (history && history.length > 0) {\n        const recentHistory = history.slice(0, 5); // 最新5件\n        historyList.innerHTML = recentHistory.map(item => {\n          const sendDate = new Date(item.送信日時 || item.sentAt).toLocaleString('ja-JP');\n          const status = item.送信ステータス || item.status;\n          const statusLabel = status === '成功' || status === 'success' ? '✓ 送信済み' : '✗ 失敗';\n          return `<div style=\"padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;\">\n            <span style=\"color: var(--text);\">${sendDate}</span>\n            <span style=\"color: ${status === '成功' || status === 'success' ? 'var(--primary)' : '#d32f2f'}; font-weight: 500;\">${statusLabel}</span>\n          </div>`;\n        }).join('');\n      }\n    }\n  }\n\n  // 下書き保存\n  saveDraftButton.addEventListener('click', async () => {\n    const formData = {\n      reportDate: reportDateInput.value,\n      departmentId: departmentSelect.value,\n      reportContent: reportContentTextarea.value,\n      progressStatus: progressStatusSelect.value,\n      issues: issuesTextarea.value,\n      actionPlan: actionPlanTextarea.value,\n      status: 'draft'\n    };\n\n    if (!formData.reportDate || !formData.departmentId || !formData.reportContent) {\n      showError('報告日付、部門、報告内容は必須です');\n      return;\n    }\n\n    if (reportTableIndex >= 0) {\n      const saved = await window.aivicApi.save(reportTableIndex, formData);\n      if (saved) {\n        alert('下書きを保存しました');\n      }\n    }\n  });\n\n  // 送信ボタン\n  submitButton.addEventListener('click', () => {\n    if (!reportDateInput.value || !departmentSelect.value || !reportContentTextarea.value) {\n      showError('報告日付、部門、報告内容は必須です');\n      return;\n    }\n\n    const senderEmail = senderEmailEl.textContent;\n    const managerEmail = managerEmailEl.textContent;\n\n    confirmSenderEmail.textContent = senderEmail;\n    confirmManagerEmail.textContent = managerEmail;\n\n    submitConfirmDialog.style.display = 'flex';\n  });\n\n  // 送信確認キャンセル\n  confirmCancelButton.addEventListener('click', () => {\n    submitConfirmDialog.style.display = 'none';\n  });\n\n  // 送信確認実行\n  confirmSubmitButton.addEventListener('click', async () => {\n    submitConfirmDialog.style.display = 'none';\n\n    const formData = {\n      reportDate: reportDateInput.value,\n      departmentId: departmentSelect.value,\n      reportContent: reportContentTextarea.value,\n      progressStatus: progressStatusSelect.value,\n      issues: issuesTextarea.value,\n      actionPlan: actionPlanTextarea.value,\n      status: 'submitted'\n    };\n\n    if (reportTableIndex >= 0) {\n      const saved = await window.aivicApi.save(reportTableIndex, formData);\n      if (saved) {\n        // 送信履歴を記録\n        if (submissionHistoryTableIndex >= 0) {\n          const historyData = {\n            朝会報告ID: saved.id || saved.報告ID,\n            ユーザーID: senderEmailEl.textContent,\n            送信日時: new Date().toISOString(),\n            送信ステータス: '成功'\n          };\n          await window.aivicApi.save(submissionHistoryTableIndex, historyData);\n        }\n\n        // 成功ダイアログを表示\n        submitSuccessDialog.style.display = 'flex';\n        \n        // フォームをリセット\n        reportDateInput.value = new Date().toISOString().split('T')[0];\n        departmentSelect.value = '';\n        reportContentTextarea.value = '';\n        progressStatusSelect.value = '';\n        issuesTextarea.value = '';\n        actionPlanTextarea.value = '';\n\n        // 送信履歴を更新\n        await loadSubmissionHistory();\n      }\n    }\n  });\n\n  // 送信完了ボタン\n  completeButton.addEventListener('click', () => {\n    submitSuccessDialog.style.display = 'none';\n    window.showScreen('scr-1785921347004'); // 日報提出状況ダッシュボード\n  });\n\n  // 送信履歴を確認ボタン\n  viewHistoryButton.addEventListener('click', () => {\n    window.showScreen('scr-1785921357094'); // 日報データ照会画面\n  });\n\n  viewHistoryFromSuccess.addEventListener('click', () => {\n    submitSuccessDialog.style.display = 'none';\n    window.showScreen('scr-1785921357094'); // 日報データ照会画面\n  });\n\n  // エラー表示\n  function showError(message) {\n    errorMessage.textContent = message;\n    errorDialog.style.display = 'flex';\n  }\n\n  // エラーダイアログ閉じる\n  errorCloseButton.addEventListener('click', () => {\n    errorDialog.style.display = 'none';\n  });\n\n  // Escキーでダイアログを閉じる\n  document.addEventListener('keydown', (e) => {\n    if (e.key === 'Escape') {\n      if (submitConfirmDialog.style.display !== 'none') {\n        submitConfirmDialog.style.display = 'none';\n      }\n      if (submitSuccessDialog.style.display !== 'none') {\n        submitSuccessDialog.style.display = 'none';\n      }\n      if (errorDialog.style.display !== 'none') {\n        errorDialog.style.display = 'none';\n      }\n    }\n  });\n\n  // overlay背景クリックで閉じる\n  submitConfirmDialog.addEventListener('click', (e) => {\n    if (e.target === submitConfirmDialog) {\n      submitConfirmDialog.style.display = 'none';\n    }\n  });\n\n  submitSuccessDialog.addEventListener('click', (e) => {\n    if (e.target === submitSuccessDialog) {\n      submitSuccessDialog.style.display = 'none';\n    }\n  });\n\n  errorDialog.addEventListener('click', (e) => {\n    if (e.target === errorDialog) {\n      errorDialog.style.display = 'none';\n    }\n  });\n\n  // 初期化実行\n  init();\n}",
+      "method": "ai"
+    },
+    {
+      "screenId": "scr-1785921347004",
+      "panelHtml": "<div style=\"padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-main);\">\n  <div style=\"font-size: 12px; color: var(--text-muted); margin-bottom: 8px;\">にっぽーていおー・朝会報告管理システム・日報提出状況ダッシュボード</div>\n  <h1 style=\"font-size: 20px; font-weight: 600; color: var(--text); margin: 0;\">日報提出状況ダッシュボード</h1>\n</div>\n\n<div style=\"padding: 16px; background: var(--bg-main); min-height: calc(100vh - 120px); overflow-y: auto;\">\n  \n  <!-- 提出期限表示 -->\n  <div style=\"background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; background-image: var(--surface-texture); background-size: var(--surface-texture-size); background-position: var(--surface-texture-position);\">\n    <div style=\"font-size: 13px; color: var(--text-muted);\">提出期限</div>\n    <div style=\"font-size: 16px; font-weight: 600; color: var(--primary);\" data-testid=\"submission-deadline\">本日 09:30</div>\n    <div style=\"margin-left: auto; font-size: 12px; color: var(--text-muted);\" data-testid=\"time-remaining\">残り 2時間15分</div>\n  </div>\n\n  <!-- 部門フィルター -->\n  <div style=\"margin-bottom: 16px;\">\n    <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;\">部門</label>\n    <select data-testid=\"department-filter\" style=\"width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); font-size: 14px; font-family: var(--font-family);\">\n      <option value=\"\">全部門</option>\n      <option value=\"営業部\">営業部</option>\n      <option value=\"企画部\">企画部</option>\n      <option value=\"技術部\">技術部</option>\n      <option value=\"管理部\">管理部</option>\n    </select>\n  </div>\n\n  <!-- 提出率グラフ（横棒 + 数値） -->\n  <div style=\"background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px; margin-bottom: 16px; background-image: var(--surface-texture); background-size: var(--surface-texture-size); background-position: var(--surface-texture-position);\">\n    <div style=\"font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px;\">部門別提出状況</div>\n    <div id=\"submission-chart\" style=\"display: flex; flex-direction: column; gap: 10px;\">\n      <!-- 動的に生成される -->\n    </div>\n  </div>\n\n  <!-- 未提出者リスト -->\n  <div style=\"background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px; background-image: var(--surface-texture); background-size: var(--surface-texture-size); background-position: var(--surface-texture-position);\">\n    <div style=\"display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;\">\n      <div style=\"font-size: 13px; font-weight: 600; color: var(--text);\">未提出者 <span data-testid=\"pending-count\" style=\"color: var(--primary);\">0</span>名</div>\n      <button data-testid=\"notify-button\" style=\"padding: 6px 12px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 12px; cursor: pointer; font-family: var(--font-family);\">通知を送信</button>\n    </div>\n    <div style=\"overflow-x: auto;\">\n      <table data-testid=\"pending-list\" style=\"width: 100%; font-size: 13px; border-collapse: collapse;\">\n        <thead>\n          <tr style=\"border-bottom: 1px solid var(--border);\">\n            <th style=\"text-align: left; padding: 8px 0; color: var(--text); font-weight: 600; width: 40%;\">ユーザー</th>\n            <th style=\"text-align: left; padding: 8px 0; color: var(--text); font-weight: 600; width: 30%;\">部門</th>\n            <th style=\"text-align: left; padding: 8px 0; color: var(--text); font-weight: 600; width: 30%;\">操作</th>\n          </tr>\n        </thead>\n        <tbody id=\"pending-tbody\">\n          <!-- 動的に生成される -->\n        </tbody>\n      </table>\n    </div>\n  </div>\n\n  <!-- アクションボタン -->\n  <div style=\"display: flex; gap: 12px; margin-top: 20px;\">\n    <button data-testid=\"input-report-button\" style=\"flex: 1; padding: 10px 16px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-family);\">日報を入力</button>\n    <button data-testid=\"view-history-button\" style=\"flex: 1; padding: 10px 16px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-control); font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-family);\">過去の日報を確認</button>\n  </div>\n\n</div>\n\n<!-- 通知確認ダイアログ -->\n<div id=\"notify-dialog\" class=\"modal-overlay\" style=\"display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center;\">\n  <div style=\"background: var(--bg-card); color: var(--text); padding: 24px; border-radius: var(--radius-card); max-width: 400px; box-shadow: 0 8px 32px rgba(62, 59, 56, 0.4); background-image: var(--surface-texture); background-size: var(--surface-texture-size); background-position: var(--surface-texture-position);\">\n    <h2 style=\"font-size: 16px; font-weight: 600; margin: 0 0 12px 0;\">未提出者に通知を送信しますか？</h2>\n    <p style=\"font-size: 13px; color: var(--text-muted); margin: 0 0 16px 0;\" data-testid=\"notify-count-text\">0名のユーザーにメール通知が送信されます。</p>\n    <div style=\"display: flex; gap: 12px;\">\n      <button data-testid=\"notify-cancel-button\" style=\"flex: 1; padding: 8px 12px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-control); font-size: 13px; cursor: pointer; font-family: var(--font-family);\">キャンセル</button>\n      <button data-testid=\"notify-confirm-button\" style=\"flex: 1; padding: 8px 12px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 13px; cursor: pointer; font-family: var(--font-family);\">送信</button>\n    </div>\n  </div>\n</div>",
+      "initJs": "function(container, apiUrl, tables) {\n  const departmentFilter = container.querySelector('[data-testid=\"department-filter\"]');\n  const submissionChart = container.querySelector('#submission-chart');\n  const pendingTbody = container.querySelector('#pending-tbody');\n  const pendingCount = container.querySelector('[data-testid=\"pending-count\"]');\n  const notifyButton = container.querySelector('[data-testid=\"notify-button\"]');\n  const notifyDialog = container.querySelector('#notify-dialog');\n  const notifyConfirmBtn = container.querySelector('[data-testid=\"notify-confirm-button\"]');\n  const notifyCancelBtn = container.querySelector('[data-testid=\"notify-cancel-button\"]');\n  const notifyCountText = container.querySelector('[data-testid=\"notify-count-text\"]');\n  const inputReportBtn = container.querySelector('[data-testid=\"input-report-button\"]');\n  const viewHistoryBtn = container.querySelector('[data-testid=\"view-history-button\"]');\n\n  let allReports = [];\n  let allUsers = [];\n  let allDepartments = [];\n\n  async function loadData() {\n    try {\n      allUsers = await window.aivicApi.list(0) || [];\n      allDepartments = await window.aivicApi.list(1) || [];\n      allReports = await window.aivicApi.list(2) || [];\n      renderDashboard();\n    } catch (e) {\n      console.error('Data load error:', e);\n    }\n  }\n\n  function renderDashboard() {\n    const selectedDept = departmentFilter.value;\n    const filteredUsers = selectedDept \n      ? allUsers.filter(u => u.部門 === selectedDept)\n      : allUsers;\n\n    renderSubmissionChart(filteredUsers);\n    renderPendingList(filteredUsers);\n  }\n\n  function renderSubmissionChart(users) {\n    submissionChart.innerHTML = '';\n    \n    const deptMap = {};\n    users.forEach(u => {\n      const dept = u.部門 || '未分類';\n      if (!deptMap[dept]) deptMap[dept] = { total: 0, submitted: 0 };\n      deptMap[dept].total++;\n      const hasReport = allReports.some(r => r.報告者ID === u.ユーザーID);\n      if (hasReport) deptMap[dept].submitted++;\n    });\n\n    Object.entries(deptMap).forEach(([dept, data]) => {\n      const rate = data.total > 0 ? Math.round((data.submitted / data.total) * 100) : 0;\n      const row = document.createElement('div');\n      row.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 12px;';\n      row.innerHTML = `\n        <div style=\"width: 60px; color: var(--text-muted);\">${dept}</div>\n        <div style=\"flex: 1; height: 20px; background: var(--bg-main); border-radius: 2px; overflow: hidden; position: relative;\">\n          <div style=\"height: 100%; width: ${rate}%; background: var(--primary); transition: width 0.3s;\"></div>\n        </div>\n        <div style=\"width: 50px; text-align: right; color: var(--text); font-weight: 600;\">${data.submitted}/${data.total}</div>\n        <div style=\"width: 40px; text-align: right; color: var(--primary); font-weight: 600;\">${rate}%</div>\n      `;\n      submissionChart.appendChild(row);\n    });\n  }\n\n  function renderPendingList(users) {\n    const pending = users.filter(u => !allReports.some(r => r.報告者ID === u.ユーザーID));\n    pendingCount.textContent = pending.length;\n    pendingTbody.innerHTML = '';\n\n    pending.forEach(user => {\n      const tr = document.createElement('tr');\n      tr.style.cssText = 'border-bottom: 1px solid var(--border);';\n      tr.innerHTML = `\n        <td style=\"padding: 8px 0; color: var(--text);\">${user.表示名}</td>\n        <td style=\"padding: 8px 0; color: var(--text-muted);\">${user.部門 || '-'}</td>\n        <td style=\"padding: 8px 0;\">\n          <button class=\"remind-btn\" data-user-id=\"${user.ユーザーID}\" style=\"padding: 4px 8px; background: transparent; color: var(--primary); border: 1px solid var(--primary); border-radius: 2px; font-size: 11px; cursor: pointer; font-family: var(--font-family);\">リマインド</button>\n        </td>\n      `;\n      pendingTbody.appendChild(tr);\n    });\n  }\n\n  departmentFilter.addEventListener('change', renderDashboard);\n\n  notifyButton.addEventListener('click', () => {\n    const pending = pendingTbody.querySelectorAll('tr').length;\n    notifyCountText.textContent = `${pending}名のユーザーにメール通知が送信されます。`;\n    notifyDialog.style.display = 'flex';\n  });\n\n  notifyCancelBtn.addEventListener('click', () => {\n    notifyDialog.style.display = 'none';\n  });\n\n  notifyConfirmBtn.addEventListener('click', async () => {\n    const pending = Array.from(pendingTbody.querySelectorAll('tr')).map(tr => {\n      const cells = tr.querySelectorAll('td');\n      return cells[0].textContent;\n    });\n    console.log('Sending notifications to:', pending);\n    notifyDialog.style.display = 'none';\n  });\n\n  inputReportBtn.addEventListener('click', () => {\n    window.showScreen(\"scr-1785921335709\");\n  });\n\n  viewHistoryBtn.addEventListener('click', () => {\n    window.showScreen(\"scr-1785921357094\");\n  });\n\n  container.addEventListener('click', (e) => {\n    if (e.target.classList.contains('remind-btn')) {\n      const userId = e.target.dataset.userId;\n      console.log('Remind user:', userId);\n    }\n  });\n\n  // Esc キーでダイアログを閉じる\n  document.addEventListener('keydown', (e) => {\n    if (e.key === 'Escape' && notifyDialog.style.display === 'flex') {\n      notifyDialog.style.display = 'none';\n    }\n  });\n\n  // overlay クリックで閉じる\n  notifyDialog.addEventListener('click', (e) => {\n    if (e.target === notifyDialog) {\n      notifyDialog.style.display = 'none';\n    }\n  });\n\n  loadData();\n}",
+      "method": "ai"
+    },
+    {
+      "screenId": "scr-1785921357094",
+      "panelHtml": "<div style=\"display: flex; flex-direction: column; height: 100%; background: var(--bg-main); color: var(--text); font-family: var(--font-family);\">\n  <!-- ヘッダー / パンくず -->\n  <div style=\"padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-card);\">\n    <div style=\"font-size: 12px; color: var(--text-muted); margin-bottom: 8px;\">\n      にっぽーていおー / 朝会報告管理システム / 日報データ照会画面\n    </div>\n    <h1 style=\"margin: 0; font-size: 20px; font-weight: 600; color: var(--text);\">日報データ照会</h1>\n  </div>\n\n  <!-- メインコンテンツ -->\n  <div style=\"flex: 1; overflow-y: auto; display: flex; flex-direction: column;\">\n    <!-- 検索フォーム -->\n    <div style=\"padding: 12px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border);\">\n      <div style=\"display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: flex-end;\">\n        <!-- 報告日付範囲 -->\n        <div>\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;\">報告日付（開始）</label>\n          <input type=\"date\" data-testid=\"report-date-from\" style=\"width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 13px; box-sizing: border-box;\" />\n        </div>\n        <div>\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;\">報告日付（終了）</label>\n          <input type=\"date\" data-testid=\"report-date-to\" style=\"width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 13px; box-sizing: border-box;\" />\n        </div>\n\n        <!-- 部門フィルタ -->\n        <div>\n          <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;\">部門</label>\n          <select data-testid=\"department-filter\" style=\"width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 13px; box-sizing: border-box;\">\n            <option value=\"\">すべて</option>\n            <option value=\"営業部\">営業部</option>\n            <option value=\"企画部\">企画部</option>\n            <option value=\"技術部\">技術部</option>\n          </select>\n        </div>\n\n        <!-- 検索ボタン -->\n        <button data-testid=\"search-button\" style=\"padding: 6px 12px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-control); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;\">検索</button>\n      </div>\n\n      <!-- キーワード検索 -->\n      <div style=\"margin-top: 8px;\">\n        <label style=\"display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;\">キーワード</label>\n        <input type=\"text\" data-testid=\"keyword-search\" placeholder=\"報告内容から検索...\" style=\"width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-main); color: var(--text); font-size: 13px; box-sizing: border-box;\" />\n      </div>\n    </div>\n\n    <!-- 一覧 + 詳細の 2 列レイアウト -->\n    <div style=\"flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden;\">\n      <!-- 左: 日報一覧 -->\n      <div style=\"border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column;\">\n        <div style=\"padding: 8px 12px; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text);\">\n          日報一覧 <span data-testid=\"report-count\" style=\"color: var(--text-muted); font-weight: 400;\">（0件）</span>\n        </div>\n        <div id=\"report-list\" style=\"flex: 1; overflow-y: auto;\">\n          <!-- 日報行が動的に挿入される -->\n        </div>\n      </div>\n\n      <!-- 右: 日報詳細 + 送信履歴 -->\n      <div style=\"overflow-y: auto; display: flex; flex-direction: column;\">\n        <div id=\"detail-panel\" style=\"flex: 1; padding: 12px; display: none;\">\n          <!-- 詳細パネルが動的に挿入される -->\n        </div>\n        <div id=\"empty-state\" style=\"flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; padding: 16px; text-align: center;\">\n          日報を選択してください\n        </div>\n      </div>\n    </div>\n  </div>\n\n  <!-- フッター -->\n  <div style=\"padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg-card); display: flex; justify-content: flex-end; gap: 8px;\">\n    <button data-testid=\"back-button\" style=\"padding: 6px 12px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-control); font-size: 13px; font-weight: 500; cursor: pointer;\">ダッシュボードに戻る</button>\n  </div>\n</div>\n\n<!-- 詳細パネルテンプレート（非表示） -->\n<template id=\"detail-template\">\n  <div style=\"display: flex; flex-direction: column; height: 100%; gap: 12px;\">\n    <!-- 報告基本情報 -->\n    <div style=\"background: var(--bg-card); padding: 10px; border-radius: var(--radius-card); border: 1px solid var(--border);\">\n      <div style=\"font-size: 11px; color: var(--text-muted); margin-bottom: 6px;\">報告日時</div>\n      <div data-field=\"reportDate\" style=\"font-size: 13px; font-weight: 500; color: var(--text);\"></div>\n      \n      <div style=\"font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 2px;\">報告者</div>\n      <div data-field=\"reporterName\" style=\"font-size: 13px; color: var(--text);\"></div>\n      \n      <div style=\"font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 2px;\">部門</div>\n      <div data-field=\"departmentName\" style=\"font-size: 13px; color: var(--text);\"></div>\n      \n      <div style=\"font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 2px;\">進捗状況</div>\n      <div data-field=\"status\" style=\"font-size: 13px; color: var(--text); padding: 2px 6px; background: var(--bg-main); border-radius: 3px; display: inline-block;\"></div>\n    </div>\n\n    <!-- 報告内容 -->\n    <div style=\"background: var(--bg-card); padding: 10px; border-radius: var(--radius-card); border: 1px solid var(--border);\">\n      <div style=\"font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">報告内容</div>\n      <div data-field=\"content\" style=\"font-size: 12px; color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-word;\"></div>\n    </div>\n\n    <!-- 課題・対応予定 -->\n    <div style=\"background: var(--bg-card); padding: 10px; border-radius: var(--radius-card); border: 1px solid var(--border);\">\n      <div style=\"font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;\">課題</div>\n      <div data-field=\"issues\" style=\"font-size: 12px; color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-height: 20px;\"></div>\n      \n      <div style=\"font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 4px; font-weight: 500;\">対応予定</div>\n      <div data-field=\"action\" style=\"font-size: 12px; color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-height: 20px;\"></div>\n    </div>\n\n    <!-- 送信履歴タブ -->\n    <div style=\"border-top: 1px solid var(--border); padding-top: 8px;\">\n      <div style=\"font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;\">送信履歴</div>\n      <div data-field=\"sendHistory\" style=\"font-size: 12px; color: var(--text);\">\n        <!-- 送信履歴が動的に挿入される -->\n      </div>\n    </div>\n  </div>\n</template>\n\n<!-- 一覧行テンプレート（非表示） -->\n<template id=\"list-row-template\">\n  <div class=\"report-row\" data-id=\"\" style=\"padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; background: var(--bg-main); transition: background-color var(--motion-duration);\" onmouseover=\"this.style.background='var(--bg-card)'\" onmouseout=\"this.style.background='var(--bg-main)'\">\n    <div style=\"font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px;\">\n      <span data-field=\"reportDate\"></span>\n    </div>\n    <div style=\"font-size: 11px; color: var(--text-muted); margin-bottom: 2px;\">\n      <span data-field=\"reporterName\"></span> / <span data-field=\"departmentName\"></span>\n    </div>\n    <div style=\"font-size: 11px; color: var(--text); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;\">\n      <span data-field=\"content\"></span>\n    </div>\n  </div>\n</template>",
+      "initJs": "function(container, apiUrl, tables) {\n  const reportListEl = container.querySelector('#report-list');\n  const detailPanelEl = container.querySelector('#detail-panel');\n  const emptyStateEl = container.querySelector('#empty-state');\n  const reportCountEl = container.querySelector('[data-testid=\"report-count\"]');\n  const searchBtn = container.querySelector('[data-testid=\"search-button\"]');\n  const backBtn = container.querySelector('[data-testid=\"back-button\"]');\n  const dateFromInput = container.querySelector('[data-testid=\"report-date-from\"]');\n  const dateToInput = container.querySelector('[data-testid=\"report-date-to\"]');\n  const deptFilterSelect = container.querySelector('[data-testid=\"department-filter\"]');\n  const keywordInput = container.querySelector('[data-testid=\"keyword-search\"]');\n\n  const listRowTemplate = container.querySelector('#list-row-template');\n  const detailTemplate = container.querySelector('#detail-template');\n\n  let allReports = [];\n  let allUsers = {};\n  let allDepartments = {};\n  let selectedReportId = null;\n\n  // データ取得\n  async function loadData() {\n    try {\n      // テーブルインデックス: 朝会報告=0, ユーザー=1, 部門=2, 報告送信履歴=3, メール送信ログ=4\n      const reports = await window.aivicApi.list(0);\n      const users = await window.aivicApi.list(1);\n      const departments = await window.aivicApi.list(2);\n      const sendHistories = await window.aivicApi.list(3);\n\n      allReports = reports || [];\n      allUsers = {};\n      allDepartments = {};\n\n      if (users) {\n        users.forEach(u => {\n          allUsers[u.ユーザーID] = u;\n        });\n      }\n\n      if (departments) {\n        departments.forEach(d => {\n          allDepartments[d.部門ID] = d;\n        });\n      }\n\n      // 送信履歴をマップ化（報告IDごと）\n      const sendHistoryMap = {};\n      if (sendHistories) {\n        sendHistories.forEach(sh => {\n          if (!sendHistoryMap[sh.朝会報告ID]) {\n            sendHistoryMap[sh.朝会報告ID] = [];\n          }\n          sendHistoryMap[sh.朝会報告ID].push(sh);\n        });\n      }\n\n      // 各報告に送信履歴を付与\n      allReports.forEach(r => {\n        r._sendHistories = sendHistoryMap[r.報告ID] || [];\n      });\n\n      renderList(allReports);\n    } catch (err) {\n      console.error('データ読込エラー:', err);\n    }\n  }\n\n  // 一覧描画\n  function renderList(reports) {\n    reportListEl.innerHTML = '';\n    reportCountEl.textContent = `（${reports.length}件）`;\n\n    if (reports.length === 0) {\n      reportListEl.innerHTML = '<div style=\"padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px;\">該当する日報がありません</div>';\n      return;\n    }\n\n    reports.forEach(report => {\n      const row = listRowTemplate.content.cloneNode(true);\n      const rowEl = row.querySelector('.report-row');\n      rowEl.dataset.id = report.報告ID;\n\n      const reportDate = new Date(report.報告日);\n      row.querySelector('[data-field=\"reportDate\"]').textContent = reportDate.toLocaleDateString('ja-JP');\n\n      const reporter = allUsers[report.報告者ID];\n      row.querySelector('[data-field=\"reporterName\"]').textContent = reporter ? reporter.表示名 : '不明';\n\n      const dept = allDepartments[report.部門ID];\n      row.querySelector('[data-field=\"departmentName\"]').textContent = dept ? dept.部門名 : '不明';\n\n      row.querySelector('[data-field=\"content\"]').textContent = report.報告内容 || '';\n\n      rowEl.addEventListener('click', () => {\n        selectedReportId = report.報告ID;\n        showDetail(report);\n        // 選択状態の視覚的フィードバック\n        container.querySelectorAll('.report-row').forEach(r => r.style.background = 'var(--bg-main)');\n        rowEl.style.background = 'var(--bg-card)';\n      });\n\n      reportListEl.appendChild(row);\n    });\n  }\n\n  // 詳細表示\n  function showDetail(report) {\n    const detail = detailTemplate.content.cloneNode(true);\n\n    const reportDate = new Date(report.報告日);\n    detail.querySelector('[data-field=\"reportDate\"]').textContent = reportDate.toLocaleString('ja-JP');\n\n    const reporter = allUsers[report.報告者ID];\n    detail.querySelector('[data-field=\"reporterName\"]').textContent = reporter ? reporter.表示名 : '不明';\n\n    const dept = allDepartments[report.部門ID];\n    detail.querySelector('[data-field=\"departmentName\"]').textContent = dept ? dept.部門名 : '不明';\n\n    detail.querySelector('[data-field=\"status\"]').textContent = report.進捗状況 || '未設定';\n\n    detail.querySelector('[data-field=\"content\"]').textContent = report.報告内容 || '';\n    detail.querySelector('[data-field=\"issues\"]').textContent = report.課題 || '（なし）';\n    detail.querySelector('[data-field=\"action\"]').textContent = report.対応予定 || '（なし）';\n\n    // 送信履歴\n    const historyEl = detail.querySelector('[data-field=\"sendHistory\"]');\n    if (report._sendHistories && report._sendHistories.length > 0) {\n      const historyHtml = report._sendHistories.map(sh => {\n        const sendDate = new Date(sh.送信日時);\n        const sender = allUsers[sh.ユーザーID];\n        return `<div style=\"padding: 6px; background: var(--bg-main); border-radius: 3px; margin-bottom: 4px; font-size: 11px;\">\n          <div style=\"color: var(--text);\">${sendDate.toLocaleString('ja-JP')}</div>\n          <div style=\"color: var(--text-muted); margin-top: 2px;\">送信者: ${sender ? sender.表示名 : '不明'}</div>\n          <div style=\"color: var(--text-muted); margin-top: 2px;\">ステータス: <span style=\"color: ${sh.送信ステータス === '成功' ? 'var(--primary)' : 'var(--text-muted)'}\">${sh.送信ステータス}</span></div>\n          ${sh.エラーメッセージ ? `<div style=\"color: var(--text-muted); margin-top: 2px;\">エラー: ${sh.エラーメッセージ}</div>` : ''}\n        </div>`;\n      }).join('');\n      historyEl.innerHTML = historyHtml;\n    } else {\n      historyEl.textContent = '（送信履歴なし）';\n    }\n\n    detailPanelEl.innerHTML = '';\n    detailPanelEl.appendChild(detail);\n    detailPanelEl.style.display = 'flex';\n    emptyStateEl.style.display = 'none';\n  }\n\n  // 検索実行\n  function performSearch() {\n    const dateFrom = dateFromInput.value ? new Date(dateFromInput.value) : null;\n    const dateTo = dateToInput.value ? new Date(dateToInput.value + 'T23:59:59') : null;\n    const deptFilter = deptFilterSelect.value;\n    const keyword = keywordInput.value.toLowerCase();\n\n    const filtered = allReports.filter(r => {\n      const reportDate = new Date(r.報告日);\n\n      if (dateFrom && reportDate < dateFrom) return false;\n      if (dateTo && reportDate > dateTo) return false;\n\n      if (deptFilter) {\n        const dept = allDepartments[r.部門ID];\n        if (!dept || dept.部門名 !== deptFilter) return false;\n      }\n\n      if (keyword) {\n        const content = (r.報告内容 || '').toLowerCase();\n        const issues = (r.課題 || '').toLowerCase();\n        if (!content.includes(keyword) && !issues.includes(keyword)) return false;\n      }\n\n      return true;\n    });\n\n    renderList(filtered);\n    selectedReportId = null;\n    detailPanelEl.style.display = 'none';\n    emptyStateEl.style.display = 'flex';\n  }\n\n  // イベントリスナー\n  searchBtn.addEventListener('click', performSearch);\n  keywordInput.addEventListener('keypress', (e) => {\n    if (e.key === 'Enter') performSearch();\n  });\n\n  backBtn.addEventListener('click', () => {\n    window.showScreen('scr-1785921347004');\n  });\n\n  // 初期ロード\n  loadData();\n}",
+      "method": "ai"
+    }
+  ],
+  "tableDefinitions": [
+    {
+      "tableName": "ユーザー",
+      "purpose": "朝会報告管理システムのユーザー情報を管理し、ユーザー認証、権限管理、報告者情報の基盤となるマスタテーブル",
+      "columns": [
+        {
+          "name": "ユーザーID",
+          "type": "uuid",
+          "required": true,
+          "description": "ユーザーの一意識別子"
+        },
+        {
+          "name": "ユーザー名",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "ユーザーのログインID"
+        },
+        {
+          "name": "表示名",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "朝会報告に表示されるユーザーの名前"
+        },
+        {
+          "name": "メールアドレス",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "ユーザーのメールアドレス"
+        },
+        {
+          "name": "パスワードハッシュ",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "ユーザーのパスワードハッシュ値"
+        },
+        {
+          "name": "役割",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "ユーザーの権限レベル（管理者、報告者等）"
+        },
+        {
+          "name": "部門",
+          "type": "varchar(100)",
+          "required": false,
+          "description": "ユーザーが属する部門"
+        },
+        {
+          "name": "有効フラグ",
+          "type": "boolean",
+          "required": true,
+          "description": "ユーザーが有効かどうか"
+        },
+        {
+          "name": "作成日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "ユーザーレコードの作成日時"
+        },
+        {
+          "name": "更新日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "ユーザーレコードの最終更新日時"
+        }
+      ]
+    },
+    {
+      "tableName": "部門",
+      "purpose": "朝会報告管理システムにおける組織の部門情報を管理するマスタテーブル。部門の基本情報、階層構造、および状態を保持し、ユーザーと朝会報告の部門別集計・フィルタリングに使用される。",
+      "columns": [
+        {
+          "name": "部門ID",
+          "type": "uuid",
+          "required": true,
+          "description": "部門を一意に識別するプライマリキー"
+        },
+        {
+          "name": "部門名",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "部門の名称"
+        },
+        {
+          "name": "部門コード",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "部門を識別するコード、ユーザーインターフェースでの検索・フィルタリングに使用"
+        },
+        {
+          "name": "親部門ID",
+          "type": "uuid",
+          "required": false,
+          "description": "上位部門のID、部門の階層構造を表現するための外部キー"
+        },
+        {
+          "name": "説明",
+          "type": "text",
+          "required": false,
+          "description": "部門の説明や備考"
+        },
+        {
+          "name": "表示順序",
+          "type": "integer",
+          "required": false,
+          "description": "UI上での部門表示順序"
+        },
+        {
+          "name": "有効フラグ",
+          "type": "boolean",
+          "required": true,
+          "description": "部門が有効かどうかを示すフラグ、無効な部門は朝会報告の対象外となる"
+        },
+        {
+          "name": "作成日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "部門レコードの作成日時"
+        },
+        {
+          "name": "更新日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "部門レコードの最終更新日時"
+        },
+        {
+          "name": "作成者ID",
+          "type": "uuid",
+          "required": true,
+          "description": "部門を作成したユーザーのID、ユーザーテーブルへの外部キー"
+        },
+        {
+          "name": "更新者ID",
+          "type": "uuid",
+          "required": true,
+          "description": "部門を最後に更新したユーザーのID、ユーザーテーブルへの外部キー"
+        }
+      ]
+    },
+    {
+      "tableName": "朝会報告",
+      "purpose": "朝会での報告内容を記録・管理し、部門別の進捗状況や課題を追跡するためのシステム",
+      "columns": [
+        {
+          "name": "報告ID",
+          "type": "uuid",
+          "required": true,
+          "description": "朝会報告の一意識別子"
+        },
+        {
+          "name": "報告日",
+          "type": "timestamp",
+          "required": true,
+          "description": "朝会が実施された日時"
+        },
+        {
+          "name": "部門ID",
+          "type": "uuid",
+          "required": true,
+          "description": "報告を行った部門への外部キー参照"
+        },
+        {
+          "name": "報告者ID",
+          "type": "uuid",
+          "required": true,
+          "description": "報告を行ったユーザーへの外部キー参照"
+        },
+        {
+          "name": "報告内容",
+          "type": "text",
+          "required": true,
+          "description": "朝会での報告の詳細内容"
+        },
+        {
+          "name": "進捗状況",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "進捗の状態（予定通り、遅延、完了など）"
+        },
+        {
+          "name": "課題",
+          "type": "text",
+          "required": false,
+          "description": "報告時に挙げられた課題や問題点"
+        },
+        {
+          "name": "対応予定",
+          "type": "text",
+          "required": false,
+          "description": "課題に対する対応予定や次のアクション"
+        },
+        {
+          "name": "作成日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "レコード作成日時"
+        },
+        {
+          "name": "更新日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "レコード最終更新日時"
+        }
+      ]
+    },
+    {
+      "tableName": "報告送信履歴",
+      "purpose": "朝会報告の送信状況を記録し、送信日時、送信者、送信ステータスを管理するための履歴テーブル",
+      "columns": [
+        {
+          "name": "送信履歴ID",
+          "type": "uuid",
+          "required": true,
+          "description": "送信履歴を一意に識別するプライマリキー"
+        },
+        {
+          "name": "朝会報告ID",
+          "type": "uuid",
+          "required": true,
+          "description": "朝会報告テーブルへの外部キー参照"
+        },
+        {
+          "name": "ユーザーID",
+          "type": "uuid",
+          "required": true,
+          "description": "送信者のユーザーID、ユーザーテーブルへの外部キー参照"
+        },
+        {
+          "name": "送信日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "報告が送信された日時"
+        },
+        {
+          "name": "送信ステータス",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "送信ステータス（成功、失敗、保留中など）"
+        },
+        {
+          "name": "エラーメッセージ",
+          "type": "text",
+          "required": false,
+          "description": "送信失敗時のエラー内容"
+        },
+        {
+          "name": "作成日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "レコード作成日時"
+        },
+        {
+          "name": "更新日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "レコード最終更新日時"
+        }
+      ]
+    },
+    {
+      "tableName": "メール送信ログ",
+      "purpose": "朝会報告システムにおけるメール送信の履歴を記録し、送信状況の追跡と送信失敗時の対応を管理するためのトランザクションテーブル",
+      "columns": [
+        {
+          "name": "メール送信ログID",
+          "type": "uuid",
+          "required": true,
+          "description": "メール送信ログの一意識別子"
+        },
+        {
+          "name": "朝会報告ID",
+          "type": "uuid",
+          "required": true,
+          "description": "朝会報告テーブルへの外部キー参照"
+        },
+        {
+          "name": "報告送信履歴ID",
+          "type": "uuid",
+          "required": false,
+          "description": "報告送信履歴テーブルへの外部キー参照"
+        },
+        {
+          "name": "送信先メールアドレス",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "メール送信先のメールアドレス"
+        },
+        {
+          "name": "送信元メールアドレス",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "メール送信元のメールアドレス"
+        },
+        {
+          "name": "メール件名",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "送信されたメールの件名"
+        },
+        {
+          "name": "送信ステータス",
+          "type": "varchar(100)",
+          "required": true,
+          "description": "メール送信の状態(成功/失敗/保留中等)"
+        },
+        {
+          "name": "送信日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "メール送信を試みた日時"
+        },
+        {
+          "name": "エラーメッセージ",
+          "type": "text",
+          "required": false,
+          "description": "送信失敗時のエラー内容"
+        },
+        {
+          "name": "再試行回数",
+          "type": "integer",
+          "required": true,
+          "description": "メール送信の再試行回数"
+        },
+        {
+          "name": "作成日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "ログレコード作成日時"
+        },
+        {
+          "name": "更新日時",
+          "type": "timestamp",
+          "required": true,
+          "description": "ログレコード最終更新日時"
+        }
+      ]
+    }
+  ],
+  "presetSeedData": {
+    "ユーザー": [
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "admin_tanaka",
+        "表示名": "田中太郎",
+        "メールアドレス": "tanaka.taro@company.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQ",
+        "役割": "管理者",
+        "部門": "情報システム部",
+        "有効フラグ": true,
+        "作成日時": "2024-01-15T09:30:00+09:00",
+        "更新日時": "2025-01-10T14:22:15+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "tanaka.taro",
+        "表示名": "田中太郎",
+        "メールアドレス": "tanaka.taro@company.co.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "役割": "部門長",
+        "部門": "営業部門",
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2025-01-15T14:30:00+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "tanaka.taro",
+        "表示名": "田中太郎",
+        "メールアドレス": "tanaka.taro@company.co.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQR",
+        "役割": "報告者",
+        "部門": "営業部",
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2025-01-15T14:30:00+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "suzuki.yuki",
+        "表示名": "鈴木勇気",
+        "メールアドレス": "suzuki.yuki@company.co.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQR",
+        "役割": "報告者",
+        "部門": "企画部門",
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00Z",
+        "更新日時": "2025-01-15T14:30:00Z"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "tanaka.taro",
+        "表示名": "田中太郎",
+        "メールアドレス": "tanaka.taro@company.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQR",
+        "役割": "報告者",
+        "部門": "技術部門",
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2025-01-15T14:30:00+09:00"
+      },
+      {
+        "ユーザーID": "550e8400-e29b-41d4-a716-446655440000",
+        "ユーザー名": "satoh.yuki",
+        "表示名": "佐藤由紀",
+        "メールアドレス": "satoh.yuki@company.jp",
+        "パスワードハッシュ": "$2b$12$R9h7cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jKmmK",
+        "役割": "報告者",
+        "部門": "人事部",
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:30:00+09:00",
+        "更新日時": "2025-01-15T14:22:30+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "tanaka.jiro",
+        "表示名": "田中次郎",
+        "メールアドレス": "tanaka.jiro@company.jp",
+        "パスワードハッシュ": "$2b$12$KIXxPfxzAW3DdjwRu3dJQe7mK8vL9nP4qR2sT5uV6wX7yZ8aB9cDe",
+        "役割": "報告者",
+        "部門": "製造部門",
+        "有効フラグ": true,
+        "作成日時": "2024-04-15T09:30:00+09:00",
+        "更新日時": "2025-01-20T14:45:30+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "yamada.hanako",
+        "表示名": "山田花子",
+        "メールアドレス": "yamada.hanako@company.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOP",
+        "役割": "報告者",
+        "部門": "営業部",
+        "有効フラグ": false,
+        "作成日時": "2023-04-15T09:30:00+09:00",
+        "更新日時": "2025-01-10T14:20:00+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "tanaka.taro",
+        "表示名": "田中太郎",
+        "メールアドレス": "tanaka.taro@company.co.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQR",
+        "役割": "報告者",
+        "部門": "企画営業部",
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2025-01-15T14:30:00+09:00"
+      },
+      {
+        "ユーザーID": "rec-001",
+        "ユーザー名": "yamada.hanako",
+        "表示名": "山田花子",
+        "メールアドレス": "yamada.hanako@company.jp",
+        "パスワードハッシュ": "$2b$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQR",
+        "役割": "報告者",
+        "部門": "営業部",
+        "有効フラグ": true,
+        "作成日時": "2025-01-15T09:30:00+09:00",
+        "更新日時": "2025-01-15T09:30:00+09:00"
+      }
+    ],
+    "部門": [
+      {
+        "部門ID": "rec-001",
+        "部門名": "経営企画部",
+        "部門コード": "DEPT-0001",
+        "親部門ID": null,
+        "説明": "本社直下の経営企画部門。経営戦略の立案、事業計画の策定、経営分析、予算管理などを担当する。",
+        "表示順序": 1,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00Z",
+        "更新日時": "2025-01-15T14:30:00Z",
+        "作成者ID": "rec-user-0001",
+        "更新者ID": "rec-user-0002"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "東日本営業課",
+        "部門コード": "SALES-EAST",
+        "親部門ID": "rec-002",
+        "説明": "東日本地域（関東・甲信越・東北）を担当する営業課。新規顧客開拓と既存顧客のフォローアップを主業務とする。",
+        "表示順序": 2,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00Z",
+        "更新日時": "2025-01-15T14:30:00Z",
+        "作成者ID": "rec-101",
+        "更新者ID": "rec-102"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "西日本営業課",
+        "部門コード": "SALES-WEST",
+        "親部門ID": "rec-002",
+        "説明": "西日本地域（近畿・中国・四国・九州）における営業活動を担当。既存顧客の維持・拡大および新規顧客開拓を推進。",
+        "表示順序": 3,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2024-11-15T14:30:00+09:00",
+        "作成者ID": "rec-100",
+        "更新者ID": "rec-101"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "システム開発課",
+        "部門コード": "SD-001",
+        "親部門ID": "rec-tech-001",
+        "説明": "社内システムの開発・保守および新規プロジェクトの企画・実装を担当する部門",
+        "表示順序": 1,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00",
+        "更新日時": "2025-01-15T14:30:00",
+        "作成者ID": "rec-user-0001",
+        "更新者ID": "rec-user-0002"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "インフラ運用課",
+        "部門コード": "TECH-INFRA-OPS",
+        "親部門ID": "rec-002",
+        "説明": "社内システムのサーバー、ネットワーク、ストレージなどのインフラ環境の運用・保守を担当する部門。24時間体制での監視と障害対応を実施。",
+        "表示順序": 2,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:30:00+09:00",
+        "更新日時": "2025-01-15T14:22:00+09:00",
+        "作成者ID": "rec-100",
+        "更新者ID": "rec-101"
+      },
+      {
+        "部門ID": "rec-0047",
+        "部門名": "人事総務課",
+        "部門コード": "ADM-HR",
+        "親部門ID": "rec-0001",
+        "説明": "採用・配置・給与・福利厚生・総務業務を統括する部門。従業員の人事管理と会社全体の総務機能を担当。",
+        "表示順序": 2,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00Z",
+        "更新日時": "2025-01-15T14:30:00Z",
+        "作成者ID": "rec-9001",
+        "更新者ID": "rec-9003"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "財務経理課",
+        "部門コード": "ADM-FIN",
+        "親部門ID": "rec-admin-001",
+        "説明": "経理業務、予算管理、決算業務、給与計算、経費精算を担当する部門",
+        "表示順序": 2,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00Z",
+        "更新日時": "2025-01-15T14:30:00Z",
+        "作成者ID": "rec-user-001",
+        "更新者ID": "rec-user-002"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "カスタマーサクセス部門",
+        "部門コード": "CS",
+        "親部門ID": null,
+        "説明": "顧客の成功を支援し、長期的な関係構築とリテンション向上を担当する部門。導入支援、運用サポート、顧客分析を通じて顧客満足度の向上に取り組む。",
+        "表示順序": 5,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2025-01-15T14:30:00+09:00",
+        "作成者ID": "rec-101",
+        "更新者ID": "rec-102"
+      },
+      {
+        "部門ID": "rec-0047",
+        "部門名": "QA課",
+        "部門コード": "QA001",
+        "親部門ID": "rec-0012",
+        "説明": "品質保証部配下の課。製品品質の検証、テスト計画の策定、不具合管理を担当。",
+        "表示順序": 3,
+        "有効フラグ": true,
+        "作成日時": "2024-04-01T09:00:00+09:00",
+        "更新日時": "2025-01-15T14:30:00+09:00",
+        "作成者ID": "rec-1001",
+        "更新者ID": "rec-1008"
+      },
+      {
+        "部門ID": "rec-001",
+        "部門名": "営業推進室",
+        "部門コード": "SALES-PROMOTION",
+        "親部門ID": "rec-corp-sales",
+        "説明": "営業戦略の企画立案と営業支援を担当。2025年4月の組織改編により営業企画部に統合予定のため、現在は段階的に業務移行中。",
+        "表示順序": 15,
+        "有効フラグ": false,
+        "作成日時": "2023-06-15T09:30:00Z",
+        "更新日時": "2025-01-20T14:45:00Z",
+        "作成者ID": "rec-user-yamada",
+        "更新者ID": "rec-user-suzuki"
+      }
+    ],
+    "朝会報告": [
+      {
+        "報告ID": "rec-20250115-001",
+        "報告日": "2025-01-15T09:30:00+09:00",
+        "部門ID": "dept-sales-001",
+        "報告者ID": "user-nakamura-hanako",
+        "報告内容": "1月度の売上実績は8,450万円で、月間目標9,000万円に対して達成率94.1%となっております。既存顧客からの継続案件が堅調で、特に製造業セグメントで前月比12%の増加を記録しました。新規案件パイプラインについては、現在検討段階の案件が15件、提案待ちが8件の状況です。",
+        "進捗状況": "遅延",
+        "課題": "新規案件の受注までのリードタイムが平均45日と長期化しており、Q1目標達成に向けて加速が必要です。また、大型案件1件（予定額2,500万円）の顧客決裁が遅延しており、1月中の受注見込みが難しい状況です。営業チーム内でも人員不足により、既存顧客フォローに時間を要しています。",
+        "対応予定": "来週中に遅延している大型案件の顧客と打ち合わせを実施し、決裁スケジュールの確認を行います。新規案件の提案資料作成を外部リソースで補強し、提案から受注までのサイクルを短縮する予定です。また、営業支援ツールの導入を進めており、2月中の運用開始を目指しています。",
+        "作成日時": "2025-01-15T09:45:00+09:00",
+        "更新日時": "2025-01-15T09:45:00+09:00"
+      },
+      {
+        "報告ID": "rec-001",
+        "報告日": "2025-01-15T08:30:00+09:00",
+        "部門ID": "dept-mfg-001",
+        "報告者ID": "usr-yamada-002",
+        "報告内容": "昨日の生産ラインA・Bの稼働率が平均58%に低下しました。主な原因は仕入先からの部品供給遅延で、特にモータユニットの納入が予定より3日遅れています。現在、ラインCで代替部品を活用した生産調整を進めており、本日中に稼働率を70%まで回復させる見込みです。",
+        "進捗状況": "遅延",
+        "課題": "①モータユニット供給元の納期遅延（予定：1月13日→実績：1月16日予定）②代替部品の品質検査に予想外の時間を要している③作業員の残業時間が増加傾向（先週平均12時間/人）",
+        "対応予定": "本日中に仕入先と納期確認の緊急会議を実施。並行して、代替仕入先2社への発注を進める。品質検査プロセスの簡略化について品質管理部と協議予定。作業員の負担軽減のため、臨時配置要員の手配を人事部に依頼。1月17日までに稼働率を85%以上に回復させる。",
+        "作成日時": "2025-01-15T08:35:00+09:00",
+        "更新日時": "2025-01-15T08:35:00+09:00"
+      },
+      {
+        "報告ID": "rec-001",
+        "報告日": "2025-01-15T08:30:00+09:00",
+        "部門ID": "dept-004",
+        "報告者ID": "user-0127",
+        "報告内容": "新商品開発プロジェクト『スマートウォーター』の進捗報告です。現在、基本設計フェーズを実施中ですが、予定していた試作品の初期テストで予想外の技術課題が発生しました。当初は1月中旬の試作品完成予定でしたが、現在2月上旬へのずれ込みが確実な状況です。チーム内での協議の結果、並行開発を加速させるため、追加のエンジニアリソースが必要と判断されました。",
+        "進捗状況": "遅延",
+        "課題": "1. センサー精度の想定値との乖離により、回路設計の見直しが必要。2. 現在のチーム構成（エンジニア3名）では並行開発が困難。3. 試作品テストの外注先の納期が予定より2週間遅延。",
+        "対応予定": "1. センサー仕様の再検討と代替品の評価を1月20日までに完了。2. エンジニア2名の追加配置を経営層に申請（予算影響額：月額280万円）。3. 外注先との納期交渉を本日中に実施。4. スケジュール調整案を1月17日の経営会議で報告。",
+        "作成日時": "2025-01-15T08:35:00+09:00",
+        "更新日時": "2025-01-15T08:35:00+09:00"
+      },
+      {
+        "報告ID": "rec-20250115-001",
+        "報告日": "2025-01-15T08:30:00+09:00",
+        "部門ID": "dept-qa-001",
+        "報告者ID": "user-suzuki-hanako",
+        "報告内容": "1月度の不良品率が前月比1.8%増加し、現在3.2%に達しています。主な不良内容は溶接部の気泡混入が全体の45%、寸法超過が30%、表面傷が25%となっており、特に溶接部の品質低下が顕著です。原因調査チームは製造ラインAの溶接機械の校正ズレを疑い、現在検証中です。",
+        "進捗状況": "遅延",
+        "課題": "溶接機械の定期メンテナンス周期が延長されていた可能性。また、新入社員の配置に伴う作業精度のばらつき。外注先での品質管理基準の統一が不十分。",
+        "対応予定": "本日中に溶接機械A・B・Cの全台校正実施。新入社員向けの集中研修を1月20日に実施。外注先との品質基準の再確認会議を1月17日に開催。2月末までに不良品率を2.0%以下に改善する目標。",
+        "作成日時": "2025-01-15T08:35:00+09:00",
+        "更新日時": "2025-01-15T08:35:00+09:00"
+      },
+      {
+        "報告ID": "rec-20250117-001",
+        "報告日": "2025-01-17T09:30:00+09:00",
+        "部門ID": "dept-sales-001",
+        "報告者ID": "user-yamada-taro",
+        "報告内容": "既存顧客A社との年間契約更新交渉を進捗中。現在、契約金額の5%削減要求に対して、サービス範囲の最適化提案で対応中。また、解約リスク顧客として分類されているB社（昨年売上高の12%を占める）に対して、営業担当者による定期訪問を開始し、顧客満足度調査を実施した。C社からは契約継続の意向を得られた。",
+        "進捗状況": "遅延",
+        "課題": "A社との価格交渉が難航しており、契約更新期限まで2週間となっている。B社は競合他社からの提案を検討中との情報があり、早急な対応が必要。営業チーム内でのリソース不足により、新規案件との並行対応が困難な状況。",
+        "対応予定": "本日中にA社への改訂提案書を提出予定。B社に対しては、営業部長による経営層訪問を来週実施し、カスタマイズ提案を提示する。また、営業支援チームを臨時配置してリソース強化を図る。進捗状況は毎日17時に営業会議で共有する。",
+        "作成日時": "2025-01-17T09:35:00+09:00",
+        "更新日時": "2025-01-17T09:35:00+09:00"
+      },
+      {
+        "報告ID": "rec-20250115-001",
+        "報告日": "2025-01-15T08:30:00+09:00",
+        "部門ID": "dept-logistics-001",
+        "報告者ID": "user-20240601-045",
+        "報告内容": "1月度の配送実績について報告します。先月は関東地区での配送遅延が相次ぎ、顧客クレームが前月比で23件増加しました。主な原因は悪天候による道路渋滞と配車効率の低下です。現在、配車最適化システムの実装を進めており、ルート検索エンジンの導入は予定通り進行中です。",
+        "進捗状況": "遅延",
+        "課題": "配送遅延に伴う顧客クレーム件数が増加（前月比+23件）。関東エリアの配車効率が目標値の82%に留まっている。配車最適化システムの導入予定日が2月末から3月中旬にずれ込む可能性がある。ドライバーの労務管理も課題。",
+        "対応予定": "1月中にAIベースのルート最適化ツール（ベンダー：LogiTech Solutions）の試験運用を関東地区で開始する。配送遅延の原因分析レポートを1月20日までに完成させ、営業部と共有する。顧客対応チームの増員を検討し、クレーム対応時間を短縮する。2月末までに配車最適化システムの本実装を完了し、配車効率を90%以上に改善する目標。",
+        "作成日時": "2025-01-15T08:35:12+09:00",
+        "更新日時": "2025-01-15T08:35:12+09:00"
+      },
+      {
+        "報告ID": "rec-20250114-001",
+        "報告日": "2025-01-14T08:30:00+09:00",
+        "部門ID": "dept-hr-001",
+        "報告者ID": "user-hr-yamada-001",
+        "報告内容": "2025年1月期新入社員研修（第12期生、配属予定者45名）の進行状況を報告いたします。現在、基礎研修フェーズ2週目に入り、ビジネスマナー研修と社内システム研修を実施中です。出席率は98%（44名）で、1名が体調不良で本日欠席しています。昨年度離職者フォローアップについては、2024年度中途退職者8名のうち、再入社希望者が2名おり、面談を進めております。",
+        "進捗状況": "予定通り",
+        "課題": "新入社員研修の宿泊施設確保が2月の後半研修で逼迫している状況です。また、昨年度離職者のうち3名からは理由ヒアリングの回答がまだ得られておらず、組織改善への反映が遅延しています。",
+        "対応予定": "宿泊施設については本週中に複数候補地を確保する予定です。離職者ヒアリングについては、1月末までに全員からの回答取得を目標に、再度連絡を取ります。また、離職理由分析結果は2月の人事戦略会議で報告予定です。",
+        "作成日時": "2025-01-14T08:45:00+09:00",
+        "更新日時": "2025-01-14T08:45:00+09:00"
+      },
+      {
+        "報告ID": "rec-20250115-sys-001",
+        "報告日": "2025-01-15T09:30:00+09:00",
+        "部門ID": "dept-sys-001",
+        "報告者ID": "user-yamada-hanako-001",
+        "報告内容": "1月14日午後2時30分に発生した基幹システムの決済処理機能の障害について、復旧作業を実施いたしました。原因はデータベースの接続プール枯渇であり、午後4時15分に完全復旧いたしました。影響範囲は決済処理機能のみで、約2時間30分のダウンタイムが発生し、未処理件数は約1,200件でした。復旧後の検証を完了し、現在は正常に稼働しております。",
+        "進捗状況": "完了",
+        "課題": "今回の障害の根本原因は、接続プールの設定値が実際の負荷に対応していなかったことです。また、監視アラートの閾値設定が適切でなく、障害の早期発見ができませんでした。さらに、復旧手順書が最新化されていなかったため、初期対応に時間を要しました。",
+        "対応予定": "1月20日までに接続プール設定の最適化を実施します。1月22日までに監視アラート設定の見直しと新しい監視ルールの導入を完了します。1月29日までに障害対応マニュアルを最新化し、全システム部員への教育を実施予定です。また、2月中旬に再発防止策の有効性確認テストを実施いたします。",
+        "作成日時": "2025-01-15T09:35:00+09:00",
+        "更新日時": "2025-01-15T09:35:00+09:00"
+      },
+      {
+        "報告ID": "rec-001",
+        "報告日": "2024-11-15T09:30:00+09:00",
+        "部門ID": "dept-sales-planning",
+        "報告者ID": "user-yamamoto-hanako",
+        "報告内容": "市場競争激化に対応した価格戦略の見直しについて、競合他社の価格動向調査を完了いたしました。当社の主力製品3品目について、競合比較分析の結果、平均で8～12%の価格差が生じていることが判明しました。特にエントリーモデルでの競争力低下が顕著です。今月中に価格改定案を3パターン作成し、営業部門との協議を予定しています。",
+        "進捗状況": "予定通り",
+        "課題": "競合他社の価格改定が頻繁に行われており、調査データの鮮度維持が困難。また、原材料費の上昇により利益率維持との両立が課題となっています。営業部門からは値下げによる受注増加への期待が高く、経営層との調整が必要です。",
+        "対応予定": "11月20日までに価格改定案3パターン（攻撃的値下げ、段階的値下げ、高付加価値戦略）を作成。11月22日に営業部・経営企画部との合同会議を開催し、市場シェア予測と利益シミュレーションを提示して方針決定を行う予定です。",
+        "作成日時": "2024-11-15T09:35:00+09:00",
+        "更新日時": "2024-11-15T09:35:00+09:00"
+      }
+    ],
+    "報告送信履歴": [
+      {
+        "送信履歴ID": "rec-001",
+        "朝会報告ID": "rec-042",
+        "ユーザーID": "rec-015",
+        "送信日時": "2024-11-15T09:30:45+09:00",
+        "送信ステータス": "成功",
+        "エラーメッセージ": null,
+        "作成日時": "2024-11-15T09:30:45+09:00",
+        "更新日時": "2024-11-15T09:30:45+09:00"
+      },
+      {
+        "送信履歴ID": "rec-20250115-0847",
+        "朝会報告ID": "rec-20250115-0001",
+        "ユーザーID": "rec-user-2024-0156",
+        "送信日時": "2025-01-15T09:30:45+09:00",
+        "送信ステータス": "失敗",
+        "エラーメッセージ": "ネットワーク接続タイムアウト: 送信サーバーへの接続に失敗しました。接続試行回数: 3回、最終エラーコード: ECONNREFUSED",
+        "作成日時": "2025-01-15T09:30:45+09:00",
+        "更新日時": "2025-01-15T09:35:12+09:00"
+      },
+      {
+        "送信履歴ID": "rec-001",
+        "朝会報告ID": "rec-042",
+        "ユーザーID": "rec-108",
+        "送信日時": "2024-11-15 09:30:45",
+        "送信ステータス": "失敗",
+        "エラーメッセージ": "データベース接続タイムアウト: メールサーバーへの接続に失敗しました。リトライ回数が上限に達しました。",
+        "作成日時": "2024-11-15 09:30:45",
+        "更新日時": "2024-11-15 09:31:12"
+      },
+      {
+        "送信履歴ID": "rec-20250115-7842",
+        "朝会報告ID": "rec-20250115-5291",
+        "ユーザーID": "rec-user-3847",
+        "送信日時": "2025-01-15 09:45:32",
+        "送信ステータス": "失敗",
+        "エラーメッセージ": "送信タイムアウト: 報告サーバーへの接続が300秒以内に完了しませんでした。ネットワークの遅延またはサーバーの応答不可が考えられます。",
+        "作成日時": "2025-01-15 09:15:00",
+        "更新日時": "2025-01-15 09:50:15"
+      },
+      {
+        "送信履歴ID": "rec-001",
+        "朝会報告ID": "rec-042",
+        "ユーザーID": "rec-015",
+        "送信日時": "2024-11-15 09:23:45",
+        "送信ステータス": "保留中",
+        "エラーメッセージ": "ユーザーにより送信が一時中断されました。再度の送信操作をお待ちしています。",
+        "作成日時": "2024-11-15 09:15:30",
+        "更新日時": "2024-11-15 09:23:45"
+      },
+      [
+        {
+          "送信履歴ID": "rec-001",
+          "朝会報告ID": "rep-2024-0847",
+          "ユーザーID": "usr-tanaka-001",
+          "送信日時": "2024-11-15 09:32:14",
+          "送信ステータス": "成功",
+          "エラーメッセージ": null,
+          "作成日時": "2024-11-15 09:32:14",
+          "更新日時": "2024-11-15 09:32:14"
+        },
+        {
+          "送信履歴ID": "rec-002",
+          "朝会報告ID": "rep-2024-0847",
+          "ユーザーID": "usr-tanaka-001",
+          "送信日時": "2024-11-15 09:32:47",
+          "送信ステータス": "成功",
+          "エラーメッセージ": null,
+          "作成日時": "2024-11-15 09:32:47",
+          "更新日時": "2024-11-15 09:32:47"
+        }
+      ],
+      {
+        "送信履歴ID": "rec-001",
+        "朝会報告ID": "rec-042",
+        "ユーザーID": "rec-108",
+        "送信日時": "2024-11-15 09:30:45",
+        "送信ステータス": "失敗",
+        "エラーメッセージ": "メールサーバー接続エラー: smtp.company.jp への接続がタイムアウトしました。ポート587でのTLS接続に失敗しました。",
+        "作成日時": "2024-11-15 09:30:45",
+        "更新日時": "2024-11-15 09:30:47"
+      },
+      {
+        "送信履歴ID": "rec-20250215-0847",
+        "朝会報告ID": "rec-20250215-0001",
+        "ユーザーID": "rec-user-2847",
+        "送信日時": "2025-02-15T09:30:45+09:00",
+        "送信ステータス": "失敗",
+        "エラーメッセージ": "送信権限がありません。この報告を送信するには管理者による承認が必要です。ユーザー：山田花子(rec-user-2847)は送信権限レベル1ですが、このプロジェクトには権限レベル3が必要です。",
+        "作成日時": "2025-02-15T09:30:45+09:00",
+        "更新日時": "2025-02-15T09:30:46+09:00"
+      },
+      {
+        "送信履歴ID": "rec-20250115-0847",
+        "朝会報告ID": "rec-20250115-0001",
+        "ユーザーID": "rec-user-2024-0342",
+        "送信日時": "2025-01-15T09:30:45+09:00",
+        "送信ステータス": "失敗",
+        "エラーメッセージ": "添付ファイルサイズが上限を超過しています。現在のサイズ: 52.8MB、上限: 50MB。ファイルを圧縮するか、分割してアップロードしてください。",
+        "作成日時": "2025-01-15T09:30:45+09:00",
+        "更新日時": "2025-01-15T09:30:47+09:00"
+      },
+      {
+        "送信履歴ID": "rec-001",
+        "朝会報告ID": "rec-042",
+        "ユーザーID": "rec-015",
+        "送信日時": "2024-11-15 09:30:45",
+        "送信ステータス": "成功",
+        "エラーメッセージ": null,
+        "作成日時": "2024-11-15 09:28:12",
+        "更新日時": "2024-11-15 09:31:20"
+      }
+    ],
+    "メール送信ログ": [
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "yamada.hanako@company.jp",
+        "送信元メールアドレス": "morning-meeting@company.jp",
+        "メール件名": "【朝会報告】2025年1月15日 営業部",
+        "送信ステータス": "成功",
+        "送信日時": "2025-01-15 09:30:45",
+        "エラーメッセージ": null,
+        "再試行回数": 0,
+        "作成日時": "2025-01-15 09:30:45",
+        "更新日時": "2025-01-15 09:30:45"
+      },
+      {
+        "メール送信ログID": "rec-20250115-0847",
+        "朝会報告ID": "rec-20250115-0001",
+        "報告送信履歴ID": "rec-20250115-0042",
+        "送信先メールアドレス": "tanaka.tarou@example.co.m",
+        "送信元メールアドレス": "morning-report@company.jp",
+        "メール件名": "【朝会報告】2025年1月15日 営業部",
+        "送信ステータス": "失敗",
+        "送信日時": "2025-01-15 09:30:45",
+        "エラーメッセージ": "Invalid email address format: tanaka.tarou@example.co.m - Domain extension is incomplete",
+        "再試行回数": 0,
+        "作成日時": "2025-01-15 09:30:47",
+        "更新日時": "2025-01-15 09:30:47"
+      },
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "suzuki.hanako@company.jp",
+        "送信元メールアドレス": "morning-report@system.company.jp",
+        "メール件名": "【朝会報告】2025年1月15日",
+        "送信ステータス": "保留中",
+        "送信日時": "2025-01-15 09:30:45",
+        "エラーメッセージ": "メールサーバーが一時的に利用不可です。接続タイムアウト(smtp.company.jp:587)",
+        "再試行回数": 3,
+        "作成日時": "2025-01-15 09:30:45",
+        "更新日時": "2025-01-15 10:15:22"
+      },
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "yamada.hanako@example.co.jp",
+        "送信元メールアドレス": "system@company.co.jp",
+        "メール件名": "【朝会報告】2024年11月15日 営業部",
+        "送信ステータス": "成功",
+        "送信日時": "2024-11-15 09:15:32",
+        "エラーメッセージ": null,
+        "再試行回数": 1,
+        "作成日時": "2024-11-15 09:05:18",
+        "更新日時": "2024-11-15 09:15:32"
+      },
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "suzuki.hanako@company.co.jp",
+        "送信元メールアドレス": "system@company.co.jp",
+        "メール件名": "【朝会報告】2025年1月15日 営業部報告",
+        "送信ステータス": "成功",
+        "送信日時": "2025-01-15 09:47:32",
+        "エラーメッセージ": null,
+        "再試行回数": 3,
+        "作成日時": "2025-01-15 09:35:18",
+        "更新日時": "2025-01-15 09:47:32"
+      },
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "suzuki.hanako@company.co.jp",
+        "送信元メールアドレス": "system@company.co.jp",
+        "メール件名": "2025年1月15日(火)朝会報告",
+        "送信ステータス": "失敗",
+        "送信日時": "2025-01-15 09:30:45",
+        "エラーメッセージ": "550 5.1.2 The email account that you tried to reach is over quota. Please try again later. gs2sm12345678pdb.0 - gsmtp",
+        "再試行回数": 3,
+        "作成日時": "2025-01-15 09:30:46",
+        "更新日時": "2025-01-15 10:15:22"
+      },
+      {
+        "メール送信ログID": "rec-20250115-001",
+        "朝会報告ID": "rec-20250115-rep-001",
+        "報告送信履歴ID": "rec-20250115-hist-001",
+        "送信先メールアドレス": "tanaka.taro@invalid-domain.jp",
+        "送信元メールアドレス": "system@company.co.jp",
+        "メール件名": "【朝会報告】2025年1月15日 営業部",
+        "送信ステータス": "失敗",
+        "送信日時": "2025-01-15 09:30:45",
+        "エラーメッセージ": "550 5.1.1 The email account that you tried to reach does not exist",
+        "再試行回数": 3,
+        "作成日時": "2025-01-15 09:30:45",
+        "更新日時": "2025-01-15 10:15:22"
+      },
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "suzuki.hanako@company.jp",
+        "送信元メールアドレス": "system@company.jp",
+        "メール件名": "【朝会報告変更通知】2025年1月15日 営業部 鈴木花子",
+        "送信ステータス": "成功",
+        "送信日時": "2025-01-15 09:35:22",
+        "エラーメッセージ": null,
+        "再試行回数": 0,
+        "作成日時": "2025-01-15 09:35:22",
+        "更新日時": "2025-01-15 09:35:22"
+      },
+      {
+        "メール送信ログID": "rec-001",
+        "朝会報告ID": "rec-002",
+        "報告送信履歴ID": "rec-003",
+        "送信先メールアドレス": "suzuki.hanako@company.jp",
+        "送信元メールアドレス": "system@company.jp",
+        "メール件名": "【朝会報告】2024年11月15日 営業部門",
+        "送信ステータス": "成功",
+        "送信日時": "2024-11-15 09:45:32",
+        "エラーメッセージ": null,
+        "再試行回数": 1,
+        "作成日時": "2024-11-15 08:30:00",
+        "更新日時": "2024-11-15 09:45:32"
+      },
+      {
+        "メール送信ログID": "rec-20250115-0847",
+        "朝会報告ID": "rep-20250115-0001",
+        "報告送信履歴ID": "hist-20250115-0342",
+        "送信先メールアドレス": "suzuki.hanako@company.jp",
+        "送信元メールアドレス": "morning-report@company.jp",
+        "メール件名": "2025年1月15日 朝会報告",
+        "送信ステータス": "失敗",
+        "送信日時": "2025-01-15 09:47:23",
+        "エラーメッセージ": "受信者のメールボックスが満杯のため配信できません。ステータスコード: 452 4.2.2",
+        "再試行回数": 3,
+        "作成日時": "2025-01-15 09:47:24",
+        "更新日時": "2025-01-15 10:15:42"
+      }
+    ]
+  },
+  "shellHtml": "<!doctype html>\n<html lang=\"ja\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>にっぽーていおー</title>\n  <style>\n:root {\n  --primary: #8b6f47;\n  --primary-hover: #a0845a;\n  --bg-main: #f5f1ed;\n  --bg-card: #ede8e3;\n  --bg-sidebar: #e8e3dd;\n  --border: #d4ccc4;\n  --text: #3e3b38;\n  --text-muted: #8b8680;\n  --top-bar-bg: #e0d9d0;\n  --top-bar-border: #d0c8bf;\n\n  --font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Hiragino Sans\", \"Hiragino Kaku Gothic ProN\", \"Yu Gothic\", \"Meiryo\", sans-serif;\n\n  --radius-card: 6px;\n  --radius-control: 4px;\n  --border-width: 1px;\n  --control-height: 36px;\n  --space-unit: 8px;\n\n  --shadow-card: 0 2px 8px rgba(62, 59, 56, 0.08), 0 1px 3px rgba(62, 59, 56, 0.04);\n\n  --motion-duration: 200ms;\n\n  --surface-texture: \n    repeating-linear-gradient(\n      90deg,\n      transparent,\n      transparent 2px,\n      rgba(139, 111, 71, 0.02) 2px,\n      rgba(139, 111, 71, 0.02) 4px\n    ),\n    repeating-linear-gradient(\n      0deg,\n      transparent,\n      transparent 1px,\n      rgba(139, 111, 71, 0.01) 1px,\n      rgba(139, 111, 71, 0.01) 2px\n    );\n  --surface-texture-size: 100% 100%;\n  --surface-texture-position: 0 0;\n}\n\n* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nhtml, body {\n  width: 100%;\n  height: 100%;\n  font-family: var(--font-family);\n  color: var(--text);\n  background: var(--bg-main);\n}\n\nbody {\n  display: flex;\n  flex-direction: column;\n}\n\n.shell-container {\n  display: flex;\n  flex-direction: column;\n  height: 100vh;\n  overflow: hidden;\n}\n\n.header {\n  background: var(--top-bar-bg);\n  border-bottom: var(--border-width) solid var(--top-bar-border);\n  padding: 12px 16px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  flex-shrink: 0;\n  height: 56px;\n}\n\n.header-left {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  font-size: 18px;\n  font-weight: 600;\n  letter-spacing: -0.3px;\n}\n\n.header-brand {\n  color: var(--primary);\n}\n\n.header-right {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n}\n\n.user-avatar {\n  width: 32px;\n  height: 32px;\n  border-radius: 50%;\n  background: var(--primary);\n  color: white;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 13px;\n  font-weight: 600;\n  flex-shrink: 0;\n}\n\n.user-name {\n  font-size: 13px;\n  color: var(--text);\n  font-weight: 500;\n}\n\n.logout-link {\n  font-size: 12px;\n  color: var(--primary);\n  text-decoration: none;\n  border: var(--border-width) solid var(--border);\n  padding: 4px 8px;\n  border-radius: var(--radius-control);\n  transition: background var(--motion-duration);\n}\n\n.logout-link:hover {\n  background: rgba(139, 111, 71, 0.08);\n}\n\n.content-area {\n  flex: 1;\n  overflow-y: auto;\n  overflow-x: hidden;\n  padding-bottom: 64px;\n}\n\n.nav-bottom {\n  position: fixed;\n  bottom: 0;\n  left: 0;\n  right: 0;\n  background: var(--bg-card);\n  border-top: var(--border-width) solid var(--border);\n  display: flex;\n  justify-content: space-around;\n  height: 64px;\n  z-index: 100;\n  flex-shrink: 0;\n}\n\n.nav-item {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 4px;\n  cursor: pointer;\n  color: var(--text-muted);\n  text-decoration: none;\n  font-size: 11px;\n  font-weight: 500;\n  transition: color var(--motion-duration);\n  border-top: 3px solid transparent;\n}\n\n.nav-item:hover {\n  color: var(--text);\n}\n\n.nav-item.aivic-active {\n  color: var(--primary);\n  border-top-color: var(--primary);\n}\n\n.nav-icon {\n  font-size: 20px;\n  line-height: 1;\n}\n\n[data-aivic-panel] {\n  display: block;\n}\n\n  </style>\n  <!--AIVIC_GLOBALS-->\n</head>\n<body>\n  <div class=\"shell-container\" data-aivic-shell-pattern=\"mobile_tab\" data-aivic-nav-position=\"bottom\" data-aivic-density=\"simple\">\n    <header class=\"header\">\n      <div class=\"header-left\">\n        <span class=\"header-brand\">にっぽーていおー</span>\n      </div>\n      <div class=\"header-right\">\n        <div class=\"user-avatar\">U</div>\n        <div class=\"user-name\">ユーザー</div>\n        <a href=\"./login.html\" class=\"logout-link\">ログアウト</a>\n      </div>\n    </header>\n\n    <main class=\"content-area\">\n      <div data-aivic-panel=\"scr-1785921335709\"></div>\n      <div data-aivic-panel=\"scr-1785921347004\"></div>\n      <div data-aivic-panel=\"scr-1785921357094\"></div>\n    </main>\n\n    <nav class=\"nav-bottom\">\n      <a class=\"nav-item aivic-active\" data-aivic-nav=\"scr-1785921335709\" onclick=\"window.showScreen('scr-1785921335709')\">\n        <span class=\"nav-icon\">📝</span>\n        <span>日報入力</span>\n      </a>\n      <a class=\"nav-item\" data-aivic-nav=\"scr-1785921347004\" onclick=\"window.showScreen('scr-1785921347004')\">\n        <span class=\"nav-icon\">📊</span>\n        <span>提出状況</span>\n      </a>\n      <a class=\"nav-item\" data-aivic-nav=\"scr-1785921357094\" onclick=\"window.showScreen('scr-1785921357094')\">\n        <span class=\"nav-icon\">🔍</span>\n        <span>照会</span>\n      </a>\n    </nav>\n  </div>\n\n  <!--AIVIC_RUNTIME-->\n</body>\n</html>"
+}
