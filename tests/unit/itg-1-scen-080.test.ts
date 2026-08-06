@@ -37,12 +37,12 @@ describe('確認メール自動配信機能 - 部長へのメール送信失敗�
     const mock_error_logs: any[] = [];
 
     const mock_send_email = jest.fn(async (recipient_email: string, subject: string, body: string) => {
-      const log_entry = {
+      const log_entry: { recipient_email: string; subject: string; body: string; sent_at: string; status: 'pending' | 'sent' } = {
         recipient_email,
         subject,
         body,
         sent_at: new Date().toISOString(),
-        status: 'pending' as const,
+        status: 'pending',
       };
       mock_email_log_entries.push(log_entry);
 
