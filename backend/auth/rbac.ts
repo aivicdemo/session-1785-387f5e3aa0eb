@@ -22,15 +22,15 @@ export const ROLE_PERMISSIONS: Record<Role, Set<string>> = {
     'reports:create',
     'reports:update',
     'reports:delete',
-    'sendhistory:read',
-    'sendhistory:create',
-    'sendhistory:update',
-    'sendhistory:delete',
-    'emaillog:read',
-    'emaillog:create',
-    'emaillog:update',
-    'emaillog:delete',
-    'bulk:write',
+    'submission_history:read',
+    'submission_history:create',
+    'submission_history:update',
+    'submission_history:delete',
+    'email_logs:read',
+    'email_logs:create',
+    'email_logs:update',
+    'email_logs:delete',
+    'bulk:import',
     'audit:read',
   ]),
   operator: new Set([
@@ -43,71 +43,55 @@ export const ROLE_PERMISSIONS: Record<Role, Set<string>> = {
     'reports:read',
     'reports:create',
     'reports:update',
-    'sendhistory:read',
-    'sendhistory:create',
-    'sendhistory:update',
-    'emaillog:read',
-    'emaillog:create',
-    'emaillog:update',
-    'bulk:write',
+    'submission_history:read',
+    'submission_history:create',
+    'submission_history:update',
+    'email_logs:read',
+    'email_logs:create',
+    'email_logs:update',
+    'bulk:import',
     'audit:read',
   ]),
   viewer: new Set([
     'users:read',
     'departments:read',
     'reports:read',
-    'sendhistory:read',
-    'emaillog:read',
+    'submission_history:read',
+    'email_logs:read',
     'audit:read',
   ]),
 };
 
 export function extractAuthContext(event: APIGatewayProxyEvent): AuthContext {
-  const authHeader = event.headers?.Authorization || event.headers?.authorization || '';
-  const token = authHeader.replace('Bearer ', '');
-  
+  const authHeader = event.headers['Authorization'] || event.headers['authorization'];
+  if (!authHeader) {
+    throw new Error('Missing Authorization header');
+  }
+
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    throw new Error('Invalid Authorization header format');
+  }
+
   try {
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
     return {
-      userId: decoded.userId || 'unknown',
-      role: (decoded.role || 'viewer') as Role,
-      departmentId: decoded.departmentId,
+      userId: payload.userId,
+      role: payload.role as Role,
+      departmentId: payload.departmentId,
     };
-  } catch {
-    return {
-      userId: 'unknown',
-      role: 'viewer',
-    };
+  } catch (error) {
+    throw new Error('Invalid token');
   }
 }
 
-export function hasPermission(role: Role, permission: string): boolean {
-  return ROLE_PERMISSIONS[role]?.has(permission) ?? false;
+export function hasPermission(auth: AuthContext, permission: string): boolean {
+  const permissions = ROLE_PERMISSIONS[auth.role];
+  return permissions.has(permission);
 }
 
-export function requirePermission(role: Role, permission: string): void {
-  if (!hasPermission(role, permission)) {
-    throw new ForbiddenError(`Permission denied: ${permission}`);
-  }
-}
-
-export class ForbiddenError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ForbiddenError';
-  }
-}
-
-export class NotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'NotFoundError';
-  }
-}
-
-export class ValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ValidationError';
+export function requirePermission(auth: AuthContext, permission: string): void {
+  if (!hasPermission(auth, permission)) {
+    throw new Error(`Forbidden: ${permission}`);
   }
 }
