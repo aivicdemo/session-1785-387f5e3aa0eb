@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from "@jest/globals";
-import type { ConfirmationEmailRequest, ConfirmationEmailResponse } from "../../src/logic/it-2/types";
+import type { ConfirmationEmailRequest, ConfirmationEmailResponse } from "../../src/logic/it-2";
 import { sendConfirmationEmail } from "../../src/logic/it-2";
 
 describe("朝会報告の確認メール自動配信機能", () => {

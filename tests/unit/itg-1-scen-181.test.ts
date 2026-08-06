@@ -4,7 +4,7 @@ import { submitReportForm } from '../../src/logic/it-1';
 // Mock email service
 const mockSendEmail = jest.fn();
 
-jest.mock('../../src/logic/it-1/email-service', () => ({
+jest.mock('../../src/logic/it-1', () => ({
   sendEmail: mockSendEmail,
 }));
 

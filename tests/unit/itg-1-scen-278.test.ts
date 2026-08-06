@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import type { User } from "../../src/logic/it-1/types";
-import type { MorningReport } from "../../src/logic/it-1/types";
-import type { ReportSubmissionHistory } from "../../src/logic/it-1/types";
+import type { User } from "../../src/logic/it-1";
+import type { MorningReport } from "../../src/logic/it-1";
+import type { ReportSubmissionHistory } from "../../src/logic/it-1";
 import {
   aggregateReportsInUnifiedFormat,
   sendAggregatedReportEmail,

@@ -3,7 +3,7 @@ import { sendReportWithNotification } from "../../src/logic/it-2";
 
 const mockSendMailToDepartmentHead = jest.fn();
 
-jest.mock("../../src/logic/it-2/mail", () => ({
+jest.mock("../../src/logic/it-2", () => ({
   sendMailToDepartmentHead: mockSendMailToDepartmentHead,
 }));
 
