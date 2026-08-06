@@ -10,9 +10,9 @@ jest.mock('../../src/db');
 
 describe('確認メール配信機能 - 部長メールアドレスnull時の処理', () => {
   let mockAiClient: jest.Mocked<Tx2Imp1AiClient>;
-  let mockMailServiceSendConfirmationEmail: jest.SpyInstance;
-  let mockLogServiceError: jest.SpyInstance;
-  let mockDbInsertConfirmationHistory: jest.SpyInstance;
+  let mockMailServiceSendConfirmationEmail: ReturnType<typeof jest.spyOn>;
+  let mockLogServiceError: ReturnType<typeof jest.spyOn>;
+  let mockDbInsertConfirmationHistory: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     jest.clearAllMocks();

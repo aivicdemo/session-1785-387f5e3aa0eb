@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import type { Tx2Imp1AiClient } from '../../../src/agents/tx-2-imp-1/ai-client';
-import { aggregateDailyReportsForConfirmationEmail } from '../../../src/logic/it-1-br-1-1-1';
+import type { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/ai-client';
+import { aggregateDailyReportsForConfirmationEmail } from '../../src/logic/it-1-br-1-1-1';
 
 const fetchMock = require('jest-fetch-mock');
 

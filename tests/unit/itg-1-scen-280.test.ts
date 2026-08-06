@@ -8,7 +8,7 @@ fetchMock.enableMocks();
 describe('朝会報告管理システム - 日報入力フォームの提供と送信機能', () => {
   let mockAiClient: Tx2Imp1AiClient;
   let sentEmails: Array<{ to: string; subject: string; body: string }>;
-  let consoleLogSpy: jest.SpyInstance;
+  let consoleLogSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     fetchMock.resetMocks();

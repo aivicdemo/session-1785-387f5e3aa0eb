@@ -1,11 +1,11 @@
 import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import type { Tx2Imp1AiClient } from "../../../src/agents/tx-2-imp-1/ai-client.types";
-import { runTx2Imp1Agent } from "../../../src/agents/tx-2-imp-1/orchestrator";
+import type { Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/ai-client.types";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 import type {
   Tx2Imp1AgentInput,
   Tx2Imp1AgentOutput,
   EscalationNotification,
-} from "../../../src/agents/tx-2-imp-1/types";
+} from "../../src/agents/tx-2-imp-1/types";
 
 describe("朝会報告管理システム - 日報収集から報告漏れ特定までの自動判定と通知 AIエージェント", () => {
   let mock_ai_client: jest.Mocked<Tx2Imp1AiClient>;

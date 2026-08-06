@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { sendConfirmationEmail } from '../../src/logic/it-2';
 
 describe('送信時の自動確認メール通知', () => {
-  let consoleSpy: jest.SpyInstance;
+  let consoleSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, 'error').mockImplementation();

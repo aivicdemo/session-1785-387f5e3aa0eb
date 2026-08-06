@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import type { Tx2Imp1AiClient } from "../../../src/agents/tx-2-imp-1/types";
-import { runTx2Imp1Agent } from "../../../src/agents/tx-2-imp-1/orchestrator";
+import type { Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/types";
+import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 
 // Mock types and data structures
 interface ReportSubmission {

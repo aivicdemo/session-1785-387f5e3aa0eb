@@ -6,8 +6,8 @@ const fetchMock = require("jest-fetch-mock");
 
 describe("日報入力フォームの提供と送信機能 - 日報収集から報告漏れ特定までの自動判定と通知", () => {
   let mockAiClient: Tx2Imp1AiClient;
-  let consoleErrorSpy: jest.SpyInstance;
-  let consoleLogSpy: jest.SpyInstance;
+  let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
+  let consoleLogSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     fetchMock.enableMocks();

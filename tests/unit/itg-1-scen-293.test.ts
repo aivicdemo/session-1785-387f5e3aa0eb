@@ -4,7 +4,7 @@ import type { Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/types";
 
 describe("確認メール配信機能", () => {
   let mockAiClient: jest.Mocked<Tx2Imp1AiClient>;
-  let logSpy: jest.SpyInstance;
+  let logSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     mockAiClient = {
