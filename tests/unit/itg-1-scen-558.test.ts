@@ -152,7 +152,7 @@ describe('日報入力フォームの提供と送信機能 - 報告漏れ特定�
     expect(agent_result.escalation_triggered).toBe(false);
 
     expect(stub_ai_client.identifyNonReportingEmployees).toHaveBeenCalledTimes(1);
-    expect(stub_ai_client.judgePromotionTarget).toHaveBeenCalledTimes(1);
+    expect(stub_ai_client.judgePromptionTarget).toHaveBeenCalledTimes(1);
     expect(stub_ai_client.generatePromotionMessage).toHaveBeenCalledTimes(1);
 
     expect(stub_mail_system.sendEmail).toHaveBeenCalledTimes(4);

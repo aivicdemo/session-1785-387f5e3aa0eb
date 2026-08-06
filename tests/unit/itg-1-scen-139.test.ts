@@ -33,7 +33,7 @@ describe("日報入力フォームの提供と送信機能", () => {
     }> = [];
 
     fetchMock.mockImplementation(
-      async (url: string, options?: RequestInit) => {
+      async (url: string | Request, options?: RequestInit) => {
         const urlStr = typeof url === "string" ? url : url.toString();
         const body =
           options?.body && typeof options.body === "string"

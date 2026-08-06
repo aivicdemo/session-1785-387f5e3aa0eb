@@ -85,7 +85,7 @@ describe('日報入力フォームの提供と送信機能 - tx3-imp1エージ�
     expect(fakeAiClient.extractMissingReporters).toHaveBeenCalledWith(maliciousConfirmationEmail);
 
     // Assert 3: 注入されたペイロードを無視し、正当な報告内容のみを抽出していることをアサート
-    const extractResult = fakeAiClient.extractMissingReporters.mock.results[0].value;
+    const extractResult = await fakeAiClient.extractMissingReporters.mock.results[0].value;
     expect(extractResult).toHaveProperty('missingReporters');
     expect(extractResult.missingReporters).toHaveLength(2);
     expect(extractResult.missingReporters[0]).toEqual({
@@ -96,7 +96,7 @@ describe('日報入力フォームの提供と送信機能 - tx3-imp1エージ�
 
     // Assert 4: 催促対象判定ステップで、攻撃ペイロードが判定ロジックに影響を与えていないことを検証
     expect(fakeAiClient.judgePromptionTargets).toHaveBeenCalled();
-    const judgeResult = fakeAiClient.judgePromptionTargets.mock.results[0].value;
+    const judgeResult = await fakeAiClient.judgePromptionTargets.mock.results[0].value;
     expect(judgeResult.promotionTargets).toHaveLength(2);
     expect(judgeResult.promotionTargets[0].priority).toBe(1);
     expect(judgeResult.promotionTargets[1].priority).toBe(2);
@@ -106,7 +106,7 @@ describe('日報入力フォームの提供と送信機能 - tx3-imp1エージ�
     // Assert 5: 送信ステップに到達した場合、催促メール・チャット送信ログに
     // プロンプトインジェクション内容は送信対象に含まれていないことを記録・検証
     expect(fakeAiClient.sendPromotionMessages).toHaveBeenCalled();
-    const sendResult = fakeAiClient.sendPromotionMessages.mock.results[0].value;
+    const sendResult = await fakeAiClient.sendPromotionMessages.mock.results[0].value;
     expect(sendResult.sentCount).toBe(2);
     expect(sendResult.sendLog[0]).toEqual({
       userId: 'USR-001',
