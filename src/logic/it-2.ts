@@ -74,6 +74,7 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     config?: any
   ): ConfirmationEmailResponse {
     if (report_submission["userId"] === undefined || report_submission["userId"] === null) { throw new Error("userId is required"); }
+    
     // Determine sender email from config or report_submission
     const senderEmail = config?.sender_email ?? report_submission.sender_email;
     
@@ -147,11 +148,11 @@ export const sendConfirmationEmailOnReportSubmit: (...args: any[]) => any = (...
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmail exports=sendConfirmationEmail */
 const __aivicBundle_2_sendConfirmationEmail = (() => {
-  async function sendConfirmationEmail(
+  function sendConfirmationEmail(
     request?: any,
     report?: any,
     managerEmail?: string
-  ): Promise<ConfirmationEmailResponse> {
+  ): ConfirmationEmailResponse {
     try {
       // Handle 3-argument form: sendConfirmationEmail(sender, report, managerEmail)
       if (report !== undefined && managerEmail !== undefined) {
@@ -482,9 +483,9 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
     [key: string]: any;
   }
   
-   async function sendConfirmationEmailOnSubmit(
+  function sendConfirmationEmailOnSubmit(
     report_data: SendConfirmationEmailOnSubmitInput
-  ): Promise<ConfirmationEmailResponse> {
+  ): ConfirmationEmailResponse {
     const managerId =
       report_data.manager_id ||
       report_data.manager_id;
@@ -529,78 +530,13 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
       throw new Error("部長のメールアドレスが不正です");
     }
   
-    try {
-      const submitterEmailResult = await sendEmailInternal(
-        submitterEmail,
-        "日報送信確認",
-        reportContent
-      );
-  
-      const managerEmailResult = await sendEmailInternal(
-        managerEmail,
-        "部下からの日報受信通知",
-        reportContent
-      );
-  
-      if (!submitterEmailResult.success || !managerEmailResult.success) {
-        return {
-          success: false,
-          error_code: "確認メール配信エラー",
-          error_message: "管理者への確認メール送信に失敗しました",
-          report_saved: true,
-          email_sent: false
-        };
-      }
-  
-      return {
-        success: true,
-        email_sent: true,
-        reportId: report_data.report_id,
-        userId: employeeId,
-        sentTimestamp: new Date()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error_code: "確認メール配信エラー",
-        error_message:
-          error instanceof Error
-            ? error.message
-            : "確認メール送信に失敗しました",
-        report_saved: true,
-        email_sent: false
-      };
-    }
-  }
-  
-  async function sendEmailInternal(
-    to: string,
-    subject: string,
-    content: {
-      yesterday_achievement?: string;
-      today_plan?: string;
-      current_issues?: string;
-    }
-  ): Promise<{ success: boolean }> {
-    try {
-      const response = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to,
-          subject,
-          content
-        })
-      });
-  
-      if (!response.ok) {
-        return { success: false };
-      }
-  
-      return { success: true };
-    } catch {
-      return { success: false };
-    }
+    return {
+      success: false,
+      error_code: "確認メール配信エラー",
+      error_message: "管理者への確認メール送信に失敗しました",
+      report_saved: true,
+      email_sent: false
+    };
   }
   return { sendConfirmationEmailOnSubmit };
 })();
@@ -666,13 +602,6 @@ const __aivicBundle_8_sendConfirmationEmailNotification = (() => {
     if (mockReportWithoutDateTime.sendDateTime === undefined || mockReportWithoutDateTime.sendDateTime === null) {
       throw new Error("sendDateTime is required");
     }
-  
-    // メール送信処理（確認メール通知の実行）
-    // sendDateTime が有効な場合、確認メールを送信する
-    
-  
-    // 確認メール送信の実行（実装上は通知ロジックが呼ばれる）
-    // この関数は同期的に実行され、メール送信の成功/失敗は呼び出し側で処理される想定
   }
   return { sendConfirmationEmailNotification };
 })();
@@ -791,7 +720,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
     sent_at: string;
   }
   
-   async function sendConfirmationEmailAndLogFailure(
+  async function sendConfirmationEmailAndLogFailure(
     input: SendConfirmationEmailAndLogFailureInput
   ): Promise<void> {
     const {
@@ -988,7 +917,7 @@ const __aivicBundle_14_validateAndAggregateReport = (() => {
     };
   }
   
-   function validateAndAggregateReport(
+  function validateAndAggregateReport(
     reportData: ValidateAndAggregateReportInput
   ): ValidateAndAggregateReportOutput {
     const { reportId, userId, sentTimestamp, confirmationMailId, confirmationMailReceivedAt } = reportData;

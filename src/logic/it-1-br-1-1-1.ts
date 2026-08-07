@@ -3786,7 +3786,7 @@ const __aivicBundle_57_aggregateDailyReportsWithTimestampSort = (() => {
     }
   
     const sortedReports = deduplicatedReports.sort((a, b) => {
-      return b.submitted_at.getTime() - a.submitted_at.getTime();
+      return a.submitted_at.getTime() - b.submitted_at.getTime();
     });
   
     return sortedReports;
@@ -7852,7 +7852,7 @@ const __aivicBundle_120_determineChallengeLoopEnd = (() => {
     const elapsedMilliseconds = currentTime.getTime() - lastPromptSentAt.getTime();
     const elapsedMinutes = elapsedMilliseconds / (1000 * 60);
   
-    return elapsedMinutes < waitThresholdMinutes;
+    return elapsedMinutes >= waitThresholdMinutes;
   }
   return { determineChallengeLoopEnd };
 })();
