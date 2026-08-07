@@ -24,143 +24,127 @@ export interface Tx3Imp1AgentResult {
     promotionMailSent: boolean;
     promotionChatSent: boolean;
 }
-export interface ConfirmationEmailContent {
-    unreportedEmployees: Array<{
-        name: string;
-    }>;
-    delayedEmployees: Array<{
-        name: string;
-    }>;
-    aiClient: any;
-    dbTransaction: MockDbTransaction;
-    managerNotificationHandler: (notification: FollowUpNotification) => FollowUpNotification;
+export interface EmployeeStatus {
+    name: string;
+    status?: string;
 }
 
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx3Imp1Agent exports=runTx3Imp1Agent */
 const __aivicBundle_1_runTx3Imp1Agent = (() => {
   async function runTx3Imp1Agent(
-    input: ConfirmationEmailContent,
+    input: {
+      unreportedEmployees: Array<{ name: string }>;
+      delayedEmployees: Array<{ name: string }>;
+      aiClient: any;
+      dbTransaction: MockDbTransaction;
+      managerNotificationHandler: (notification: FollowUpNotification) => FollowUpNotification;
+    },
     options: Record<string, unknown>
   ): Promise<Tx3Imp1AgentResult> {
-    if (input["aiClient"] === undefined || input["aiClient"] === null) { throw new Error("aiClient is required"); }
     if (options === undefined || options === null) { throw new Error("options is required"); }
-    const { unreportedEmployees, delayedEmployees, dbTransaction, managerNotificationHandler } = input;
+    const { unreportedEmployees, delayedEmployees, aiClient, dbTransaction, managerNotificationHandler } = input;
   
-    const unreportedCount = unreportedEmployees?.length ?? 0;
-    const delayedCount = delayedEmployees?.length ?? 0;
+    // Check if there are any employees to process
+    const hasEmployeesToProcess = unreportedEmployees.length > 0 || delayedEmployees.length > 0;
   
-    // Detect special case: both unreported and delayed employees present
-    const isSpecialCase = unreportedCount > 0 && delayedCount > 0;
-  
-    if (isSpecialCase) {
-      // Abort transaction before any side effects
-      if (dbTransaction && typeof dbTransaction === 'object') {
-        (dbTransaction as MockDbTransaction).isAborted = true;
-      }
-  
-      // Record follow-up decision
-      if (dbTransaction && typeof dbTransaction === 'object' && Array.isArray((dbTransaction as MockDbTransaction).records)) {
-        ((dbTransaction as MockDbTransaction).records as Array<{ id: string; type: string; data: unknown }>).push({
-          id: `follow_up_${Date.now()}`,
-          type: 'follow_up_decision',
-          data: {
-            status: 'requires_human_confirmation',
-            reason: 'special_case_not_matching_rules',
-            unreportedEmployeeCount: unreportedCount,
-            delayedEmployeeCount: delayedCount
-          }
-        });
-      }
-  
-      // Create follow-up notification
-      const followUpNotification: FollowUpNotification = {
-        issuedToManager: true,
-        escalationFlag: true,
-        requiresHumanConfirmation: true,
-        reason: 'special_case_not_matching_rules'
-      };
-  
-      // Call manager notification handler
-      if (typeof managerNotificationHandler === 'function') {
-        managerNotificationHandler(followUpNotification);
-      }
-  
-      // Record manager escalation notification
-      const unreportedNames = unreportedEmployees?.map((emp: { name: string }) => emp.name) ?? [];
-      const delayedNames = delayedEmployees?.map((emp: { name: string }) => emp.name) ?? [];
-  
-      if (dbTransaction && typeof dbTransaction === 'object' && Array.isArray((dbTransaction as MockDbTransaction).records)) {
-        ((dbTransaction as MockDbTransaction).records as Array<{ id: string; type: string; data: unknown }>).push({
-          id: `notification_${Date.now()}`,
-          type: 'manager_escalation_notification',
-          data: {
-            escalationTriggeredAt: new Date().toISOString(),
-            requiresManagerReview: true,
-            unreportedEmployees: unreportedNames,
-            delayedEmployees: delayedNames,
-            reason: 'special_case_not_matching_rules'
-          }
-        });
-      }
-  
+    if (!hasEmployeesToProcess) {
+      // No employees to process - return clean result without escalation
       return {
-        escalationOccurred: true,
-        escalationReason: 'special_case_not_matching_rules',
-        followUpNotification,
+        escalationOccurred: false,
+        escalationReason: '',
+        followUpNotification: {
+          issuedToManager: false,
+          escalationFlag: false,
+          requiresHumanConfirmation: false,
+          reason: ''
+        },
         promotionMailSent: false,
         promotionChatSent: false
       };
     }
   
-    // Normal case: only unreported employees (no special case)
-    let promotionMailSent = false;
-    let promotionChatSent = false;
+    // Query AI client to determine if this matches standard promotion rules
+    const aiDecision = await aiClient.evaluateFollowUpCase({
+      unreportedCount: unreportedEmployees.length,
+      delayedCount: delayedEmployees.length
+    });
   
-    if (unreportedCount > 0) {
-      // Record promotion mail log
-      if (dbTransaction && typeof dbTransaction === 'object' && Array.isArray((dbTransaction as MockDbTransaction).records)) {
-        ((dbTransaction as MockDbTransaction).records as Array<{ id: string; type: string; data: unknown }>).push({
-          id: `mail_${Date.now()}`,
-          type: 'promotion_mail_log',
-          data: {
-            sentAt: new Date().toISOString(),
-            targetEmployees: unreportedEmployees?.map((emp: { name: string }) => emp.name) ?? [],
-            status: 'sent'
-          }
-        });
-      }
-      promotionMailSent = true;
+    const matchesStandardRules = aiDecision?.matchesStandardRules ?? false;
   
-      // Record promotion chat log
-      if (dbTransaction && typeof dbTransaction === 'object' && Array.isArray((dbTransaction as MockDbTransaction).records)) {
-        ((dbTransaction as MockDbTransaction).records as Array<{ id: string; type: string; data: unknown }>).push({
-          id: `chat_${Date.now()}`,
-          type: 'promotion_chat_log',
-          data: {
-            sentAt: new Date().toISOString(),
-            targetEmployees: unreportedEmployees?.map((emp: { name: string }) => emp.name) ?? [],
-            status: 'sent'
-          }
-        });
-      }
-      promotionChatSent = true;
+    if (!matchesStandardRules) {
+      // Special case detected - escalate to human before confirming side effects
+      const escalationReason = 'special_case_not_matching_rules';
+  
+      // Abort transaction to prevent partial promotion mail/chat records
+      dbTransaction.isAborted = true;
+  
+      // Create follow-up decision record
+      const followUpDecisionId = generateId();
+      dbTransaction.records.push({
+        id: followUpDecisionId,
+        type: 'follow_up_decision',
+        data: {
+          status: 'requires_human_confirmation',
+          reason: escalationReason,
+          unreportedEmployeeCount: unreportedEmployees.length,
+          delayedEmployeeCount: delayedEmployees.length
+        }
+      });
+  
+      // Create manager escalation notification record
+      const notificationId = generateId();
+      const escalationTimestamp = new Date().toISOString();
+      const notificationRecord = {
+        id: notificationId,
+        type: 'manager_escalation_notification',
+        data: {
+          escalationTriggeredAt: escalationTimestamp,
+          requiresManagerReview: true,
+          unreportedEmployees: unreportedEmployees.map(e => e.name),
+          delayedEmployees: delayedEmployees.map(e => e.name),
+          reason: escalationReason
+        }
+      };
+      dbTransaction.records.push(notificationRecord);
+  
+      // Build follow-up notification
+      const followUpNotification: FollowUpNotification = {
+        issuedToManager: true,
+        escalationFlag: true,
+        requiresHumanConfirmation: true,
+        reason: escalationReason
+      };
+  
+      // Invoke manager notification handler
+      managerNotificationHandler(followUpNotification);
+  
+      return {
+        escalationOccurred: true,
+        escalationReason: escalationReason,
+        followUpNotification: followUpNotification,
+        promotionMailSent: false,
+        promotionChatSent: false
+      };
     }
   
-    const followUpNotification: FollowUpNotification = {
-      issuedToManager: false,
-      escalationFlag: false,
-      requiresHumanConfirmation: false,
-      reason: ''
-    };
-  
+    // Standard rules matched - proceed with normal flow (no escalation)
     return {
       escalationOccurred: false,
       escalationReason: '',
-      followUpNotification,
-      promotionMailSent,
-      promotionChatSent
+      followUpNotification: {
+        issuedToManager: false,
+        escalationFlag: false,
+        requiresHumanConfirmation: false,
+        reason: ''
+      },
+      promotionMailSent: false,
+      promotionChatSent: false
     };
+  }
+  
+  function generateId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
   return { runTx3Imp1Agent };
 })();
