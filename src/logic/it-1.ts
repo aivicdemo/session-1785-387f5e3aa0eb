@@ -2060,6 +2060,8 @@ export const validateDailyReport = __aivicBundle_17_validateDailyReport.validate
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
 const __aivicBundle_18_validateDailyReportSubmission = (() => {
+  const validateDailyReportSubmissionStore = new Map<string, { submittedAt: Date }>();
+
   function validateDailyReportSubmission(submission: {
     yesterdayAccomplishment?: string;
     yesterday_achievement?: string;
@@ -2082,8 +2084,6 @@ const __aivicBundle_18_validateDailyReportSubmission = (() => {
     message?: string;
     previousSubmissionTime?: Date;
   } {
-    const validateDailyReportSubmissionStore = new Map<string, { submittedAt: Date }>();
-  
     // Normalize field names to handle both camelCase and snake_case
     const yesterday =
       submission.yesterdayAccomplishment ||
@@ -2113,14 +2113,13 @@ const __aivicBundle_18_validateDailyReportSubmission = (() => {
           previousSubmissionTime: existingRecord.submittedAt,
         };
       }
-  
-      // Record this submission
-      validateDailyReportSubmissionStore.set(storeKey, {
-        submittedAt: new Date(),
-      });
-  
+
       // If all fields are filled and no duplicate, allow submission
       if (yesterday.trim() && today.trim() && challenges.trim()) {
+        // Record this submission
+        validateDailyReportSubmissionStore.set(storeKey, {
+          submittedAt: new Date(),
+        });
         return {
           is_allowed: true,
           message: '送信完了しました',
@@ -3643,7 +3642,7 @@ const __aivicBundle_40_submitReport = (() => {
     const submissionKey = `${userId}:${reportDate}`;
     const submissionCount = submitReportStore.get(submissionKey) ?? 0;
   
-    if (submissionCount >= 2) {
+    if (submissionCount >= 1) {
       return {
         success: false,
         error_message: "本日はすでに日報を送信済みです。",

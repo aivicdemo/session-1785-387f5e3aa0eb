@@ -3414,11 +3414,11 @@ const __aivicBundle_53_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
   
     try {
       const emailBody = `
-  報告者: ${reportData.reporterName}
-  昨日の成果: ${reportData.yesterdayAccomplishment}
-  今日の予定: ${reportData.todayPlan}
-  課題: ${reportData.challenges}
-  送信日時: ${reportData.sentAt.toISOString()}
+報告者: ${reportData.reporterName}
+昨日の成果: ${reportData.yesterdayAccomplishment}
+今日の予定: ${reportData.todayPlan}
+課題: ${reportData.challenges}
+送信日時: ${reportData.sentAt.toISOString()}
       `.trim();
   
       await emailService.send({
