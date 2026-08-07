@@ -16,50 +16,61 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
+        }
+        .header {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
+            margin-bottom: 30px;
         }
         h1 {
             color: #333;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-size: 28px;
         }
-        .deadline-section {
-            background-color: #fff3cd;
-            border: 1px solid #ffc107;
+        .deadline-badge {
+            display: inline-block;
+            background-color: #ff9800;
+            color: white;
+            padding: 12px 20px;
             border-radius: 4px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        .deadline-section h2 {
-            color: #856404;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-        .deadline-text {
-            color: #856404;
-            font-size: 18px;
             font-weight: 600;
+            font-size: 16px;
+        }
+        .deadline-badge.urgent {
+            background-color: #d32f2f;
+        }
+        .nav-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #1976d2;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .nav-link:hover {
+            text-decoration: underline;
         }
         .summary-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
             margin-bottom: 30px;
         }
         .summary-section h2 {
             color: #333;
-            font-size: 20px;
             margin-bottom: 20px;
+            font-size: 22px;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
         }
         .summary-table th {
-            background-color: #f0f0f0;
+            background-color: #f5f5f5;
             color: #333;
             padding: 15px;
             text-align: left;
@@ -68,16 +79,16 @@
         }
         .summary-table td {
             padding: 15px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #eee;
             color: #666;
         }
         .summary-table tr:hover {
-            background-color: #f9f9f9;
+            background-color: #fafafa;
         }
         .progress-bar {
             width: 100%;
             height: 24px;
-            background-color: #e0e0e0;
+            background-color: #eee;
             border-radius: 4px;
             overflow: hidden;
             display: flex;
@@ -85,7 +96,7 @@
         }
         .progress-fill {
             height: 100%;
-            background-color: #4CAF50;
+            background-color: #4caf50;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -93,26 +104,52 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .nav-link {
+        .status-badge {
             display: inline-block;
-            margin-top: 20px;
-            color: #2196F3;
-            text-decoration: none;
-            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
             font-weight: 600;
         }
-        .nav-link:hover {
-            text-decoration: underline;
+        .status-complete {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .btn-primary {
+            display: inline-block;
+            background-color: #1976d2;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #1565c0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>日報提出状況ダッシュボード</h1>
-        
-        <div class="deadline-section">
-            <h2>提出期限</h2>
-            <div class="deadline-text" id="deadline">本日 18:00</div>
+        <div class="header">
+            <h1>日報提出状況ダッシュボード</h1>
+            <div class="deadline-badge" id="deadlineBadge">提出期限: 本日 18:00</div>
+            <br>
+            <a href="./daily-report.html" class="nav-link">日報入力・送信へ →</a>
         </div>
         
         <div class="summary-section">
@@ -122,70 +159,93 @@
                     <tr>
                         <th>部門名</th>
                         <th>提出済み</th>
+                        <th>未提出</th>
                         <th>提出率</th>
+                        <th>進捗</th>
                     </tr>
                 </thead>
                 <tbody id="summaryBody">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #999;">読み込み中...</td>
+                        <td colspan="5" class="empty-state">データを読み込み中...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        
-        <a href="./daily-report.html" class="nav-link">日報入力・送信へ</a>
     </div>
     
     <script>
-        async function loadDashboardData() {
+        async function loadSummary() {
             try {
-                const response = await fetch('/api/dashboard');
+                const response = await fetch('/api/summary');
                 if (response.ok) {
                     const data = await response.json();
-                    renderSummary(data.departments);
+                    displaySummary(data.departments);
+                    updateDeadline(data.deadline);
+                } else {
+                    displayDefaultSummary();
                 }
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
-                renderSummary([
-                    { name: '営業部', submitted: 8, total: 10 },
-                    { name: '企画部', submitted: 6, total: 8 },
-                    { name: '技術部', submitted: 9, total: 10 },
-                    { name: '管理部', submitted: 4, total: 5 }
-                ]);
+            } catch (e) {
+                console.error('Failed to load summary:', e);
+                displayDefaultSummary();
             }
         }
         
-        function renderSummary(departments) {
+        function displayDefaultSummary() {
+            const departments = [
+                { name: '営業部', submitted: 8, total: 10 },
+                { name: '企画部', submitted: 6, total: 8 },
+                { name: '技術部', submitted: 12, total: 15 },
+                { name: '管理部', submitted: 4, total: 5 }
+            ];
+            displaySummary(departments);
+        }
+        
+        function displaySummary(departments) {
             const tbody = document.getElementById('summaryBody');
-            tbody.innerHTML = departments.map(dept => {
+            tbody.innerHTML = '';
+            
+            departments.forEach(dept => {
+                const pending = dept.total - dept.submitted;
                 const rate = Math.round((dept.submitted / dept.total) * 100);
-                return `
-                    <tr>
-                        <td>${dept.name}</td>
-                        <td>${dept.submitted}/${dept.total}</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
-                            </div>
-                        </td>
-                    </tr>
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${dept.name}</strong></td>
+                    <td>${dept.submitted}</td>
+                    <td>${pending}</td>
+                    <td>${rate}%</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+                        </div>
+                    </td>
                 `;
-            }).join('');
+                tbody.appendChild(row);
+            });
         }
         
-        // Set deadline
-        function setDeadline() {
-            const today = new Date();
-            const deadline = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 18, 0, 0);
-            const year = deadline.getFullYear();
-            const month = String(deadline.getMonth() + 1).padStart(2, '0');
-            const day = String(deadline.getDate()).padStart(2, '0');
-            document.getElementById('deadline').textContent = `${year}年${month}月${day}日 18:00`;
+        function updateDeadline(deadline) {
+            const badge = document.getElementById('deadlineBadge');
+            if (deadline) {
+                const date = new Date(deadline);
+                const timeStr = date.toLocaleString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                badge.textContent = `提出期限: ${timeStr}`;
+                
+                // Check if urgent (less than 2 hours)
+                const now = new Date();
+                const diff = date - now;
+                if (diff < 2 * 60 * 60 * 1000 && diff > 0) {
+                    badge.classList.add('urgent');
+                }
+            }
         }
         
-        // Initialize
-        setDeadline();
-        loadDashboardData();
+        loadSummary();
     </script>
 </body>
 </html>

@@ -118,7 +118,7 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
       const sender = request;
 
       if (sender.department === null || sender.department === undefined || sender.department === '') {
-        throw new Error('送信者の部門情報が null または空文字です。部門情報は必須です。');
+        return Promise.reject(new Error('送信者の部門情報が null または空文字です。部門情報は必須です。'));
       }
 
       return Promise.resolve();

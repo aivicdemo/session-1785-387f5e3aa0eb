@@ -2988,7 +2988,7 @@ const __aivicBundle_24_submitDailyReport = (() => {
     const managerEmail = reportInput.manager_email || "";
     const recipients = new Set<string>();
     if (userEmail) recipients.add(userEmail);
-    if (managerEmail) recipients.add(managerEmail);
+    if (managerEmail && managerEmail !== userEmail) recipients.add(managerEmail);
   
     // Send confirmation emails
     let confirmationEmailSent = false;
@@ -4136,7 +4136,7 @@ const __aivicBundle_40_submitReport = (() => {
     const submissionSet = submitReportStore.get(submissionKey)!;
     const submissionCount = submissionSet.size;
   
-    if (submissionCount >= 2) {
+    if (submissionCount >= 1) {
       return {
         success: false,
         error_message: "本日はすでに日報を送信済み",
@@ -6525,6 +6525,8 @@ const __aivicBundle_75_runTx2Imp1Agent = (() => {
           name: memberName,
           employee_id: memberId,
           userId: memberId,
+          member_id: memberId,
+          member_name: memberName,
         });
       } else if (deadline && submittedByUserId[memberId]) {
         const submittedTime = submittedByUserId[memberId];
