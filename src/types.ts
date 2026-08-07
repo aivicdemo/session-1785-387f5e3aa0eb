@@ -52,7 +52,6 @@ export interface AuditLog {
     | "failed"
     | "step_in_progress"
     | "step_completed"
-    | "step_failed"
     | "handoff";
   stepName?: string;
   timestamp: Date;

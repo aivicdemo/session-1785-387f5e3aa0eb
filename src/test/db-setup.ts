@@ -63,9 +63,9 @@ const createTestDatabase = async (): Promise<TestDatabase> => {
       where: async (conditions: Record<string, unknown>) => {
         const tableData = tables[tableName] as Array<Record<string, unknown>>;
         return tableData.filter((row) => {
-          return Object.entries(conditions).every(
-            ([key, value]) => row[key] === value
-          );
+          return Object.entries(conditions).every(([key, value]) => {
+            return row[key] === value;
+          });
         });
       },
     };

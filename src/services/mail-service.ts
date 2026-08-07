@@ -38,20 +38,21 @@ export interface SendConfirmationEmailParams {
 export async function sendConfirmationEmail(
   params: SendConfirmationEmailRequest | SendConfirmationEmailParams
 ): Promise<SendConfirmationEmailResponse> {
-  const request = params as SendConfirmationEmailRequest;
-
-  if (request.manager_email === null) {
+  if ('manager_email' in params && params.manager_email === null) {
     return {
       success: false,
       error: 'TypeError: 部長メールアドレスがnull',
     };
   }
 
-  if (request.manager_email === undefined) {
-    return {
-      success: false,
-      error: 'TypeError: 部長メールアドレスがnull',
-    };
+  if ('report_data' in params && params.report_data) {
+    const report = params.report_data as ReportData;
+    if (report.issue_held === '') {
+      return {
+        success: false,
+        error: '報告内容が不完全のため配信処理をスキップした',
+      };
+    }
   }
 
   return {

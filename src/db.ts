@@ -68,12 +68,14 @@ export async function getTransactionLogByExecId(
   return transactionLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertTransactionLog(record: {
-  exec_id: string;
-  action_type: string;
-  count: number;
-  timestamp?: Date;
-}): Promise<{ inserted: boolean }> {
+export async function insertTransactionLog(
+  record: {
+    exec_id: string;
+    action_type: string;
+    count: number;
+    timestamp?: Date;
+  }
+): Promise<{ inserted: boolean }> {
   transactionLogs.push({
     ...record,
     timestamp: record.timestamp || new Date(),
@@ -94,12 +96,14 @@ export async function getMailSendLogsByExecId(
   return mailSendLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertMailSendLog(record: {
-  exec_id: string;
-  recipient_id: string;
-  mail_type: string;
-  timestamp?: Date;
-}): Promise<{ inserted: boolean }> {
+export async function insertMailSendLog(
+  record: {
+    exec_id: string;
+    recipient_id: string;
+    mail_type: string;
+    timestamp?: Date;
+  }
+): Promise<{ inserted: boolean }> {
   mailSendLogs.push({
     ...record,
     timestamp: record.timestamp || new Date(),
@@ -119,11 +123,13 @@ export async function getExtractedIssuesByExecId(
   return extractedIssues.filter((issue) => issue.exec_id === exec_id);
 }
 
-export async function insertExtractedIssue(record: {
-  exec_id: string;
-  issue_id: string;
-  timestamp?: Date;
-}): Promise<{ inserted: boolean }> {
+export async function insertExtractedIssue(
+  record: {
+    exec_id: string;
+    issue_id: string;
+    timestamp?: Date;
+  }
+): Promise<{ inserted: boolean }> {
   extractedIssues.push({
     ...record,
     timestamp: record.timestamp || new Date(),
@@ -143,11 +149,13 @@ export async function getPriorityJudgmentLogsByExecId(
   return priorityJudgmentLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertPriorityJudgmentLog(record: {
-  exec_id: string;
-  judgment_result: string;
-  timestamp?: Date;
-}): Promise<{ inserted: boolean }> {
+export async function insertPriorityJudgmentLog(
+  record: {
+    exec_id: string;
+    judgment_result: string;
+    timestamp?: Date;
+  }
+): Promise<{ inserted: boolean }> {
   priorityJudgmentLogs.push({
     ...record,
     timestamp: record.timestamp || new Date(),
