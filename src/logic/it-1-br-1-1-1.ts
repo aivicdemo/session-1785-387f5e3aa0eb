@@ -972,7 +972,6 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
       const meetingTime = new Date(input.meeting_start_time).getTime();
       const submittedTime = new Date(input.all_reporters_submitted_by).getTime();
       
-      
       // If all submitted 30 minutes before meeting, no reminder needed
       if (submittedTime <= meetingTime - 30 * 60 * 1000) {
         return {
