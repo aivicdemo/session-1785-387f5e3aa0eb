@@ -30,7 +30,7 @@ describe("確認メール配信機能 - 入力値検証", () => {
   let fakeAiClient: FakeTx2Imp1AiClient;
 
   beforeEach(() => {
-    fakeAiClient = new FakeTx2Imp1Agent();
+    fakeAiClient = new FakeTx2Imp1AiClient();
     jest.clearAllMocks();
   });
 
