@@ -28,7 +28,7 @@ export interface DailyReport {
   yesterday: string;
   today: string;
   issues: string;
-  status: "draft" | "submitted" | "reviewed";
+  status: "submitted" | "draft" | "pending";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +52,7 @@ export interface AuditLog {
     | "failed"
     | "step_in_progress"
     | "step_completed"
+    | "step_failed"
     | "handoff";
   stepName?: string;
   timestamp: Date;
