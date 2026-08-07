@@ -257,16 +257,11 @@ export const sendConfirmationEmailOnReportSubmit: (...args: any[]) => any = (...
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmail exports=sendConfirmationEmail */
 const __aivicBundle_2_sendConfirmationEmail = (() => {
-  interface SendConfirmationEmailValidationError {
-    field: string;
-    reason: string;
-  }
-  
-   async function sendConfirmationEmail(
+  function sendConfirmationEmail(
     request: any,
     mockEmailService?: any,
     managerEmail?: string
-  ): Promise<ConfirmationEmailResponse> {
+  ): ConfirmationEmailResponse {
     try {
       // Determine which input shape we're dealing with
       const isSenderReportRecipient =
