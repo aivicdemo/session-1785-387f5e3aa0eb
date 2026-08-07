@@ -2,14 +2,14 @@
 // module: src/config/env.ts
 
 /**
- * 環境変数を取得する関数
- * @param key 環境変数のキー
- * @param defaultValue デフォルト値（オプション）
- * @returns 環境変数の値、またはデフォルト値
+ * Environment variable getter for the morning report management system
  */
-export function getEnvVariable(
-  key: string,
-  defaultValue?: string
-): string | undefined {
-  return process.env[key] ?? defaultValue;
+
+/**
+ * Retrieves an environment variable by key
+ * @param key - The environment variable key
+ * @returns The environment variable value, or undefined if not set
+ */
+export function getEnvVariable(key: string): string | undefined {
+  return process.env[key];
 }

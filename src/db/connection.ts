@@ -32,12 +32,12 @@ class InMemoryConnection implements DbConnection {
     const trimmedSql = sql.trim();
 
     // DELETE queries
-    if (trimmedSql.toUpperCase().startsWith('DELETE')) {
+    if (trimmedSql.toUpperCase().startsWith('DELETE FROM')) {
       return this.handleDelete(trimmedSql, params);
     }
 
     // INSERT queries
-    if (trimmedSql.toUpperCase().startsWith('INSERT')) {
+    if (trimmedSql.toUpperCase().startsWith('INSERT INTO')) {
       return this.handleInsert(trimmedSql, params);
     }
 
@@ -49,104 +49,110 @@ class InMemoryConnection implements DbConnection {
     return [];
   }
 
-  private handleDelete(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(/DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
-    if (!match) return Promise.resolve([]);
+  private handleDelete(sql: string, params: unknown[]): QueryResult[] {
+    const tableMatch = sql.match(/DELETE FROM\s+(\w+)/i);
+    if (!tableMatch) return [];
 
-    const tableName = match[1].toLowerCase();
-    const whereClause = match[2];
+    const tableName = tableMatch[1].toLowerCase();
     const table = this.tables.get(tableName);
+    if (!table) return [];
 
-    if (!table) return Promise.resolve([]);
-
-    if (!whereClause) {
+    const whereMatch = sql.match(/WHERE\s+(.+?)(?:;|$)/i);
+    if (!whereMatch) {
       table.clear();
-      return Promise.resolve([]);
+      return [];
     }
 
+    const whereClause = whereMatch[1];
     const keysToDelete: string[] = [];
-    for (const [key, row] of table.entries()) {
+
+    table.forEach((row, key) => {
       if (this.evaluateWhere(whereClause, row, params)) {
         keysToDelete.push(key);
       }
-    }
+    });
 
     keysToDelete.forEach((key) => table.delete(key));
-    return Promise.resolve([]);
+    return [];
   }
 
-  private handleInsert(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(
-      /INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i
-    );
-    if (!match) return Promise.resolve([]);
+  private handleInsert(sql: string, params: unknown[]): QueryResult[] {
+    const tableMatch = sql.match(/INSERT INTO\s+(\w+)/i);
+    if (!tableMatch) return [];
 
-    const tableName = match[1].toLowerCase();
-    const columns = match[2].split(',').map((c) => c.trim());
+    const tableName = tableMatch[1].toLowerCase();
     const table = this.tables.get(tableName);
+    if (!table) return [];
 
-    if (!table) return Promise.resolve([]);
+    const columnsMatch = sql.match(/\(([^)]+)\)/);
+    if (!columnsMatch) return [];
+
+    const columns = columnsMatch[1]
+      .split(',')
+      .map((c) => c.trim().toLowerCase());
 
     const row: QueryResult = {};
     columns.forEach((col, idx) => {
       row[col] = params[idx];
     });
 
-    const rowId = `${tableName}_${Date.now()}_${Math.random()}`;
-    table.set(rowId, row);
+    const returningMatch = sql.match(/RETURNING\s+(\w+)/i);
+    const keyColumn = returningMatch ? returningMatch[1].toLowerCase() : null;
 
-    const returningClause = match[4];
-    if (returningClause) {
-      const returningColumns = returningClause.split(',').map((c) => c.trim());
-      const result: QueryResult = {};
-      returningColumns.forEach((col) => {
-        result[col] = row[col];
-      });
-      return Promise.resolve([result]);
+    if (keyColumn && row[keyColumn]) {
+      const key = String(row[keyColumn]);
+      table.set(key, row);
+
+      if (returningMatch) {
+        return [{ [keyColumn]: row[keyColumn] }];
+      }
+    } else {
+      const key = `row_${table.size}`;
+      table.set(key, row);
     }
 
-    return Promise.resolve([]);
+    return [];
   }
 
-  private handleSelect(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(
-      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i
-    );
-    if (!match) return Promise.resolve([]);
+  private handleSelect(sql: string, params: unknown[]): QueryResult[] {
+    const countMatch = sql.match(/COUNT\(\*\)\s+as\s+(\w+)/i);
+    if (countMatch) {
+      const tableMatch = sql.match(/FROM\s+(\w+)/i);
+      if (!tableMatch) return [];
 
-    const selectClause = match[1].trim();
-    const tableName = match[2].toLowerCase();
-    const whereClause = match[3];
-    const table = this.tables.get(tableName);
+      const tableName = tableMatch[1].toLowerCase();
+      const table = this.tables.get(tableName);
+      if (!table) return [{ [countMatch[1]]: 0 }];
 
-    if (!table) return Promise.resolve([]);
+      const whereMatch = sql.match(/WHERE\s+(.+?)(?:;|$)/i);
+      if (!whereMatch) {
+        return [{ [countMatch[1]]: table.size }];
+      }
 
-    let results: QueryResult[] = Array.from(table.values());
-
-    if (whereClause) {
-      results = results.filter((row) =>
-        this.evaluateWhere(whereClause, row, params)
-      );
-    }
-
-    if (selectClause === '*') {
-      return Promise.resolve(results);
-    }
-
-    if (selectClause.toUpperCase().includes('COUNT(*)')) {
-      return Promise.resolve([{ cnt: results.length }]);
-    }
-
-    const columns = selectClause.split(',').map((c) => c.trim());
-    const projectedResults = results.map((row) => {
-      const projected: QueryResult = {};
-      columns.forEach((col) => {
-        projected[col] = row[col];
+      const whereClause = whereMatch[1];
+      let count = 0;
+      table.forEach((row) => {
+        if (this.evaluateWhere(whereClause, row, params)) {
+          count++;
+        }
       });
-      return projected;
+
+      return [{ [countMatch[1]]: count }];
+    }
+
+    const tableMatch = sql.match(/FROM\s+(\w+)/i);
+    if (!tableMatch) return [];
+
+    const tableName = tableMatch[1].toLowerCase();
+    const table = this.tables.get(tableName);
+    if (!table) return [];
+
+    const results: QueryResult[] = [];
+    table.forEach((row) => {
+      results.push(row);
     });
 
-    return Promise.resolve(projectedResults);
+    return results;
   }
 
   private evaluateWhere(
@@ -154,10 +160,14 @@ class InMemoryConnection implements DbConnection {
     row: QueryResult,
     params: unknown[]
   ): boolean {
-    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/);
-    if (eqMatch) {
-      const column = eqMatch[1];
-      return row[column] === params[0];
+    if (whereClause.includes('=')) {
+      const parts = whereClause.split('=').map((p) => p.trim());
+      const columnName = parts[0].toLowerCase();
+      const paramIndex = 0;
+
+      if (parts[1] === '?') {
+        return row[columnName] === params[paramIndex];
+      }
     }
 
     return true;

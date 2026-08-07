@@ -34,7 +34,6 @@ const confirmationEmailHistories: Array<{
   exec_id?: string;
   manager_id?: string;
   recipient_id?: string;
-  mail_type?: string;
   status?: string;
   timestamp?: Date;
 }> = [];
@@ -44,7 +43,6 @@ export async function insertConfirmationEmailHistory(
     exec_id?: string;
     manager_id?: string;
     recipient_id?: string;
-    mail_type?: string;
     status?: string;
     timestamp?: Date;
   }
@@ -66,14 +64,14 @@ export async function getTransactionLogByExecId(
 }
 
 export async function insertTransactionLog(
-  log: {
+  record: {
     exec_id: string;
     action_type: string;
     count: number;
     timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  transactionLogs.push(log);
+  transactionLogs.push(record);
   return { inserted: true };
 }
 
@@ -91,14 +89,14 @@ export async function getMailSendLogsByExecId(
 }
 
 export async function insertMailSendLog(
-  log: {
+  record: {
     exec_id: string;
     recipient_id: string;
     mail_type: string;
     timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  mailSendLogs.push(log);
+  mailSendLogs.push(record);
   return { inserted: true };
 }
 
@@ -115,13 +113,13 @@ export async function getExtractedIssuesByExecId(
 }
 
 export async function insertExtractedIssue(
-  issue: {
+  record: {
     exec_id: string;
     issue_id: string;
     timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  extractedIssues.push(issue);
+  extractedIssues.push(record);
   return { inserted: true };
 }
 
@@ -138,12 +136,12 @@ export async function getPriorityJudgmentLogsByExecId(
 }
 
 export async function insertPriorityJudgmentLog(
-  log: {
+  record: {
     exec_id: string;
     judgment_result: string;
     timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  priorityJudgmentLogs.push(log);
+  priorityJudgmentLogs.push(record);
   return { inserted: true };
 }

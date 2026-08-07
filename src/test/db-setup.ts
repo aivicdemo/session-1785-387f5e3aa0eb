@@ -43,7 +43,7 @@ interface TestDatabase {
   };
 }
 
-const createTestDatabase = async (): Promise<TestDatabase> => {
+const createInMemoryDatabase = (): TestDatabase => {
   const tables: Record<TableName, unknown[]> = {
     users: [],
     daily_reports: [],
@@ -51,40 +51,30 @@ const createTestDatabase = async (): Promise<TestDatabase> => {
     audit_events: [],
   };
 
-  const testDb: TestDatabase = (tableName: TableName) => {
-    return {
-      del: async () => {
-        tables[tableName] = [];
-      },
-      insert: async (data: unknown) => {
-        const tableData = tables[tableName] as unknown[];
-        tableData.push(data);
-      },
-      where: async (conditions: Record<string, unknown>) => {
-        const tableData = tables[tableName] as Array<Record<string, unknown>>;
-        return tableData.filter((row) => {
-          return Object.entries(conditions).every(([key, value]) => {
-            return row[key] === value;
-          });
+  return (tableName: TableName) => ({
+    del: async () => {
+      tables[tableName] = [];
+    },
+    insert: async (data: unknown) => {
+      tables[tableName].push(data);
+    },
+    where: async (conditions: Record<string, unknown>) => {
+      const records = tables[tableName] as Record<string, unknown>[];
+      return records.filter((record) => {
+        return Object.entries(conditions).every(([key, value]) => {
+          return record[key] === value;
         });
-      },
-    };
-  };
-
-  return testDb;
+      });
+    },
+  });
 };
 
-const cleanupTestDatabase = async (db: TestDatabase): Promise<void> => {
-  const tableNames: TableName[] = [
-    "users",
-    "daily_reports",
-    "report_send_history",
-    "audit_events",
-  ];
-
-  for (const tableName of tableNames) {
-    await db(tableName).del();
-  }
+export const createTestDatabase = async (): Promise<TestDatabase> => {
+  return createInMemoryDatabase();
 };
 
-export { createTestDatabase, cleanupTestDatabase };
+export const cleanupTestDatabase = async (
+  _db: TestDatabase
+): Promise<void> => {
+  // No-op for in-memory database
+};
