@@ -220,7 +220,7 @@ describe("tx-2-imp-1: 日報収集から報告漏れ特定までの自動判定�
 
     // 『引継ぎ』イベント（部長による最終確認待機状態）が記録
     const handoverAuditLog = mockDb.auditLogs.find(
-      (log) => log.eventType === "handed_over"
+      (log) => log.eventType === "step_completed" && log.stepName === "handoff"
     );
     expect(handoverAuditLog).toBeDefined();
     expect(handoverAuditLog?.details).toMatchObject({

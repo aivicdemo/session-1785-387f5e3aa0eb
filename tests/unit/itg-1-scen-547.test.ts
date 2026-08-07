@@ -27,15 +27,15 @@ describe("朝会報告管理システム - 日報収集から報告漏れ特定�
     };
 
     mock_audit_logger = {
-      log: jest.fn(),
+      log: jest.fn<void, [event: string, data: unknown]>(),
     };
 
     mock_mail_queue = {
-      enqueue: jest.fn().mockResolvedValue(undefined),
+      enqueue: jest.fn<Promise<void>, [payload: unknown]>().mockResolvedValue(undefined),
     };
 
     mock_date_provider = {
-      now: jest.fn().mockReturnValue(new Date("2024-01-15T08:30:00Z")),
+      now: jest.fn<Date, []>().mockReturnValue(new Date("2024-01-15T08:30:00Z")),
     };
   });
 

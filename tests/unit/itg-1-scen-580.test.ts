@@ -94,6 +94,7 @@ class Tx4Imp1AiClientMock implements FakeTx4Imp1AiClient {
       challenges[0] = {
         id: "ch-001",
         description: "データベース接続タイムアウト",
+        reason: "",
       };
     }
 

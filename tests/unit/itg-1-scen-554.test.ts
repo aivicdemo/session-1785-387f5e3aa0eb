@@ -180,7 +180,7 @@ describe('日報入力フォームの提供と送信機能 - Tx2Imp1Agent ロー
     }
 
     // ========== 検証: 部長へ通知メールが送信されていないか ==========
-    const mailCallHistory = mailService.getCallHistory();
+    const mailCallHistory = mailService.getCallHistory() as Array<{ recipient: string; subject: string }>;
     const sentToManager = mailCallHistory.filter(
       (call) =>
         call.recipient === 'mgr@example.com' &&
