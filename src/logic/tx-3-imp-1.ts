@@ -37,7 +37,7 @@ const __aivicBundle_1_runTx3Imp1Agent = (() => {
       unreportedEmployees: Array<{ name: string }>;
       delayedEmployees: Array<{ name: string }>;
       aiClient: any;
-      dbTransaction: MockDbTransaction;
+      dbTransaction: any;
       managerNotificationHandler: (notification: FollowUpNotification) => FollowUpNotification;
     },
     options: Record<string, unknown>
@@ -65,14 +65,14 @@ const __aivicBundle_1_runTx3Imp1Agent = (() => {
     }
   
     // Query AI client to determine if this matches standard promotion rules
-    const aiDecision = await aiClient.evaluateFollowUpCase({
-      unreportedCount: unreportedEmployees.length,
-      delayedCount: delayedEmployees.length
-    });
+    const aiDecision = await aiClient.evaluateFollowUpTarget(
+      unreportedEmployees,
+      delayedEmployees
+    );
   
-    const matchesStandardRules = aiDecision?.matchesStandardRules ?? false;
+    const isSpecialCase = aiDecision?.isSpecialCase ?? false;
   
-    if (!matchesStandardRules) {
+    if (isSpecialCase) {
       // Special case detected - escalate to human before confirming side effects
       const escalationReason = 'special_case_not_matching_rules';
   

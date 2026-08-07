@@ -16,130 +16,134 @@
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-        }
-        .header {
-            background: white;
+            background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        .logout-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .logout-btn:hover {
+            background-color: #5a6268;
+        }
+        .deadline-section {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 20px;
             margin-bottom: 30px;
         }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 28px;
+        .deadline-section h2 {
+            color: #856404;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .deadline-section p {
+            color: #856404;
+            font-size: 14px;
         }
         .deadline-badge {
             display: inline-block;
-            background-color: #ff9800;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        .deadline-badge.urgent {
-            background-color: #d32f2f;
-        }
-        .nav-link {
-            display: inline-block;
-            margin-top: 15px;
-            color: #1976d2;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .nav-link:hover {
-            text-decoration: underline;
+            background-color: #ffc107;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
         }
         .summary-section {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            padding: 30px;
             margin-bottom: 30px;
         }
         .summary-section h2 {
+            font-size: 18px;
             color: #333;
             margin-bottom: 20px;
-            font-size: 22px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
+            background-color: #f9f9f9;
         }
         .summary-table th {
-            background-color: #f5f5f5;
-            color: #333;
-            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
             text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid #ddd;
+            font-weight: bold;
+            border: 1px solid #ddd;
         }
         .summary-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            color: #666;
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+        .summary-table tr:nth-child(even) {
+            background-color: #f0f0f0;
         }
         .summary-table tr:hover {
-            background-color: #fafafa;
+            background-color: #e8f4f8;
         }
         .progress-bar {
             width: 100%;
-            height: 24px;
-            background-color: #eee;
-            border-radius: 4px;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
             overflow: hidden;
-            display: flex;
-            align-items: center;
+            margin-top: 5px;
         }
         .progress-fill {
             height: 100%;
-            background-color: #4caf50;
+            background-color: #28a745;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: bold;
         }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-complete {
-            background-color: #c8e6c9;
-            color: #2e7d32;
-        }
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #999;
-        }
-        .empty-state p {
-            font-size: 16px;
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
         }
-        .btn-primary {
-            display: inline-block;
-            background-color: #1976d2;
-            color: white;
-            padding: 12px 24px;
+        .btn {
+            padding: 10px 20px;
+            border: none;
             border-radius: 4px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        .btn-primary:hover {
-            background-color: #1565c0;
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+            flex: 1;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
         }
     </style>
 </head>
@@ -147,11 +151,19 @@
     <div class="container">
         <div class="header">
             <h1>日報提出状況ダッシュボード</h1>
-            <div class="deadline-badge" id="deadlineBadge">提出期限: 本日 18:00</div>
-            <br>
-            <a href="./daily-report.html" class="nav-link">日報入力・送信へ →</a>
+            <button class="logout-btn" onclick="logout()">ログアウト</button>
         </div>
-        
+
+        <div class="nav-buttons">
+            <button class="btn btn-secondary" onclick="goToReport()">日報入力に戻る</button>
+        </div>
+
+        <div class="deadline-section">
+            <h2>提出期限</h2>
+            <p id="deadlineText">毎日 18:00 までに日報を提出してください</p>
+            <div class="deadline-badge" id="deadlineBadge">本日の提出期限: 18:00</div>
+        </div>
+
         <div class="summary-section">
             <h2>部門別提出状況サマリー</h2>
             <table class="summary-table">
@@ -164,88 +176,95 @@
                         <th>進捗</th>
                     </tr>
                 </thead>
-                <tbody id="summaryBody">
+                <tbody id="summaryTableBody">
                     <tr>
-                        <td colspan="5" class="empty-state">データを読み込み中...</td>
+                        <td colspan="5" style="text-align: center; color: #999;">読み込み中...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
-    
+
     <script>
+        let currentUser = null;
+
+        async function initPage() {
+            // ユーザー情報を確認
+            const userStr = sessionStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = './login.html';
+                return;
+            }
+            currentUser = JSON.parse(userStr);
+
+            // 提出期限を表示
+            updateDeadline();
+
+            // 部門別提出状況を読み込み
+            await loadSummary();
+        }
+
+        function updateDeadline() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('deadlineBadge').textContent = `本日の提出期限: 18:00 (現在時刻: ${hours}:${minutes})`;
+        }
+
         async function loadSummary() {
             try {
-                const response = await fetch('/api/summary');
+                const response = await fetch('/api/department-summary');
                 if (response.ok) {
-                    const data = await response.json();
-                    displaySummary(data.departments);
-                    updateDeadline(data.deadline);
+                    const summary = await response.json();
+                    displaySummary(summary);
                 } else {
-                    displayDefaultSummary();
+                    // デモデータを表示
+                    displaySummary(getDemoSummary());
                 }
-            } catch (e) {
-                console.error('Failed to load summary:', e);
-                displayDefaultSummary();
+            } catch (error) {
+                console.error('Error loading summary:', error);
+                // デモデータを表示
+                displaySummary(getDemoSummary());
             }
         }
-        
-        function displayDefaultSummary() {
-            const departments = [
-                { name: '営業部', submitted: 8, total: 10 },
-                { name: '企画部', submitted: 6, total: 8 },
-                { name: '技術部', submitted: 12, total: 15 },
-                { name: '管理部', submitted: 4, total: 5 }
+
+        function getDemoSummary() {
+            return [
+                { department: '営業部', submitted: 8, total: 10, rate: 80 },
+                { department: '企画部', submitted: 6, total: 8, rate: 75 },
+                { department: '技術部', submitted: 12, total: 12, rate: 100 },
+                { department: '管理部', submitted: 4, total: 5, rate: 80 }
             ];
-            displaySummary(departments);
         }
-        
-        function displaySummary(departments) {
-            const tbody = document.getElementById('summaryBody');
-            tbody.innerHTML = '';
-            
-            departments.forEach(dept => {
-                const pending = dept.total - dept.submitted;
-                const rate = Math.round((dept.submitted / dept.total) * 100);
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><strong>${dept.name}</strong></td>
-                    <td>${dept.submitted}</td>
-                    <td>${pending}</td>
-                    <td>${rate}%</td>
+
+        function displaySummary(summary) {
+            const tbody = document.getElementById('summaryTableBody');
+            tbody.innerHTML = summary.map(item => `
+                <tr>
+                    <td>${item.department}</td>
+                    <td>${item.submitted}</td>
+                    <td>${item.total - item.submitted}</td>
+                    <td>${item.rate}%</td>
                     <td>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+                            <div class="progress-fill" style="width: ${item.rate}%">${item.rate}%</div>
                         </div>
                     </td>
-                `;
-                tbody.appendChild(row);
-            });
+                </tr>
+            `).join('');
         }
-        
-        function updateDeadline(deadline) {
-            const badge = document.getElementById('deadlineBadge');
-            if (deadline) {
-                const date = new Date(deadline);
-                const timeStr = date.toLocaleString('ja-JP', {
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                badge.textContent = `提出期限: ${timeStr}`;
-                
-                // Check if urgent (less than 2 hours)
-                const now = new Date();
-                const diff = date - now;
-                if (diff < 2 * 60 * 60 * 1000 && diff > 0) {
-                    badge.classList.add('urgent');
-                }
-            }
+
+        function logout() {
+            sessionStorage.removeItem('user');
+            window.location.href = './login.html';
         }
-        
-        loadSummary();
+
+        function goToReport() {
+            window.location.href = './daily-report.html';
+        }
+
+        // ページ読み込み時に初期化
+        window.addEventListener('load', initPage);
     </script>
 </body>
 </html>
