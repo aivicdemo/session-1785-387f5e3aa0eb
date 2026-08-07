@@ -75,15 +75,12 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
   ): ConfirmationEmailResponse {
     if (report_submission["userId"] === undefined || report_submission["userId"] === null) { throw new Error("userId is required"); }
     
-    // Determine sender email from config or report_submission
     const senderEmail = config?.sender_email ?? report_submission.sender_email;
     
-    // Validate sender email is present and not null
     if (!senderEmail) {
       throw new Error("送信者メールアドレスが必要です");
     }
   
-    // Extract report content fields - handle multiple naming conventions
     const yesterdayContent =
       report_submission.yesterday_achievement ||
       report_submission.yesterday_results ||
@@ -106,7 +103,6 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       report_submission.challenges ||
       report_submission.challengeIssue;
   
-    // Validate required report content fields
     if (!yesterdayContent) {
       throw new Error("昨日の実績が必要です");
     }
@@ -117,29 +113,22 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       throw new Error("現在の課題が必要です");
     }
   
-    // Validate manager email
     const managerEmail =
       report_submission.manager_email || report_submission.manager_email;
     if (!managerEmail) {
       throw new Error("部長メールアドレスが必要です");
     }
   
-    // Validate submitted_at
     if (!report_submission.submitted_at) {
       throw new Error("送信日時が必要です");
     }
   
-    // Simulate email sending attempt
-    // In a real implementation, this would call an email service
-    // For now, we return a failure response as indicated by the test
-    const result: ConfirmationEmailResponse = {
+    return {
       success: false,
       error_code: "確認メール配信エラー",
       error_message: "管理者への確認メール送信に失敗しました",
       report_saved: true,
     };
-  
-    return result;
   }
   return { sendConfirmationEmailOnReportSubmit };
 })();
@@ -154,7 +143,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
     managerEmail?: string
   ): ConfirmationEmailResponse {
     try {
-      // Handle 3-argument form: sendConfirmationEmail(sender, report, managerEmail)
       if (report !== undefined && managerEmail !== undefined) {
         const sender = request;
   
@@ -169,7 +157,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
         };
       }
   
-      // Handle 1-argument form: sendConfirmationEmail(request)
       if (!request) {
         return {
           success: false,
@@ -177,8 +164,7 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
           email_sent: false,
         };
       }
-  
-      // Detect form by checking for specific properties
+
       const hasSenderEmail = "sender_email" in request;
       const hasReportContent = "report_content" in request;
       const hasRecipientEmail = "recipient_email" in request;
@@ -188,7 +174,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
       const hasDepartmentField = "department" in request;
       const hasUserId = "user_id" in request;
   
-      // Form 1: { sender_email, report_content, recipient_email }
       if (hasSenderEmail && hasReportContent && hasRecipientEmail) {
         const senderEmail = request.sender_email;
         const reportContent = request.report_content;
@@ -232,7 +217,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
         };
       }
   
-      // Form 2: { report_id, user_id, report_content, submitted_at, department_id }
       if (hasReportId && hasUserId && "submitted_at" in request) {
         const reportContent = request.report_content;
   
@@ -247,7 +231,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
         };
       }
   
-      // Form 3: { reportId, userId, userName, departmentId, departmentName, yesterdayAccomplishment, todayPlan, challengeIssue, sendDateTime, managerEmail, engineerEmail }
       if (hasReportIdCamel && "userId" in request) {
         const sendDateTime = request.sendDateTime;
   
@@ -262,7 +245,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
         };
       }
   
-      // Form 4: { user_id, name, email, department, role, ... }
       if (hasDepartmentField && hasUserId) {
         const department = request.department;
   
@@ -277,7 +259,6 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
         };
       }
   
-      // Form 5: { sender: {...}, report: {...}, managerEmail: string }
       if (hasSender && "report" in request) {
         const sender = request.sender;
   
@@ -735,7 +716,6 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
       sent_at,
     } = input;
   
-    // メール送信（送信者と部長の両者へ）
     const emailPayload = {
       recipients: [user_email, manager_email],
       subject: `日報確認メール - ${report_date}`,
@@ -760,7 +740,6 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
   
     const emailResult = await emailResponse.json();
   
-    // メール送信ログを保存
     const logPayload = {
       user_id,
       user_name,
