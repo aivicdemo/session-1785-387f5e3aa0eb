@@ -178,8 +178,8 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       reportSubmission.yesterdayAccomplishment;
   
     const todayContent =
-      (reportSubmission as any).today_plan ??
       (reportSubmission as any).today_plans ??
+      (reportSubmission as any).today_plan ??
       reportSubmission.todayPlan ??
       reportSubmission.today_plan ??
       reportSubmission.today_work ??
