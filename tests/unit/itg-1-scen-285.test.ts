@@ -105,7 +105,7 @@ describe("日報入力フォームの提供と送信機能", () => {
       });
 
     expect(audit_events).toHaveLength(1);
-    expect(audit_events[0].timestamp).toBeDefined();
+    expect((audit_events[0] as { timestamp: unknown }).timestamp).toBeDefined();
 
     await cleanupTestDatabase(test_db);
   });
