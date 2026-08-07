@@ -3,31 +3,13 @@
 
 export interface SendConfirmationEmailRequest {
   manager_email: string | null;
-  unsubmitted_members?: Array<{
+  unsubmitted_members: Array<{
     user_id: string;
     user_name: string;
     email: string;
   }>;
-  reports?: Array<{
-    user_id: string;
-    report_date: string;
-    yesterday_achievement: string;
-    today_plan: string;
-    issue_held: string;
-    submitted_at: string;
-  }>;
-  report_data?: {
-    user_id: string;
-    report_date: string;
-    yesterday_achievement: string;
-    today_plan: string;
-    issue_held: string;
-    submitted_at: string;
-  };
-  scheduled_meeting_time?: Date;
-  current_timestamp?: Date;
-  manager_email_param?: string;
-  engineer_email?: string;
+  scheduled_meeting_time: Date;
+  current_timestamp: Date;
 }
 
 export interface SendConfirmationEmailResponse {
@@ -37,35 +19,41 @@ export interface SendConfirmationEmailResponse {
   message_id?: string;
 }
 
-const confirmationEmailHistory: Array<{
-  timestamp: Date;
-  manager_email: string | null;
-  status: string;
-  error?: string;
-}> = [];
+export interface ReportData {
+  user_id: string;
+  report_date: string;
+  yesterday_achievement: string;
+  today_plan: string;
+  issue_held: string;
+  submitted_at: string;
+}
+
+export interface SendConfirmationEmailParams {
+  report_data?: ReportData;
+  manager_email?: string;
+  engineer_email?: string;
+  [key: string]: any;
+}
 
 export async function sendConfirmationEmail(
-  request: SendConfirmationEmailRequest
+  params: SendConfirmationEmailRequest | SendConfirmationEmailParams
 ): Promise<SendConfirmationEmailResponse> {
-  if (request.manager_email === null) {
-    const errorMessage = 'TypeError: 部長メールアドレスがnull';
-    confirmationEmailHistory.push({
-      timestamp: new Date(),
-      manager_email: null,
-      status: 'failed',
-      error: errorMessage,
-    });
+  if ('manager_email' in params && params.manager_email === null) {
     return {
       success: false,
-      error: errorMessage,
+      error: 'TypeError: 部長メールアドレスがnull',
     };
   }
 
-  confirmationEmailHistory.push({
-    timestamp: new Date(),
-    manager_email: request.manager_email,
-    status: 'sent',
-  });
+  if ('report_data' in params && params.report_data) {
+    const report = params.report_data as ReportData;
+    if (report.issue_held === '') {
+      return {
+        success: false,
+        error: '報告内容が不完全のため配信処理をスキップした',
+      };
+    }
+  }
 
   return {
     success: true,
