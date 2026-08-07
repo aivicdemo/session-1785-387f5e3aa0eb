@@ -405,7 +405,6 @@ const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
       }
   
       // Parse JWT-like token to extract user_id and expiration
-      // Token format: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyLWEtMDAxIiwiaWF0IjoxNjM2NjAwMDAwLCJleHAiOjE2MzY2ODY0MDB9.test_signature
       let userId = "user-a-001";
       let isValid = true;
   
@@ -1811,9 +1810,6 @@ const __aivicBundle_15_validateAndSubmitDailyReport = (() => {
       input?.current_issue ??
       input?.challengesFaced ??
       '';
-  
-    
-    
   
     // Validation: Check for null explicitly (should throw)
     if (input?.challenges === null || input?.currentChallenges === null) {
@@ -3803,6 +3799,13 @@ const __aivicBundle_40_submitReport = (() => {
     success: boolean;
     error_message?: string;
     button_disabled?: boolean;
+    status?: string;
+    message?: string;
+    confirmation_email?: {
+      recipient_type: string;
+      body: string;
+    };
+    sent_at?: string;
   }
   
   const submitReportStore = new Map<string, Set<string>>();
@@ -3821,7 +3824,6 @@ const __aivicBundle_40_submitReport = (() => {
       };
     }
   
-    
     if (!submitReportStore.has(user_id)) {
       submitReportStore.set(user_id, new Set<string>());
     }
@@ -3855,6 +3857,13 @@ const __aivicBundle_40_submitReport = (() => {
       success: true,
       error_message: undefined,
       button_disabled: false,
+      status: "送信済み",
+      message: "送信完了しました",
+      confirmation_email: {
+        recipient_type: "管理者",
+        body: `昨日の実績: ${reportInput.yesterday_achievement || reportInput.yesterday_accomplishment}\n本日の予定: ${reportInput.today_plan}\n抱えている課題: ${reportInput.issue || reportInput.current_issues}`,
+      },
+      sent_at: reportInput.submitted_at?.toISOString(),
     };
   }
   return { submitReport };
@@ -4480,7 +4489,7 @@ const __aivicBundle_50_judgeSubmissionStatus = (() => {
     };
   }
   
-   function initializeSystem(config: {
+   function initializeSystemForJudge(config: {
     department_id: string;
     morning_meeting_start_time: Date;
     email_service: { send: (to: string, subject: string, body: string) => Promise<void> };
@@ -4494,7 +4503,7 @@ const __aivicBundle_50_judgeSubmissionStatus = (() => {
     return Promise.resolve();
   }
   
-   function createUser(input: {
+   function createUserForJudge(input: {
     user_id: string;
     user_name: string;
     department_id: string;
@@ -4511,7 +4520,7 @@ const __aivicBundle_50_judgeSubmissionStatus = (() => {
     return Promise.resolve();
   }
   
-   function setReportStatus(input: {
+   function setReportStatusForJudge(input: {
     user_id: string;
     status: string;
     report_date: string;
@@ -4531,7 +4540,7 @@ const __aivicBundle_50_judgeSubmissionStatus = (() => {
     return Promise.resolve();
   }
   
-   function submitReport(input: {
+   function submitReportForJudge(input: {
     user_id: string;
     report_date: string;
     yesterday_accomplishment: string;
