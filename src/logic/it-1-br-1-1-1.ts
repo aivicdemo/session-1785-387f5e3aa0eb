@@ -6307,10 +6307,10 @@ const __aivicBundle_92_determineReportDeadlineStatus = (() => {
         }
       }
       return {
-        status: "not_submitted",
-        isAcceptable: false,
-        statusMessage: "報告がまだ送信されていません",
-        message: "報告がまだ送信されていません",
+        status: "within-deadline",
+        isAcceptable: true,
+        statusMessage: "期限内に報告可能",
+        message: "期限内に報告可能",
       };
     }
   
