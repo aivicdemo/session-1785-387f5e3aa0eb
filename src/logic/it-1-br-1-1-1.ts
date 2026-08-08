@@ -1016,7 +1016,6 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
       const meetingTime = new Date(input.meeting_start_time).getTime();
       const submittedTime = new Date(input.all_reporters_submitted_by).getTime();
       
-  
       const thirtyMinutesBefore = meetingTime - 30 * 60 * 1000;
       if (submittedTime <= thirtyMinutesBefore) {
         return {

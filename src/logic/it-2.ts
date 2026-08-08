@@ -77,6 +77,7 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     config?: { sender_email?: string; admin_email?: string; smtp_host?: string }
   ): ConfirmationEmailResponse {
     if (reportSubmission["userId"] === undefined || reportSubmission["userId"] === null) { throw new Error("userId is required"); }
+    
     // Determine sender email from config or input
     const senderEmail = config?.sender_email ?? reportSubmission.sender_email;
   
@@ -84,9 +85,6 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     if (!senderEmail) {
       throw new Error('送信者メールアドレスが必要です');
     }
-  
-    // Extract manager email from input
-    
   
     // Normalize yesterday achievement field (multiple possible names)
     const yesterdayAchievement =
@@ -308,11 +306,11 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
     return null;
   }
   
-   async function sendConfirmationEmail(
+  function sendConfirmationEmail(
     request: ConfirmationEmailRequest | SendConfirmationEmailInternalRequest,
     reportOrManagerEmail?: any,
     bodyOrManagerEmail?: string
-  ): Promise<ConfirmationEmailResponse> {
+  ): ConfirmationEmailResponse {
     try {
       let actualRequest: SendConfirmationEmailInternalRequest = request as SendConfirmationEmailInternalRequest;
       let actualManagerEmail: string | undefined;
@@ -388,14 +386,6 @@ const __aivicBundle_4_sendConfirmationEmailToManager = (() => {
     if (!managerEmail || managerEmail.trim() === '') {
       throw new Error('部長のメールアドレスが必要です');
     }
-  
-    
-  
-    
-  
-    
-  
-    
   
     return {
       success: true,
@@ -694,7 +684,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
     error_message?: string;
   }
   
-   async function sendConfirmationEmailAndLogFailure(
+  async function sendConfirmationEmailAndLogFailure(
     input: SendConfirmationEmailAndLogFailureInput
   ): Promise<SendConfirmationEmailAndLogFailureOutput> {
     const {
@@ -868,9 +858,7 @@ const __aivicBundle_13_sendReportWithNotification = (() => {
     issues_held: string;
   }
   
-  
-  
-   function sendReportWithNotification(
+  function sendReportWithNotification(
     reportingEngineer: SendReportWithNotificationReportingEngineer,
     morningReportData: SendReportWithNotificationMorningReportData
   ): void {

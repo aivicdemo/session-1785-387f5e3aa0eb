@@ -1313,7 +1313,7 @@ const __aivicBundle_11_validateAndSubmitReport = (() => {
           record.submission_date ||
           record.submissionDate ||
           (record.submittedAt ? new Date(record.submittedAt).toISOString().split("T")[0] : null);
-        return recordDate === submissionDate;
+        return recordDate === submissionDate && record.user_id === userId;
       });
   
       if (hasDuplicateForToday) {
@@ -2136,13 +2136,6 @@ const __aivicBundle_16_validateMorningReportSubmission = (() => {
       submission.issue_report ??
       '';
   
-    const YESTERDAY_MIN = 10;
-    const YESTERDAY_MAX = 500;
-    const TODAY_MIN = 2;
-    const TODAY_MAX = 500;
-    const CHALLENGE_MIN = 10;
-    const CHALLENGE_MAX = 1000;
-  
     const FORBIDDEN_CHARS = /<|>|script|javascript|onerror|onclick/i;
   
     const errors: Array<{ field: string; message: string }> = [];
@@ -2152,16 +2145,10 @@ const __aivicBundle_16_validateMorningReportSubmission = (() => {
     if (!yesterday || yesterday.trim() === '') {
       emptyCount++;
     } else {
-      if (yesterday.length < YESTERDAY_MIN) {
+      if (yesterday.length > 500) {
         errors.push({
           field: 'yesterday',
-          message: `昨日やったことは${YESTERDAY_MIN}文字以上で入力してください`,
-        });
-      }
-      if (yesterday.length > YESTERDAY_MAX) {
-        errors.push({
-          field: 'yesterday',
-          message: `昨日やったことは${YESTERDAY_MAX}文字以内で入力してください`,
+          message: `昨日やったことは500文字以内で入力してください`,
         });
       }
       if (FORBIDDEN_CHARS.test(yesterday)) {
@@ -2176,16 +2163,10 @@ const __aivicBundle_16_validateMorningReportSubmission = (() => {
     if (!today || today.trim() === '') {
       emptyCount++;
     } else {
-      if (today.length < TODAY_MIN) {
+      if (today.length > 500) {
         errors.push({
           field: 'today_plan',
-          message: `今日やることは2文字以上で入力してください`,
-        });
-      }
-      if (today.length > TODAY_MAX) {
-        errors.push({
-          field: 'today_plan',
-          message: `今日やることは${TODAY_MAX}文字以内で入力してください`,
+          message: `今日やることは500文字以内で入力してください`,
         });
       }
       if (FORBIDDEN_CHARS.test(today)) {
@@ -2200,16 +2181,10 @@ const __aivicBundle_16_validateMorningReportSubmission = (() => {
     if (!challenge || challenge.trim() === '') {
       emptyCount++;
     } else {
-      if (challenge.length < CHALLENGE_MIN) {
+      if (challenge.length > 1000) {
         errors.push({
           field: 'challenge',
-          message: `抱えている課題は${CHALLENGE_MIN}文字以上で入力してください`,
-        });
-      }
-      if (challenge.length > CHALLENGE_MAX) {
-        errors.push({
-          field: 'challenge',
-          message: `抱えている課題は${CHALLENGE_MAX}文字以内で入力してください`,
+          message: `抱えている課題は1000文字以内で入力してください`,
         });
       }
       if (FORBIDDEN_CHARS.test(challenge)) {
@@ -2940,7 +2915,10 @@ const __aivicBundle_24_submitDailyReport = (() => {
     // Create submission history record
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8).toUpperCase()}`;
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
-    const mailSendLogId = `LOG-${reportDate.replace(/-/g, "")}-${randomUUID().substring(0, 3).toUpperCase()}`;
+    
+    // Generate mail send log ID with deterministic format based on date
+    const dateStr = reportDate.replace(/-/g, "");
+    const mailSendLogId = `LOG-${dateStr}-001`;
   
     // Try to create submission history if function provided
     if (reportInput.submission_history_create_fn) {
