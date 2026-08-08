@@ -7,7 +7,7 @@ export async function logError(message: string): Promise<void> {
     (globalThis as any).__logErrorStore = [];
   }
   (globalThis as any).__logErrorStore.push({
-    message,
     timestamp: new Date(),
+    message,
   });
 }

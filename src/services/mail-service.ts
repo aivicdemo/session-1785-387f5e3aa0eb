@@ -3,13 +3,29 @@
 
 export interface SendConfirmationEmailRequest {
   manager_email: string | null;
-  unsubmitted_members: Array<{
+  unsubmitted_members?: Array<{
     user_id: string;
     user_name: string;
     email: string;
   }>;
-  scheduled_meeting_time: Date;
-  current_timestamp: Date;
+  reports?: Array<{
+    user_id: string;
+    report_date: string;
+    yesterday_achievement: string;
+    today_plan: string;
+    issue_held: string;
+    submitted_at: string;
+  }>;
+  report_data?: {
+    user_id: string;
+    report_date: string;
+    yesterday_achievement: string;
+    today_plan: string;
+    issue_held: string;
+    submitted_at: string;
+  };
+  scheduled_meeting_time?: Date;
+  current_timestamp?: Date;
 }
 
 export interface SendConfirmationEmailResponse {
@@ -19,39 +35,13 @@ export interface SendConfirmationEmailResponse {
   message_id?: string;
 }
 
-export interface ReportData {
-  user_id: string;
-  report_date: string;
-  yesterday_achievement: string;
-  today_plan: string;
-  issue_held: string;
-  submitted_at: string;
-}
-
-export interface SendConfirmationEmailParams {
-  report_data?: ReportData;
-  manager_email?: string;
-  engineer_email?: string;
-  [key: string]: any;
-}
-
 export async function sendConfirmationEmail(
-  params: SendConfirmationEmailRequest | SendConfirmationEmailParams
+  request: SendConfirmationEmailRequest
 ): Promise<SendConfirmationEmailResponse> {
-  const request = params as SendConfirmationEmailRequest;
-
-  if (request.manager_email === null || request.manager_email === undefined) {
+  if (request.manager_email === null) {
     return {
       success: false,
       error: 'TypeError: 部長メールアドレスがnull',
-    };
-  }
-
-  if (!request.unsubmitted_members || request.unsubmitted_members.length === 0) {
-    return {
-      success: true,
-      status: 'sent',
-      message_id: `msg_${Date.now()}`,
     };
   }
 

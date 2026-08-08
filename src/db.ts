@@ -8,32 +8,29 @@ const transactionLogs: Array<{
   exec_id: string;
   action_type: string;
   count: number;
-  timestamp?: Date;
 }> = [];
 
 const mailSendLogs: Array<{
   exec_id: string;
   recipient_id: string;
   mail_type: string;
-  timestamp?: Date;
 }> = [];
 
 const extractedIssues: Array<{
   exec_id: string;
   issue_id: string;
-  timestamp?: Date;
 }> = [];
 
 const priorityJudgmentLogs: Array<{
   exec_id: string;
   judgment_result: string;
-  timestamp?: Date;
 }> = [];
 
 const confirmationEmailHistories: Array<{
   exec_id?: string;
   manager_id?: string;
   recipient_id?: string;
+  email?: string;
   status?: string;
   timestamp?: Date;
 }> = [];
@@ -43,6 +40,7 @@ export async function insertConfirmationEmailHistory(
     exec_id?: string;
     manager_id?: string;
     recipient_id?: string;
+    email?: string;
     status?: string;
     timestamp?: Date;
   }
@@ -57,21 +55,19 @@ export async function getTransactionLogByExecId(
     exec_id: string;
     action_type: string;
     count: number;
-    timestamp?: Date;
   }>
 > {
   return transactionLogs.filter((log) => log.exec_id === exec_id);
 }
 
 export async function insertTransactionLog(
-  record: {
+  log: {
     exec_id: string;
     action_type: string;
     count: number;
-    timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  transactionLogs.push(record);
+  transactionLogs.push(log);
   return { inserted: true };
 }
 
@@ -82,21 +78,19 @@ export async function getMailSendLogsByExecId(
     exec_id: string;
     recipient_id: string;
     mail_type: string;
-    timestamp?: Date;
   }>
 > {
   return mailSendLogs.filter((log) => log.exec_id === exec_id);
 }
 
 export async function insertMailSendLog(
-  record: {
+  log: {
     exec_id: string;
     recipient_id: string;
     mail_type: string;
-    timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  mailSendLogs.push(record);
+  mailSendLogs.push(log);
   return { inserted: true };
 }
 
@@ -106,20 +100,18 @@ export async function getExtractedIssuesByExecId(
   Array<{
     exec_id: string;
     issue_id: string;
-    timestamp?: Date;
   }>
 > {
   return extractedIssues.filter((issue) => issue.exec_id === exec_id);
 }
 
 export async function insertExtractedIssue(
-  record: {
+  issue: {
     exec_id: string;
     issue_id: string;
-    timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  extractedIssues.push(record);
+  extractedIssues.push(issue);
   return { inserted: true };
 }
 
@@ -129,19 +121,17 @@ export async function getPriorityJudgmentLogsByExecId(
   Array<{
     exec_id: string;
     judgment_result: string;
-    timestamp?: Date;
   }>
 > {
   return priorityJudgmentLogs.filter((log) => log.exec_id === exec_id);
 }
 
 export async function insertPriorityJudgmentLog(
-  record: {
+  log: {
     exec_id: string;
     judgment_result: string;
-    timestamp?: Date;
   }
 ): Promise<{ inserted: boolean }> {
-  priorityJudgmentLogs.push(record);
+  priorityJudgmentLogs.push(log);
   return { inserted: true };
 }
