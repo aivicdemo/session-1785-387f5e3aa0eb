@@ -6407,7 +6407,7 @@ const __aivicBundle_88_sendReportAndNotifyDeadlineCheck = (() => {
     email_recipient_count: number;
   }
   
-   async function sendReportAndNotifyDeadlineCheck(
+  async function sendReportAndNotifyDeadlineCheck(
     params: SendReportAndNotifyDeadlineCheckInput
   ): Promise<SendReportAndNotifyDeadlineCheckResult> {
     if (params["morning_meeting_start_time"] === undefined || params["morning_meeting_start_time"] === null) { throw new Error("morning_meeting_start_time is required"); }

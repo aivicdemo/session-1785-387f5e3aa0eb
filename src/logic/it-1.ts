@@ -1314,14 +1314,13 @@ const __aivicBundle_11_validateAndSubmitReport = (() => {
       });
 
       if (hasDuplicateForToday) {
-        if (errors.length > 0) {
-          throw new Error("既に送信済みです");
+        if (errors.length === 0) {
+          return {
+            success: false,
+            error: "本日の朝会報告は既に送信済みです。重複送信はできません。",
+            isDuplicateSubmission: true,
+          };
         }
-        return {
-          success: false,
-          error: "本日の朝会報告は既に送信済みです。重複送信はできません。",
-          isDuplicateSubmission: true,
-        };
       }
     }
 
@@ -2982,8 +2981,8 @@ const __aivicBundle_24_submitDailyReport = (() => {
       mail_send_log_id: mailSendLogId,
       sender_user_id: userId,
       recipient_email: userEmail,
-      email_type: "confirmation",
-      send_status: "success",
+      email_type: "確認メール",
+      send_status: "成功",
       sent_at: submissionTimestamp.toISOString(),
       submitted_at: submissionTimestamp.toISOString(),
       db_saved: dbSaved,

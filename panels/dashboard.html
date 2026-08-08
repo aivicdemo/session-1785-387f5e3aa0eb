@@ -1,261 +1,191 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日報提出状況ダッシュボード</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            padding: 30px;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-        .deadline-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        .deadline-section h2 {
-            font-size: 16px;
-            margin-bottom: 10px;
-            opacity: 0.9;
-        }
-        .deadline-section .deadline-time {
-            font-size: 32px;
-            font-weight: bold;
-        }
-        .deadline-section .deadline-date {
-            font-size: 14px;
-            margin-top: 5px;
-            opacity: 0.8;
-        }
-        .summary-section {
-            margin-bottom: 30px;
-        }
-        .summary-section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .summary-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .summary-card h3 {
-            font-size: 14px;
-            margin-bottom: 15px;
-            opacity: 0.9;
-        }
-        .summary-card .stat {
-            font-size: 36px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .summary-card .stat-label {
-            font-size: 12px;
-            opacity: 0.8;
-        }
-        .department-section {
-            margin-bottom: 30px;
-        }
-        .department-section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-        .department-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .department-table thead {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-        }
-        .department-table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #333;
-            font-size: 14px;
-        }
-        .department-table td {
-            padding: 15px;
-            border-bottom: 1px solid #dee2e6;
-            font-size: 14px;
-            color: #666;
-        }
-        .department-table tbody tr:hover {
-            background-color: #f8f9fa;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 24px;
-            background-color: #e9ecef;
-            border-radius: 12px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .nav-button {
-            background-color: #667eea;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 20px;
-        }
-        .nav-button:hover {
-            background-color: #5568d3;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日報提出状況ダッシュボード</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+    .deadline-section {
+      background-color: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    .deadline-section h2 {
+      color: #856404;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .deadline-text {
+      color: #856404;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .summary-section {
+      margin-bottom: 30px;
+    }
+    .summary-section h2 {
+      color: #333;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    .summary-table th,
+    .summary-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    .summary-table th {
+      background-color: #f9f9f9;
+      font-weight: 600;
+      color: #333;
+    }
+    .summary-table tr:hover {
+      background-color: #f5f5f5;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 24px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .progress-fill {
+      height: 100%;
+      background-color: #28a745;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .nav-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #007bff;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+    .btn-primary {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-top: 20px;
+      transition: background-color 0.3s ease;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>日報提出状況ダッシュボード</h1>
-        
-        <div class="deadline-section">
-            <h2>提出期限</h2>
-            <div class="deadline-time" id="deadlineTime">17:00</div>
-            <div class="deadline-date" id="deadlineDate">毎日 17:00 までに提出してください</div>
-        </div>
-        
-        <div class="summary-section">
-            <h2>全体サマリー</h2>
-            <div class="summary-grid">
-                <div class="summary-card">
-                    <h3>本日の提出状況</h3>
-                    <div class="stat" id="totalSubmitted">0</div>
-                    <div class="stat-label">件の日報が提出されました</div>
-                </div>
-                <div class="summary-card">
-                    <h3>提出率</h3>
-                    <div class="stat" id="submissionRate">0%</div>
-                    <div class="stat-label">全従業員に対する提出率</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="department-section">
-            <h2>部門別提出状況</h2>
-            <table class="department-table">
-                <thead>
-                    <tr>
-                        <th>部門名</th>
-                        <th>提出済み</th>
-                        <th>未提出</th>
-                        <th>提出率</th>
-                    </tr>
-                </thead>
-                <tbody id="departmentTableBody">
-                    <tr>
-                        <td colspan="4" style="text-align: center; color: #999;">データを読み込み中...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <button class="nav-button" id="backBtn">日報入力画面へ戻る</button>
+  <div class="container">
+    <h1>日報提出状況ダッシュボード</h1>
+    
+    <div class="deadline-section">
+      <h2>提出期限</h2>
+      <div class="deadline-text" id="deadline">本日 18:00 まで</div>
     </div>
     
-    <script>
-        // ダッシュボード初期化
-        function initDashboard() {
-            // 提出期限を表示
-            const now = new Date();
-            const deadlineDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0);
-            document.getElementById('deadlineDate').textContent = 
-                deadlineDate.getFullYear() + '年' + 
-                String(deadlineDate.getMonth() + 1).padStart(2, '0') + '月' + 
-                String(deadlineDate.getDate()).padStart(2, '0') + '日 17:00 までに提出してください';
+    <div class="summary-section">
+      <h2>部門別提出状況サマリー</h2>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>部門名</th>
+            <th>提出済み / 総人数</th>
+            <th>提出率</th>
+          </tr>
+        </thead>
+        <tbody id="summaryBody">
+          <tr>
+            <td colspan="3" style="text-align: center; color: #999;">読み込み中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <a href="./daily-report.html" class="btn-primary">日報を入力・送信</a>
+  </div>
+  
+  <script>
+    async function init() {
+      try {
+        const response = await fetch('/api/summary');
+        if (response.ok) {
+          const summary = await response.json();
+          const tbody = document.getElementById('summaryBody');
+          
+          tbody.innerHTML = summary.departments.map(dept => {
+            const submitted = dept.submitted || 0;
+            const total = dept.total || 1;
+            const rate = Math.round((submitted / total) * 100);
             
-            // 部門別データ
-            const departments = [
-                { name: '営業部', total: 15, submitted: 12 },
-                { name: '企画部', total: 10, submitted: 8 },
-                { name: '技術部', total: 20, submitted: 18 },
-                { name: '管理部', total: 8, submitted: 7 }
-            ];
-            
-            // 全体統計
-            const totalEmployees = departments.reduce((sum, dept) => sum + dept.total, 0);
-            const totalSubmitted = departments.reduce((sum, dept) => sum + dept.submitted, 0);
-            const submissionRate = Math.round((totalSubmitted / totalEmployees) * 100);
-            
-            document.getElementById('totalSubmitted').textContent = totalSubmitted;
-            document.getElementById('submissionRate').textContent = submissionRate + '%';
-            
-            // 部門別テーブル
-            const tbody = document.getElementById('departmentTableBody');
-            tbody.innerHTML = departments.map(dept => {
-                const rate = Math.round((dept.submitted / dept.total) * 100);
-                return `
-                    <tr>
-                        <td>${dept.name}</td>
-                        <td>${dept.submitted}</td>
-                        <td>${dept.total - dept.submitted}</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            return `
+              <tr>
+                <td>${escapeHtml(dept.name)}</td>
+                <td>${submitted} / ${total}</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
         }
-        
-        // 戻るボタン
-        document.getElementById('backBtn').addEventListener('click', () => {
-            window.location.href = './daily-report.html';
-        });
-        
-        // 初期化実行
-        initDashboard();
-    </script>
+      } catch (e) {
+        console.error('Failed to load summary:', e);
+        document.getElementById('summaryBody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">データの読み込みに失敗しました</td></tr>';
+      }
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    init();
+  </script>
 </body>
 </html>
