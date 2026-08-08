@@ -1,5 +1,6 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { runTx2Imp1Agent } from '../../src/agents/tx-2-imp-1/orchestrator';
-import { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/ai-client';
+
 import * as mailService from '../../src/services/mail-service';
 import * as logService from '../../src/services/log-service';
 import * as db from '../../src/db';

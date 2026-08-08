@@ -1,5 +1,5 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { runTx2Imp1Agent } from '../../src/agents/tx-2-imp-1/orchestrator';
-import type { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/ai-client';
 
 describe('確認メール配信機能 - 送信者ユーザーID検証', () => {
   // SCEN-300

@@ -1,5 +1,6 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { runTx2Imp1Agent } from '../../src/agents/tx-2-imp-1/orchestrator';
-import type { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/ai-client';
+
 import { getConnection } from '../../src/db/connection';
 import { getStubMailService } from '../../src/services/mail-stub';
 

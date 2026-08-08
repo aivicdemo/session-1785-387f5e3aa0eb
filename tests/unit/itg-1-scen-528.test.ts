@@ -1,5 +1,5 @@
+import { type Tx1Imp1AiClient } from "../../src/agents/tx-1-imp-1/orchestrator";
 import { runTx1Imp1Agent } from "../../src/agents/tx-1-imp-1/orchestrator";
-import { Tx1Imp1AiClient } from "../../src/agents/tx-1-imp-1/types";
 
 // Mock types and interfaces
 interface MockAiClientOutput {

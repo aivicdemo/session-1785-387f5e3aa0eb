@@ -1,5 +1,5 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { runTx2Imp1Agent } from '../../src/agents/tx-2-imp-1/orchestrator';
-import { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/types';
 
 describe('確認メール配信機能 - 部長メールアドレス不正形式時の処理中断', () => {
   // SCEN-292

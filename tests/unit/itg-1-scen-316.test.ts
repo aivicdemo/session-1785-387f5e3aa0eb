@@ -1,6 +1,7 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { runTx2Imp1Agent } from '../../src/agents/tx-2-imp-1/orchestrator';
-import type { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/ai-client';
+
 import type { ReportSubmissionHistoryRecord, EmailSendLogRecord } from '../../src/logic/it-1-br-1-1-1';
 
 // Mock database and mail service

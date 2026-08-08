@@ -1,5 +1,6 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-import type { Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/ai-client";
+
 import { runTx2Imp1Agent } from "../../src/agents/tx-2-imp-1/orchestrator";
 
 describe("Tx2Imp1Agent - 日報収集から報告漏れ特定までの自動判定と通知", () => {

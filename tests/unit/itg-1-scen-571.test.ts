@@ -1,6 +1,6 @@
+import { type Tx4Imp1AiClient } from "../../src/agents/tx-4-imp-1/orchestrator";
 import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
 import { runTx4Imp1Agent } from "../../src/agents/tx-4-imp-1/orchestrator";
-import type { Tx4Imp1AiClient } from "../../src/agents/tx-4-imp-1/types";
 
 interface ExtractedReport {
   employeeId: string;

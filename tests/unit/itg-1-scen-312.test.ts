@@ -1,5 +1,6 @@
+import { type Tx2Imp1AiClient } from "../../src/agents/tx-2-imp-1/orchestrator";
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import type { Tx2Imp1AiClient } from '../../src/agents/tx-2-imp-1/interfaces';
+
 import { sendConfirmationEmailsWithAggregation } from '../../src/logic/it-1-br-1-1-1';
 
 // Mock types

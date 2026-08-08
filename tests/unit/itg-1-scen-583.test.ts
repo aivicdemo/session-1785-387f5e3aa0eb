@@ -1,9 +1,6 @@
+import { type Tx4Imp1AiClient } from "../../src/agents/tx-4-imp-1/orchestrator";
 import { runTx4Imp1Agent } from "../../src/agents/tx-4-imp-1/orchestrator";
-import {
-  Tx4Imp1AiClient,
-  Tx4Imp1AiClientRequest,
-  Tx4Imp1AiClientResponse,
-} from "../../src/agents/tx-4-imp-1/types";
+import { Tx4Imp1AiClientRequest, Tx4Imp1AiClientResponse } from "../../src/agents/tx-4-imp-1/types";
 import * as db from "../../src/db";
 import * as mailService from "../../src/services/mail";
 import * as txLogService from "../../src/services/transaction-log";

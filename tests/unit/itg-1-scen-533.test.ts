@@ -1,6 +1,6 @@
+import { type Tx1Imp1AiClient } from "../../src/agents/tx-1-imp-1/orchestrator";
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { runTx1Imp1Agent } from '../../src/agents/tx-1-imp-1/orchestrator';
-import type { Tx1Imp1AiClient } from '../../src/agents/tx-1-imp-1/ai-client.interface';
 
 const fetchMock = require('jest-fetch-mock');
 

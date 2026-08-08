@@ -1,6 +1,6 @@
+import { type Tx3Imp1AiClient } from "../../src/agents/tx-3-imp-1/orchestrator";
 import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
 import { runTx3Imp1Agent } from "../../src/agents/tx-3-imp-1/orchestrator";
-import type { Tx3Imp1AiClient } from "../../src/agents/tx-3-imp-1/ai-client";
 
 // Mock types and interfaces
 interface MockConfirmationEmailContent {
