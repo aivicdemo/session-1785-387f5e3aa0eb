@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globa
 
 describe('報告送信時に、送信者本人と部長宛に確認メールを自動配信する機能', () => {
   // SCEN-396: [edge] 報告期限判定機能 - 朝会開始時刻を1秒超過した時点で期限超過と判定される
-  test('朝会開始時刻を1秒超過した時点で期限超過と判定される', () => {
+  test('朝会開始時刻を1秒超過した時点で期限超過と判定される', async () => {
     const mockDateNow = jest.fn();
     const realDateNow = Date.now;
     const realDate = Date;
