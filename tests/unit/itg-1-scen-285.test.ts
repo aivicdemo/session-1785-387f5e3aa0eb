@@ -79,13 +79,13 @@ describe("日報入力フォームの提供と送信機能", () => {
       { status: 200 }
     );
 
-    await runTx2Imp1Agent({
-      db: test_db,
-      ai_client: mock_ai_client,
-      current_time: fixed_current_time,
-      department_head_email: department_head_email,
-      send_email_endpoint: send_email_endpoint,
-    });
+    await runTx2Imp1Agent(
+      test_db,
+      mock_ai_client,
+      fixed_current_time,
+      department_head_email,
+      send_email_endpoint
+    );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const send_email_call = fetchMock.mock.calls[0] as [string, Record<string, unknown>];
