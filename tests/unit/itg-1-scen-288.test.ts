@@ -131,7 +131,7 @@ describe("確認メール配信機能 - 送信者メールアドレスnull時の
         });
       } catch (emailError: unknown) {
         const errorMessage =
-          emailError instanceof Error ? errorError.message : String(emailError);
+          emailError instanceof Error ? emailError.message : String(emailError);
 
         if (errorMessage.includes("SENDER_EMAIL_NULL")) {
           mockLoggerWithCapture.error(

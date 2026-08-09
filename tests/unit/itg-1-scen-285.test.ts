@@ -88,11 +88,11 @@ describe("日報入力フォームの提供と送信機能", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const send_email_call = fetchMock.mock.calls[0];
+    const send_email_call = fetchMock.mock.calls[0] as [string, Record<string, unknown>];
     expect(send_email_call[0]).toBe(send_email_endpoint);
     expect(send_email_call[1].method).toBe("POST");
 
-    const email_payload = JSON.parse(send_email_call[1].body);
+    const email_payload = JSON.parse(send_email_call[1].body as string);
     expect(email_payload.to).toBe(department_head_email);
     expect(email_payload.subject).toMatch(/日報確認/);
     expect(email_payload.body).toContain("部員I");
