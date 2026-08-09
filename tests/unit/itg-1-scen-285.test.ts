@@ -83,8 +83,7 @@ describe("日報入力フォームの提供と送信機能", () => {
       test_db,
       mock_ai_client,
       fixed_current_time,
-      department_head_email,
-      send_email_endpoint
+      department_head_email
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
