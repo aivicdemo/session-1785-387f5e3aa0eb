@@ -28,7 +28,7 @@ describe("朝会報告内容検証・集約機能 - 複数報告の統一フォ�
     const submission_time_c = "2024-01-15T08:40:00Z";
 
     // 部員Aの報告
-    const report_a = {
+    const report_a: SendConfirmationEmailsInput["reports"][number] = {
       user_id: user_employee_a_id,
       yesterday_results: "APIのエラーハンドリング実装を完了した",
       today_plans: "ユーザー認証機能のテストを実施する予定",
@@ -38,7 +38,7 @@ describe("朝会報告内容検証・集約機能 - 複数報告の統一フォ�
     };
 
     // 部員Bの報告
-    const report_b = {
+    const report_b: SendConfirmationEmailsInput["reports"][number] = {
       user_id: user_employee_b_id,
       yesterday_results: "UI画面の修正とレイアウト調整を完了した",
       today_plans: "新機能の画面デザイン案を作成する",
@@ -48,7 +48,7 @@ describe("朝会報告内容検証・集約機能 - 複数報告の統一フォ�
     };
 
     // 部員Cの報告
-    const report_c = {
+    const report_c: SendConfirmationEmailsInput["reports"][number] = {
       user_id: user_employee_c_id,
       yesterday_results: "ドキュメント更新とコードレビューを実施した",
       today_plans: "デプロイメントの準備とテスト環境の構築",
