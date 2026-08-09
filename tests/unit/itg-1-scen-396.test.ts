@@ -18,6 +18,7 @@ describe('報告送信時に、送信者本人と部長宛に確認メールを�
       mockDateNow.mockReturnValue(current_time_ms);
       (global as any).Date = class extends realDate {
         constructor(...args: any[]) {
+          super();
           if (args.length === 0) {
             return new realDate(current_time_ms);
           }

@@ -110,9 +110,9 @@ describe('it-1-br-1-1-1: 確認メール配信・日報一覧集約機能 - 月�
       yesterdayAccomplishment: 'Fixed bug #1234',
       todayPlan: 'Code review for PR #5678',
       currentChallenge: 'Performance optimization in progress',
-      submittedAt: systemTimestampStr,
-      createdAt: systemTimestampStr,
-      updatedAt: systemTimestampStr,
+      submittedAt: new Date(systemTimestampStr),
+      createdAt: new Date(systemTimestampStr),
+      updatedAt: new Date(systemTimestampStr),
     };
 
     // Mock database query to return the report
@@ -129,10 +129,10 @@ describe('it-1-br-1-1-1: 確認メール配信・日報一覧集約機能 - 月�
           recipientEmail: emailParams.to,
           subject: emailParams.subject,
           body: emailParams.body,
-          sentAt: systemTimestampStr,
+          sentAt: new Date(systemTimestampStr),
           status: 'sent',
           payload: emailParams.payload || {},
-          createdAt: systemTimestampStr,
+          createdAt: new Date(systemTimestampStr),
         };
         capturedEmailLogs.push(logRecord);
         mockDb.insertEmailSendLog.mockResolvedValueOnce(logRecord);
@@ -176,7 +176,7 @@ describe('it-1-br-1-1-1: 確認メール配信・日報一覧集約機能 - 月�
     // Assertion 5: Email log records preserve millisecond precision
     expect(capturedEmailLogs.length).toBeGreaterThan(0);
     const emailLog = capturedEmailLogs[0];
-    expect(emailLog.sentAt).toBe('2024-01-31T23:59:59.999Z');
+    expect(emailLog.sentAt.toISOString()).toBe('2024-01-31T23:59:59.999Z');
     expect(emailLog.payload.timestamp).toBe('2024-01-31T23:59:59.999Z');
 
     // Assertion 6: Manager notification email received correct timestamp
