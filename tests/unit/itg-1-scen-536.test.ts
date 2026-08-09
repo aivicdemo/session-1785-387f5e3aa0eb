@@ -21,11 +21,11 @@ class MockTx1Imp1AiClient implements Tx1Imp1AiClient {
     return {
       confidence: 1.0,
       isValid: true,
-      content: {
+      content: JSON.stringify({
         yesterday: "sample",
         today: "sample",
         issues: "sample",
-      },
+      }),
       metadata: {
         processedAt: new Date("2024-01-15T09:00:00Z"),
         modelVersion: "v1.0",
@@ -95,11 +95,11 @@ describe("tx-1-imp-1: 日報入力から送信・確認メール配信までの�
     const lowConfidenceResponse: Tx1Imp1AiResponse = {
       confidence: 0.65,
       isValid: false,
-      content: {
+      content: JSON.stringify({
         yesterday: null,
         today: "",
         issues: "unclear",
-      },
+      }),
       metadata: {
         processedAt: new Date("2024-01-15T09:00:00Z"),
         modelVersion: "v1.0",
