@@ -16,42 +16,67 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
         }
-        h1 {
-            color: #333;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 30px;
-            font-size: 24px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        .nav-links a:hover {
+            background-color: #0056b3;
         }
         .deadline-section {
             background-color: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
             padding: 20px;
             margin-bottom: 30px;
         }
         .deadline-section h2 {
             color: #856404;
-            font-size: 16px;
+            font-size: 18px;
             margin-bottom: 10px;
         }
         .deadline-text {
             color: #856404;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
         }
         .summary-section {
-            margin-top: 30px;
+            margin-bottom: 30px;
         }
         .summary-section h2 {
+            font-size: 20px;
             color: #333;
-            font-size: 18px;
             margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
         }
         .summary-table {
             width: 100%;
@@ -61,29 +86,43 @@
         .summary-table th {
             background-color: #007bff;
             color: white;
-            padding: 12px;
+            padding: 15px;
             text-align: left;
             font-weight: 600;
             border: 1px solid #ddd;
         }
         .summary-table td {
-            padding: 12px;
+            padding: 15px;
             border: 1px solid #ddd;
         }
         .summary-table tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #f0f0f0;
         }
         .summary-table tr:hover {
-            background-color: #f0f0f0;
+            background-color: #e8f4f8;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-submitted {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
         }
         .progress-bar {
             width: 100%;
             height: 24px;
-            background-color: #e9ecef;
-            border-radius: 4px;
+            background-color: #e0e0e0;
+            border-radius: 12px;
             overflow: hidden;
-            display: flex;
-            align-items: center;
+            margin: 5px 0;
         }
         .progress-fill {
             height: 100%;
@@ -95,48 +134,42 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .nav-button {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
-        }
-        .nav-button:hover {
-            background-color: #0056b3;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>日報提出状況ダッシュボード</h1>
-        
+        <div class="header">
+            <h1>日報提出状況ダッシュボード</h1>
+            <div class="nav-links">
+                <a href="./daily-report.html">日報入力・送信</a>
+            </div>
+        </div>
+
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <div class="deadline-text" id="deadlineText">本日 18:00 まで</div>
+            <div class="deadline-text" id="deadlineText">
+                本日 18:00 までに提出してください
+            </div>
         </div>
-        
+
         <div class="summary-section">
             <h2>部門別提出状況サマリー</h2>
             <table class="summary-table">
                 <thead>
                     <tr>
                         <th>部門名</th>
-                        <th>提出済み / 総人数</th>
+                        <th>提出済み</th>
+                        <th>未提出</th>
                         <th>提出率</th>
+                        <th>進捗</th>
                     </tr>
                 </thead>
-                <tbody id="summaryBody">
+                <tbody id="summaryTableBody">
                     <tr>
                         <td>営業部</td>
-                        <td>8 / 10</td>
+                        <td>8</td>
+                        <td>2</td>
+                        <td>80%</td>
                         <td>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: 80%;">80%</div>
@@ -145,64 +178,45 @@
                     </tr>
                     <tr>
                         <td>企画部</td>
-                        <td>6 / 8</td>
+                        <td>6</td>
+                        <td>1</td>
+                        <td>86%</td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 75%;">75%</div>
+                                <div class="progress-fill" style="width: 86%;">86%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>技術部</td>
-                        <td>12 / 15</td>
+                        <td>10</td>
+                        <td>0</td>
+                        <td>100%</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%;">100%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>管理部</td>
+                        <td>4</td>
+                        <td>1</td>
+                        <td>80%</td>
                         <td>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
-                    <tr>
-                        <td>管理部</td>
-                        <td>5 / 6</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 83%;">83%</div>
-                            </div>
-                        </td>
-                    </tr>
                 </tbody>
             </table>
         </div>
-        
-        <button class="nav-button" onclick="window.location.href='./daily-report.html'">日報入力・送信へ</button>
     </div>
-    
+
     <script>
-        // Initialize
-        function init() {
-            // Check if user is logged in
-            const userStr = sessionStorage.getItem('currentUser');
-            if (!userStr) {
-                window.location.href = './login.html';
-                return;
-            }
-            
-            // Set deadline
-            const now = new Date();
-            const deadline = new Date(now);
-            deadline.setHours(18, 0, 0, 0);
-            
-            const deadlineText = deadline.toLocaleString('ja-JP', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            document.getElementById('deadlineText').textContent = '本日 ' + deadlineText.split(' ')[1] + ' まで';
-        }
-        
-        window.addEventListener('load', init);
+        // Dashboard initialization
+        console.log('Dashboard loaded');
     </script>
 </body>
 </html>

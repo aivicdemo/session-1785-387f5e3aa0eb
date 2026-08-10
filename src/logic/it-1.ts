@@ -1984,6 +1984,7 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
       input.yesterdayAccomplishment ||
       input.yesterday_accomplishment ||
       input.yesterday_report ||
+      input.yesterday ||
       '';
   
     const today =
@@ -1991,6 +1992,7 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
       input.todayPlan ||
       input.todays_plan ||
       input.today_report ||
+      input.today ||
       '';
   
     const challenge =
@@ -2002,14 +2004,15 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
       input.issue_report ||
       input.issues_text ||
       input.challenge ||
+      input.issues ||
       '';
   
     // Define constraints
-    const YESTERDAY_MIN = 10;
+    const YESTERDAY_MIN = 1;
     const YESTERDAY_MAX = 500;
     const TODAY_MIN = 2;
     const TODAY_MAX = 500;
-    const CHALLENGE_MIN = 10;
+    const CHALLENGE_MIN = 1;
     const CHALLENGE_MAX = 1000;
   
     // Collect all validation errors
@@ -2084,21 +2087,21 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
       // Check for forbidden characters (HTML/script tags)
       if (/<[^>]*>/g.test(today)) {
         errors.push({
-          field: 'todays_plan',
+          field: 'today_plan',
           message: '今日やることに禁止文字が含まれています',
         });
         errorMessages.push('今日やることに禁止文字が含まれています');
       }
       if (today.length < TODAY_MIN) {
         errors.push({
-          field: 'todays_plan',
+          field: 'today_plan',
           message: `今日やることは${TODAY_MIN}文字以上で入力してください`,
         });
         errorMessages.push(`今日やることは${TODAY_MIN}文字以上で入力してください`);
       }
       if (today.length > TODAY_MAX) {
         errors.push({
-          field: 'todays_plan',
+          field: 'today_plan',
           message: `今日やることは${TODAY_MAX}文字以内で入力してください`,
         });
         errorMessages.push(`今日やることは${TODAY_MAX}文字以内で入力してください`);
