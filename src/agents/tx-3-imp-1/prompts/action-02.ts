@@ -4,20 +4,22 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Tx3Imp1ConfirmationEmailContent {
+  emailId: string;
+  sentAt: string;
   recipientId: string;
   recipientName: string;
-  recipientEmail: string;
-  submissionStatus: "submitted" | "pending" | "overdue";
-  submissionTime?: string;
-  reportContent?: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
+  subject: string;
+  body: string;
+  reportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "submitted" | "pending" | "overdue";
+    submittedAt?: string;
+  }>;
 }
 
 export interface Tx3Imp1PromptContext {
-  confirmationEmails: Tx3Imp1ConfirmationEmailContent[];
+  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
   escalationThresholdMinutes: number;
@@ -26,57 +28,92 @@ export interface Tx3Imp1PromptContext {
 export interface Tx3Imp1IdentifiedMember {
   memberId: string;
   memberName: string;
-  memberEmail: string;
-  status: "not_reported" | "delayed" | "submitted";
-  daysSinceDeadline?: number;
-  previousEscalationCount: number;
+  status: "not_reported" | "delayed";
+  hoursOverdue?: number;
+  lastReminderSentAt?: string;
+  reminderCount: number;
 }
 
 export interface Tx3Imp1Action02Output {
   identifiedMembers: Tx3Imp1IdentifiedMember[];
-  escalationTargets: Tx3Imp1IdentifiedMember[];
-  totalAnalyzed: number;
   totalNotReported: number;
   totalDelayed: number;
   analysisTimestamp: string;
 }
 
-export function buildAction02Prompt(
-  context: Tx3Imp1PromptContext
-): string {
-  const emailSummary = context.confirmationEmails
-    .map(
-      (email) =>
-        `- ${email.recipientName} (${email.recipientEmail}): ${email.submissionStatus}`
-    )
+export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
+  const {
+    confirmationEmailContent,
+    currentTimestamp,
+    submissionDeadline,
+    escalationThresholdMinutes,
+  } = context;
+
+  const notReportedMembers = confirmationEmailContent.reportedMembers.filter(
+    (m) => m.status === "pending"
+  );
+  const delayedMembers = confirmationEmailContent.reportedMembers.filter(
+    (m) => m.status === "overdue"
+  );
+
+  const notReportedList = notReportedMembers
+    .map((m) => `- ${m.memberName} (ID: ${m.memberId})`)
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying non-reporting and delayed members from confirmation email data.
+  const delayedList = delayedMembers
+    .map((m) => `- ${m.memberName} (ID: ${m.memberId}), submitted at: ${m.submittedAt}`)
+    .join("\n");
 
-Current timestamp: ${context.currentTimestamp}
-Submission deadline: ${context.submissionDeadline}
-Escalation threshold: ${context.escalationThresholdMinutes} minutes after deadline
+  return `You are an AI agent responsible for identifying non-reporting and delayed report members from confirmation email content.
 
-Confirmation email data:
-${emailSummary}
+## Task: Identify Non-Reporting and Delayed Members
 
-Your task:
-1. Analyze each confirmation email entry
-2. Identify members with "pending" or "overdue" status
-3. Determine escalation targets based on:
-   - Status is "overdue"
-   - Time since deadline exceeds escalation threshold
-   - Previous escalation count should be considered for repeat offenders
-4. Classify each member as "not_reported", "delayed", or "submitted"
-5. Calculate days since deadline for delayed members
+### Confirmation Email Details
+- Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
+- Recipient: ${confirmationEmailContent.recipientName}
+- Subject: ${confirmationEmailContent.subject}
 
-Return a structured analysis with:
-- List of identified non-reporting and delayed members
-- List of escalation targets (subset of identified members)
-- Summary counts
-- Analysis timestamp
+### Current Context
+- Current Timestamp: ${currentTimestamp}
+- Submission Deadline: ${submissionDeadline}
+- Escalation Threshold: ${escalationThresholdMinutes} minutes
 
-Focus on accuracy and completeness in member identification.`;
+### Members Not Yet Reported
+${notReportedList || "None"}
 
-  return prompt;
+### Members with Delayed Reports
+${delayedList || "None"}
+
+### Your Task
+1. Analyze the confirmation email content to identify all members who have not submitted their reports
+2. Identify members whose reports are delayed beyond the submission deadline
+3. Calculate hours overdue for each delayed member
+4. Determine escalation priority based on delay duration
+5. Check if previous reminders have been sent to these members
+6. Output a structured list of identified members with their status and escalation information
+
+### Output Format
+Return a JSON object with the following structure:
+{
+  "identifiedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "status": "not_reported" | "delayed",
+      "hoursOverdue": number (only for delayed members),
+      "lastReminderSentAt": "ISO8601 timestamp or null",
+      "reminderCount": number
+    }
+  ],
+  "totalNotReported": number,
+  "totalDelayed": number,
+  "analysisTimestamp": "ISO8601 timestamp"
+}
+
+### Important Notes
+- Be precise in identifying members from the email content
+- Calculate overdue hours accurately based on current timestamp and deadline
+- Prioritize members with longer delays for escalation
+- Ensure all identified members are included in the output`;
 }

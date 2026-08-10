@@ -3,7 +3,7 @@
 
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
-export interface Action06Context {
+export interface Action06PromptInput {
   reportSummary: string;
   extractedIssues: Array<{
     id: string;
@@ -11,109 +11,145 @@ export interface Action06Context {
     description: string;
     category: string;
   }>;
-  priorityAssignments: Array<{
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>;
+  priorityClassificationRules: {
+    critical: string[];
+    high: string[];
+    medium: string[];
+    low: string[];
+  };
+  previousPriorityDecisions?: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  departmentHead: string;
-  reportingDate: string;
 }
 
-export interface Action06PromptInput {
-  context: Action06Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
-  }>;
+export interface PrioritizedIssue {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  assignedPriority: "critical" | "high" | "medium" | "low";
+  reasoning: string;
+  affectedTeamMembers: string[];
+  estimatedImpact: string;
+  recommendedAction: string;
 }
 
 export interface Action06PromptOutput {
-  version: string;
-  actionNumber: 6;
-  systemPrompt: string;
-  userPrompt: string;
-  expectedOutputFormat: {
-    type: "structured";
-    schema: {
-      reportPresentation: string;
-      prioritizedIssuesList: Array<{
-        rank: number;
-        issueId: string;
-        title: string;
-        priority: string;
-        actionItems: string[];
-      }>;
-      recommendations: string[];
-      escalationFlags: string[];
-    };
+  prioritizedIssues: PrioritizedIssue[];
+  prioritySummary: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
   };
+  overallRiskAssessment: string;
+  recommendedFocusAreas: string[];
+  escalationRequired: boolean;
+  escalationReason?: string;
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
-Your task is to present the collected and analyzed daily reports to the department head in a clear, actionable format.
-You must organize the extracted issues by priority level and provide clear recommendations for action.
-Focus on clarity, conciseness, and actionability in your presentation.`;
+export function buildAction06Prompt(input: Action06PromptInput): string {
+  const issuesSection = input.extractedIssues
+    .map(
+      (issue, index) =>
+        `Issue ${index + 1}: ${issue.title}\n` +
+        `  ID: ${issue.id}\n` +
+        `  Category: ${issue.category}\n` +
+        `  Description: ${issue.description}`
+    )
+    .join("\n\n");
 
-  const userPrompt = `Based on the daily reports collected and analyzed in the previous steps, prepare a final report for the department head.
+  const rulesSection =
+    `Critical Priority Indicators: ${input.priorityClassificationRules.critical.join(", ")}\n` +
+    `High Priority Indicators: ${input.priorityClassificationRules.high.join(", ")}\n` +
+    `Medium Priority Indicators: ${input.priorityClassificationRules.medium.join(", ")}\n` +
+    `Low Priority Indicators: ${input.priorityClassificationRules.low.join(", ")}`;
 
-Report Summary:
-${input.context.reportSummary}
+  const previousDecisionsSection =
+    input.previousPriorityDecisions && input.previousPriorityDecisions.length > 0
+      ? `Previous Priority Decisions (for consistency):\n${input.previousPriorityDecisions
+          .map(
+            (decision) =>
+              `- Issue ${decision.issueId}: ${decision.priority} (${decision.reasoning})`
+          )
+          .join("\n")}`
+      : "";
 
-Extracted Issues:
-${input.context.extractedIssues
-  .map(
-    (issue) => `
-- ID: ${issue.id}
-  Title: ${issue.title}
-  Description: ${issue.description}
-  Category: ${issue.category}`
-  )
-  .join("\n")}
+  const teamMembersSection = input.teamMembers
+    .map((member) => `- ${member.name} (${member.department})`)
+    .join("\n");
 
-Current Priority Assignments:
-${input.context.priorityAssignments
-  .map(
-    (assignment) => `
-- Issue ${assignment.issueId}: ${assignment.priority.toUpperCase()}
-  Reasoning: ${assignment.reasoning}`
-  )
-  .join("\n")}
+  return (
+    `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
 
-Department Head: ${input.context.departmentHead}
-Reporting Date: ${input.context.reportingDate}
+## Task
+Analyze the following extracted issues and assign priority levels (critical, high, medium, low) based on the provided classification rules and impact assessment.
 
-Please provide:
-1. A clear presentation of the overall progress status
-2. A prioritized list of issues ranked by urgency and impact
-3. Specific action items for each high-priority issue
-4. Recommendations for resource allocation or process improvements
-5. Any escalation flags for issues requiring immediate attention
+## Extracted Issues
+${issuesSection}
 
-Format your response as a structured report suitable for morning meeting discussion.`;
+## Priority Classification Rules
+${rulesSection}
 
-  return {
-    version: ACTION_06_PROMPT_VERSION,
-    actionNumber: 6,
-    systemPrompt,
-    userPrompt,
-    expectedOutputFormat: {
-      type: "structured",
-      schema: {
-        reportPresentation: "string describing overall progress status",
-        prioritizedIssuesList: [
-          {
-            rank: 1,
-            issueId: "string",
-            title: "string",
-            priority: "critical|high|medium|low",
-            actionItems: ["array of specific action items"],
-          },
-        ],
-        recommendations: ["array of recommendations"],
-        escalationFlags: ["array of escalation flags if any"],
-      },
-    },
-  };
+${previousDecisionsSection ? `\n## Historical Context\n${previousDecisionsSection}` : ""}
+
+## Team Members Context
+${teamMembersSection}
+
+## Report Summary
+${input.reportSummary}
+
+## Instructions
+1. For each issue, determine the appropriate priority level based on:
+   - Alignment with classification rules
+   - Potential impact on team productivity
+   - Dependencies and affected team members
+   - Urgency indicators in the report
+
+2. Provide reasoning for each priority assignment
+
+3. Identify which team members are affected by each issue
+
+4. Assess overall risk level and recommend focus areas
+
+5. Determine if escalation to management is required
+
+6. Maintain consistency with previous priority decisions where applicable
+
+## Output Format
+Return a JSON object with the following structure:
+{
+  "prioritizedIssues": [
+    {
+      "id": "issue_id",
+      "title": "issue_title",
+      "description": "issue_description",
+      "category": "issue_category",
+      "assignedPriority": "critical|high|medium|low",
+      "reasoning": "explanation of priority assignment",
+      "affectedTeamMembers": ["member_id1", "member_id2"],
+      "estimatedImpact": "description of potential impact",
+      "recommendedAction": "suggested action to address the issue"
+    }
+  ],
+  "prioritySummary": {
+    "critical": number,
+    "high": number,
+    "medium": number,
+    "low": number
+  },
+  "overallRiskAssessment": "assessment of overall team risk level",
+  "recommendedFocusAreas": ["area1", "area2"],
+  "escalationRequired": boolean,
+  "escalationReason": "reason for escalation if required"
+}` +
+    "\n\nProvide only valid JSON output without markdown formatting or additional text."
+  );
 }

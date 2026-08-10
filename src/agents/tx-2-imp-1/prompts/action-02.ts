@@ -4,94 +4,97 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  submissionDeadline: string;
-  targetDate: string;
-  engineerList: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  submittedEngineers: Array<{
-    id: string;
-    name: string;
-    submittedAt: string;
-  }>;
+  reportingDeadline: string;
+  overdueThresholdHours: number;
   systemTime: string;
+  reportSubmissionStatuses: Array<{
+    employeeId: string;
+    employeeName: string;
+    submitted: boolean;
+    submittedAt?: string;
+  }>;
 }
 
 export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
+  unsubmittedEmployees: Array<{
+    employeeId: string;
+    employeeName: string;
+  }>;
+  overdueEmployees: Array<{
+    employeeId: string;
+    employeeName: string;
+    hoursOverdue: number;
+  }>;
+  summaryList: {
+    totalEmployees: number;
+    submittedCount: number;
+    unsubmittedCount: number;
+    overdueCount: number;
+  };
 }
 
-export function buildAction02Prompt(
-  input: Action02PromptInput
-): Action02PromptOutput {
+export function buildAction02Prompt(input: Action02PromptInput): string {
   const {
-    submissionDeadline,
-    targetDate,
-    engineerList,
-    submittedEngineers,
+    reportingDeadline,
+    overdueThresholdHours,
     systemTime,
+    reportSubmissionStatuses,
   } = input;
 
-  const submittedIds = new Set(submittedEngineers.map((e) => e.id));
-  const unsubmittedEngineers = engineerList.filter(
-    (e) => !submittedIds.has(e.id)
-  );
+  const unsubmitted = reportSubmissionStatuses.filter((s) => !s.submitted);
+  const submitted = reportSubmissionStatuses.filter((s) => s.submitted);
 
-  const delayedEngineers = submittedEngineers.filter((e) => {
-    const submittedTime = new Date(e.submittedAt).getTime();
-    const deadlineTime = new Date(submissionDeadline).getTime();
+  const deadlineTime = new Date(reportingDeadline).getTime();
+  const currentTime = new Date(systemTime).getTime();
+  const overdueThresholdMs = overdueThresholdHours * 60 * 60 * 1000;
+
+  const overdue = submitted.filter((s) => {
+    if (!s.submittedAt) return false;
+    const submittedTime = new Date(s.submittedAt).getTime();
     return submittedTime > deadlineTime;
   });
 
-  const unsubmittedList = unsubmittedEngineers
-    .map((e) => `- ${e.name} (${e.email})`)
-    .join("\n");
-
-  const delayedList = delayedEngineers
-    .map((e) => `- ${e.name} (submitted at ${e.submittedAt})`)
-    .join("\n");
-
-  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
+  const promptText = `
+You are an AI agent responsible for identifying unsubmitted and overdue daily reports.
 
 Current System Time: ${systemTime}
-Target Date: ${targetDate}
-Submission Deadline: ${submissionDeadline}
+Reporting Deadline: ${reportingDeadline}
+Overdue Threshold: ${overdueThresholdHours} hours
 
-Total Engineers: ${engineerList.length}
-Submitted Reports: ${submittedEngineers.length}
-Unsubmitted Reports: ${unsubmittedEngineers.length}
-Delayed Submissions: ${delayedEngineers.length}
+Total Employees: ${reportSubmissionStatuses.length}
+Submitted Reports: ${submitted.length}
+Unsubmitted Reports: ${unsubmitted.length}
+Overdue Reports: ${overdue.length}
 
-UNSUBMITTED ENGINEERS:
-${unsubmittedList || "None"}
+Unsubmitted Employees:
+${unsubmitted.map((e) => `- ${e.employeeName} (ID: ${e.employeeId})`).join("\n") || "None"}
 
-DELAYED SUBMISSIONS:
-${delayedList || "None"}
+Overdue Employees (submitted after deadline):
+${overdue
+  .map((e) => {
+    const submittedTime = new Date(e.submittedAt!).getTime();
+    const hoursOverdue = Math.round((submittedTime - deadlineTime) / (60 * 60 * 1000));
+    return `- ${e.employeeName} (ID: ${e.employeeId}): ${hoursOverdue} hours overdue`;
+  })
+  .join("\n") || "None"}
 
-Your task:
-1. Analyze the submission status data provided above
-2. Identify all engineers who have not submitted their daily reports
-3. Identify all engineers whose submissions were delayed (after the deadline)
-4. Create a comprehensive summary of non-compliance
-5. Determine the appropriate notification priority level (HIGH, MEDIUM, LOW)
-6. Generate a structured report for the department manager
+Task: Analyze the report submission status and identify:
+1. All employees who have not submitted their reports
+2. All employees whose reports were submitted after the deadline
+3. Create a summary list with total counts
 
-Output format:
+Respond with a JSON object containing:
 {
-  "unsubmittedCount": number,
-  "delayedCount": number,
-  "unsubmittedEngineers": [{ "id": string, "name": string, "email": string }],
-  "delayedEngineers": [{ "id": string, "name": string, "submittedAt": string }],
-  "priorityLevel": "HIGH" | "MEDIUM" | "LOW",
-  "summary": string,
-  "recommendedAction": string
-}`;
+  "unsubmittedEmployees": [{"employeeId": "...", "employeeName": "..."}],
+  "overdueEmployees": [{"employeeId": "...", "employeeName": "...", "hoursOverdue": number}],
+  "summaryList": {
+    "totalEmployees": number,
+    "submittedCount": number,
+    "unsubmittedCount": number,
+    "overdueCount": number
+  }
+}
+`;
 
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
-  };
+  return promptText;
 }

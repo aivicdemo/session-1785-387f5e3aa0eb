@@ -6,117 +6,143 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 export interface Action04Context {
   engineerId: string;
   engineerName: string;
-  submittedReportContent: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
+  reportDate: string;
+  previousDayReport?: {
+    achievements: string;
     issues: string;
+    submittedAt: string;
   };
-  submissionTimestamp: string;
-  systemRegistrationId?: string;
+  currentInputData?: {
+    yesterdayAchievements: string;
+    todayPlans: string;
+    currentIssues: string;
+    submittedAt: string;
+  };
+  validationErrors?: string[];
+  systemRegistrationStatus?: "pending" | "success" | "failed";
+  registrationErrorMessage?: string;
 }
 
-export interface Action04ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-export interface Action04PromptInput {
+export interface Action04PromptParams {
   context: Action04Context;
   validationRules?: {
-    minAccomplishmentLength?: number;
-    minPlanLength?: number;
-    maxIssueLength?: number;
-    requireAllFields?: boolean;
+    minAchievementsLength: number;
+    minPlansLength: number;
+    minIssuesLength: number;
+    maxAchievementsLength: number;
+    maxPlansLength: number;
+    maxIssuesLength: number;
+  };
+  registrationSystemInfo?: {
+    systemName: string;
+    apiEndpoint: string;
+    retryAttempts: number;
   };
 }
 
-export interface Action04PromptOutput {
-  action: "register" | "reject" | "escalate";
-  validation: Action04ValidationResult;
-  registrationPayload?: {
-    engineerId: string;
-    reportContent: {
-      yesterdayAccomplishments: string;
-      todayPlans: string;
-      issues: string;
-    };
-    submissionTimestamp: string;
-  };
-  escalationReason?: string;
-  nextAction?: string;
+export interface Action04PromptResult {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action04Context;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
+export function buildAction04Prompt(
+  params: Action04PromptParams
+): Action04PromptResult {
   const {
     context,
     validationRules = {
-      minAccomplishmentLength: 10,
-      minPlanLength: 10,
-      maxIssueLength: 500,
-      requireAllFields: true,
+      minAchievementsLength: 10,
+      minPlansLength: 10,
+      minIssuesLength: 0,
+      maxAchievementsLength: 1000,
+      maxPlansLength: 1000,
+      maxIssuesLength: 1000,
     },
-  } = input;
+    registrationSystemInfo = {
+      systemName: "日報管理システム",
+      apiEndpoint: "/api/reports",
+      retryAttempts: 3,
+    },
+  } = params;
 
-  const rulesDescription = `
-Validation Rules:
-- Minimum accomplishment length: ${validationRules.minAccomplishmentLength} characters
-- Minimum plan length: ${validationRules.minPlanLength} characters
-- Maximum issue length: ${validationRules.maxIssueLength} characters
-- All fields required: ${validationRules.requireAllFields}
-`;
+  const systemPrompt = `あなたは日報管理システムの自動化エージェント（Action 4: 日報の妥当性検証と管理システムへの登録）です。
 
-  const reportContent = `
-Engineer ID: ${context.engineerId}
-Engineer Name: ${context.engineerName}
-Submission Timestamp: ${context.submissionTimestamp}
+## 責務
+エンジニアから受け取った日報入力内容の妥当性を検証し、問題がなければ管理システムに登録します。
 
-Yesterday's Accomplishments:
-${context.submittedReportContent.yesterdayAccomplishments}
+## 検証ルール
+- 昨日の実績: 最小${validationRules.minAchievementsLength}文字、最大${validationRules.maxAchievementsLength}文字
+- 本日の予定: 最小${validationRules.minPlansLength}文字、最大${validationRules.maxPlansLength}文字
+- 抱えている課題: 最小${validationRules.minIssuesLength}文字、最大${validationRules.maxIssuesLength}文字
+- 必須項目の完全性を確認
+- 不適切な表現や不完全な内容を検出
 
-Today's Plans:
-${context.submittedReportContent.todayPlans}
+## 登録処理
+- 検証成功時: ${registrationSystemInfo.systemName}に登録
+- API エンドポイント: ${registrationSystemInfo.apiEndpoint}
+- リトライ回数: ${registrationSystemInfo.retryAttempts}回
+- 登録失敗時: エスカレーション対象として記録
 
-Issues/Challenges:
-${context.submittedReportContent.issues}
-`;
-
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the report management system.
-
-${rulesDescription}
-
-Please analyze the following submitted report:
-
-${reportContent}
-
-Your task:
-1. Validate the report content against the rules above
-2. Identify any errors (missing required fields, content too short/long, inappropriate content)
-3. Identify any warnings (unusual patterns, potential issues)
-4. Determine the appropriate action: "register" (valid and ready), "reject" (invalid, needs resubmission), or "escalate" (valid but requires human review)
-5. If action is "register", prepare the registration payload for the management system
-6. If action is "reject" or "escalate", provide clear reasoning
-
-Respond with a JSON object containing:
+## 出力形式
+JSON形式で以下を返却:
 {
-  "action": "register" | "reject" | "escalate",
-  "validation": {
-    "isValid": boolean,
-    "errors": string[],
-    "warnings": string[]
-  },
-  "registrationPayload": {
-    "engineerId": string,
-    "reportContent": {
-      "yesterdayAccomplishments": string,
-      "todayPlans": string,
-      "issues": string
-    },
-    "submissionTimestamp": string
-  } | null,
-  "escalationReason": string | null,
-  "nextAction": string | null
+  "isValid": boolean,
+  "validationErrors": string[],
+  "registrationStatus": "pending" | "success" | "failed",
+  "registrationMessage": string,
+  "escalationRequired": boolean,
+  "escalationReason": string | null
 }`;
 
-  return prompt;
+  const userPrompt = `以下のエンジニアの日報入力内容を検証し、管理システムへの登録を実行してください。
+
+## エンジニア情報
+- ID: ${context.engineerId}
+- 名前: ${context.engineerName}
+- 報告日: ${context.reportDate}
+
+## 入力内容
+${
+  context.currentInputData
+    ? `
+昨日の実績:
+${context.currentInputData.yesterdayAchievements}
+
+本日の予定:
+${context.currentInputData.todayPlans}
+
+抱えている課題:
+${context.currentInputData.currentIssues}
+
+提出時刻: ${context.currentInputData.submittedAt}
+`
+    : "入力内容がまだ受け取られていません"
+}
+
+## 前日の日報（参考）
+${
+  context.previousDayReport
+    ? `
+昨日の実績: ${context.previousDayReport.achievements}
+昨日の課題: ${context.previousDayReport.issues}
+提出時刻: ${context.previousDayReport.submittedAt}
+`
+    : "前日の日報はありません"
+}
+
+## 実行内容
+1. 入力内容の妥当性を検証してください
+2. 検出された問題があれば詳細を記録してください
+3. 検証成功時は${registrationSystemInfo.systemName}に登録してください
+4. 登録結果をJSON形式で返却してください
+5. 登録失敗またはエスカレーション条件に該当する場合は escalationRequired を true にしてください`;
+
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

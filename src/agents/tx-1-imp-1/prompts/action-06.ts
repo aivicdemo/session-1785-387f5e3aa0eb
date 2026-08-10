@@ -10,7 +10,7 @@ export interface Action06Context {
   yesterdayAccomplishments: string;
   todayPlans: string;
   currentIssues: string;
-  submissionTimestamp: string;
+  submissionTime: string;
   isLate: boolean;
   daysOverdue: number;
 }
@@ -24,40 +24,37 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management system.
-Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
+  const systemPrompt = `You are an automated notification system for the morning report management workflow.
+Your role is to send confirmation emails to administrators after a report has been successfully registered.
 You must:
-1. Assess the urgency based on how many days overdue the submission is
-2. Compose a professional but firm reminder message
-3. Determine the appropriate communication channel (email or chat)
-4. Log the reminder action for audit purposes
-5. Avoid excessive notifications that could burden the engineer
+1. Verify the report submission details are complete and accurate
+2. Generate a professional confirmation email for the administrator
+3. Include all relevant report information in the email
+4. Flag any overdue submissions for priority review
+5. Ensure the email is formatted for immediate action`;
 
-Guidelines:
-- For 1-2 days overdue: Send a polite reminder email
-- For 3+ days overdue: Send urgent reminder via both email and chat
-- Include the deadline and current status in the message
-- Provide a direct link to the report submission system
-- Keep tone professional and non-accusatory`;
+  const overdueNotice = context.isLate
+    ? `\n⚠️ OVERDUE ALERT: This report was submitted ${context.daysOverdue} day(s) late.`
+    : "";
 
-  const userPrompt = `Process the following overdue report submission:
+  const userPrompt = `Process the following report submission and generate a confirmation email for the administrator:
 
 Engineer: ${context.engineerName}
 Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Days Overdue: ${context.daysOverdue}
-Submission Status: Not submitted as of ${context.submissionTimestamp}
+Submission Time: ${context.submissionTime}${overdueNotice}
 
-Yesterday's Accomplishments (if any): ${context.yesterdayAccomplishments || "Not provided"}
-Today's Plans (if any): ${context.todayPlans || "Not provided"}
-Current Issues (if any): ${context.currentIssues || "Not provided"}
+Report Content:
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
 
-Tasks:
-1. Determine the reminder urgency level (low/medium/high)
-2. Generate an appropriate reminder message
-3. Specify the communication channel(s) to use
-4. Create a log entry for this reminder action
-5. Suggest any escalation actions if needed`;
+Generate a confirmation email that:
+1. Acknowledges successful report registration
+2. Summarizes the key points from the report
+3. Highlights any critical issues mentioned
+4. Includes timestamp and submission status
+5. Provides next steps for the administrator`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

@@ -13,32 +13,46 @@ export interface Action05Context {
     currentIssues: string;
   };
   submissionTimestamp: string;
-  managementSystemId?: string;
+  systemRegistrationStatus: "pending" | "success" | "failed";
+  registrationErrorMessage?: string;
 }
 
-export interface Action05PromptResult {
-  action: "register_report";
-  reportId: string;
-  engineerId: string;
-  reportDate: string;
-  validationStatus: "valid" | "invalid";
-  validationErrors?: string[];
-  registrationTimestamp: string;
-  nextAction: "send_confirmation_email" | "escalate";
+export interface Action05PromptInput {
+  context: Action05Context;
+  adminEmailAddresses: string[];
+  reportManagementSystemName: string;
+  confirmationEmailTemplate?: string;
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const prompt = `You are an AI agent responsible for registering daily reports in the management system.
+export interface Action05PromptOutput {
+  promptText: string;
+  version: string;
+  actionType: "send_confirmation_email";
+  targetAudience: "admin";
+}
 
-## Current Task: Register Daily Report (Action 5)
+export function buildAction05Prompt(
+  input: Action05PromptInput
+): Action05PromptOutput {
+  const {
+    context,
+    adminEmailAddresses,
+    reportManagementSystemName,
+    confirmationEmailTemplate,
+  } = input;
 
-### Engineer Information
+  const basePrompt = `You are an automated email dispatch agent for the morning report management system.
+
+## Task: Send Confirmation Email to Administrators
+
+### Report Details
 - Engineer ID: ${context.engineerId}
 - Engineer Name: ${context.engineerName}
 - Report Date: ${context.reportDate}
 - Submission Timestamp: ${context.submissionTimestamp}
+- System Registration Status: ${context.systemRegistrationStatus}
 
-### Submitted Report Content
+### Report Content
 **Yesterday's Accomplishments:**
 ${context.submittedReportContent.yesterdayAccomplishments}
 
@@ -48,46 +62,42 @@ ${context.submittedReportContent.todayPlans}
 **Current Issues:**
 ${context.submittedReportContent.currentIssues}
 
-## Your Responsibilities
+### Recipients
+${adminEmailAddresses.map((email) => `- ${email}`).join("\n")}
 
-1. **Validate Report Content**
-   - Verify all required fields are present and non-empty
-   - Check that content is appropriate and professional
-   - Ensure no sensitive information is exposed
-   - Validate that the report is coherent and meaningful
+### System Information
+- Report Management System: ${reportManagementSystemName}
+- Registration Status: ${context.systemRegistrationStatus}${
+    context.registrationErrorMessage
+      ? `\n- Error Details: ${context.registrationErrorMessage}`
+      : ""
+  }
 
-2. **Register in Management System**
-   - Create a unique report ID
-   - Store the report with all metadata
-   - Record the registration timestamp
-   - Link the report to the engineer's profile
+### Email Composition Instructions
+1. Generate a professional confirmation email
+2. Include all report details in a clear, structured format
+3. Confirm successful registration in the ${reportManagementSystemName}
+4. Provide timestamp of confirmation
+5. Include system reference ID for tracking
+6. Add footer with system information
 
-3. **Determine Next Action**
-   - If registration is successful: proceed to send confirmation email
-   - If validation fails: escalate to human review
-
-## Output Format
-
-Respond with a JSON object containing:
-{
-  "action": "register_report",
-  "reportId": "<generated-unique-id>",
-  "engineerId": "${context.engineerId}",
-  "reportDate": "${context.reportDate}",
-  "validationStatus": "valid" | "invalid",
-  "validationErrors": [<array of error messages if invalid>],
-  "registrationTimestamp": "<ISO-8601 timestamp>",
-  "nextAction": "send_confirmation_email" | "escalate"
+### Email Template Override
+${
+  confirmationEmailTemplate
+    ? `Use the following template as base:\n${confirmationEmailTemplate}`
+    : "Use standard professional business email format"
 }
 
-## Validation Criteria
+### Output Requirements
+- Email Subject: Clear, includes engineer name and date
+- Email Body: Well-formatted, includes all report sections
+- Recipient List: All administrator email addresses
+- Send Status: Confirmation of dispatch`;
 
-- Yesterday's Accomplishments: Must be at least 10 characters, describing completed work
-- Today's Plans: Must be at least 10 characters, describing planned activities
-- Current Issues: Can be empty, but if present must be meaningful and constructive
-- Overall coherence: Content should be logically consistent and professional
-
-Proceed with validation and registration.`;
-
-  return prompt;
+  return {
+    promptText: basePrompt,
+    version: ACTION_05_PROMPT_VERSION,
+    actionType: "send_confirmation_email",
+    targetAudience: "admin",
+  };
 }

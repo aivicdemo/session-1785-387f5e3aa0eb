@@ -16,71 +16,64 @@ export interface Action04PromptOutput {
   prompt: string;
   version: string;
   metadata: {
-    actionNumber: 4;
-    contractId: "tx_2_imp_1";
+    action: string;
     purpose: string;
-    expectedOutput: string;
+    timestamp: string;
   };
 }
 
 export function buildAction04Prompt(
   input: Action04PromptInput
 ): Action04PromptOutput {
-  const purpose =
-    "日報収集から報告漏れ特定までの自動判定と通知 - Action 4: 部長に通知メールを送信する";
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
+  } = input;
 
-  const prompt = `
-あなたは朝会報告管理システムのAIエージェント（tx_2_imp_1）です。
-現在、Action 4を実行しています：部長に通知メールを送信する
+  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (tx-2-imp-1).
 
-【前提条件】
-- 報告期限: ${input.reportingDeadline}
-- 遅延判定の閾値: ${input.overdueThresholdHours}時間
-- 最大催促回数: ${input.escalationRules.maxReminders}
-- 催促間隔: ${input.escalationRules.reminderIntervalMinutes}分
+Your task is to send reminder notifications to members who have not submitted their daily reports.
 
-【実行内容】
-1. 前のアクション（Action 3）で作成された報告漏れ・遅延部員の一覧を受け取る
-2. 部長に送信するメールの内容を構成する
-   - 未提出者の一覧
-   - 遅延者の一覧
-   - 各部員の遅延時間
-   - 推奨される対応方法
-3. メール送信の実行可否を判定する
-4. 送信結果をログに記録する
+## Context
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- Maximum Reminders per Member: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-【出力形式】
-以下の構造でメール送信指示を返してください：
-{
-  "action": "send_notification_email",
-  "recipients": ["部長のメールアドレス"],
-  "subject": "【朝会報告管理】日報未提出・遅延者通知",
-  "body": "メール本文",
-  "attachments": ["一覧ファイル"],
-  "priority": "high" | "normal",
-  "escalationLevel": 1 | 2 | 3,
-  "timestamp": "ISO8601形式のタイムスタンプ"
-}
+## Responsibilities
+1. Identify members who have exceeded the overdue threshold
+2. Check reminder history to ensure maximum reminder limit is not exceeded
+3. Compose and send reminder notifications via email and chat
+4. Log all reminder activities with timestamps
+5. Handle escalation cases where multiple reminders have been sent
 
-【エスカレーション条件】
-- システム障害により日報受信状況が確認できない場合
-- 特定部員の報告漏れが繰り返される場合の対応判断
+## Escalation Conditions
+- Same member receives multiple reminders without submitting report
+- System errors occur during notification delivery
+- Special cases that don't fit standard reminder rules
 
-【制約事項】
-- メール送信は部長のみを対象とする
-- 送信履歴は必ず記録する
-- 誤送信時の取り消し・修正機能を考慮する
-`;
+## Output Format
+Provide a structured response containing:
+- List of members to be reminded
+- Reminder message content
+- Delivery channels (email, chat)
+- Timestamp of action
+- Any escalation flags
+
+## Constraints
+- Do not send more than ${escalationRules.maxReminders} reminders to the same member
+- Maintain ${escalationRules.reminderIntervalMinutes} minute intervals between reminders
+- Log all actions for audit trail
+- Respect member preferences for notification channels`;
 
   return {
     prompt,
     version: ACTION_04_PROMPT_VERSION,
     metadata: {
-      actionNumber: 4,
-      contractId: "tx_2_imp_1",
-      purpose,
-      expectedOutput:
-        "部長への通知メール送信指示と送信結果ログ（JSON形式）",
+      action: "action-04",
+      purpose: "Send reminder notifications to overdue report submitters",
+      timestamp: new Date().toISOString(),
     },
   };
 }

@@ -3,79 +3,84 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Input {
   engineerName: string;
   engineerEmail: string;
-  yesterdayReport: string;
-  todayPlan: string;
-  issues: string;
-  submissionDeadline: string;
-  systemName: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
-export interface Action03PromptOutput {
-  prompt: string;
-  version: string;
+export interface Action03ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
-export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const prompt = `
-You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
+export interface Action03RegistrationResult {
+  success: boolean;
+  reportId: string;
+  registeredAt: string;
+  message: string;
+}
 
-**Context:**
-- Engineer Name: ${input.engineerName}
-- Engineer Email: ${input.engineerEmail}
-- System: ${input.systemName}
-- Submission Deadline: ${input.submissionDeadline}
+export function buildAction03Prompt(input: Action03Input): string {
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-**Submitted Report Content:**
-- Yesterday's Achievements: ${input.yesterdayReport}
-- Today's Plan: ${input.todayPlan}
-- Current Issues: ${input.issues}
+## Task: Validate Daily Report Input Content
 
-**Your Task:**
-Validate the submitted daily report content for completeness and appropriateness. Check the following criteria:
+### Engineer Information
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Time: ${input.submissionTimestamp}
 
-1. **Completeness Check:**
-   - Yesterday's achievements section is not empty and contains meaningful content
-   - Today's plan section is not empty and contains specific, actionable items
-   - Issues section is filled (can be "None" if no issues, but must be explicitly stated)
+### Submitted Content
+**Yesterday's Accomplishments:**
+${input.yesterdayAccomplishments}
 
-2. **Appropriateness Check:**
-   - Content is relevant to the engineer's role and responsibilities
-   - Language is professional and clear
-   - No sensitive information is exposed inappropriately
-   - Report follows the expected format and structure
+**Today's Plans:**
+${input.todayPlans}
 
-3. **Anomaly Detection:**
-   - Identify any unusual patterns or concerning content
-   - Flag if the report seems incomplete or rushed
-   - Note if there are repeated issues from previous reports (if available)
+**Current Issues/Challenges:**
+${input.currentIssues}
 
-**Output Format:**
-Provide your validation result as a JSON object with the following structure:
+## Validation Criteria
+
+1. **Completeness Check**
+   - All three sections (yesterday, today, issues) must have content
+   - Minimum 10 characters per section
+   - No placeholder or template text remaining
+
+2. **Appropriateness Check**
+   - Content must be work-related
+   - No offensive or inappropriate language
+   - Realistic and achievable plans
+   - Genuine issues/challenges (not trivial)
+
+3. **Consistency Check**
+   - Today's plans should logically follow from yesterday's accomplishments
+   - Issues should be relevant to the work context
+   - No contradictory statements
+
+4. **Quality Check**
+   - Clear and understandable language
+   - Specific rather than vague descriptions
+   - Actionable items in today's plans
+
+## Output Format
+
+Provide validation result as JSON:
 {
   "isValid": boolean,
-  "completenessScore": number (0-100),
-  "appropriatenessScore": number (0-100),
-  "issues": string[],
-  "recommendations": string[],
-  "escalationRequired": boolean,
-  "escalationReason": string | null,
+  "errors": string[],
+  "warnings": string[],
   "summary": string
 }
 
-**Validation Rules:**
-- If completenessScore < 70 or appropriatenessScore < 70, mark as invalid
-- If any critical issues are detected, set escalationRequired to true
-- Provide constructive recommendations for improvement
-- Be thorough but fair in your assessment
+- errors: Critical issues that prevent registration
+- warnings: Minor issues that should be addressed but don't block registration
+- summary: Brief explanation of validation result`;
 
-Proceed with the validation now.
-  `.trim();
-
-  return {
-    prompt,
-    version: ACTION_03_PROMPT_VERSION,
-  };
+  return prompt;
 }

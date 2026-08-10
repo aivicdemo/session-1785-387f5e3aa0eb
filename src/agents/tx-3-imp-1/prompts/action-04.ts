@@ -4,105 +4,127 @@
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
-  confirmationEmailContent: string;
-  reportingDeadline: string;
-  currentTimestamp: string;
-  previousReminders: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
+  reportContent: string;
+  delayedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    reportStatus: "not_submitted" | "delayed";
+    submissionTime?: string;
+    deadline: string;
   }>;
-  reminderRules: {
-    maxReminderCount: number;
-    reminderIntervalMinutes: number;
+  escalationHistory: Array<{
+    memberId: string;
+    escalationCount: number;
+    lastEscalationTime: string;
+  }>;
+  escalationRules: {
+    maxEscalationCount: number;
+    escalationIntervalMinutes: number;
+    considerDelayedAfterMinutes: number;
   };
 }
 
 export interface Action04PromptOutput {
-  identifiedNonReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
-  }>;
-  remindersToSend: Array<{
-    employeeId: string;
-    employeeName: string;
-    reminderCount: number;
-    communicationChannels: Array<"email" | "chat">;
+  escalationTargets: Array<{
+    memberId: string;
+    memberName: string;
+    reason: "not_submitted" | "delayed" | "repeated_delay";
+    escalationCount: number;
+    shouldEscalate: boolean;
     messageContent: string;
   }>;
-  escalationCases: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: string;
-    recommendedAction: string;
-  }>;
-  executionLog: {
-    timestamp: string;
-    totalIdentified: number;
-    remindersScheduled: number;
-    escalationsDetected: number;
+  escalationSummary: {
+    totalTargets: number;
+    immediateEscalation: number;
+    holdForNextCycle: number;
+    maxEscalationReached: number;
   };
+  timestamp: string;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting employees from confirmation email content and automatically sending reminders.
+  const delayedMembersText = input.delayedMembers
+    .map(
+      (member) =>
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.reportStatus === "not_submitted" ? "未提出" : "遅延"} (期限: ${member.deadline}${member.submissionTime ? `, 提出時刻: ${member.submissionTime}` : ""})`
+    )
+    .join("\n");
 
-Your task is to:
-1. Parse the confirmation email content to identify employees who have not submitted their daily reports
-2. Determine which employees should receive reminders based on the reminder rules
-3. Identify escalation cases (e.g., repeated non-submission)
-4. Generate appropriate reminder messages for each communication channel
+  const escalationHistoryText = input.escalationHistory
+    .map(
+      (history) =>
+        `- ${history.memberId}: 催促回数 ${history.escalationCount}回 (最終催促: ${history.lastEscalationTime})`
+    )
+    .join("\n");
 
-Constraints:
-- Maximum reminder count: ${input.reminderRules.maxReminderCount}
-- Reminder interval: ${input.reminderRules.reminderIntervalMinutes} minutes
-- Reporting deadline: ${input.reportingDeadline}
-- Current timestamp: ${input.currentTimestamp}
+  const prompt = `# 報告漏れ・遅延部員への催促対象判定
 
-Previous reminders sent:
-${input.previousReminders.map((r) => `- Employee ${r.employeeId}: ${r.reminderCount} reminders (last at ${r.lastReminderTime})`).join("\n")}
+## 入力情報
 
-Return a JSON object with the following structure:
+### 報告状況
+${delayedMembersText}
+
+### 催促履歴
+${escalationHistoryText}
+
+### 催促ルール
+- 最大催促回数: ${input.escalationRules.maxEscalationCount}回
+- 催促間隔: ${input.escalationRules.escalationIntervalMinutes}分
+- 遅延判定時間: ${input.escalationRules.considerDelayedAfterMinutes}分
+
+## タスク
+
+以下の基準に基づいて、催促対象部員を判定してください：
+
+1. **未提出者の判定**
+   - 期限を超過している場合は催促対象とする
+   - 初回催促の場合は即座に催促を実行する
+
+2. **遅延者の判定**
+   - 期限超過時間が催促ルールで定義された時間を超えている場合は催促対象とする
+   - 前回催促からの経過時間が催促間隔以上の場合は再催促を実行する
+
+3. **催促回数の確認**
+   - 最大催促回数に達している場合は、エスカレーション対象として記録する
+   - 最大催促回数未満の場合のみ催促を実行する
+
+4. **メッセージ内容の生成**
+   - 未提出者向け: 提出期限超過を明記し、早急な提出を促す
+   - 遅延者向け: 遅延時間を明記し、至急の提出を促す
+   - 複数回催促者向け: 前回催促からの経過時間を明記し、重要性を強調する
+
+## 出力形式
+
+JSON形式で以下の構造で返してください：
+
+\`\`\`json
 {
-  "identifiedNonReporters": [
+  "escalationTargets": [
     {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "remindersToSend": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reminderCount": number,
-      "communicationChannels": ["email" | "chat"],
+      "memberId": "string",
+      "memberName": "string",
+      "reason": "not_submitted" | "delayed" | "repeated_delay",
+      "escalationCount": number,
+      "shouldEscalate": boolean,
       "messageContent": "string"
     }
   ],
-  "escalationCases": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "string",
-      "recommendedAction": "string"
-    }
-  ],
-  "executionLog": {
-    "timestamp": "string",
-    "totalIdentified": number,
-    "remindersScheduled": number,
-    "escalationsDetected": number
-  }
-}`;
+  "escalationSummary": {
+    "totalTargets": number,
+    "immediateEscalation": number,
+    "holdForNextCycle": number,
+    "maxEscalationReached": number
+  },
+  "timestamp": "ISO8601形式のタイムスタンプ"
+}
+\`\`\`
 
-  const userPrompt = `Confirmation email content:
-${input.confirmationEmailContent}
+## 注意事項
 
-Analyze this content and identify non-reporting employees, determine appropriate reminders, and detect escalation cases.`;
+- 催促メッセージは敬語を使用し、丁寧な表現にしてください
+- 同一部員への過度な催促を避けるため、催促間隔を厳密に確認してください
+- 最大催促回数に達した部員については、shouldEscalateをfalseにしてください
+`;
 
-  return `${systemPrompt}\n\n${userPrompt}`;
+  return prompt;
 }

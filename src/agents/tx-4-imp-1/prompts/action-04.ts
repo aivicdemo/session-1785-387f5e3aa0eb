@@ -33,7 +33,7 @@ export interface Action04PromptOutput {
     recommendedAction: string;
   }>;
   issueSummary: {
-    totalIssuesIdentified: number;
+    totalIssues: number;
     criticalCount: number;
     highCount: number;
     mediumCount: number;
@@ -41,8 +41,8 @@ export interface Action04PromptOutput {
   };
   escalationFlags: Array<{
     issueId: string;
+    flag: string;
     reason: string;
-    requiresHumanReview: boolean;
   }>;
 }
 
@@ -63,47 +63,69 @@ export function buildAction04Prompt(input: Action04PromptInput): string {
     .map((member) => `- ${member.name} (${member.department})`)
     .join("\n");
 
-  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports in a morning meeting preparation system.
+  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
 
 ## Task: Prioritize and Classify Extracted Issues
 
-### Report Context
+### Input Report Content:
 ${input.reportContent}
 
-### Extracted Issues to Prioritize
+### Extracted Issues to Prioritize:
 ${issuesText}
 
-### Team Members
+### Team Members Context:
 ${teamText}
 
-### Priority Framework
+### Priority Framework:
 Available Priority Levels: ${priorityLevels}
 
 Priority Determination Criteria:
 ${criteria}
 
-### Your Responsibilities
+### Instructions:
 1. Analyze each extracted issue against the priority framework criteria
 2. Assign a priority level (${priorityLevels}) to each issue
 3. Provide a numerical priority score (1-100, where 100 is highest priority)
 4. Explain the reasoning for each priority assignment
 5. Identify which team members are affected by each issue
 6. Recommend specific actions for each issue
-7. Flag any issues that require human review due to ambiguity or exceptional circumstances
-8. Generate a summary of issue distribution by priority level
+7. Flag any issues that require escalation or special attention
+8. Provide a summary count of issues by priority level
 
-### Output Requirements
-- Ensure all issues are classified
-- Prioritize based on impact, urgency, and team dependencies
-- Flag issues that deviate from normal patterns
-- Provide actionable recommendations for each prioritized issue
-- Maintain consistency in priority assignment across all issues
+### Output Format:
+Return a JSON object with the following structure:
+{
+  "prioritizedIssues": [
+    {
+      "issueId": "string",
+      "title": "string",
+      "priority": "string",
+      "priorityScore": number,
+      "reasoning": "string",
+      "affectedMembers": ["string"],
+      "recommendedAction": "string"
+    }
+  ],
+  "issueSummary": {
+    "totalIssues": number,
+    "criticalCount": number,
+    "highCount": number,
+    "mediumCount": number,
+    "lowCount": number
+  },
+  "escalationFlags": [
+    {
+      "issueId": "string",
+      "flag": "string",
+      "reason": "string"
+    }
+  ]
+}
 
-### Escalation Triggers
-- Issues with conflicting priority indicators
-- Issues affecting multiple critical team members
-- Issues indicating potential system failures
-- Issues requiring resource allocation decisions beyond standard procedures
-
-Please analyze the extracted issues and provide prioritized classifications with detailed reasoning.`;
+### Constraints:
+- Ensure all issues are assigned a priority level
+- Priority scores must be consistent with assigned priority levels
+- Reasoning must be specific and reference the priority criteria
+- Escalation flags should only be set for issues requiring special attention
+- Affected members should be identified based on the report content and team context`;
 }

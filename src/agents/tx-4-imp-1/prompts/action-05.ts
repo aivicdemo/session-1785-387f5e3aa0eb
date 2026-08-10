@@ -4,92 +4,183 @@
 export const ACTION_05_PROMPT_VERSION = "1.0.0";
 
 export interface Action05Context {
-  confirmationEmailContent: string;
-  reportSubmissionDeadline: string;
-  currentTimestamp: string;
-  previousEscalationHistory: Array<{
+  confirmedReports: Array<{
     employeeId: string;
-    escalationCount: number;
-    lastEscalationTime: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+    status: "submitted" | "pending" | "overdue";
   }>;
-}
-
-export interface ExtractedIssue {
-  id: string;
-  title: string;
-  description: string;
-  affectedEmployees: string[];
-  severity: "critical" | "high" | "medium" | "low";
-  category: string;
-}
-
-export interface PrioritizedIssue extends ExtractedIssue {
-  priority: number;
-  recommendedAction: string;
-  estimatedImpact: string;
-}
-
-export interface Action05Output {
-  extractedIssues: ExtractedIssue[];
-  prioritizedIssues: PrioritizedIssue[];
-  overallRiskAssessment: string;
-  recommendedEscalations: Array<{
+  extractedIssues: Array<{
     issueId: string;
-    targetRole: string;
-    urgency: "immediate" | "high" | "normal";
-    message: string;
+    title: string;
+    description: string;
+    affectedEmployees: string[];
+    category: string;
+    severity: "low" | "medium" | "high" | "critical";
   }>;
-  analysisTimestamp: string;
+  priorityClassifications: Array<{
+    issueId: string;
+    priority: number;
+    classification: string;
+    reasoning: string;
+    recommendedAction: string;
+  }>;
+  reportingPeriod: {
+    startDate: string;
+    endDate: string;
+  };
+  departmentContext: {
+    departmentName: string;
+    totalEmployees: number;
+    submissionRate: number;
+    overallStatus: string;
+  };
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const {
-    confirmationEmailContent,
-    reportSubmissionDeadline,
-    currentTimestamp,
-    previousEscalationHistory,
-  } = context;
+export interface Action05PromptInput {
+  context: Action05Context;
+  previousActions: Array<{
+    actionNumber: number;
+    result: string;
+    timestamp: string;
+  }>;
+  managerPreferences: {
+    priorityThresholds: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+    };
+    focusAreas: string[];
+    escalationRules: string[];
+  };
+}
 
-  const escalationSummary =
-    previousEscalationHistory.length > 0
-      ? previousEscalationHistory
-          .map(
-            (e) =>
-              `- Employee ${e.employeeId}: ${e.escalationCount} escalation(s), last at ${e.lastEscalationTime}`
-          )
-          .join("\n")
-      : "No previous escalations recorded";
+export interface Action05PromptOutput {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  contextData: Action05Context;
+  expectedOutputFormat: {
+    finalReportStructure: string;
+    priorityListFormat: string;
+    escalationIndicators: string[];
+  };
+}
 
-  return `You are an AI agent responsible for analyzing daily report confirmation emails and extracting critical issues and bottlenecks.
+export function buildAction05Prompt(input: Action05PromptInput): Action05PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for the final stage of the daily report management workflow (Action 5 of 6).
 
-## Current Context
-- Report Submission Deadline: ${reportSubmissionDeadline}
-- Current Timestamp: ${currentTimestamp}
-- Previous Escalation History:
-${escalationSummary}
+Your role is to:
+1. Review all confirmed reports and extracted issues from previous actions
+2. Validate the priority classifications assigned to each issue
+3. Prepare a comprehensive report for the department manager
+4. Identify any escalation-worthy situations
+5. Provide actionable recommendations based on the prioritized issues
 
-## Confirmation Email Content to Analyze
-${confirmationEmailContent}
+You must maintain consistency with the priority thresholds and focus areas specified by the manager.
+All decisions should be traceable and explainable.`;
 
-## Your Task
-1. Extract all mentioned issues, challenges, and bottlenecks from the confirmation email content
-2. Categorize each issue by type (technical, resource, process, communication, etc.)
-3. Assess severity based on impact and scope
-4. Determine priority ranking considering:
-   - Business impact
-   - Number of affected employees
-   - Time sensitivity
-   - Dependencies on other issues
-5. Identify which issues require immediate escalation
-6. Generate recommended actions for each prioritized issue
+  const userPrompt = buildUserPrompt(input);
 
-## Output Requirements
-Provide a structured analysis with:
-- List of extracted issues with descriptions
-- Priority-ranked issues with recommended actions
-- Overall risk assessment
-- Escalation recommendations with target roles and urgency levels
-- Analysis timestamp
+  const expectedOutputFormat = {
+    finalReportStructure: JSON.stringify({
+      reportTitle: "Daily Report Summary and Issue Priority Analysis",
+      generatedAt: "ISO 8601 timestamp",
+      reportingPeriod: input.context.reportingPeriod,
+      departmentOverview: {
+        departmentName: "string",
+        totalEmployees: "number",
+        submissionRate: "percentage",
+        overallStatus: "string"
+      },
+      prioritizedIssuesList: [
+        {
+          rank: "number",
+          issueId: "string",
+          title: "string",
+          priority: "CRITICAL | HIGH | MEDIUM | LOW",
+          affectedEmployees: "string[]",
+          recommendedAction: "string",
+          escalationRequired: "boolean"
+        }
+      ],
+      escalationSummary: {
+        escalationCount: "number",
+        criticalIssues: "Issue[]",
+        recommendedImmediateActions: "string[]"
+      },
+      managerNotes: "string"
+    }),
+    priorityListFormat: "Ordered list from highest to lowest priority with clear justification",
+    escalationIndicators: input.managerPreferences.escalationRules
+  };
 
-Ensure all issues are clearly categorized and prioritized for management review.`;
+  return {
+    version: ACTION_05_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    contextData: input.context,
+    expectedOutputFormat
+  };
+}
+
+function buildUserPrompt(input: Action05PromptInput): string {
+  const reportingPeriodStr = `${input.context.reportingPeriod.startDate} to ${input.context.reportingPeriod.endDate}`;
+  
+  const confirmedReportsStr = input.context.confirmedReports
+    .map(report => `- ${report.employeeName} (${report.employeeId}): ${report.status} at ${report.submittedAt}`)
+    .join("\n");
+
+  const extractedIssuesStr = input.context.extractedIssues
+    .map(issue => `- [${issue.issueId}] ${issue.title} (${issue.severity}): ${issue.description}`)
+    .join("\n");
+
+  const priorityClassificationsStr = input.context.priorityClassifications
+    .map(pc => `- [${pc.issueId}] Priority ${pc.priority}: ${pc.classification} - ${pc.reasoning}`)
+    .join("\n");
+
+  const focusAreasStr = input.managerPreferences.focusAreas.join(", ");
+  const escalationRulesStr = input.managerPreferences.escalationRules.join("\n");
+
+  return `You are processing the final analysis stage for the daily report management system.
+
+REPORTING PERIOD: ${reportingPeriodStr}
+
+DEPARTMENT CONTEXT:
+- Department: ${input.context.departmentContext.departmentName}
+- Total Employees: ${input.context.departmentContext.totalEmployees}
+- Submission Rate: ${input.context.departmentContext.submissionRate}%
+- Overall Status: ${input.context.departmentContext.overallStatus}
+
+CONFIRMED REPORTS RECEIVED:
+${confirmedReportsStr}
+
+EXTRACTED ISSUES FROM REPORTS:
+${extractedIssuesStr}
+
+CURRENT PRIORITY CLASSIFICATIONS:
+${priorityClassificationsStr}
+
+MANAGER PREFERENCES:
+- Priority Thresholds: Critical (${input.managerPreferences.priorityThresholds.critical}), High (${input.managerPreferences.priorityThresholds.high}), Medium (${input.managerPreferences.priorityThresholds.medium}), Low (${input.managerPreferences.priorityThresholds.low})
+- Focus Areas: ${focusAreasStr}
+
+ESCALATION RULES:
+${escalationRulesStr}
+
+PREVIOUS ACTIONS COMPLETED:
+${input.previousActions
+  .map(action => `Action ${action.actionNumber}: ${action.result} (${action.timestamp})`)
+  .join("\n")}
+
+TASK:
+1. Review and validate all priority classifications
+2. Identify any issues that meet escalation criteria
+3. Prepare a comprehensive final report with prioritized issues
+4. Provide specific, actionable recommendations for the manager
+5. Highlight any anomalies or concerns that require immediate attention
+
+Output your analysis in the specified JSON format with clear justification for each priority assignment.`;
 }

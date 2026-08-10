@@ -4,66 +4,90 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
+  reportDate: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayReport: string;
-  todayPlan: string;
-  issues: string;
-  submissionDeadline: string;
-  systemName: string;
+  engineerId: string;
+  previousReportContent?: string;
+  systemContext?: string;
 }
 
 export interface Action02PromptOutput {
-  validationStatus: "valid" | "invalid";
-  validationErrors: string[];
-  registrationId?: string;
-  registrationTimestamp?: string;
-  confirmationEmailSent: boolean;
-  confirmationEmailTimestamp?: string;
+  prompt: string;
+  version: string;
+  metadata: {
+    action: string;
+    timestamp: string;
+    inputHash: string;
+  };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting report management system.
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+  const timestamp = new Date().toISOString();
+  
+  const inputHash = generateSimpleHash(
+    `${input.reportDate}${input.engineerId}${input.previousReportContent || ""}`
+  );
 
-**Task: Validate and Register Daily Report**
+  const systemInstructions = `You are an AI agent responsible for validating and processing daily report submissions in the morning meeting report management system.
 
-Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Deadline: ${input.submissionDeadline}
+Your role in Action 2 is to:
+1. Receive engineer input content from the daily report form
+2. Validate the completeness and appropriateness of the input
+3. Check for missing required fields (yesterday's achievements, today's plans, current issues)
+4. Identify any inconsistencies or concerning patterns in the reported content
+5. Prepare validation results for system registration
 
-Report Content:
-- Yesterday's Achievements: ${input.yesterdayReport}
-- Today's Plan: ${input.todayPlan}
-- Current Issues: ${input.issues}
+Context:
+- Report Date: ${input.reportDate}
+- Engineer: ${input.engineerName} (ID: ${input.engineerId})
+- System Context: ${input.systemContext || "Standard morning report processing"}
 
-System: ${input.systemName}
+${input.previousReportContent ? `Previous Report Reference:\n${input.previousReportContent}\n` : ""}
 
-**Validation Requirements:**
-1. Check that all required fields are filled (yesterday's achievements, today's plan, issues)
-2. Verify that content is not empty or placeholder text
-3. Ensure submission is within or near the deadline
-4. Validate that the report format is appropriate
-5. Check for any concerning patterns or incomplete information
+Validation Rules:
+- Yesterday's achievements must be non-empty and substantive (minimum 10 characters)
+- Today's plans must be clearly defined with at least one concrete task
+- Current issues section should identify blockers or concerns if they exist
+- Content should be coherent and relevant to the engineer's role
+- No duplicate or copy-pasted content from previous reports
+- Tone should be professional and factual
 
-**Output Format:**
-Provide your response as a JSON object with the following structure:
-{
-  "validationStatus": "valid" | "invalid",
-  "validationErrors": [list of validation error messages if invalid],
-  "registrationId": "unique registration ID if valid",
-  "registrationTimestamp": "ISO 8601 timestamp",
-  "confirmationEmailSent": true | false,
-  "confirmationEmailTimestamp": "ISO 8601 timestamp if sent"
+Output your validation as a structured assessment including:
+1. Validation Status (PASS / FAIL / CONDITIONAL)
+2. Missing or incomplete fields
+3. Identified issues or concerns
+4. Recommendations for the engineer if revision is needed
+5. Confidence score (0-100) for system registration`;
+
+  const userPrompt = `Please validate the daily report submission for ${input.engineerName} (${input.engineerId}) dated ${input.reportDate}.
+
+Perform comprehensive validation and provide detailed feedback on:
+- Completeness of all required sections
+- Quality and substantiveness of content
+- Any red flags or anomalies
+- Readiness for system registration
+
+Ensure the validation is thorough but fair, supporting the goal of 100% report submission rate while maintaining quality standards.`;
+
+  const prompt = `${systemInstructions}\n\n${userPrompt}`;
+
+  return {
+    prompt,
+    version: ACTION_02_PROMPT_VERSION,
+    metadata: {
+      action: "action-02",
+      timestamp,
+      inputHash,
+    },
+  };
 }
 
-**Decision Logic:**
-- If all validations pass, set validationStatus to "valid" and generate a registration ID
-- If any validation fails, set validationStatus to "invalid" and list all errors
-- Upon successful validation, confirm that a confirmation email will be sent to the manager
-- Record the timestamp of all actions
-
-Proceed with validation and registration.`;
-
-  return prompt;
+function generateSimpleHash(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
 }

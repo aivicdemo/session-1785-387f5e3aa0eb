@@ -29,14 +29,14 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     previousEscalationCount = {},
   } = input;
 
-  const escalationContext = Object.entries(previousEscalationCount)
+  const escalationInfo = Object.entries(previousEscalationCount)
     .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
     .join("\n");
 
-  return `# 報告漏れ・遅延部員特定プロンプト
+  return `# 報告漏れ・遅延部員特定プロンプト (Action 01)
 
 ## 目的
-確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定する
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象の判定を行う
 
 ## 入力情報
 ### 確認メール内容
@@ -44,46 +44,48 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
 ${confirmationEmailContent}
 \`\`\`
 
-### 期限情報
+### システム情報
 - 報告期限: ${reportDeadline}
 - 現在時刻: ${currentTimestamp}
 
-### 過去の催促履歴
-${escalationContext || "なし"}
+### 催促履歴
+${escalationInfo || "なし"}
 
 ## 実行タスク
 1. 確認メール内容から以下を抽出してください:
    - 報告未提出者のリスト
    - 期限超過で遅延している部員のリスト
-   - 各部員の遅延時間
+   - 各部員の最後の報告時刻
 
-2. 催促対象の判定基準:
-   - 初回未提出: 催促対象
-   - 期限超過1時間以上: 催促対象
-   - 過去3回以上催促済み: エスカレーション対象
-   - 同一部員の連続遅延: 優先度上げ
+2. 以下の基準で催促対象を判定してください:
+   - 未提出: 即座に催促対象
+   - 遅延: 期限から30分以上超過で催促対象
+   - 複数回催促済み: エスカレーション対象として記録
 
-3. 以下の形式で結果を出力してください:
+3. 各催促対象について優先度を判定してください:
+   - high: 1時間以上遅延、または3回以上催促済み
+   - medium: 30分～1時間遅延、または2回催促済み
+   - low: 30分以内の軽微な遅延、初回催促
 
 ## 出力形式
+JSON形式で以下の構造で返してください:
 \`\`\`json
 {
   "unreportedMembers": ["member_id_1", "member_id_2"],
   "delayedMembers": ["member_id_3"],
-  "analysisTimestamp": "${currentTimestamp}",
+  "analysisTimestamp": "ISO8601形式のタイムスタンプ",
   "escalationRecommendations": [
     {
-      "memberId": "member_id_1",
-      "reason": "初回未提出",
-      "priority": "high"
+      "memberId": "member_id",
+      "reason": "具体的な理由",
+      "priority": "high|medium|low"
     }
   ]
 }
 \`\`\`
 
 ## 注意事項
-- 確認メール内容に記載されていない部員は未提出と判定してください
-- 遅延時間は現在時刻と期限の差分で計算してください
-- 催促履歴がある部員は優先度を上げてください
-`;
+- 誤検知を避けるため、確認メール内容から明確に読み取れる情報のみを使用してください
+- システムエラーで情報が不完全な場合は、その旨を記録してください
+- 同一部員への過度な催促を防ぐため、催促履歴を考慮してください`;
 }

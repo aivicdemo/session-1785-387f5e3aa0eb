@@ -29,7 +29,7 @@ export interface SendConfirmationEmailRequest {
 }
 
 export interface SendConfirmationEmailResponse {
-  success?: boolean;
+  success: boolean;
   error?: string;
   status?: string;
   message_id?: string;

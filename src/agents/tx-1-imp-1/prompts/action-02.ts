@@ -40,41 +40,32 @@ export function buildAction02Prompt(context: Action02Context): string {
     },
   } = context;
 
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
-
-Your task is to validate the engineer's input for the daily report (日報) submission.
+  return `You are validating a daily report submission from an engineer.
 
 Engineer Information:
 - ID: ${engineerId}
 - Name: ${engineerName}
-- Submission Timestamp: ${submissionTimestamp}
+- Submission Time: ${submissionTimestamp}
 
-Input Content to Validate:
-1. Yesterday's Accomplishments (昨日の実績):
-${yesterdayAccomplishments}
+Daily Report Content:
+- Yesterday's Accomplishments: ${yesterdayAccomplishments}
+- Today's Plans: ${todayPlans}
+- Current Issues: ${currentIssues}
 
-2. Today's Plans (本日の予定):
-${todayPlans}
+Validation Requirements:
+1. Check that all three sections (yesterday's accomplishments, today's plans, current issues) are provided and not empty
+2. Verify that each section contains meaningful content (minimum 10 characters)
+3. Ensure the submission timestamp is valid and within acceptable range
+4. Identify any concerning patterns or incomplete information
+5. Flag any sections that appear to be placeholder text or insufficient detail
 
-3. Current Issues (抱えている課題):
-${currentIssues}
+Provide validation result with:
+- isValid: boolean indicating if all required validations pass
+- errors: array of critical validation failures that prevent acceptance
+- warnings: array of non-critical issues that should be noted
+- validatedInput: the cleaned and confirmed input data
 
-Validation Rules:
-1. All three fields must be non-empty
-2. Yesterday's Accomplishments should describe concrete work completed
-3. Today's Plans should outline specific tasks for the day
-4. Current Issues should identify any blockers or challenges
-5. Each field should be between 10 and 500 characters
-6. Content should be relevant and professional
-7. No placeholder text or incomplete entries
-
-Please validate this input and respond with:
-- A determination of whether the input is valid (true/false)
-- A list of any errors found (empty if valid)
-- A list of any warnings (e.g., unusually short/long content)
-- The validated input if valid, or the original input if invalid
-
-Respond in JSON format with the following structure:
+Return your response as a JSON object with the structure:
 {
   "isValid": boolean,
   "errors": string[],
@@ -88,6 +79,4 @@ Respond in JSON format with the following structure:
     "submissionTimestamp": string
   }
 }`;
-
-  return prompt;
 }

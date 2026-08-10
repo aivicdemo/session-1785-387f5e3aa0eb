@@ -6,86 +6,79 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 interface Action03PromptInput {
   reportingDeadline: string;
   currentTime: string;
-  nonSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-  }>;
-  delayedSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    submissionTime: string;
-  }>;
-  escalationThreshold: number;
+  oversightThresholdMinutes: number;
+  escalationContext?: string;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
   userPrompt: string;
-  context: {
-    deadline: string;
-    currentTime: string;
-    nonSubmitterCount: number;
-    delayedSubmitterCount: number;
-  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed submitters of daily reports in a morning meeting management system.
+  const {
+    reportingDeadline,
+    currentTime,
+    oversightThresholdMinutes,
+    escalationContext = "",
+  } = input;
+
+  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from confirmation email contents in the morning report management system.
 
 Your role is to:
-1. Analyze the current submission status against the reporting deadline
-2. Identify employees who have not submitted their reports
-3. Identify employees who submitted after the deadline
-4. Determine which employees require escalation based on the escalation threshold
-5. Prepare a structured list for management notification
+1. Parse confirmation email contents to identify which team members have not submitted their reports
+2. Determine which team members have submitted reports but are delayed beyond the threshold
+3. Classify team members into categories: on-time, delayed, and unreported
+4. Generate a structured list of unreported and delayed members for escalation
 
-You must be precise and factual in your analysis. Only flag employees as non-submitters or delayed submitters based on the provided data.`;
+You must be precise and systematic in your analysis. Only mark a team member as unreported if there is clear evidence they have not submitted. Only mark as delayed if the submission time exceeds the configured threshold.
 
-  const nonSubmittersList = input.nonSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`
-    )
-    .join("\n");
+Reporting deadline: ${reportingDeadline}
+Current time: ${currentTime}
+Oversight threshold (minutes): ${oversightThresholdMinutes}
+${escalationContext ? `Additional context: ${escalationContext}` : ""}`;
 
-  const delayedSubmittersList = input.delayedSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted at: ${emp.submissionTime})`
-    )
-    .join("\n");
+  const userPrompt = `Analyze the confirmation email contents and identify:
+1. Team members who have not submitted their reports (unreported)
+2. Team members who submitted reports but exceeded the deadline by more than ${oversightThresholdMinutes} minutes (delayed)
+3. Team members who submitted on time
 
-  const userPrompt = `Analyze the following daily report submission status:
-
-Reporting Deadline: ${input.reportingDeadline}
-Current Time: ${input.currentTime}
-Escalation Threshold: ${input.escalationThreshold} hours after deadline
-
-Non-Submitters (${input.nonSubmitters.length}):
-${nonSubmittersList || "None"}
-
-Delayed Submitters (${input.delayedSubmitters.length}):
-${delayedSubmittersList || "None"}
-
-Please provide:
-1. A summary of the submission status
-2. List of employees requiring immediate escalation (delayed beyond threshold)
-3. Recommended actions for each category
-4. Any patterns or concerns in the submission data`;
+Provide the analysis in the following JSON structure:
+{
+  "onTime": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "submissionTime": "ISO8601 timestamp"
+    }
+  ],
+  "delayed": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "submissionTime": "ISO8601 timestamp",
+      "delayMinutes": number
+    }
+  ],
+  "unreported": [
+    {
+      "memberId": "string",
+      "memberName": "string"
+    }
+  ],
+  "summary": {
+    "totalMembers": number,
+    "onTimeCount": number,
+    "delayedCount": number,
+    "unreportedCount": number
+  }
+}`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
-    context: {
-      deadline: input.reportingDeadline,
-      currentTime: input.currentTime,
-      nonSubmitterCount: input.nonSubmitters.length,
-      delayedSubmitterCount: input.delayedSubmitters.length,
-    },
   };
 }
 

@@ -21,54 +21,53 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionList: string[];
   scheduledTime: string;
-  metadata: {
-    version: string;
-    generatedAt: string;
-  };
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
   const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelInfo = input.systemContext.notificationChannels.join("、");
+  const channels = input.systemContext.notificationChannels.join("、");
 
-  return `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、前日の日報テンプレートを自動生成して配信するタスクを実行してください。
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-【タスク概要】
-前日の日報テンプレートを自動生成し、対象エンジニアに配信します。
+## 実行日時
+${new Date().toISOString()}
 
-【対象エンジニア】
+## 対象者
 ${engineerNames}
 
-【日報提出期限】
-${input.reportingDeadline}
+## 実行内容
+以下の日報テンプレートを生成し、対象エンジニア全員に配信してください。
 
-【対象日付】
-${input.targetDate}
+### 日報テンプレート
+---
+【${input.targetDate}の日報】
 
-【配信チャネル】
-${channelInfo}
+#### 昨日の実績
+- 実施内容：
+- 成果：
+- 課題：
 
-【日報管理システムURL】
-${input.systemContext.reportManagementSystemUrl}
+#### 本日の予定
+- 予定内容：
+- 目標：
 
-【実行内容】
-1. 前日の日報テンプレートを生成する
-2. テンプレートに以下の項目を含める：
-   - 昨日の実績
-   - 本日の予定
-   - 抱えている課題
-3. 対象エンジニア全員に配信する
-4. 配信結果をログに記録する
+#### 抱えている課題
+- 課題内容：
+- 影響範囲：
+- 対応予定：
 
-【出力形式】
-以下のJSON形式で結果を返してください：
-{
-  "templateContent": "生成されたテンプレート内容",
-  "distributionList": ["配信先メールアドレス"],
-  "scheduledTime": "配信予定時刻",
-  "metadata": {
-    "version": "${ACTION_01_PROMPT_VERSION}",
-    "generatedAt": "生成日時"
-  }
-}`;
+#### その他
+- 特記事項：
+
+---
+
+## 配信設定
+- 配信先：${channels}
+- 提出期限：${input.reportingDeadline}
+- 管理システムURL：${input.systemContext.reportManagementSystemUrl}
+
+## 期待される結果
+- テンプレートが全員に配信される
+- 配信完了ログが記録される
+- エンジニアが指定時刻までに入力を開始する`;
 }
