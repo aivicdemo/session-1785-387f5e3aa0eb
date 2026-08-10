@@ -1776,7 +1776,7 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       throw new Error("項目1の文字数が最大許容値を超えています");
     }
   
-    if (todayText.length < MIN_CHAR_ITEM2) {
+    if (todayText.length > 0 && todayText.length < MIN_CHAR_ITEM2) {
       throw new Error("項目2の文字数が最小許容値未満です");
     }
   
@@ -3935,6 +3935,7 @@ const __aivicBundle_41_submitReport = (() => {
     success: boolean;
     error_message?: string;
     button_disabled?: boolean;
+    status?: string;
   }
   
   const submitReportStore = new Map<string, number>();
@@ -3948,7 +3949,7 @@ const __aivicBundle_41_submitReport = (() => {
     const submissionKey = `${user_id}:${report_date}`;
     const currentCount = submitReportStore.get(submissionKey) || 0;
   
-    if (currentCount >= 2) {
+    if (currentCount >= 1) {
       return {
         success: false,
         error_message: "本日はすでに日報を送信済み",
@@ -3974,6 +3975,7 @@ const __aivicBundle_41_submitReport = (() => {
   
     return {
       success: true,
+      status: "送信済み",
     };
   }
   return { submitReport };
@@ -9106,6 +9108,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     result.send_results = sendResults;
     result.followUpsSent = sendResults.length;
     result.promotion_executed_count = result.email_sent_count;
+    result.action_status = result.email_sent_count > 0 ? 'promotion_messages_sent' : undefined;
   
     // Handle promotion history
     if (input.promotion_history) {
@@ -9181,11 +9184,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         result.escalatedMemberIds = unreportedMembers.map((m) => m.member_id);
         result.status = 'escalation_pending_human_review';
       }
-    }
-  
-    // Handle action status
-    if (result.promotion_executed_count > 0) {
-      result.action_status = 'promotion_messages_sent';
     }
   
     // Ensure completion timestamp is ISO format
