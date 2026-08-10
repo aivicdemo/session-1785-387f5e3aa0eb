@@ -3202,6 +3202,19 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
     // If database and aggregation_result are provided, this is a valid submission scenario
     if (data.database && data.aggregation_result && data.manager_email && data.report_date) {
       const emailLogId = `email_log_${Date.now()}_${randomUUID()}`;
+      
+      // Add email log to database
+      if (data.database.email_logs) {
+        data.database.email_logs.push({
+          log_id: emailLogId,
+          recipient_email: data.manager_email,
+          subject: "朝会報告集約",
+          body: `全${data.aggregation_result.total_submitted}名から日報が提出されました`,
+          sent_at: new Date().toISOString(),
+          status: "completed",
+        });
+      }
+      
       return {
         success: true,
         email_log_id: emailLogId,
