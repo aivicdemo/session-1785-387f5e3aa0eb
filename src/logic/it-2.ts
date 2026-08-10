@@ -63,10 +63,10 @@ export interface ValidationResult {
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailOnReportSubmit exports=sendConfirmationEmailOnReportSubmit */
 const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
-  function sendConfirmationEmailOnReportSubmit(
+  async function sendConfirmationEmailOnReportSubmit(
     report_submission: ConfirmationEmailRequest,
     config?: any
-  ): ConfirmationEmailResponse {
+  ): Promise<ConfirmationEmailResponse> {
     // Determine sender email from report_submission or config
     const senderEmail = report_submission.sender_email ?? config?.sender_email;
     
@@ -120,14 +120,61 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     if (!submittedAt) {
       throw new Error('送信日時が指定されていません');
     }
-  
-    // Return success response for email send
-    return {
-      success: true,
-      engineerEmailSent: true,
-      managerEmailSent: true,
-      sentAt: new Date(),
-    };
+
+    // Try to send confirmation emails
+    try {
+      const engineerEmailResponse = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: senderEmail,
+          subject: '日報送信確認',
+          body: `日報が送信されました。\n昨日の実績: ${yesterdayContent}\n本日の予定: ${todayContent}\n現在の課題: ${issuesContent}`
+        })
+      });
+
+      if (!engineerEmailResponse.ok) {
+        return {
+          success: false,
+          error_code: '確認メール配信エラー',
+          error_message: '管理者への確認メール送信に失敗しました',
+          report_saved: true
+        };
+      }
+
+      const managerEmailResponse = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: managerEmail,
+          subject: '部下からの日報送信通知',
+          body: `日報が送信されました。\n昨日の実績: ${yesterdayContent}\n本日の予定: ${todayContent}\n現在の課題: ${issuesContent}`
+        })
+      });
+
+      if (!managerEmailResponse.ok) {
+        return {
+          success: false,
+          error_code: '確認メール配信エラー',
+          error_message: '管理者への確認メール送信に失敗しました',
+          report_saved: true
+        };
+      }
+
+      return {
+        success: true,
+        engineerEmailSent: true,
+        managerEmailSent: true,
+        sentAt: new Date()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error_code: '確認メール配信エラー',
+        error_message: '管理者への確認メール送信に失敗しました',
+        report_saved: true
+      };
+    }
   }
   return { sendConfirmationEmailOnReportSubmit };
 })();
@@ -350,7 +397,7 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
           managerResponse.status === 404
         ) {
           throw new Error(
-            `部長ID: ${manager_id}の部長情報がデータベースに存在しません`
+            `部長情報: ${manager_id}の部長情報がデータベースに存在しません`
           );
         }
         throw new Error(
