@@ -140,7 +140,7 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       return {
         success: false,
         error_code: "確認メール配信エラー",
-        error_message: "部長メールアドレスが取得できません",
+        error_message: "管理者への確認メール送信に失敗しました",
         report_saved: true,
       };
     }
