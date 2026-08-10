@@ -3,64 +3,95 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02PromptContext {
-  reportingDeadline: string;
+export interface Action02PromptInput {
+  submissionDeadline: string;
   targetDate: string;
-  departmentName: string;
-  engineerNames: string[];
-  systemName: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  submittedEngineers: Array<{
+    id: string;
+    name: string;
+    submittedAt: string;
+  }>;
+  systemTime: string;
 }
 
-export interface Action02PromptResult {
-  version: string;
-  action: string;
+export interface Action02PromptOutput {
   prompt: string;
-  context: Action02PromptContext;
+  version: string;
 }
 
 export function buildAction02Prompt(
-  context: Action02PromptContext
-): Action02PromptResult {
-  const prompt = `
-You are an AI agent responsible for identifying unreported engineers and delayed submissions in the daily report management system.
+  input: Action02PromptInput
+): Action02PromptOutput {
+  const {
+    submissionDeadline,
+    targetDate,
+    engineerList,
+    submittedEngineers,
+    systemTime,
+  } = input;
 
-**Context:**
-- System Name: ${context.systemName}
-- Target Date: ${context.targetDate}
-- Reporting Deadline: ${context.reportingDeadline}
-- Department: ${context.departmentName}
-- Engineers: ${context.engineerNames.join(", ")}
+  const submittedIds = new Set(submittedEngineers.map((e) => e.id));
+  const unsubmittedEngineers = engineerList.filter(
+    (e) => !submittedIds.has(e.id)
+  );
 
-**Task:**
-Analyze the confirmation email contents and automatically identify:
-1. Engineers who have not submitted their daily reports (unreported)
-2. Engineers whose reports were submitted after the deadline (delayed)
-3. Create a structured list of unreported and delayed engineers
-4. Prepare notification content for the department head
+  const delayedEngineers = submittedEngineers.filter((e) => {
+    const submittedTime = new Date(e.submittedAt).getTime();
+    const deadlineTime = new Date(submissionDeadline).getTime();
+    return submittedTime > deadlineTime;
+  });
 
-**Output Format:**
-Return a JSON object with the following structure:
+  const unsubmittedList = unsubmittedEngineers
+    .map((e) => `- ${e.name} (${e.email})`)
+    .join("\n");
+
+  const delayedList = delayedEngineers
+    .map((e) => `- ${e.name} (submitted at ${e.submittedAt})`)
+    .join("\n");
+
+  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
+
+Current System Time: ${systemTime}
+Target Date: ${targetDate}
+Submission Deadline: ${submissionDeadline}
+
+Total Engineers: ${engineerList.length}
+Submitted Reports: ${submittedEngineers.length}
+Unsubmitted Reports: ${unsubmittedEngineers.length}
+Delayed Submissions: ${delayedEngineers.length}
+
+UNSUBMITTED ENGINEERS:
+${unsubmittedList || "None"}
+
+DELAYED SUBMISSIONS:
+${delayedList || "None"}
+
+Your task:
+1. Analyze the submission status data provided above
+2. Identify all engineers who have not submitted their daily reports
+3. Identify all engineers whose submissions were delayed (after the deadline)
+4. Create a comprehensive summary of non-compliance
+5. Determine the appropriate notification priority level (HIGH, MEDIUM, LOW)
+6. Generate a structured report for the department manager
+
+Output format:
 {
-  "unreportedEngineers": ["engineer1", "engineer2"],
-  "delayedEngineers": ["engineer3"],
-  "totalEngineers": number,
-  "reportedCount": number,
-  "unreportedCount": number,
+  "unsubmittedCount": number,
   "delayedCount": number,
-  "notificationMessage": "string"
-}
-
-**Rules:**
-- Identify unreported engineers based on absence of submission records
-- Identify delayed engineers based on submission timestamp vs deadline
-- Ensure accuracy to prevent false notifications
-- Provide clear, actionable information for the department head
-`;
+  "unsubmittedEngineers": [{ "id": string, "name": string, "email": string }],
+  "delayedEngineers": [{ "id": string, "name": string, "submittedAt": string }],
+  "priorityLevel": "HIGH" | "MEDIUM" | "LOW",
+  "summary": string,
+  "recommendedAction": string
+}`;
 
   return {
-    version: ACTION_02_PROMPT_VERSION,
-    action: "identify-unreported-and-delayed-engineers",
     prompt,
-    context,
+    version: ACTION_02_PROMPT_VERSION,
   };
 }

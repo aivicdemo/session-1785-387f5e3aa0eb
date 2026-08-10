@@ -3,89 +3,150 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Context {
   confirmationEmailContent: string;
   reportingDeadline: string;
   currentTimestamp: string;
-  escalationThreshold: number;
+  employeeList: Array<{
+    id: string;
+    name: string;
+    email: string;
+    department: string;
+  }>;
+  previousReminders: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+  reminderConfig: {
+    maxReminderCount: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
-export interface Action03PromptOutput {
-  missingReporters: Array<{
+export interface Action03Result {
+  identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
+    employeeEmail: string;
     department: string;
-    lastContactTime: string | null;
+    reason: "not_submitted" | "delayed";
+    daysOverdue: number;
   }>;
-  delayedReporters: Array<{
+  reminderTargets: Array<{
     employeeId: string;
     employeeName: string;
-    department: string;
-    submissionTime: string;
-    delayMinutes: number;
+    employeeEmail: string;
+    shouldRemind: boolean;
+    reminderReason: string;
+    reminderCount: number;
   }>;
-  escalationCandidates: Array<{
+  escalationCases: Array<{
     employeeId: string;
     employeeName: string;
-    department: string;
-    reason: string;
-    escalationLevel: number;
-  }>;
-  promptTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    promptMethod: "email" | "chat" | "both";
-    priority: "high" | "medium" | "low";
+    escalationReason: string;
+    recommendedAction: string;
   }>;
   summary: {
-    totalMissing: number;
-    totalDelayed: number;
-    totalEscalation: number;
-    totalPrompt: number;
-    generatedAt: string;
+    totalNonReporters: number;
+    totalReminderTargets: number;
+    totalEscalationCases: number;
+    processingTimestamp: string;
   };
 }
 
-export function buildAction03Prompt(
-  input: Action03PromptInput
-): {
-  systemPrompt: string;
-  userPrompt: string;
-} {
-  const systemPrompt = `You are an AI agent responsible for identifying missing and delayed reporters from confirmation email content and determining escalation and prompt targets.
+export function buildAction03Prompt(context: Action03Context): string {
+  const employeeListStr = context.employeeList
+    .map((emp) => `- ${emp.name} (${emp.id}): ${emp.email} [${emp.department}]`)
+    .join("\n");
 
-Your task is to:
-1. Parse the confirmation email content to identify which employees have not submitted reports
-2. Identify employees whose reports were submitted after the deadline
-3. Determine which reporters require escalation based on the escalation threshold
-4. Decide which employees should receive prompt notifications (email/chat)
-5. Classify prompt priority based on delay duration and escalation level
+  const previousRemindersStr = context.previousReminders
+    .map(
+      (reminder) =>
+        `- Employee ID ${reminder.employeeId}: ${reminder.reminderCount} reminder(s) sent, last at ${reminder.lastReminderTime}`
+    )
+    .join("\n");
 
-Return a structured JSON response with the identified missing reporters, delayed reporters, escalation candidates, and prompt targets.`;
+  const prompt = `You are an AI agent responsible for identifying non-reporting employees and determining reminder targets based on confirmation email content.
 
-  const userPrompt = `Analyze the following confirmation email content and determine reporting status:
+## Task: Identify Non-Reporters and Determine Reminder Targets
 
-Confirmation Email Content:
-${input.confirmationEmailContent}
+### Confirmation Email Content:
+${context.confirmationEmailContent}
 
-Reporting Deadline: ${input.reportingDeadline}
-Current Timestamp: ${input.currentTimestamp}
-Escalation Threshold (days): ${input.escalationThreshold}
+### Employee List:
+${employeeListStr}
 
-Please identify:
-1. Employees who have not submitted reports (missing reporters)
-2. Employees whose reports were submitted late (delayed reporters)
-3. Employees who meet escalation criteria (same employee multiple times or significantly overdue)
-4. Employees who should receive prompt notifications
+### Reporting Deadline:
+${context.reportingDeadline}
 
-For each category, provide employee ID, name, department, and relevant timing information.
-Classify prompt method (email/chat/both) and priority (high/medium/low) based on delay severity.
+### Current Timestamp:
+${context.currentTimestamp}
 
-Return the response as a valid JSON object matching the expected structure.`;
+### Previous Reminders Sent:
+${previousRemindersStr || "No previous reminders"}
 
-  return {
-    systemPrompt,
-    userPrompt,
-  };
+### Reminder Configuration:
+- Maximum reminders per employee: ${context.reminderConfig.maxReminderCount}
+- Minimum interval between reminders: ${context.reminderConfig.reminderIntervalMinutes} minutes
+
+## Instructions:
+
+1. **Identify Non-Reporters**: Parse the confirmation email content to determine which employees have NOT submitted their daily reports.
+   - Classify as "not_submitted" if no report received
+   - Classify as "delayed" if report received after deadline
+   - Calculate days overdue for delayed reports
+
+2. **Determine Reminder Targets**: For each non-reporter, decide whether to send a reminder based on:
+   - Current reminder count vs. maximum allowed
+   - Time since last reminder vs. minimum interval
+   - Escalation conditions (multiple reminders without response)
+
+3. **Identify Escalation Cases**: Flag cases requiring human review:
+   - Employees with multiple reminders still not reporting
+   - System errors preventing report submission
+   - Special circumstances requiring manager judgment
+
+4. **Generate Summary**: Provide counts and processing timestamp
+
+## Output Format:
+Return a JSON object with the following structure:
+{
+  "identifiedNonReporters": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "employeeEmail": "string",
+      "department": "string",
+      "reason": "not_submitted" | "delayed",
+      "daysOverdue": number
+    }
+  ],
+  "reminderTargets": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "employeeEmail": "string",
+      "shouldRemind": boolean,
+      "reminderReason": "string",
+      "reminderCount": number
+    }
+  ],
+  "escalationCases": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationReason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "summary": {
+    "totalNonReporters": number,
+    "totalReminderTargets": number,
+    "totalEscalationCases": number,
+    "processingTimestamp": "string"
+  }
+}`;
+
+  return prompt;
 }

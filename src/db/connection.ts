@@ -86,12 +86,14 @@ class InMemoryDatabase implements DatabaseConnection {
     let paramIndex = 0;
 
     columns.forEach((col) => {
-      row[col] = params[paramIndex] ?? null;
-      paramIndex++;
+      if (paramIndex < params.length) {
+        row[col] = params[paramIndex];
+        paramIndex++;
+      }
     });
 
-    const rowId = `${tableName}_${Date.now()}_${Math.random()}`;
-    table.set(rowId, row);
+    const key = `${tableName}_${Date.now()}_${Math.random()}`;
+    table.set(key, row);
 
     const returningClause = match[4];
     if (returningClause) {
@@ -123,21 +125,23 @@ class InMemoryDatabase implements DatabaseConnection {
       if (!whereClause || this.evaluateWhere(whereClause, row, params)) {
         if (selectClause === '*') {
           results.push(row);
-        } else if (selectClause.toUpperCase() === 'COUNT(*) AS CNT') {
-          results.push({ cnt: 1 });
+        } else if (selectClause.toUpperCase().includes('COUNT(*)')) {
+          results.push({ cnt: results.length + 1 });
         } else {
           const selectedRow: QueryResult = {};
           const columns = selectClause.split(',').map((c) => c.trim().toLowerCase());
           columns.forEach((col) => {
-            selectedRow[col] = row[col];
+            if (col in row) {
+              selectedRow[col] = row[col];
+            }
           });
           results.push(selectedRow);
         }
       }
     });
 
-    if (selectClause.toUpperCase() === 'COUNT(*) AS CNT') {
-      return Promise.resolve([{ cnt: results.length }]);
+    if (selectClause.toUpperCase().includes('COUNT(*)') && results.length === 0) {
+      results.push({ cnt: 0 });
     }
 
     return Promise.resolve(results);
@@ -147,8 +151,10 @@ class InMemoryDatabase implements DatabaseConnection {
     const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/i);
     if (eqMatch) {
       const column = eqMatch[1].toLowerCase();
-      return row[column] === params[0];
+      const paramValue = params[0];
+      return row[column] === paramValue;
     }
+
     return true;
   }
 }

@@ -3,113 +3,80 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02PromptInput {
-  unreportedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    lastReminderAt?: string;
-    reminderCount: number;
-  }>;
-  delayedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    submittedAt: string;
-    deadline: string;
-    delayMinutes: number;
-  }>;
-  escalationThreshold: number;
-  maxReminderCount: number;
-  currentTimestamp: string;
-}
-
-export interface Action02PromptOutput {
-  targetMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    reminderType: "first" | "second" | "escalation";
-    messageContent: string;
-    shouldEscalate: boolean;
-  }>;
-  escalationCases: Array<{
-    memberId: string;
-    memberName: string;
-    reason: string;
-    recommendedAction: string;
-  }>;
-  summary: {
-    totalTargets: number;
-    firstReminders: number;
-    secondReminders: number;
-    escalations: number;
+export interface Tx3Imp1ConfirmationEmailContent {
+  recipientId: string;
+  recipientName: string;
+  recipientEmail: string;
+  submissionStatus: "submitted" | "pending" | "overdue";
+  submissionTime?: string;
+  reportContent?: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const unreportedSection = input.unreportedMembers
+export interface Tx3Imp1PromptContext {
+  confirmationEmails: Tx3Imp1ConfirmationEmailContent[];
+  currentTimestamp: string;
+  submissionDeadline: string;
+  escalationThresholdMinutes: number;
+}
+
+export interface Tx3Imp1IdentifiedMember {
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  status: "not_reported" | "delayed" | "submitted";
+  daysSinceDeadline?: number;
+  previousEscalationCount: number;
+}
+
+export interface Tx3Imp1Action02Output {
+  identifiedMembers: Tx3Imp1IdentifiedMember[];
+  escalationTargets: Tx3Imp1IdentifiedMember[];
+  totalAnalyzed: number;
+  totalNotReported: number;
+  totalDelayed: number;
+  analysisTimestamp: string;
+}
+
+export function buildAction02Prompt(
+  context: Tx3Imp1PromptContext
+): string {
+  const emailSummary = context.confirmationEmails
     .map(
-      (member) =>
-        `- ${member.memberName} (${member.email}): 未報告、催促回数=${member.reminderCount}`
+      (email) =>
+        `- ${email.recipientName} (${email.recipientEmail}): ${email.submissionStatus}`
     )
     .join("\n");
 
-  const delayedSection = input.delayedMembers
-    .map(
-      (member) =>
-        `- ${member.memberName} (${member.email}): ${member.delayMinutes}分遅延、提出時刻=${member.submittedAt}`
-    )
-    .join("\n");
+  const prompt = `You are an AI agent responsible for identifying non-reporting and delayed members from confirmation email data.
 
-  const prompt = `# 報告漏れ・遅延部員への催促判定と送信
+Current timestamp: ${context.currentTimestamp}
+Submission deadline: ${context.submissionDeadline}
+Escalation threshold: ${context.escalationThresholdMinutes} minutes after deadline
 
-## 入力情報
-### 未報告部員
-${unreportedSection || "なし"}
+Confirmation email data:
+${emailSummary}
 
-### 遅延部員
-${delayedSection || "なし"}
+Your task:
+1. Analyze each confirmation email entry
+2. Identify members with "pending" or "overdue" status
+3. Determine escalation targets based on:
+   - Status is "overdue"
+   - Time since deadline exceeds escalation threshold
+   - Previous escalation count should be considered for repeat offenders
+4. Classify each member as "not_reported", "delayed", or "submitted"
+5. Calculate days since deadline for delayed members
 
-## 催促ルール
-- 初回催促: 未報告または遅延が初めての場合
-- 二次催促: 前回催促から24時間以上経過している場合
-- エスカレーション: 催促回数が${input.maxReminderCount}回以上、または遅延が${input.escalationThreshold}分以上の場合
+Return a structured analysis with:
+- List of identified non-reporting and delayed members
+- List of escalation targets (subset of identified members)
+- Summary counts
+- Analysis timestamp
 
-## 実行内容
-1. 各部員の催促対象判定を実施
-2. 催促タイプ（初回/二次/エスカレーション）を決定
-3. 各催促タイプに応じたメッセージ内容を生成
-4. エスカレーション対象を特定し、推奨アクションを記述
-
-## 出力形式
-JSON形式で以下の構造を返却:
-{
-  "targetMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "email": "string",
-      "reminderType": "first" | "second" | "escalation",
-      "messageContent": "string",
-      "shouldEscalate": boolean
-    }
-  ],
-  "escalationCases": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "reason": "string",
-      "recommendedAction": "string"
-    }
-  ],
-  "summary": {
-    "totalTargets": number,
-    "firstReminders": number,
-    "secondReminders": number,
-    "escalations": number
-  }
-}`;
+Focus on accuracy and completeness in member identification.`;
 
   return prompt;
 }

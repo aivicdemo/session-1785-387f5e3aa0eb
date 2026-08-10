@@ -19,85 +19,56 @@ export interface Action01PromptInput {
 
 export interface Action01PromptOutput {
   templateContent: string;
-  distributionPlan: {
-    recipients: string[];
-    deliveryMethod: string;
-    scheduledTime: string;
+  distributionList: string[];
+  scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
   };
-  validationRules: Array<{
-    field: string;
-    rule: string;
-    errorMessage: string;
-  }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportingDeadline,
-    targetDate,
-    engineerList,
-    systemContext,
-  } = input;
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const channelInfo = input.systemContext.notificationChannels.join("、");
 
-  const engineerNames = engineerList.map((e) => e.name).join("、");
-  const recipientEmails = engineerList.map((e) => e.email).join("; ");
+  return `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、前日の日報テンプレートを自動生成して配信するタスクを実行してください。
 
-  const prompt = `# 日報テンプレート自動生成・配信タスク
+【タスク概要】
+前日の日報テンプレートを自動生成し、対象エンジニアに配信します。
 
-## タスク概要
-前日の日報テンプレートを自動生成して、全エンジニアに配信してください。
+【対象エンジニア】
+${engineerNames}
 
-## 入力情報
-- 対象日付: ${targetDate}
-- 報告期限: ${reportingDeadline}
-- 対象エンジニア: ${engineerNames}
-- 配信先メール: ${recipientEmails}
-- 管理システムURL: ${systemContext.reportManagementSystemUrl}
-- 通知チャネル: ${systemContext.notificationChannels.join(", ")}
+【日報提出期限】
+${input.reportingDeadline}
 
-## 実行内容
+【対象日付】
+${input.targetDate}
 
-### 1. 日報テンプレート生成
-以下の項目を含むテンプレートを生成してください:
-- 昨日の実績（箇条書き形式）
-- 本日の予定（箇条書き形式）
-- 抱えている課題（箇条書き形式）
-- 備考欄
+【配信チャネル】
+${channelInfo}
 
-### 2. テンプレート配信計画
-- 配信対象: 全エンジニア
-- 配信方法: メール + 管理システム内通知
-- 配信タイミング: 朝会開始の2時間前
+【日報管理システムURL】
+${input.systemContext.reportManagementSystemUrl}
 
-### 3. 入力内容の妥当性検証ルール定義
-以下の検証ルールを適用してください:
-- 昨日の実績: 必須、最低1項目以上
-- 本日の予定: 必須、最低1項目以上
-- 抱えている課題: 任意だが、記入時は具体的な内容が必要
-- 各項目の文字数: 最大500文字
+【実行内容】
+1. 前日の日報テンプレートを生成する
+2. テンプレートに以下の項目を含める：
+   - 昨日の実績
+   - 本日の予定
+   - 抱えている課題
+3. 対象エンジニア全員に配信する
+4. 配信結果をログに記録する
 
-## 出力形式
-JSON形式で以下の構造で返してください:
+【出力形式】
+以下のJSON形式で結果を返してください：
 {
-  "templateContent": "生成されたテンプレートの本文",
-  "distributionPlan": {
-    "recipients": ["メールアドレス配列"],
-    "deliveryMethod": "email_and_system_notification",
-    "scheduledTime": "配信予定時刻（ISO 8601形式）"
-  },
-  "validationRules": [
-    {
-      "field": "フィールド名",
-      "rule": "検証ルール",
-      "errorMessage": "エラーメッセージ"
-    }
-  ]
-}
-
-## 注意事項
-- テンプレートは日本語で作成してください
-- 配信メールには、提出期限と管理システムへのアクセスリンクを含めてください
-- 検証ルールは、後続のアクション（入力内容の妥当性検証）で使用されます`;
-
-  return prompt;
+  "templateContent": "生成されたテンプレート内容",
+  "distributionList": ["配信先メールアドレス"],
+  "scheduledTime": "配信予定時刻",
+  "metadata": {
+    "version": "${ACTION_01_PROMPT_VERSION}",
+    "generatedAt": "生成日時"
+  }
+}`;
 }

@@ -3,96 +3,59 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
-  reportDeadline: string;
-  escalationThreshold: number;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
+export function buildAction03Prompt(context: {
+  reportContent: string;
+  previousIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    priority: string;
+    status: string;
   }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
   }>;
-  previousEscalations: Array<{
-    memberId: string;
-    escalationCount: number;
-    lastEscalationAt: string;
-  }>;
-}
+  extractionCriteria: {
+    minSeverity: string;
+    focusAreas: string[];
+    excludePatterns: string[];
+  };
+}): string {
+  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily reports.
 
-export interface Action03PromptOutput {
-  escalationTargets: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    reason: string;
-    escalationCount: number;
-  }>;
-  escalationMessages: Array<{
-    memberId: string;
-    channel: "email" | "chat";
-    message: string;
-    priority: "normal" | "high";
-  }>;
-  timestamp: string;
-  executionId: string;
-}
+## Context
+- Report Content: ${context.reportContent}
+- Previous Issues: ${JSON.stringify(context.previousIssues)}
+- Team Members: ${JSON.stringify(context.teamMembers)}
+- Extraction Criteria: ${JSON.stringify(context.extractionCriteria)}
 
-export function buildAction03Prompt(input: Action03PromptInput): string {
-  const nonSubmittedMembers = input.reportingMembers.filter(
-    (member) =>
-      !input.submittedReports.some((report) => report.memberId === member.memberId)
-  );
+## Task
+Extract and identify all issues and bottlenecks from the provided report content.
 
-  const escalationCandidates = nonSubmittedMembers
-    .map((member) => {
-      const previousEscalation = input.previousEscalations.find(
-        (e) => e.memberId === member.memberId
-      );
-      return {
-        ...member,
-        escalationCount: previousEscalation?.escalationCount ?? 0,
-        lastEscalationAt: previousEscalation?.lastEscalationAt ?? null,
-      };
-    })
-    .filter((member) => member.escalationCount < input.escalationThreshold);
+## Requirements
+1. Analyze the report content for potential issues and bottlenecks
+2. Cross-reference with previous issues to identify recurring problems
+3. Categorize issues by severity and impact area
+4. Identify dependencies and related issues
+5. Flag any critical or high-priority issues that require immediate attention
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting members and determining escalation actions.
+## Output Format
+Provide a structured list of extracted issues with:
+- Issue ID
+- Title
+- Description
+- Severity level
+- Affected team members
+- Related previous issues
+- Recommended actions
 
-Current Context:
-- Report Deadline: ${input.reportDeadline}
-- Escalation Threshold: ${input.escalationThreshold} attempts
-- Total Members: ${input.reportingMembers.length}
-- Submitted Reports: ${input.submittedReports.length}
-- Non-Submitted Members: ${nonSubmittedMembers.length}
+## Constraints
+- Focus on actionable issues only
+- Exclude minor or resolved issues
+- Prioritize issues affecting multiple team members
+- Flag any patterns or recurring problems`;
 
-Non-Submitted Members:
-${nonSubmittedMembers.map((m) => `- ${m.memberName} (${m.memberId}): ${m.email}`).join("\n")}
-
-Escalation Candidates (below threshold):
-${escalationCandidates
-  .map(
-    (m) =>
-      `- ${m.memberName} (${m.memberId}): Escalation Count=${m.escalationCount}, Last Escalation=${m.lastEscalationAt || "Never"}`
-  )
-  .join("\n")}
-
-Your Task:
-1. Determine which members require escalation based on submission status and escalation count
-2. For each escalation target, decide the appropriate channel (email or chat)
-3. Generate contextual escalation messages
-4. Assign priority levels based on escalation count and deadline urgency
-5. Return structured escalation plan
-
-Output Format:
-Return a JSON object with:
-- escalationTargets: Array of members requiring escalation with reason and count
-- escalationMessages: Array of messages for each target with channel and priority
-- timestamp: Current ISO timestamp
-- executionId: Unique execution identifier`;
-
-  return systemPrompt;
+  return prompt;
 }

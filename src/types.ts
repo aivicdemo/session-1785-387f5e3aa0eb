@@ -28,7 +28,7 @@ export interface DailyReport {
   yesterday: string;
   today: string;
   issues: string;
-  status: "submitted" | "draft" | "pending";
+  status: "draft" | "submitted" | "reviewed";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,7 +39,7 @@ export interface ReportSubmissionHistory {
   reportId: string;
   submittedAt: Date;
   submitterUserId: string;
-  status: "completed" | "pending" | "failed";
+  status: "pending" | "completed" | "rejected";
   createdAt: Date;
 }
 
@@ -48,12 +48,11 @@ export interface AuditLog {
   agentId: string;
   eventType:
     | "started"
-    | "completed"
-    | "failed"
     | "step_in_progress"
     | "step_completed"
     | "step_failed"
-    | "handoff";
+    | "completed"
+    | "failed";
   stepName?: string;
   timestamp: Date;
   details: Record<string, unknown>;

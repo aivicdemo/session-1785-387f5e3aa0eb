@@ -3,46 +3,76 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
-  reportingDeadline: string;
-  escalationThreshold: number;
-  maxRetries: number;
-}
-
-export interface Action01PromptResult {
-  version: string;
-  timestamp: string;
-  instructions: string;
-  context: Action01PromptContext;
-}
-
-export function buildAction01Prompt(context: Action01PromptContext): Action01PromptResult {
-  return {
-    version: ACTION_01_PROMPT_VERSION,
-    timestamp: new Date().toISOString(),
-    instructions: `
-You are an AI agent responsible for the first action in the daily report management workflow.
-Your task is to send confirmation emails to all engineers to prompt them to submit their daily reports.
-
-Context:
-- Reporting Deadline: ${context.reportingDeadline}
-- Escalation Threshold (hours after deadline): ${context.escalationThreshold}
-- Maximum Retry Attempts: ${context.maxRetries}
-
-Instructions:
-1. Identify all engineers who need to submit daily reports
-2. Prepare personalized confirmation emails for each engineer
-3. Include the reporting deadline and submission instructions
-4. Send emails through the configured mail system
-5. Log all sent emails with timestamps
-6. Handle any delivery failures gracefully
-
-Expected Output:
-- List of engineers who received confirmation emails
-- Timestamp of each email sent
-- Any delivery failures or errors encountered
-- Status of the action completion
-    `,
-    context,
+export interface Action01PromptInput {
+  reportDeadline: string;
+  targetDate: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  systemContext: {
+    reportSystemUrl: string;
+    managementSystemUrl: string;
   };
+}
+
+export interface Action01PromptOutput {
+  templateContent: string;
+  distributionList: string[];
+  scheduledTime: string;
+}
+
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const engineerEmails = input.engineerList.map((e) => e.email).join("; ");
+
+  return `# 日報テンプレート自動生成・配信プロンプト
+
+## 実行目的
+前日の日報テンプレートを自動生成して、全エンジニアに配信する
+
+## 対象エンジニア
+${engineerNames}
+
+## 配信先メールアドレス
+${engineerEmails}
+
+## 日報対象日
+${input.targetDate}
+
+## 提出期限
+${input.reportDeadline}
+
+## システム情報
+- 日報管理システムURL: ${input.systemContext.reportSystemUrl}
+- 管理システムURL: ${input.systemContext.managementSystemUrl}
+
+## 生成するテンプレート内容
+以下の項目を含む日報テンプレートを生成してください：
+
+1. 昨日の実績
+   - 完了したタスク
+   - 進捗状況
+   - 実績の詳細
+
+2. 本日の予定
+   - 予定されたタスク
+   - 優先順位
+   - 予定時間
+
+3. 抱えている課題
+   - 現在の課題
+   - 課題の詳細
+   - 必要なサポート
+
+## 配信方法
+- メール配信システムを使用
+- 全対象エンジニアに同時配信
+- テンプレートは日報管理システムへのリンク付きで送信
+
+## 期待される出力
+- テンプレート本文
+- 配信対象メールアドレスリスト
+- 配信予定時刻`;
 }
