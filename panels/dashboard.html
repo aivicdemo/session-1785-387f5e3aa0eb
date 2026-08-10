@@ -16,9 +16,9 @@
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-            background: white;
+            background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
@@ -35,16 +35,7 @@
             font-size: 28px;
             color: #333;
         }
-        .user-info {
-            text-align: right;
-            font-size: 14px;
-            color: #666;
-        }
-        .user-info p {
-            margin: 5px 0;
-        }
         .logout-btn {
-            margin-top: 10px;
             padding: 8px 16px;
             background-color: #dc3545;
             color: white;
@@ -71,46 +62,45 @@
         .deadline-section p {
             color: #856404;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: bold;
         }
         .summary-section {
             margin-bottom: 30px;
         }
         .summary-section h2 {
-            font-size: 20px;
+            font-size: 22px;
             color: #333;
             margin-bottom: 20px;
-            border-left: 4px solid #007bff;
-            padding-left: 10px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background-color: #f9f9f9;
         }
         .summary-table th {
             background-color: #007bff;
             color: white;
             padding: 15px;
             text-align: left;
-            font-weight: 600;
+            font-weight: bold;
             border: 1px solid #ddd;
         }
         .summary-table td {
             padding: 15px;
             border: 1px solid #ddd;
-            font-size: 14px;
         }
         .summary-table tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #f0f0f0;
         }
         .summary-table tr:hover {
-            background-color: #f0f0f0;
+            background-color: #e8f4f8;
         }
         .progress-bar {
             width: 100%;
             height: 20px;
-            background-color: #e9ecef;
+            background-color: #ddd;
             border-radius: 10px;
             overflow: hidden;
             margin-top: 5px;
@@ -123,21 +113,33 @@
             justify-content: center;
             color: white;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: bold;
         }
-        .back-link {
+        .back-btn {
             display: inline-block;
-            margin-top: 20px;
             padding: 10px 20px;
-            background-color: #17a2b8;
+            background-color: #007bff;
             color: white;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 14px;
-            font-weight: 600;
+            margin-top: 20px;
+            transition: background-color 0.3s;
         }
-        .back-link:hover {
-            background-color: #138496;
+        .back-btn:hover {
+            background-color: #0056b3;
+        }
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .summary-table {
+                font-size: 12px;
+            }
+            .summary-table th,
+            .summary-table td {
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -145,16 +147,12 @@
     <div class="container">
         <div class="header">
             <h1>日報提出状況ダッシュボード</h1>
-            <div class="user-info">
-                <p>ユーザー: <span id="username">-</span></p>
-                <p>部門: <span id="department">-</span></p>
-                <button class="logout-btn" onclick="logout()">ログアウト</button>
-            </div>
+            <button class="logout-btn" onclick="logout()">ログアウト</button>
         </div>
 
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <p id="deadlineText">本日 18:00 までに提出してください</p>
+            <p id="deadlineText">本日 18:00 まで</p>
         </div>
 
         <div class="summary-section">
@@ -165,14 +163,16 @@
                         <th>部門名</th>
                         <th>提出済み</th>
                         <th>未提出</th>
+                        <th>合計</th>
                         <th>提出率</th>
                     </tr>
                 </thead>
-                <tbody id="summaryTableBody">
+                <tbody id="summaryBody">
                     <tr>
                         <td>営業部</td>
                         <td>8</td>
                         <td>2</td>
+                        <td>10</td>
                         <td>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: 80%;">80%</div>
@@ -183,6 +183,7 @@
                         <td>企画部</td>
                         <td>6</td>
                         <td>1</td>
+                        <td>7</td>
                         <td>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: 85.7%;">85.7%</div>
@@ -191,21 +192,23 @@
                     </tr>
                     <tr>
                         <td>技術部</td>
-                        <td>10</td>
-                        <td>0</td>
+                        <td>12</td>
+                        <td>3</td>
+                        <td>15</td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 100%;">100%</div>
+                                <div class="progress-fill" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>管理部</td>
                         <td>5</td>
-                        <td>2</td>
+                        <td>0</td>
+                        <td>5</td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 71.4%;">71.4%</div>
+                                <div class="progress-fill" style="width: 100%;">100%</div>
                             </div>
                         </td>
                     </tr>
@@ -213,40 +216,33 @@
             </table>
         </div>
 
-        <a href="./daily-report.html" class="back-link">日報入力・送信へ戻る</a>
+        <a href="./daily-report.html" class="back-btn">日報入力画面に戻る</a>
     </div>
 
     <script>
-        window.addEventListener('DOMContentLoaded', function() {
-            initializePage();
-        });
-
-        function initializePage() {
-            const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-            if (!userInfo.userId) {
+        document.addEventListener('DOMContentLoaded', function() {
+            // ユーザー情報を確認
+            const userStr = sessionStorage.getItem('currentUser');
+            if (!userStr) {
                 window.location.href = './login.html';
                 return;
             }
-
-            document.getElementById('username').textContent = userInfo.userId;
-            document.getElementById('department').textContent = userInfo.department || '-';
 
             // 提出期限を設定
             const today = new Date();
             const deadline = new Date(today);
             deadline.setHours(18, 0, 0, 0);
-            const formattedDeadline = deadline.toLocaleString('ja-JP', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
+            const deadlineStr = deadline.toLocaleString('ja-JP', {
+                month: 'numeric',
+                day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            document.getElementById('deadlineText').textContent = `${formattedDeadline} までに提出してください`;
-        }
+            document.getElementById('deadlineText').textContent = `本日 ${deadline.getHours()}:00 まで`;
+        });
 
         function logout() {
-            sessionStorage.clear();
+            sessionStorage.removeItem('currentUser');
             window.location.href = './login.html';
         }
     </script>
