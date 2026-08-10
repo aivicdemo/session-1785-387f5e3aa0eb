@@ -480,7 +480,8 @@ const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
             const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
             userId = payload.userId || null;
             const expTime = payload.exp ? payload.exp * 1000 : null;
-            isValid = expTime ? currentTime.getTime() < expTime : false;
+            const currentTimeMs = currentTime instanceof Date ? currentTime.getTime() : currentTime;
+            isValid = expTime ? currentTimeMs < expTime : false;
           }
         } catch {
           isValid = false;
