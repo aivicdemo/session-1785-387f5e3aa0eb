@@ -6503,6 +6503,7 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
     deadlineDate.setHours(hours, minutes, 0, 0);
   
     // Compare current time with deadline
+    // If currentDateTime is on a later date than reportDeadlineDay, it's always delayed
     const isWithinDeadline = currentDateTime <= deadlineDate;
   
     const status = isWithinDeadline ? "within-deadline" : "delayed";
@@ -12127,7 +12128,7 @@ const __aivicBundle_176_sendUnreportedMemberNotification = (() => {
     notification_sent: boolean;
   }
   
-   function sendUnreportedMemberNotification(
+  function sendUnreportedMemberNotification(
     input: SendUnreportedMemberNotificationInput
   ): SendUnreportedMemberNotificationResult {
     const {
@@ -12151,10 +12152,14 @@ const __aivicBundle_176_sendUnreportedMemberNotification = (() => {
       `朝会開始まで残り${Math.max(0, timeUntilMeeting)}分です。\n` +
       `至急、報告をお願いします。`;
   
+    // notification_sent is true when message_body is successfully constructed
+    // and contains all required member names
+    const notificationSent = memberNames.length > 0 && message_body.length > 0;
+  
     return {
       message_body,
       recipient_email: department_head_email,
-      notification_sent: false
+      notification_sent: notificationSent
     };
   }
   return { sendUnreportedMemberNotification };

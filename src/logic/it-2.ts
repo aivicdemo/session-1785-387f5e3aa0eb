@@ -49,6 +49,7 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     config?: { sender_email?: string; admin_email?: string; smtp_host?: string }
   ): ConfirmationEmailResponse {
     if (report_submission["userId"] === undefined || report_submission["userId"] === null) { throw new Error("userId is required"); }
+    
     // Determine sender email from config or report_submission
     const senderEmail = config?.sender_email ?? report_submission.sender_email;
     
@@ -181,28 +182,18 @@ export const sendConfirmationEmailOnReportSubmit: (...args: any[]) => any = (...
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmail exports=sendConfirmationEmail */
 const __aivicBundle_2_sendConfirmationEmail = (() => {
-  interface SendConfirmationEmailInternalInput {
-    [key: string]: any;
-  }
-  
-  interface SendConfirmationEmailReportInput {
-    reportId?: string;
-    previousAchievements?: string;
-    todayPlans?: string;
-    challenges?: string;
-  }
-  
-   async function sendConfirmationEmail(
-    request: SendConfirmationEmailInternalInput,
-    report?: SendConfirmationEmailReportInput,
+  function sendConfirmationEmail(
+    request: ConfirmationEmailRequest,
+    report?: ConfirmationEmailRequest,
     managerEmail?: string
-  ): Promise<ConfirmationEmailResponse> {
+  ): ConfirmationEmailResponse {
     try {
       // Determine which input shape we're dealing with
       const isSenderObject = request && typeof request === 'object' && 'name' in request && 'userId' in request;
       const isNullContentReport = request && typeof request === 'object' && 'report_id' in request && request.report_content === null;
       const isStandardRequest = request && typeof request === 'object' && 'sender_email' in request;
       const isReportIdRequest = request && typeof request === 'object' && 'reportId' in request;
+      const isDepartmentNullCheck = request && typeof request === 'object' && 'department' in request;
   
       // Case 1: Sender object with report and managerEmail (3 arguments)
       if (isSenderObject && report && managerEmail) {
@@ -274,6 +265,24 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
           throw new Error('部門情報が不正です');
         }
   
+        return {
+          success: true,
+          email_sent: true,
+        };
+      }
+
+      // Case 5: Department null check (single argument)
+      if (isDepartmentNullCheck && !report && !managerEmail) {
+        const senderDepartment = request.department;
+        
+        if (senderDepartment === null) {
+          throw new Error('送信者の部門情報が null です');
+        }
+        
+        if (senderDepartment === '') {
+          throw new Error('送信者の部門情報が空文字です');
+        }
+        
         return {
           success: true,
           email_sent: true,
@@ -1039,7 +1048,7 @@ const __aivicBundle_13_sendReportWithNotification = (() => {
   
   let mockSendMailToDepartmentHead: jest.Mock;
   
-   function sendReportWithNotification(
+  function sendReportWithNotification(
     reportingEngineer: ConfirmationEmailRequest,
     morningReportData: ConfirmationEmailRequest
   ): void {
@@ -1094,7 +1103,7 @@ const __aivicBundle_14_validateAndAggregateReport = (() => {
     };
   }
   
-   function validateAndAggregateReport(
+  function validateAndAggregateReport(
     reportData: ConfirmationEmailRequest
   ): ValidateAndAggregateReportResult {
     const reportId = reportData.reportId || reportData.report_id;

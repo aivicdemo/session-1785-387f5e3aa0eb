@@ -9499,3 +9499,32 @@ const __aivicBundle_113_runTx4Imp1Agent = (() => {
 })();
 export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_113_runTx4Imp1Agent.runTx4Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx4Imp1Agent */
+
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validateAllReportsReceived exports=validateAllReportsReceived */
+const __aivicBundle_validateAllReportsReceived = (() => {
+  function validateAllReportsReceived(input: any): any {
+    const submittedIds = new Set(input.reportRecords.map((r: any) => r.employeeId));
+    const missingIds = input.teamMemberIds.filter((id: string) => !submittedIds.has(id));
+    const missingEmployees = input.reportRecords
+      .filter((r: any) => missingIds.includes(r.employeeId))
+      .map((r: any) => ({
+        employeeId: r.employeeId,
+        employeeName: r.employeeName,
+      }));
+
+    const completedCount = submittedIds.size;
+    const totalCount = input.teamMemberIds.length;
+    const allReportsComplete = completedCount === totalCount;
+
+    return {
+      allReportsComplete,
+      missingEmployees,
+      completedCount,
+      totalCount,
+    };
+  }
+  return { validateAllReportsReceived };
+})();
+export const validateAllReportsReceived = __aivicBundle_validateAllReportsReceived.validateAllReportsReceived;
+/* AIVIC_FUNCTION_BUNDLE_END owner=validateAllReportsReceived */
