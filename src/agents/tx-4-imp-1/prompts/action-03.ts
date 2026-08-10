@@ -3,155 +3,111 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03PromptInput {
-  reportContent: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  teamMembers: Array<{
+interface Action03PromptContext {
+  reportDeadline: string;
+  escalationThreshold: number;
+  maxReminders: number;
+  reportingMembers: Array<{
     id: string;
     name: string;
+    email: string;
     department: string;
   }>;
-  priorityFramework?: {
-    urgency: string[];
-    impact: string[];
-    effort: string[];
-  };
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
+  reminderHistory: Array<{
+    memberId: string;
+    reminderCount: number;
+    lastReminderAt: string;
+  }>;
 }
 
-interface Action03PromptOutput {
+interface Action03PromptResult {
   version: string;
-  prompt: string;
-  instructions: {
-    task: string;
-    context: string;
-    constraints: string[];
-    outputFormat: string;
-  };
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action03PromptContext;
 }
 
-function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const priorityFramework = input.priorityFramework || {
-    urgency: ["即座", "本日中", "明日まで", "週内", "来週以降"],
-    impact: ["重大", "高", "中", "低"],
-    effort: ["小", "中", "大"],
-  };
+function buildAction03Prompt(context: Action03PromptContext): Action03PromptResult {
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed reporters from daily report confirmation emails.
 
-  const issuesContext = input.extractedIssues
-    .map(
-      (issue, idx) =>
-        `${idx + 1}. [${issue.category}] ${issue.title}\n   詳細: ${issue.description}`
-    )
-    .join("\n");
+Your task is to:
+1. Analyze the confirmation email content to identify members who have not submitted their daily reports
+2. Identify members whose reports were submitted after the deadline
+3. Determine which members should receive reminder notifications based on:
+   - Current reminder count (must not exceed ${context.maxReminders})
+   - Time elapsed since deadline (escalation threshold: ${context.escalationThreshold} hours)
+   - Previous reminder history
+4. Generate a structured list of members requiring follow-up action
+5. Classify each member by urgency level (URGENT, HIGH, NORMAL)
 
-  const teamContext = input.teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
-
-  const promptText = `# 日報課題の優先度判定タスク
-
-## 背景
-朝会報告管理システムから収集された日報内容に基づき、抽出された課題について優先度を自動判定します。
-
-## 入力情報
-
-### 報告内容の要約
-${input.reportContent}
-
-### 抽出済み課題一覧
-${issuesContext}
-
-### チームメンバー
-${teamContext}
-
-## 優先度判定フレームワーク
-
-### 緊急度レベル
-${priorityFramework.urgency.map((u, i) => `${i + 1}. ${u}`).join("\n")}
-
-### 影響度レベル
-${priorityFramework.impact.map((i, idx) => `${idx + 1}. ${i}`).join("\n")}
-
-### 対応工数
-${priorityFramework.effort.map((e, i) => `${i + 1}. ${e}`).join("\n")}
-
-## タスク
-
-以下の観点から各課題の優先度を判定してください：
-
-1. **緊急度の評価**: 課題が解決されない場合の時間的制約を判定
-2. **影響度の評価**: 課題が与える組織・プロジェクトへの影響範囲と深刻度を判定
-3. **対応工数の評価**: 課題解決に必要な工数を見積もり
-4. **優先度スコアの算出**: 緊急度 × 影響度 / 対応工数 で相対的な優先度を計算
-5. **分類**: 優先度スコアに基づき、以下のいずれかに分類
-   - P0 (最優先): スコア 8 以上、即座の対応が必須
-   - P1 (高優先): スコア 5-7、本日中の対応が望ましい
-   - P2 (中優先): スコア 2-4、週内の対応を推奨
-   - P3 (低優先): スコア 1未満、来週以降の対応で可
-
-## 出力形式
-
-JSON形式で以下の構造で返してください：
-
-\`\`\`json
+Output format must be valid JSON with the following structure:
 {
-  "prioritizedIssues": [
+  "nonSubmitters": [
     {
-      "issueId": "string",
-      "title": "string",
-      "priority": "P0" | "P1" | "P2" | "P3",
-      "urgency": "string",
-      "impact": "string",
-      "effort": "string",
-      "score": number,
-      "reasoning": "string",
-      "recommendedAction": "string",
-      "assignmentSuggestion": "string or null"
+      "memberId": string,
+      "name": string,
+      "email": string,
+      "department": string,
+      "hoursOverdue": number,
+      "urgency": "URGENT" | "HIGH" | "NORMAL",
+      "reminderCount": number,
+      "shouldRemind": boolean,
+      "reason": string
+    }
+  ],
+  "delayedSubmitters": [
+    {
+      "memberId": string,
+      "name": string,
+      "email": string,
+      "department": string,
+      "submittedAt": string,
+      "hoursLate": number,
+      "urgency": "URGENT" | "HIGH" | "NORMAL",
+      "reminderCount": number,
+      "shouldRemind": boolean,
+      "reason": string
     }
   ],
   "summary": {
-    "totalIssues": number,
-    "p0Count": number,
-    "p1Count": number,
-    "p2Count": number,
-    "p3Count": number,
-    "criticalRisks": "string[]",
-    "overallAssessment": "string"
-  },
-  "escalationRequired": boolean,
-  "escalationReason": "string or null"
-}
-\`\`\`
+    "totalNonSubmitters": number,
+    "totalDelayedSubmitters": number,
+    "urgentCount": number,
+    "remindersToSend": number
+  }
+}`;
 
-## 制約事項
+  const userPrompt = `Analyze the following daily report submission status as of ${new Date().toISOString()}:
 
-- 判定は客観的かつ一貫性を保つこと
-- 同一優先度内での相対的な順序も示すこと
-- 判定根拠は明確に記述すること
-- 通常と異なる事象や重大リスクが検出された場合は escalationRequired を true に設定
-`;
+Report Deadline: ${context.reportDeadline}
+Escalation Threshold: ${context.escalationThreshold} hours after deadline
+Maximum Reminders per Member: ${context.maxReminders}
+
+Reporting Members (${context.reportingMembers.length} total):
+${JSON.stringify(context.reportingMembers, null, 2)}
+
+Submitted Reports (${context.submittedReports.length} received):
+${JSON.stringify(context.submittedReports, null, 2)}
+
+Reminder History:
+${JSON.stringify(context.reminderHistory, null, 2)}
+
+Please identify non-submitters and delayed reporters, determine urgency levels, and recommend which members should receive reminder notifications.`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
-    prompt: promptText,
-    instructions: {
-      task: "日報から抽出された課題について、緊急度・影響度・対応工数を総合的に評価し、優先度を自動判定・分類する",
-      context:
-        "朝会準備時間の短縮と課題対応の効率化を目的とした、AIによる自動優先度判定プロセス",
-      constraints: [
-        "判定は客観的かつ一貫性を保つこと",
-        "判定根拠は明確に記述すること",
-        "通常と異なる事象は escalation フラグで報告すること",
-        "複数課題の優先度が同等の場合は相対的な順序を示すこと",
-      ],
-      outputFormat:
-        "JSON形式で、優先度判定結果、スコア、根拠、推奨アクション、サマリーを含む",
-    },
+    action: "identify-non-submitters-and-delayed-reporters",
+    systemPrompt,
+    userPrompt,
+    context,
   };
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03PromptContext, Action03PromptResult };

@@ -3,61 +3,136 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
+export interface Action04PromptInput {
   reportingDeadline: string;
-  escalationThreshold: number;
-  targetDate: string;
-  departmentId: string;
-  engineerIds: string[];
-}
-
-export interface Action04PromptResult {
-  escalationCandidates: Array<{
-    engineerId: string;
-    engineerName: string;
-    daysOverdue: number;
-    lastReminderSentAt: string | null;
-    reminderCount: number;
+  overdueThresholdMinutes: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
+  targetMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
   }>;
-  escalationMessage: string;
-  shouldEscalate: boolean;
+  submissionStatus: Array<{
+    memberId: string;
+    submitted: boolean;
+    submittedAt?: string;
+    isOverdue: boolean;
+  }>;
 }
 
-export function buildAction04Prompt(context: Action04PromptContext): string {
-  const {
-    reportingDeadline,
-    escalationThreshold,
-    targetDate,
-    departmentId,
-    engineerIds,
-  } = context;
+export interface Action04PromptOutput {
+  escalationCandidates: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+    reason: string;
+    priority: "high" | "medium" | "low";
+    recommendedAction: string;
+  }>;
+  summary: {
+    totalMembers: number;
+    submitted: number;
+    overdue: number;
+    escalationCount: number;
+  };
+  timestamp: string;
+}
 
-  return `You are an AI agent responsible for escalating non-reporting cases in the daily report management system.
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const submittedCount = input.submissionStatus.filter(
+    (s) => s.submitted
+  ).length;
+  const overdueCount = input.submissionStatus.filter(
+    (s) => s.isOverdue
+  ).length;
 
-## Context
-- Target Date: ${targetDate}
-- Reporting Deadline: ${reportingDeadline}
-- Escalation Threshold (days overdue): ${escalationThreshold}
-- Department ID: ${departmentId}
-- Engineer IDs to Monitor: ${engineerIds.join(", ")}
+  const escalationCandidates = input.submissionStatus
+    .filter((status) => status.isOverdue)
+    .map((status) => {
+      const member = input.targetMembers.find(
+        (m) => m.memberId === status.memberId
+      );
+      return {
+        memberId: status.memberId,
+        memberName: member?.memberName || "Unknown",
+        email: member?.email || "",
+        department: member?.department || "",
+        isOverdue: status.isOverdue,
+      };
+    });
 
-## Task
-Analyze the current reporting status and determine which engineers require escalation notification.
+  const prompt = `
+# 日報提出状況の監視と催促判定
 
-## Escalation Criteria
-1. Engineer has not submitted a report by the deadline
-2. Days overdue exceeds the escalation threshold
-3. Previous reminders have been sent without response
-4. Escalation should be sent to the department manager
+## 現在の提出状況
+- 報告期限: ${input.reportingDeadline}
+- 遅延判定閾値: ${input.overdueThresholdMinutes}分
+- 総対象者数: ${input.targetMembers.length}
+- 提出済み: ${submittedCount}
+- 遅延者: ${overdueCount}
 
-## Output Requirements
-Provide a JSON response with:
-- escalationCandidates: Array of engineers requiring escalation
-- escalationMessage: Summary message for the manager
-- shouldEscalate: Boolean indicating if escalation is needed
+## 催促ルール
+- 最大催促回数: ${input.escalationRules.maxReminders}
+- 催促間隔: ${input.escalationRules.reminderIntervalMinutes}分
 
-## Important Notes
-- Consider the frequency of previous reminders to avoid over-notification
-- Escalation should be proportional to the severity of the delay
-- Include context about the engineer's typical reporting patterns if available`;
+## 遅延者一覧
+${escalationCandidates
+  .map(
+    (candidate) => `
+- ${candidate.memberName} (${candidate.department})
+  - メール: ${candidate.email}
+  - 遅延状態: ${candidate.isOverdue ? "遅延中" : "提出済み"}
+`
+  )
+  .join("")}
+
+## 判定タスク
+以下の項目について判定してください:
+
+1. **催促対象の特定**
+   - 遅延者の中から催促が必要な対象を特定
+   - 既に複数回催促済みの場合は判定ルールを適用
+
+2. **優先度の判定**
+   - 遅延時間に基づいて優先度を判定 (high/medium/low)
+   - 部門別の重要度を考慮
+
+3. **推奨アクション**
+   - 各対象者に対する具体的な催促方法を提案
+   - メール送信、チャット通知など
+
+4. **エスカレーション判定**
+   - 複数回催促後も報告がない場合の対応を判定
+   - 部長への報告が必要な場合を特定
+
+## 出力形式
+JSON形式で以下の構造で返してください:
+{
+  "escalationCandidates": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "email": "string",
+      "department": "string",
+      "reason": "string",
+      "priority": "high|medium|low",
+      "recommendedAction": "string"
+    }
+  ],
+  "summary": {
+    "totalMembers": number,
+    "submitted": number,
+    "overdue": number,
+    "escalationCount": number
+  },
+  "timestamp": "ISO8601形式の現在時刻"
+}
+`;
+
+  return prompt;
 }

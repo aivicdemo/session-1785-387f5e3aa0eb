@@ -3,113 +3,108 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
-  reportCollectionStatus: {
-    totalEngineers: number;
-    submittedCount: number;
-    pendingEngineers: string[];
-    overdueEngineers: string[];
-  };
+export interface Action04Context {
+  reportContent: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    reportedBy: string;
-    severity: "low" | "medium" | "high" | "critical";
-  }>;
-  priorityClassification: Array<{
-    issueId: string;
-    priority: number;
     category: string;
+  }>;
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  reportingDeadline: string;
-  currentTimestamp: string;
+  escalationFlags: Array<{
+    issueId: string;
+    reason: string;
+    requiresHumanReview: boolean;
+  }>;
 }
 
-export interface Action04PromptResult {
-  action: "escalate" | "proceed" | "hold";
-  reasoning: string;
-  nextSteps: string[];
-  requiresHumanReview: boolean;
-  reviewReason?: string;
+export interface Action04Input {
+  confirmationEmailContent: string;
+  reportCollectionData: Array<{
+    engineerId: string;
+    engineerName: string;
+    reportText: string;
+    submittedAt: string;
+  }>;
+  previousIssueContext?: Array<{
+    id: string;
+    title: string;
+    status: string;
+  }>;
 }
 
-export function buildAction04Prompt(context: Action04PromptContext): string {
-  const submissionRate = (
-    (context.reportCollectionStatus.submittedCount /
-      context.reportCollectionStatus.totalEngineers) *
-    100
-  ).toFixed(1);
+export interface Action04Output {
+  context: Action04Context;
+  prioritizedIssuesList: Array<{
+    rank: number;
+    issueId: string;
+    title: string;
+    priority: "critical" | "high" | "medium" | "low";
+    affectedEngineers: string[];
+    description: string;
+    recommendedAction: string;
+    escalationRequired: boolean;
+  }>;
+  summaryReport: {
+    totalIssuesExtracted: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    escalationCount: number;
+  };
+  timestamp: string;
+}
 
-  const pendingList =
-    context.reportCollectionStatus.pendingEngineers.length > 0
-      ? context.reportCollectionStatus.pendingEngineers.join(", ")
-      : "なし";
+export function buildAction04Prompt(input: Action04Input): string {
+  const reportSummary = input.reportCollectionData
+    .map(
+      (report) =>
+        `[${report.engineerId}] ${report.engineerName}: ${report.reportText}`
+    )
+    .join("\n");
 
-  const overdueList =
-    context.reportCollectionStatus.overdueEngineers.length > 0
-      ? context.reportCollectionStatus.overdueEngineers.join(", ")
-      : "なし";
+  const previousContext =
+    input.previousIssueContext && input.previousIssueContext.length > 0
+      ? `\n\n## Previous Issue Context:\n${input.previousIssueContext.map((issue) => `- ${issue.title} (Status: ${issue.status})`).join("\n")}`
+      : "";
 
-  const issuesSection =
-    context.extractedIssues.length > 0
-      ? context.extractedIssues
-          .map(
-            (issue) =>
-              `- [${issue.severity.toUpperCase()}] ${issue.title} (報告者: ${issue.reportedBy})\n  ${issue.description}`
-          )
-          .join("\n")
-      : "抽出された課題なし";
+  return `You are an AI agent responsible for analyzing daily reports and extracting issues with priority classification.
 
-  const prioritySection =
-    context.priorityClassification.length > 0
-      ? context.priorityClassification
-          .map(
-            (p) =>
-              `- 優先度 ${p.priority}: ${p.category} (理由: ${p.reasoning})`
-          )
-          .join("\n")
-      : "優先度分類なし";
+## Task: Extract Issues and Assign Priorities
 
-  return `# 日報収集から課題抽出・優先度判定までの自動実行 - Action 04
+### Confirmation Email Content:
+${input.confirmationEmailContent}
 
-## 現在の状況
-- 報告期限: ${context.reportingDeadline}
-- 現在時刻: ${context.currentTimestamp}
-- 提出率: ${submissionRate}% (${context.reportCollectionStatus.submittedCount}/${context.reportCollectionStatus.totalEngineers})
-- 未提出者: ${pendingList}
-- 期限超過者: ${overdueList}
+### Collected Reports:
+${reportSummary}
+${previousContext}
 
-## 抽出された課題・ボトルネック
-${issuesSection}
+### Your Responsibilities:
+1. Extract all issues, bottlenecks, and risks mentioned in the reports
+2. Categorize each issue (e.g., Technical, Resource, Process, External Dependency)
+3. Assign priority levels: critical, high, medium, low
+4. Identify issues requiring human review or escalation
+5. Provide reasoning for each priority assignment
+6. Flag any unusual or high-risk situations
 
-## 課題の優先度分類
-${prioritySection}
+### Output Format:
+Return a JSON object with:
+- extractedIssues: Array of identified issues with id, title, description, category
+- priorityAssignments: Array with issueId, priority level, and reasoning
+- escalationFlags: Array of issues requiring human review with reasons
+- summaryReport: Count of issues by priority level
 
-## 判定タスク
-以下の条件に基づいて、次のアクションを判定してください:
+### Priority Guidelines:
+- CRITICAL: Blocks project delivery, safety risk, or immediate action required
+- HIGH: Significant impact on timeline or quality, needs resolution this week
+- MEDIUM: Should be addressed soon, impacts efficiency or team morale
+- LOW: Nice to have, can be scheduled for future sprints
 
-1. **提出率が100%未満の場合**: 未提出者への再催促が必要か判定
-2. **期限超過者がいる場合**: エスカレーション対象か判定
-3. **抽出課題の優先度判定**: 
-   - Critical: 即座に対応が必要な課題
-   - High: 本日中に対応すべき課題
-   - Medium: 今週中に対応すべき課題
-   - Low: 優先度が低い課題
-4. **人的レビュー要否**: 以下の場合は人的レビューが必須
-   - 複数の Critical 課題が同時に検出された
-   - 通常と異なるパターンの課題が検出された
-   - 優先度判定が困難な同等レベルの課題がある
-   - 重大なリスク課題が検出された
-
-## 出力形式
-JSON形式で以下を返してください:
-{
-  "action": "escalate" | "proceed" | "hold",
-  "reasoning": "判定理由を簡潔に説明",
-  "nextSteps": ["次のステップ1", "次のステップ2", ...],
-  "requiresHumanReview": true | false,
-  "reviewReason": "人的レビューが必要な場合のみ記入"
-}`;
+Analyze thoroughly and provide structured output.`;
 }

@@ -7,19 +7,18 @@ export interface Action01PromptInput {
   reportDate: string;
   engineerName: string;
   engineerId: string;
-  previousReportSummary?: string;
+  previousReportContent?: string;
   systemContext?: Record<string, unknown>;
 }
 
 export interface Action01PromptOutput {
-  templateGenerated: boolean;
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
   metadata: {
     version: string;
     generatedAt: string;
-    targetAudience: string[];
+    targetAudience: string;
   };
 }
 
@@ -28,66 +27,37 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     reportDate,
     engineerName,
     engineerId,
-    previousReportSummary = "",
+    previousReportContent = "",
     systemContext = {},
   } = input;
 
-  const previousContext =
-    previousReportSummary.length > 0
-      ? `\n前日の日報サマリー:\n${previousReportSummary}`
-      : "";
+  const basePrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
 
-  const systemContextStr =
-    Object.keys(systemContext).length > 0
-      ? `\nシステムコンテキスト:\n${JSON.stringify(systemContext, null, 2)}`
-      : "";
+Task: Generate a daily report template to be distributed to engineer "${engineerName}" (ID: ${engineerId}) for the date ${reportDate}.
 
-  return `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、エンジニアの日報テンプレートを自動生成して配信してください。
+Context:
+- Previous report content (if available): ${previousReportContent || "No previous report"}
+- System context: ${JSON.stringify(systemContext)}
 
-【タスク】
-前日の日報テンプレートを自動生成して配信する
+Requirements:
+1. Create a structured daily report template with the following sections:
+   - Yesterday's Achievements (実績)
+   - Today's Plan (予定)
+   - Current Issues/Challenges (課題)
+   - Blockers or Dependencies (阻害要因)
+   - Additional Notes (備考)
 
-【対象エンジニア】
-- 名前: ${engineerName}
-- ID: ${engineerId}
-- 報告日: ${reportDate}
-${previousContext}
-${systemContextStr}
+2. Ensure the template is clear, concise, and easy to fill out
+3. Include placeholders for the engineer to input their information
+4. Format the template in a way that can be easily parsed and stored in the report management system
 
-【生成すべき日報テンプレートの要素】
-1. 昨日の実績セクション
-   - 完了したタスク
-   - 進捗状況
-   - 実績の詳細
+Output format:
+- Provide the complete template content as a string
+- Include metadata about distribution channels (email, chat, etc.)
+- Specify the scheduled distribution time
+- Include version information and generation timestamp
 
-2. 本日の予定セクション
-   - 予定されたタスク
-   - 優先度
-   - 予想所要時間
+Generate the template now:`;
 
-3. 抱えている課題セクション
-   - 現在の課題
-   - 影響範囲
-   - 必要なサポート
-
-【配信方法】
-- メール配信
-- チャットツール通知
-- 管理システムダッシュボード表示
-
-【出力形式】
-以下のJSON形式で応答してください:
-{
-  "templateGenerated": true,
-  "templateContent": "生成されたテンプレートの完全な内容",
-  "distributionChannels": ["email", "chat", "dashboard"],
-  "scheduledTime": "配信予定時刻（ISO 8601形式）",
-  "metadata": {
-    "version": "1.0.0",
-    "generatedAt": "生成時刻（ISO 8601形式）",
-    "targetAudience": ["${engineerId}"]
-  }
-}
-
-テンプレートは明確で記入しやすく、前日の実績を参考にしながらも、新規入力を促すような構成にしてください。`;
+  return basePrompt;
 }

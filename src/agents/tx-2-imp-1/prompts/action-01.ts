@@ -3,99 +3,80 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Tx2Imp1Context {
-  engineerId: string;
-  engineerName: string;
-  reportDate: string;
-  submissionDeadline: string;
-  currentTime: string;
+export interface Action01PromptInput {
+  reportingDeadline: string;
+  targetDate: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  systemContext: {
+    reportManagementSystemUrl: string;
+    notificationChannels: string[];
+  };
 }
 
-export interface Tx2Imp1ReportStatus {
-  engineerId: string;
-  engineerName: string;
-  submitted: boolean;
-  submittedAt?: string;
-  isLate: boolean;
+export interface Action01PromptOutput {
+  templateContent: string;
+  distributionList: string[];
+  scheduledTime: string;
 }
 
-export interface Tx2Imp1ActionInput {
-  context: Tx2Imp1Context;
-  reportStatuses: Tx2Imp1ReportStatus[];
-}
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const deadline = new Date(input.reportingDeadline).toLocaleString("ja-JP");
+  const targetDate = new Date(input.targetDate).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 
-export interface Tx2Imp1ActionOutput {
-  action: string;
-  timestamp: string;
-  unsubmittedEngineers: Tx2Imp1ReportStatus[];
-  lateEngineers: Tx2Imp1ReportStatus[];
-  summary: string;
-}
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-export function buildAction01Prompt(input: Tx2Imp1ActionInput): string {
-  const { context, reportStatuses } = input;
+## 実行目的
+前日の日報テンプレートを自動生成して、全エンジニアに配信する
 
-  const unsubmittedCount = reportStatuses.filter((s) => !s.submitted).length;
-  const lateCount = reportStatuses.filter((s) => s.isLate && s.submitted).length;
+## 対象者
+${engineerNames}
 
-  const unsubmittedList = reportStatuses
-    .filter((s) => !s.submitted)
-    .map((s) => `- ${s.engineerName} (ID: ${s.engineerId})`)
-    .join("\n");
+## 実行日時
+対象日: ${targetDate}
+配信期限: ${deadline}
 
-  const lateList = reportStatuses
-    .filter((s) => s.isLate && s.submitted)
-    .map((s) => `- ${s.engineerName} (ID: ${s.engineerId}): 提出時刻 ${s.submittedAt}`)
-    .join("\n");
+## 生成すべき日報テンプレート内容
+以下の項目を含む日報テンプレートを生成してください:
 
-  const prompt = `# 日報収集から報告漏れ特定までの自動判定と通知 - Action 1
+1. **昨日の実績**
+   - 完了したタスク
+   - 進捗状況
+   - 実績の詳細
 
-## 実行コンテキスト
-- 報告日: ${context.reportDate}
-- 提出期限: ${context.submissionDeadline}
-- 現在時刻: ${context.currentTime}
-- 対象エンジニア数: ${reportStatuses.length}
+2. **本日の予定**
+   - 予定されているタスク
+   - 優先順位
+   - 予定時間
 
-## 日報送信状況の確認結果
+3. **抱えている課題**
+   - 現在の課題
+   - 課題の詳細
+   - 必要なサポート
 
-### 未提出者 (${unsubmittedCount}名)
-${unsubmittedCount > 0 ? unsubmittedList : "なし"}
+## 配信先
+${input.engineerList.map((e) => e.email).join("\n")}
 
-### 遅延者 (${lateCount}名)
-${lateCount > 0 ? lateList : "なし"}
+## 配信チャネル
+${input.systemContext.notificationChannels.join("、")}
 
-## タスク
-以下の情報に基づいて、報告漏れ・遅延部員の一覧を作成してください:
+## 実行条件
+- テンプレートは日本語で作成
+- 記入例を含める
+- 必須項目を明確に表示
+- 提出期限を明記
+- システムURL: ${input.systemContext.reportManagementSystemUrl}
 
-1. 未提出者を特定する
-2. 提出期限を超過した遅延者を特定する
-3. 報告漏れ・遅延部員の一覧を構造化して出力する
-4. 部長への通知内容を準備する
-
-## 出力形式
-JSON形式で以下の構造で返してください:
-{
-  "action": "check_report_status",
-  "timestamp": "ISO8601形式の現在時刻",
-  "unsubmittedEngineers": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "submitted": false,
-      "isLate": true
-    }
-  ],
-  "lateEngineers": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "submitted": true,
-      "submittedAt": "ISO8601形式の提出時刻",
-      "isLate": true
-    }
-  ],
-  "summary": "部長への通知内容（日本語）"
-}`;
-
-  return prompt;
+## 期待される出力
+- 生成されたテンプレートHTML/テキスト
+- 配信対象者リスト
+- 配信予定時刻`;
 }

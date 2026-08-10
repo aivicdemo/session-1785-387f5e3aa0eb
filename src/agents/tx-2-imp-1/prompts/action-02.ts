@@ -5,230 +5,107 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  systemTime: string;
-  reportStatusList: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    submissionTime: string | null;
-    isSubmitted: boolean;
+  overdueThresholdMinutes: number;
+  escalationRules: {
+    firstReminderMinutes: number;
+    secondReminderMinutes: number;
+    maxReminders: number;
+  };
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    department: string;
+  }>;
+  submissionStatus: Array<{
+    memberId: string;
+    submitted: boolean;
+    submittedAt?: string;
     isOverdue: boolean;
   }>;
 }
 
 export interface Action02PromptOutput {
   version: string;
-  timestamp: string;
-  unsubmittedEmployees: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    hoursOverdue: number;
-  }>;
-  delayedEmployees: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    submissionTime: string;
-    minutesLate: number;
-  }>;
-  summaryByDepartment: Array<{
-    departmentId: string;
-    departmentName: string;
-    totalCount: number;
-    submittedCount: number;
-    unsubmittedCount: number;
-    overdueCount: number;
-  }>;
-  notificationContent: {
-    subject: string;
-    body: string;
-    recipientRole: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: {
+    action: string;
+    purpose: string;
+    constraints: string[];
   };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const timestamp = new Date().toISOString();
-  
-  const unsubmittedList = input.reportStatusList.filter(
-    (report) => !report.isSubmitted
-  );
-  
-  const overdueList = input.reportStatusList.filter(
-    (report) => report.isOverdue && report.isSubmitted
-  );
+export function buildAction02Prompt(
+  input: Action02PromptInput
+): Action02PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report submission status.
 
-  const departmentMap = new Map<
-    string,
-    {
-      name: string;
-      total: number;
-      submitted: number;
-      unsubmitted: number;
-      overdue: number;
-    }
-  >();
+Your role in the tx-2-imp-1 workflow (Action 2):
+- Analyze the daily report submission status for all team members
+- Identify members who have not submitted their reports
+- Identify members whose reports are overdue
+- Determine which members require escalation notifications
+- Generate a structured list of non-submitters and delayed submitters
+- Prepare notification content for the department head
 
-  input.reportStatusList.forEach((report) => {
-    if (!departmentMap.has(report.departmentId)) {
-      departmentMap.set(report.departmentId, {
-        name: report.departmentName,
-        total: 0,
-        submitted: 0,
-        unsubmitted: 0,
-        overdue: 0,
-      });
-    }
+You must follow these constraints:
+- Only flag members as overdue if they exceed the configured threshold
+- Consider the reporting deadline: ${input.reportingDeadline}
+- Overdue threshold: ${input.overdueThresholdMinutes} minutes after deadline
+- Apply escalation rules consistently
+- Provide clear reasoning for each escalation decision
+- Format output as structured data suitable for notification systems`;
 
-    const dept = departmentMap.get(report.departmentId)!;
-    dept.total += 1;
-
-    if (report.isSubmitted) {
-      dept.submitted += 1;
-      if (report.isOverdue) {
-        dept.overdue += 1;
-      }
-    } else {
-      dept.unsubmitted += 1;
-    }
-  });
-
-  const summaryByDepartment = Array.from(departmentMap.entries()).map(
-    ([deptId, deptData]) => ({
-      departmentId: deptId,
-      departmentName: deptData.name,
-      totalCount: deptData.total,
-      submittedCount: deptData.submitted,
-      unsubmittedCount: deptData.unsubmitted,
-      overdueCount: deptData.overdue,
+  const submissionSummary = input.submissionStatus
+    .map((status) => {
+      const member = input.teamMembers.find((m) => m.id === status.memberId);
+      return `- ${member?.name || status.memberId}: ${status.submitted ? `Submitted at ${status.submittedAt}` : "Not submitted"} (Overdue: ${status.isOverdue})`;
     })
-  );
+    .join("\n");
 
-  const unsubmittedEmployees = unsubmittedList.map((report) => {
-    const deadlineTime = new Date(input.reportingDeadline).getTime();
-    const currentTime = new Date(input.systemTime).getTime();
-    const hoursOverdue = Math.floor(
-      (currentTime - deadlineTime) / (1000 * 60 * 60)
-    );
+  const userPrompt = `Analyze the following daily report submission status and identify unreported and delayed team members:
 
-    return {
-      employeeId: report.employeeId,
-      employeeName: report.employeeName,
-      departmentId: report.departmentId,
-      departmentName: report.departmentName,
-      hoursOverdue: Math.max(0, hoursOverdue),
-    };
-  });
+Reporting Deadline: ${input.reportingDeadline}
+Overdue Threshold: ${input.overdueThresholdMinutes} minutes
 
-  const delayedEmployees = overdueList.map((report) => {
-    const submissionTime = new Date(report.submissionTime!).getTime();
-    const deadlineTime = new Date(input.reportingDeadline).getTime();
-    const minutesLate = Math.floor((submissionTime - deadlineTime) / (1000 * 60));
+Team Members Submission Status:
+${submissionSummary}
 
-    return {
-      employeeId: report.employeeId,
-      employeeName: report.employeeName,
-      departmentId: report.departmentId,
-      departmentName: report.departmentName,
-      submissionTime: report.submissionTime!,
-      minutesLate: Math.max(0, minutesLate),
-    };
-  });
+Escalation Rules:
+- First reminder threshold: ${input.escalationRules.firstReminderMinutes} minutes after deadline
+- Second reminder threshold: ${input.escalationRules.secondReminderMinutes} minutes after deadline
+- Maximum reminders per member: ${input.escalationRules.maxReminders}
 
-  const totalUnsubmitted = unsubmittedEmployees.length;
-  const totalDelayed = delayedEmployees.length;
-  const totalEmployees = input.reportStatusList.length;
-  const submittedOnTime = totalEmployees - totalUnsubmitted - totalDelayed;
+Please provide:
+1. List of members who have not submitted their reports
+2. List of members whose reports are overdue
+3. Escalation recommendations based on the configured rules
+4. Suggested notification priority (high/medium/low) for each member
+5. Summary statistics (total members, submitted count, overdue count)
 
-  const notificationContent = {
-    subject: `日報提出状況レポート - ${new Date(input.systemTime).toLocaleDateString("ja-JP")}`,
-    body: `
-【日報提出状況サマリー】
-- 提出期限: ${input.reportingDeadline}
-- 確認時刻: ${input.systemTime}
+Format the response as structured JSON with the following schema:
+{
+  "nonSubmitters": [{"id": string, "name": string, "email": string, "department": string}],
+  "overdueMembers": [{"id": string, "name": string, "email": string, "department": string, "minutesOverdue": number}],
+  "escalationRecommendations": [{"memberId": string, "action": string, "priority": string, "reason": string}],
+  "summary": {"total": number, "submitted": number, "overdue": number, "nonSubmitted": number}
+}`;
 
-【全体統計】
-- 総人数: ${totalEmployees}名
-- 期限内提出: ${submittedOnTime}名
-- 遅延提出: ${totalDelayed}名
-- 未提出: ${totalUnsubmitted}名
-
-【部門別統計】
-${summaryByDepartment
-  .map(
-    (dept) =>
-      `${dept.departmentName}: 提出${dept.submittedCount}/${dept.totalCount}名 (未提出${dept.unsubmittedCount}名, 遅延${dept.overdueCount}名)`
-  )
-  .join("\n")}
-
-【未提出者一覧】
-${
-  unsubmittedEmployees.length > 0
-    ? unsubmittedEmployees
-        .map(
-          (emp) =>
-            `- ${emp.employeeName}(${emp.departmentName}): ${emp.hoursOverdue}時間超過`
-        )
-        .join("\n")
-    : "なし"
-}
-
-【遅延提出者一覧】
-${
-  delayedEmployees.length > 0
-    ? delayedEmployees
-        .map(
-          (emp) =>
-            `- ${emp.employeeName}(${emp.departmentName}): ${emp.minutesLate}分遅延`
-        )
-        .join("\n")
-    : "なし"
-}
-    `.trim(),
-    recipientRole: "manager",
+  return {
+    version: ACTION_02_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    context: {
+      action: "Identify unreported and delayed team members",
+      purpose:
+        "Automatically detect non-submitters and overdue reports for escalation to department head",
+      constraints: [
+        "Use configured deadline and thresholds",
+        "Apply escalation rules consistently",
+        "Provide structured output for notification systems",
+        "Include reasoning for each escalation decision",
+      ],
+    },
   };
-
-  const prompt = `
-あなたは日報管理システムの自動判定エージェントです。
-以下の日報提出状況データを分析し、未提出者と遅延者を特定してください。
-
-【入力データ】
-報告期限: ${input.reportingDeadline}
-遅延判定閾値: ${input.overdueThresholdHours}時間
-現在時刻: ${input.systemTime}
-
-【提出状況一覧】
-${input.reportStatusList
-  .map(
-    (report) =>
-      `- ${report.employeeName}(${report.departmentName}): ${report.isSubmitted ? `提出済み(${report.submissionTime})` : "未提出"}`
-  )
-  .join("\n")}
-
-【判定ルール】
-1. 提出期限を過ぎても未提出の場合: 未提出者として特定
-2. 提出期限から${input.overdueThresholdHours}時間以上遅れて提出した場合: 遅延者として特定
-3. 部門ごとの提出状況を集計
-
-【出力形式】
-以下の形式で判定結果を出力してください:
-
-未提出者:
-${unsubmittedEmployees.map((emp) => `- ${emp.employeeName}(${emp.departmentName}): ${emp.hoursOverdue}時間超過`).join("\n") || "なし"}
-
-遅延提出者:
-${delayedEmployees.map((emp) => `- ${emp.employeeName}(${emp.departmentName}): ${emp.minutesLate}分遅延`).join("\n") || "なし"}
-
-部門別集計:
-${summaryByDepartment.map((dept) => `${dept.departmentName}: 提出${dept.submittedCount}/${dept.totalCount}名`).join("\n")}
-
-部長への通知内容:
-${notificationContent.body}
-  `.trim();
-
-  return prompt;
 }

@@ -16,83 +16,191 @@ export interface Action06PromptInput {
     name: string;
     department: string;
   }>;
-  priorityClassificationRules: string;
-  escalationThresholds: {
-    criticalRiskLevel: number;
-    multipleIssueThreshold: number;
+  priorityClassificationRules: {
+    critical: string[];
+    high: string[];
+    medium: string[];
+    low: string[];
   };
+  previousPrioritizations?: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>;
 }
 
 export interface Action06PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  contextData: {
-    reportSummary: string;
-    issueCount: number;
-    teamMemberCount: number;
+  prioritizedIssues: Array<{
+    issueId: string;
+    title: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+    affectedTeamMembers: string[];
+    recommendedAction: string;
+    estimatedImpact: string;
+  }>;
+  criticalAlerts: Array<{
+    type: string;
+    message: string;
+    requiredAction: string;
+  }>;
+  reportSummary: {
+    totalIssuesExtracted: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    overallStatus: "normal" | "warning" | "critical";
   };
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the morning report processing workflow.
-Your task is to present a well-organized progress report and prioritized issue list to the department head.
+export function buildAction06Prompt(input: Action06PromptInput): string {
+  const rulesSection = formatPriorityRules(input.priorityClassificationRules);
+  const issuesSection = formatExtractedIssues(input.extractedIssues);
+  const historySection = input.previousPrioritizations
+    ? formatPrioritizationHistory(input.previousPrioritizations)
+    : "";
 
-You must:
-1. Analyze the provided report summary and extracted issues
-2. Apply the priority classification rules to categorize and rank issues
-3. Identify any escalation conditions that require human review
-4. Present the final report in a clear, actionable format
+  return `# 課題優先度判定・分類プロンプト
 
-Priority Classification Rules:
-${input.priorityClassificationRules}
+## 目的
+日報から抽出された課題・ボトルネックに対して、優先度を自動判定・分類し、部長に整理済みのレポートを提供する。
 
-Escalation Thresholds:
-- Critical Risk Level: ${input.escalationThresholds.criticalRiskLevel}
-- Multiple Issue Threshold: ${input.escalationThresholds.multipleIssueThreshold}
+## 入力情報
 
-Output Format:
-- Provide a structured report with clear sections
-- List issues in priority order (highest to lowest)
-- Flag any escalation conditions
-- Include recommendations for the department head`;
-
-  const issuesText = input.extractedIssues
-    .map(
-      (issue, index) =>
-        `Issue ${index + 1}: ${issue.title}
-  ID: ${issue.id}
-  Category: ${issue.category}
-  Description: ${issue.description}`
-    )
-    .join("\n\n");
-
-  const teamMembersText = input.teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
-
-  const userPrompt = `Process the following morning report data and generate a prioritized issue list:
-
-REPORT SUMMARY:
+### 報告内容サマリー
 ${input.reportSummary}
 
-EXTRACTED ISSUES:
-${issuesText}
+### 抽出済み課題一覧
+${issuesSection}
 
-TEAM MEMBERS:
-${teamMembersText}
+### チームメンバー情報
+${formatTeamMembers(input.teamMembers)}
 
-Please analyze these issues, apply the priority classification rules, and prepare a final report for the department head.
-Identify any issues that meet the escalation conditions and flag them for human review.`;
+### 優先度分類ルール
+${rulesSection}
 
-  return {
-    version: ACTION_06_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    contextData: {
-      reportSummary: input.reportSummary,
-      issueCount: input.extractedIssues.length,
-      teamMemberCount: input.teamMembers.length,
-    },
-  };
+${historySection ? `### 過去の優先度判定履歴\n${historySection}` : ""}
+
+## 実行タスク
+
+1. **課題の優先度判定**
+   - 各課題について、提供されたルールに基づいて優先度を判定する
+   - critical / high / medium / low の4段階で分類する
+   - 判定根拠を明確に記述する
+
+2. **影響範囲の特定**
+   - 各課題がどのチームメンバーに影響するかを特定する
+   - 複数部門にまたがる課題の場合は、その旨を記述する
+
+3. **推奨アクション**
+   - 優先度に応じた推奨対応を記述する
+   - 実装難度・リスク・効果を考慮する
+
+4. **重大アラート検出**
+   - 通常と異なる事象や重大なリスク課題を検出する
+   - 即座の対応が必要な案件を特定する
+
+5. **全体ステータス判定**
+   - 課題全体の状況を normal / warning / critical で判定する
+   - 朝会での議論優先度を示唆する
+
+## 出力形式
+
+以下の JSON 構造で結果を返す：
+
+\`\`\`json
+{
+  "prioritizedIssues": [
+    {
+      "issueId": "課題ID",
+      "title": "課題タイトル",
+      "priority": "critical|high|medium|low",
+      "reasoning": "優先度判定の根拠",
+      "affectedTeamMembers": ["メンバーID"],
+      "recommendedAction": "推奨対応",
+      "estimatedImpact": "想定される影響度"
+    }
+  ],
+  "criticalAlerts": [
+    {
+      "type": "アラートタイプ",
+      "message": "アラート内容",
+      "requiredAction": "必要な対応"
+    }
+  ],
+  "reportSummary": {
+    "totalIssuesExtracted": 数値,
+    "criticalCount": 数値,
+    "highCount": 数値,
+    "mediumCount": 数値,
+    "lowCount": 数値,
+    "overallStatus": "normal|warning|critical"
+  }
+}
+\`\`\`
+
+## 注意事項
+
+- 過去の判定履歴がある場合は、一貫性を保ちながらも新しい情報を反映する
+- 同一課題の重複判定を避ける
+- 優先度判定は客観的根拠に基づく
+- 判定が困難な場合は、その旨を明記し、部長の最終確認が必要であることを示す
+`;
+}
+
+function formatPriorityRules(
+  rules: Record<string, string[]>
+): string {
+  return Object.entries(rules)
+    .map(([priority, criteria]) => {
+      const criteriaList = criteria
+        .map((c) => `  - ${c}`)
+        .join("\n");
+      return `**${priority.toUpperCase()}**:\n${criteriaList}`;
+    })
+    .join("\n\n");
+}
+
+function formatExtractedIssues(
+  issues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>
+): string {
+  return issues
+    .map(
+      (issue) =>
+        `- **[${issue.id}] ${issue.title}** (${issue.category})\n  ${issue.description}`
+    )
+    .join("\n");
+}
+
+function formatTeamMembers(
+  members: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>
+): string {
+  return members
+    .map((m) => `- ${m.name} (${m.id}) - ${m.department}`)
+    .join("\n");
+}
+
+function formatPrioritizationHistory(
+  history: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>
+): string {
+  return history
+    .map(
+      (h) =>
+        `- [${h.issueId}]: ${h.priority} - ${h.reasoning}`
+    )
+    .join("\n");
 }

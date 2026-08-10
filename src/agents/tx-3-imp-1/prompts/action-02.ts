@@ -4,98 +4,84 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Tx3Imp1ConfirmationEmailContent {
-  emailId: string;
-  sentAt: string;
-  recipientId: string;
-  recipientName: string;
-  subject: string;
-  body: string;
-  reportedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    status: "submitted" | "pending" | "overdue";
-    submittedAt?: string;
-  }>;
+  recipients: string[];
+  submittedEngineers: string[];
+  pendingEngineers: string[];
+  overdueEngineers: string[];
+  timestamp: string;
 }
 
 export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
-  submissionDeadline: string;
-  escalationThresholds: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
-}
-
-export interface Tx3Imp1IdentifiedMember {
-  memberId: string;
-  memberName: string;
-  status: "not_submitted" | "overdue";
-  daysSinceDeadline: number;
-  previousReminderCount: number;
-}
-
-export interface Tx3Imp1Action02Output {
-  identifiedMembers: Tx3Imp1IdentifiedMember[];
-  escalationCandidates: Tx3Imp1IdentifiedMember[];
-  analysisTimestamp: string;
-  totalAnalyzed: number;
-  totalNonSubmitted: number;
-  totalOverdue: number;
+  escalationThreshold: number;
 }
 
 export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
   const {
     confirmationEmailContent,
     currentTimestamp,
-    submissionDeadline,
-    escalationThresholds,
+    escalationThreshold,
   } = context;
 
-  const reportStatus = confirmationEmailContent.reportedMembers
-    .map(
-      (member) =>
-        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
-          member.submittedAt ? ` at ${member.submittedAt}` : ""
-        }`
-    )
+  const pendingList = confirmationEmailContent.pendingEngineers
+    .map((engineer) => `  - ${engineer}`)
     .join("\n");
 
-  return `You are an AI agent responsible for identifying non-submitting and overdue report members from confirmation email content.
+  const overdueList = confirmationEmailContent.overdueEngineers
+    .map((engineer) => `  - ${engineer}`)
+    .join("\n");
 
-## Current Context
-- Current Timestamp: ${currentTimestamp}
-- Submission Deadline: ${submissionDeadline}
-- Max Reminders Allowed: ${escalationThresholds.maxReminders}
-- Reminder Interval: ${escalationThresholds.reminderIntervalMinutes} minutes
+  const submissionRate = (
+    (confirmationEmailContent.submittedEngineers.length /
+      confirmationEmailContent.recipients.length) *
+    100
+  ).toFixed(1);
 
-## Confirmation Email Content
-Email ID: ${confirmationEmailContent.emailId}
-Sent At: ${confirmationEmailContent.sentAt}
-Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientId})
-Subject: ${confirmationEmailContent.subject}
+  return `# Action 02: 催促対象部員を判定する
 
-## Reported Members Status
-${reportStatus}
+## 現在の状況
+- 実行時刻: ${currentTimestamp}
+- 対象者総数: ${confirmationEmailContent.recipients.length}
+- 提出済み: ${confirmationEmailContent.submittedEngineers.length}
+- 提出率: ${submissionRate}%
 
-## Your Task
-1. Analyze the confirmation email content to identify all members with status "pending" or "overdue"
-2. For each non-submitted member, calculate days since deadline
-3. Determine which members should be escalated based on:
-   - Status is "overdue" (past deadline)
-   - Previous reminder count is below max threshold
-   - Escalation interval has passed since last reminder
-4. Return structured data with identified members and escalation candidates
+## 未提出者
+${pendingList || "  なし"}
 
-## Output Format
-Return a JSON object with:
-- identifiedMembers: array of all non-submitted/overdue members with their details
-- escalationCandidates: array of members who should receive reminders now
-- analysisTimestamp: ISO timestamp of analysis
-- totalAnalyzed: count of members analyzed
-- totalNonSubmitted: count of members not yet submitted
-- totalOverdue: count of members past deadline
+## 期限超過者
+${overdueList || "  なし"}
 
-Ensure accuracy in member identification and escalation logic.`;
+## 判定ルール
+1. 期限超過者は必ず催促対象とする
+2. 未提出者で期限まで${escalationThreshold}分以内の者は催促対象とする
+3. 同一部員への催促は1日1回までとする
+4. 催促回数が3回以上の場合は部長への報告対象とする
+
+## 実行内容
+以下の判定を行い、催促対象部員のリストを作成してください:
+- 各未提出者について、催促対象か否かを判定
+- 催促対象者の優先度を決定（期限超過 > 期限間近）
+- 催促メッセージのテンプレートを選択
+- 送信チャネル（メール/チャット）を決定
+
+## 出力形式
+JSON形式で以下の構造で返してください:
+{
+  "escalationTargets": [
+    {
+      "engineer": "string",
+      "reason": "string",
+      "priority": "high" | "medium" | "low",
+      "channel": "email" | "chat" | "both",
+      "messageTemplate": "string"
+    }
+  ],
+  "summary": {
+    "totalTargets": number,
+    "highPriority": number,
+    "mediumPriority": number,
+    "lowPriority": number
+  }
+}`;
 }

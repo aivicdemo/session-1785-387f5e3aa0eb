@@ -4,86 +4,82 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02Context {
-  engineerInputs: {
-    yesterdayResults: string;
+  engineerInput: {
+    yesterdayAccomplishments: string;
     todayPlans: string;
     currentIssues: string;
     engineerId: string;
     engineerName: string;
-    submissionTime: string;
+    submissionTimestamp: string;
+  };
+  validationRules: {
+    minAccomplishmentsLength: number;
+    minPlansLength: number;
+    minIssuesLength: number;
+    allowedIssueCategories: string[];
   };
 }
 
-export interface Action02ValidationResult {
+export interface ValidationResult {
   isValid: boolean;
-  errors: string[];
+  errors: Array<{
+    field: string;
+    message: string;
+    severity: "error" | "warning";
+  }>;
   warnings: string[];
-  validatedData: {
-    yesterdayResults: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTime: string;
-  };
 }
 
 export function buildAction02Prompt(context: Action02Context): string {
   const {
-    engineerInputs: {
-      yesterdayResults,
-      todayPlans,
-      currentIssues,
-      engineerId,
-      engineerName,
-      submissionTime,
-    },
+    engineerInput,
+    validationRules,
   } = context;
 
-  return `You are a validation agent for daily report submissions in the morning meeting management system.
+  const prompt = `You are an AI agent responsible for validating daily report input content.
 
-Your task is to validate the engineer's input content for completeness and appropriateness.
+## Input Content to Validate
+- Engineer ID: ${engineerInput.engineerId}
+- Engineer Name: ${engineerInput.engineerName}
+- Submission Timestamp: ${engineerInput.submissionTimestamp}
 
-Engineer Information:
-- ID: ${engineerId}
-- Name: ${engineerName}
-- Submission Time: ${submissionTime}
+### Yesterday's Accomplishments
+${engineerInput.yesterdayAccomplishments}
 
-Input Content to Validate:
-1. Yesterday's Results:
-${yesterdayResults}
+### Today's Plans
+${engineerInput.todayPlans}
 
-2. Today's Plans:
-${todayPlans}
+### Current Issues
+${engineerInput.currentIssues}
 
-3. Current Issues:
-${currentIssues}
+## Validation Rules
+- Minimum accomplishments length: ${validationRules.minAccomplishmentsLength} characters
+- Minimum plans length: ${validationRules.minPlansLength} characters
+- Minimum issues length: ${validationRules.minIssuesLength} characters
+- Allowed issue categories: ${validationRules.allowedIssueCategories.join(", ")}
 
-Validation Criteria:
-1. Completeness: All three sections must have meaningful content (not empty or just whitespace)
-2. Length: Each section should have at least 10 characters of substantive content
-3. Appropriateness: Content should be work-related and coherent
-4. Format: No excessive special characters or malformed text
-5. Relevance: Content should be relevant to daily report context
+## Validation Tasks
+1. Check if each field meets the minimum length requirement
+2. Verify that the content is substantive and not just placeholder text
+3. Ensure issue descriptions are clear and actionable
+4. Identify any incomplete or vague sections
+5. Flag any content that appears to be copy-pasted or generic
 
-Please validate the input and respond with:
-- A boolean indicating if the input is valid
-- A list of any errors found (validation failures)
-- A list of any warnings (minor issues that don't prevent submission)
-- The validated/cleaned data if valid
-
-Respond in JSON format with the following structure:
+## Output Format
+Provide validation results in the following JSON structure:
 {
   "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "validatedData": {
-    "yesterdayResults": string,
-    "todayPlans": string,
-    "currentIssues": string,
-    "engineerId": string,
-    "engineerName": string,
-    "submissionTime": string
-  }
-}`;
+  "errors": [
+    {
+      "field": "field_name",
+      "message": "error_description",
+      "severity": "error" | "warning"
+    }
+  ],
+  "warnings": ["warning_message"]
+}
+
+Respond with only the JSON object, no additional text.`;
+
+  return prompt;
 }

@@ -3,107 +3,76 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Tx4Imp1Action02Context {
-  reportIds: string[];
-  reportContents: Record<string, string>;
-  extractedIssues: Array<{
-    id: string;
-    description: string;
-    reportId: string;
-  }>;
-  priorityJudgmentCriteria: {
-    impactLevel: "critical" | "high" | "medium" | "low";
-    urgency: "immediate" | "urgent" | "normal" | "low";
-    affectedTeams: string[];
+export interface Action02PromptInput {
+  reportContent: string;
+  engineerName: string;
+  submissionDate: string;
+  validationRules?: {
+    minLength?: number;
+    maxLength?: number;
+    requiredFields?: string[];
   };
 }
 
-export interface Tx4Imp1Action02Input {
-  reportIds: string[];
-  reportContents: Record<string, string>;
-  extractedIssues: Array<{
-    id: string;
-    description: string;
-    reportId: string;
-  }>;
+export interface Action02PromptOutput {
+  isValid: boolean;
+  validationErrors: string[];
+  sanitizedContent: string;
+  warnings: string[];
 }
 
-export interface Tx4Imp1Action02Output {
-  prioritizedIssues: Array<{
-    id: string;
-    description: string;
-    reportId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    urgency: "immediate" | "urgent" | "normal" | "low";
-    reasoning: string;
-    affectedTeams: string[];
-  }>;
-  summary: string;
-  escalationFlags: Array<{
-    issueId: string;
-    flag: string;
-    requiresHumanReview: boolean;
-  }>;
-}
+export function buildAction02Prompt(input: Action02PromptInput): string {
+  const {
+    reportContent,
+    engineerName,
+    submissionDate,
+    validationRules = {
+      minLength: 10,
+      maxLength: 5000,
+      requiredFields: ["yesterday", "today", "issues"],
+    },
+  } = input;
 
-export function buildAction02Prompt(input: Tx4Imp1Action02Input): string {
-  const issuesText = input.extractedIssues
-    .map(
-      (issue) =>
-        `- Issue ID: ${issue.id}\n` +
-        `  Description: ${issue.description}\n` +
-        `  From Report: ${issue.reportId}`
-    )
-    .join("\n");
+  const requiredFieldsText =
+    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
+  const minLength = validationRules.minLength || 10;
+  const maxLength = validationRules.maxLength || 5000;
 
-  const reportSummary = Object.entries(input.reportContents)
-    .map(([reportId, content]) => `Report ${reportId}:\n${content}`)
-    .join("\n\n");
+  return `You are a validation agent for the morning report management system.
 
-  return (
-    `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.\n\n` +
-    `## Task: Prioritize and Classify Extracted Issues\n\n` +
-    `### Extracted Issues:\n${issuesText}\n\n` +
-    `### Report Contents:\n${reportSummary}\n\n` +
-    `### Instructions:\n` +
-    `1. Analyze each extracted issue in the context of the full report contents\n` +
-    `2. Assign a priority level (critical, high, medium, low) based on:\n` +
-    `   - Impact on project timeline and deliverables\n` +
-    `   - Number of affected team members\n` +
-    `   - Dependency on other tasks\n` +
-    `3. Assign an urgency level (immediate, urgent, normal, low) based on:\n` +
-    `   - Time sensitivity\n` +
-    `   - Blocking status for other work\n` +
-    `   - Deadline proximity\n` +
-    `4. Identify affected teams for each issue\n` +
-    `5. Provide reasoning for each priority and urgency assignment\n` +
-    `6. Flag any issues that require human review due to:\n` +
-    `   - Ambiguity in priority determination\n` +
-    `   - Potential escalation needs\n` +
-    `   - Unusual or critical situations\n` +
-    `7. Generate a summary of the prioritization results\n\n` +
-    `### Output Format:\n` +
-    `Return a JSON object with the following structure:\n` +
-    `{\n` +
-    `  "prioritizedIssues": [\n` +
-    `    {\n` +
-    `      "id": "issue_id",\n` +
-    `      "description": "issue description",\n` +
-    `      "reportId": "report_id",\n` +
-    `      "priority": "critical|high|medium|low",\n` +
-    `      "urgency": "immediate|urgent|normal|low",\n` +
-    `      "reasoning": "explanation of priority and urgency assignment",\n` +
-    `      "affectedTeams": ["team1", "team2"]\n` +
-    `    }\n` +
-    `  ],\n` +
-    `  "summary": "overall summary of prioritization results",\n` +
-    `  "escalationFlags": [\n` +
-    `    {\n` +
-    `      "issueId": "issue_id",\n` +
-    `      "flag": "reason for escalation",\n` +
-    `      "requiresHumanReview": true|false\n` +
-    `    }\n` +
-    `  ]\n` +
-    `}\n`
-  );
+Your task is to validate the daily report submission from engineer: ${engineerName}
+Submission date: ${submissionDate}
+
+Report content to validate:
+---
+${reportContent}
+---
+
+Validation rules:
+1. Content length must be between ${minLength} and ${maxLength} characters
+2. Must contain all required sections: ${requiredFieldsText}
+3. Content must be professional and appropriate
+4. No sensitive information should be exposed
+5. Report should be coherent and understandable
+
+Please perform the following validations:
+1. Check if all required fields are present
+2. Verify content length is within acceptable range
+3. Identify any inappropriate or sensitive content
+4. Check for coherence and clarity
+5. Identify any warnings or concerns
+
+Respond with:
+- A list of validation errors (if any)
+- A list of warnings (if any)
+- The sanitized content (with any sensitive information removed)
+- Overall validation status (valid/invalid)
+
+Format your response as JSON with the following structure:
+{
+  "isValid": boolean,
+  "validationErrors": string[],
+  "sanitizedContent": string,
+  "warnings": string[]
+}`;
 }

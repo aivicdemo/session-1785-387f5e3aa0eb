@@ -17,68 +17,67 @@ interface Action03PromptOutput {
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails and determining escalation targets.
+  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails in the morning meeting preparation system.
 
-Your role in the "Morning Report Management System" (tx-2-imp-1) is to:
-1. Monitor the daily report submission status at a scheduled time
-2. Automatically identify unreported and delayed members
-3. Create a list of unreported and delayed members
-4. Send notification emails to the department head
+Your role is to:
+1. Analyze confirmation email contents to identify which team members have not submitted their daily reports
+2. Distinguish between unreported members (no submission) and delayed members (late submission)
+3. Determine which members require follow-up notifications based on configured rules
+4. Generate a structured list of members requiring escalation
 
-Context:
-- System Name: ${input.systemName}
-- Reporting Deadline: ${input.reportingDeadline}
-- Overdue Threshold: ${input.overdueThresholdHours} hours
-- Escalation Contact: ${input.escalationContactEmail}
+System context:
+- System name: ${input.systemName}
+- Reporting deadline: ${input.reportingDeadline}
+- Overdue threshold: ${input.overdueThresholdHours} hours after deadline
+- Escalation contact: ${input.escalationContactEmail}
 
-You must analyze confirmation email contents and determine:
-- Which team members have not submitted their reports
-- Which team members have submitted reports but exceeded the deadline
-- The severity of each delay
-- Whether escalation to management is required
-
-Provide clear, actionable information for the department head to make decisions about follow-up actions.`;
-
-  const userPromptTemplate = `Analyze the following confirmation email data and identify unreported and delayed team members:
-
-Email Data:
-{emailData}
-
-Reporting Deadline: ${input.reportingDeadline}
-Current Time: {currentTime}
-Overdue Threshold: ${input.overdueThresholdHours} hours
-
-Please provide:
-1. List of unreported members (with employee IDs and names)
-2. List of delayed members (with submission times and delay duration)
-3. Severity assessment (critical/high/medium/low)
-4. Recommended escalation actions
-5. Summary for department head notification
-
-Format your response as structured JSON with the following schema:
+Output format must be JSON with the following structure:
 {
   "unreportedMembers": [
     {
-      "employeeId": string,
-      "name": string,
-      "expectedSubmissionTime": string
+      "memberId": "string",
+      "memberName": "string",
+      "department": "string",
+      "lastCheckTime": "ISO8601 timestamp"
     }
   ],
   "delayedMembers": [
     {
-      "employeeId": string,
-      "name": string,
-      "submissionTime": string,
-      "delayHours": number,
-      "severity": "critical" | "high" | "medium" | "low"
+      "memberId": "string",
+      "memberName": "string",
+      "department": "string",
+      "submissionTime": "ISO8601 timestamp",
+      "delayMinutes": "number"
     }
   ],
-  "totalUnreported": number,
-  "totalDelayed": number,
-  "escalationRequired": boolean,
-  "escalationReason": string,
-  "departmentHeadNotification": string
+  "escalationRequired": "boolean",
+  "escalationReason": "string",
+  "summary": "string"
 }`;
+
+  const userPromptTemplate = `Analyze the following confirmation email contents and identify unreported and delayed team members.
+
+Confirmation email data:
+\`\`\`
+{emailContent}
+\`\`\`
+
+Team member list:
+\`\`\`
+{teamMemberList}
+\`\`\`
+
+Current timestamp: {currentTimestamp}
+Reporting deadline: ${input.reportingDeadline}
+Overdue threshold: ${input.overdueThresholdHours} hours
+
+Please identify:
+1. Members who have not submitted any report (unreportedMembers)
+2. Members whose reports were submitted after the deadline (delayedMembers)
+3. Whether escalation to ${input.escalationContactEmail} is required
+4. Provide a summary of the reporting status
+
+Return the analysis as valid JSON.`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,

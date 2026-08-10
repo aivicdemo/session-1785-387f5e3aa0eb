@@ -7,98 +7,80 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent?: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
-  submissionDeadline: string;
-  systemName: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
-export interface Action05PromptResult {
-  version: string;
-  action: number;
-  purpose: string;
-  instructions: string;
-  context: Action05Context;
-  expectedOutput: string;
-  constraints: string[];
+export interface Action05ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
-export function buildAction05Prompt(
-  context: Action05Context
-): Action05PromptResult {
-  const instructions = `
-You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
+export interface Action05RegistrationPayload {
+  engineerId: string;
+  engineerName: string;
+  reportDate: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
+  validationStatus: "valid" | "warning";
+}
 
-**Action 5: Validate Report Content**
+export function buildAction05Prompt(context: Action05Context): string {
+  const prompt = `You are an AI agent responsible for registering daily reports to the management system.
 
-Your task is to validate the engineer's daily report input for completeness and appropriateness before registration.
+## Task: Register Daily Report to Management System
 
-**Context:**
+### Input Information:
 - Engineer ID: ${context.engineerId}
 - Engineer Name: ${context.engineerName}
 - Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
-- System: ${context.systemName}
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
+- Submission Timestamp: ${context.submissionTimestamp}
 
-**Validation Criteria:**
-1. All required fields are completed (yesterday's results, today's plan, issues)
-2. Content is substantive and not empty or placeholder text
-3. Issues are clearly articulated with context
-4. Text length is reasonable (not excessively short or long)
-5. No obvious errors or inconsistencies
-6. Content is appropriate and professional
+### Your Responsibilities:
+1. Validate that all required fields are present and properly formatted
+2. Check for data consistency and logical coherence
+3. Prepare the report for registration in the management system
+4. Generate a registration payload with all necessary information
+5. Ensure the report is ready for confirmation email distribution
 
-**Previous Report Reference (if available):**
-${
-  context.previousReportContent
-    ? `
-Yesterday's Results: ${context.previousReportContent.yesterday}
-Today's Plan: ${context.previousReportContent.today}
-Issues: ${context.previousReportContent.issues}
-`
-    : "No previous report available"
-}
+### Validation Criteria:
+- All text fields must be non-empty
+- Yesterday's accomplishments should describe completed work
+- Today's plans should outline planned activities
+- Current issues should identify any blockers or concerns
+- Submission timestamp must be valid and recent
 
-**Output Format:**
-Return a JSON object with:
+### Output Format:
+Provide a JSON response with:
 {
   "isValid": boolean,
-  "validationStatus": "VALID" | "INCOMPLETE" | "INAPPROPRIATE" | "ERROR",
-  "issues": string[],
-  "recommendations": string[],
-  "escalationRequired": boolean,
-  "escalationReason": string | null,
-  "timestamp": string
+  "errors": string[],
+  "warnings": string[],
+  "registrationPayload": {
+    "engineerId": string,
+    "engineerName": string,
+    "reportDate": string,
+    "yesterdayAccomplishments": string,
+    "todayPlans": string,
+    "currentIssues": string,
+    "submissionTimestamp": string,
+    "validationStatus": "valid" | "warning"
+  }
 }
 
-**Escalation Conditions:**
-- Content is incomplete or missing required fields
-- Content appears inappropriate or concerning
-- Validation cannot be completed due to system error
-- Content significantly deviates from expected format
-`;
+### Important Notes:
+- If validation fails, list all errors that prevent registration
+- If validation succeeds but has minor issues, list warnings and set validationStatus to "warning"
+- The registration payload must be complete and ready for system insertion
+- Do not modify the engineer's input; only validate and structure it`;
 
-  const constraints = [
-    "Do not modify the input content",
-    "Do not make assumptions about missing information",
-    "Flag ambiguous or unclear content for human review",
-    "Maintain consistency with previous report patterns",
-    "Ensure validation is objective and rule-based",
-    "Do not reject valid content due to style preferences",
-  ];
-
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    action: 5,
-    purpose:
-      "Validate daily report content for completeness and appropriateness before system registration",
-    instructions,
-    context,
-    expectedOutput:
-      "Validation result with status, identified issues, and escalation flag",
-    constraints,
-  };
+  return prompt;
 }

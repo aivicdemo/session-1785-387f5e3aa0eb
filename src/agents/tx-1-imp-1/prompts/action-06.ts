@@ -7,10 +7,12 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  submissionDeadline: string;
-  previousReportTemplate?: string;
-  systemApiEndpoint: string;
-  adminEmailList: string[];
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTime: string;
+  isLate: boolean;
+  daysOverdue: number;
 }
 
 export interface Action06PromptResult {
@@ -22,53 +24,38 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated daily report confirmation email distribution agent for the morning meeting management system.
+  const systemPrompt = `You are an automated notification system for the morning report management workflow.
+Your role is to send confirmation emails to administrators after a report has been successfully registered.
+You must compose professional, clear confirmation messages that include:
+- Engineer name and submission time
+- Summary of submitted content (accomplishments, plans, issues)
+- Confirmation of successful registration
+- Any relevant status flags (late submission, overdue status)
 
-Your role is to:
-1. Generate and send confirmation emails to administrators after daily reports are successfully registered
-2. Ensure all administrators receive consistent, formatted confirmation notifications
-3. Track and log all confirmation email distributions
-4. Handle email delivery failures gracefully
+Keep messages concise and structured for easy scanning.`;
 
-You must follow these guidelines:
-- Send confirmation emails only after successful report registration
-- Include all relevant report details in the confirmation email
-- Maintain a distribution log for audit purposes
-- Respect email sending rate limits
-- Ensure email content is clear and actionable for administrators`;
+  const overdueInfo = context.isLate
+    ? `\n- Status: LATE SUBMISSION (${context.daysOverdue} days overdue)`
+    : "\n- Status: On-time submission";
 
-  const userPrompt = `Generate and send confirmation emails for the daily report submission.
+  const userPrompt = `Generate a confirmation email for the following report submission:
 
-Context:
-- Engineer Name: ${context.engineerName}
-- Engineer Email: ${context.engineerEmail}
-- Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
-- System API Endpoint: ${context.systemApiEndpoint}
-- Administrator Email List: ${context.adminEmailList.join(", ")}
+Engineer: ${context.engineerName}
+Email: ${context.engineerEmail}
+Report Date: ${context.reportDate}
+Submission Time: ${context.submissionTime}${overdueInfo}
 
-Task:
-1. Prepare a confirmation email with the following structure:
-   - Subject line indicating successful report registration
-   - Report submission details (engineer name, date, time)
-   - Link to view the report in the management system
-   - Instructions for administrators to review and confirm
-   - Timestamp of confirmation email generation
+Report Content:
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
 
-2. Distribute the confirmation email to all administrators in the provided list
-
-3. Log the distribution results including:
-   - Timestamp of distribution
-   - List of recipients
-   - Delivery status for each recipient
-   - Any errors or failures encountered
-
-4. If any email delivery fails:
-   - Retry up to 3 times with exponential backoff
-   - Log the failure details
-   - Flag for manual review if all retries fail
-
-Return the confirmation email distribution result with status and any relevant error messages.`;
+Create a professional confirmation email that:
+1. Confirms successful registration in the management system
+2. Summarizes the key points from the report
+3. Notes any status issues (late/overdue)
+4. Provides next steps or relevant information for administrators
+5. Maintains a professional but friendly tone`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

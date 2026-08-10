@@ -57,8 +57,8 @@ class InMemoryDatabase implements DatabaseConnection {
 
     const tableName = deleteMatch[1].toLowerCase();
     const whereClause = deleteMatch[2];
-
     const table = this.tables.get(tableName);
+
     if (!table) {
       return Promise.resolve([]);
     }
@@ -69,11 +69,11 @@ class InMemoryDatabase implements DatabaseConnection {
     }
 
     const keysToDelete: string[] = [];
-    for (const [key, record] of table.entries()) {
-      if (this.evaluateWhere(whereClause, record, params)) {
+    table.forEach((row, key) => {
+      if (this.evaluateWhere(whereClause, row, params)) {
         keysToDelete.push(key);
       }
-    }
+    });
 
     keysToDelete.forEach((key) => table.delete(key));
     return Promise.resolve([]);
@@ -88,27 +88,29 @@ class InMemoryDatabase implements DatabaseConnection {
     }
 
     const tableName = insertMatch[1].toLowerCase();
-    const columns = insertMatch[2].split(',').map((c) => c.trim());
-    const returningClause = insertMatch[4];
-
+    const columns = insertMatch[2].split(',').map((c) => c.trim().toLowerCase());
     const table = this.tables.get(tableName);
+
     if (!table) {
       return Promise.resolve([]);
     }
 
-    const record: QueryResult = {};
+    const row: QueryResult = {};
     columns.forEach((col, idx) => {
-      record[col] = params[idx];
+      row[col] = params[idx];
     });
 
-    const recordId = `${tableName}_${Date.now()}_${Math.random()}`;
-    table.set(recordId, record);
+    const key = `${tableName}_${Date.now()}_${Math.random()}`;
+    table.set(key, row);
 
+    const returningClause = insertMatch[4];
     if (returningClause) {
-      const returningColumns = returningClause.split(',').map((c) => c.trim());
+      const returningColumns = returningClause
+        .split(',')
+        .map((c) => c.trim().toLowerCase());
       const result: QueryResult = {};
       returningColumns.forEach((col) => {
-        result[col] = record[col];
+        result[col] = row[col];
       });
       return Promise.resolve([result]);
     }
@@ -118,7 +120,7 @@ class InMemoryDatabase implements DatabaseConnection {
 
   private handleSelect(sql: string, params: unknown[]): Promise<QueryResult[]> {
     const selectMatch = sql.match(
-      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+))?$/i
+      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+?))?$/i
     );
     if (!selectMatch) {
       return Promise.resolve([]);
@@ -127,52 +129,36 @@ class InMemoryDatabase implements DatabaseConnection {
     const selectClause = selectMatch[1].trim();
     const tableName = selectMatch[2].toLowerCase();
     const whereClause = selectMatch[3];
-
     const table = this.tables.get(tableName);
+
     if (!table) {
       return Promise.resolve([]);
     }
 
-    let results: QueryResult[] = Array.from(table.values());
+    let results: QueryResult[] = [];
 
-    if (whereClause) {
-      results = results.filter((record) =>
-        this.evaluateWhere(whereClause, record, params)
-      );
+    table.forEach((row) => {
+      if (!whereClause || this.evaluateWhere(whereClause, row, params)) {
+        results.push(row);
+      }
+    });
+
+    if (selectClause.toUpperCase() === 'COUNT(*)') {
+      return Promise.resolve([{ cnt: results.length }]);
     }
 
-    if (selectClause === '*') {
-      return Promise.resolve(results);
-    }
-
-    const columns = selectClause.split(',').map((c) => c.trim());
-    return Promise.resolve(
-      results.map((record) => {
-        const result: QueryResult = {};
-        columns.forEach((col) => {
-          if (col === 'COUNT(*)' || col === 'COUNT(*) as cnt') {
-            result['cnt'] = results.length;
-          } else if (col.includes(' as ')) {
-            const [expr, alias] = col.split(' as ').map((s) => s.trim());
-            result[alias] = record[expr] ?? 0;
-          } else {
-            result[col] = record[col];
-          }
-        });
-        return result;
-      })
-    );
+    return Promise.resolve(results);
   }
 
   private evaluateWhere(
     whereClause: string,
-    record: QueryResult,
+    row: QueryResult,
     params: unknown[]
   ): boolean {
-    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/);
+    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/i);
     if (eqMatch) {
-      const column = eqMatch[1];
-      return record[column] === params[0];
+      const column = eqMatch[1].toLowerCase();
+      return row[column] === params[0];
     }
     return true;
   }

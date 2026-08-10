@@ -8,8 +8,8 @@ export interface Action03Context {
   engineerName: string;
   submittedContent: {
     yesterdayAccomplishments: string;
-    todayPlan: string;
-    issues: string;
+    todayPlans: string;
+    currentIssues: string;
   };
   submissionTimestamp: string;
   deadline: string;
@@ -34,7 +34,7 @@ export function buildAction03Prompt(input: Action03PromptInput): Action03PromptO
   const { context } = input;
   
   const validationInstructions = `
-You are validating a daily report submission for an engineer.
+You are validating a daily report submission from an engineer.
 
 Engineer Information:
 - ID: ${context.engineerId}
@@ -43,35 +43,30 @@ Engineer Information:
 - Deadline: ${context.deadline}
 
 Submitted Content:
-1. Yesterday's Accomplishments:
-${context.submittedContent.yesterdayAccomplishments}
+- Yesterday's Accomplishments: ${context.submittedContent.yesterdayAccomplishments}
+- Today's Plans: ${context.submittedContent.todayPlans}
+- Current Issues: ${context.submittedContent.currentIssues}
 
-2. Today's Plan:
-${context.submittedContent.todayPlan}
+Validation Criteria:
+1. Check if all three sections (yesterday's accomplishments, today's plans, current issues) are filled
+2. Verify that each section contains meaningful content (not empty or placeholder text)
+3. Ensure the content is appropriate and professional
+4. Check for any red flags or anomalies in the reported issues
+5. Verify submission is within or after the deadline
 
-3. Issues/Challenges:
-${context.submittedContent.issues}
+Please provide:
+- A validation status (valid/invalid)
+- Any errors found (missing sections, empty content, inappropriate content)
+- Any warnings (late submission, unusual issues reported)
+- A brief assessment of content quality
 
-Validation Tasks:
-1. Check if all three sections are filled with meaningful content (not empty or placeholder text)
-2. Verify that yesterday's accomplishments are specific and measurable
-3. Verify that today's plan is realistic and actionable
-4. Verify that issues are clearly described with context
-5. Check for consistency between yesterday's plan and today's accomplishments
-6. Identify any red flags or concerns that require escalation
-7. Assess whether the submission is on time or late
-
-Output your validation result as a JSON object with the following structure:
+Format your response as JSON with the following structure:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "isOnTime": boolean,
-  "requiresEscalation": boolean,
-  "escalationReason": string | null
+  "assessment": string
 }
-
-Be thorough but fair in your assessment. Minor formatting issues should be warnings, not errors.
 `;
 
   return {

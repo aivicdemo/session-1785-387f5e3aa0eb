@@ -11,132 +11,110 @@ export interface Action05Context {
     submittedAt: string;
     status: "submitted" | "pending" | "overdue";
   }>;
-  extractedIssues: Array<{
-    issueId: string;
-    title: string;
-    description: string;
-    relatedEmployees: string[];
-    severity: "low" | "medium" | "high" | "critical";
-    category: string;
-  }>;
-  priorityJudgmentCriteria: {
-    businessImpact: string;
-    urgency: string;
-    dependencies: string;
-    resourceAvailability: string;
+  extractionCriteria: {
+    issueKeywords: string[];
+    bottleneckIndicators: string[];
+    riskLevels: string[];
+  };
+  priorityRules: {
+    criticalKeywords: string[];
+    highPriorityKeywords: string[];
+    mediumPriorityKeywords: string[];
+    lowPriorityKeywords: string[];
   };
   reportingDeadline: string;
   currentTimestamp: string;
 }
 
-export interface Action05PromptResult {
-  prioritizedIssues: Array<{
-    issueId: string;
-    title: string;
-    description: string;
-    priority: number;
-    priorityLevel: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-    recommendedAction: string;
-    targetResolution: string;
-    assignedOwner?: string;
-  }>;
-  issueClassification: {
-    blockers: string[];
-    risks: string[];
-    improvements: string[];
-    monitoring: string[];
+export interface ExtractedIssue {
+  id: string;
+  description: string;
+  reportedBy: string;
+  category: "issue" | "bottleneck" | "risk";
+  priority: "critical" | "high" | "medium" | "low";
+  affectedAreas: string[];
+  suggestedAction: string;
+  confidence: number;
+}
+
+export interface Action05Output {
+  totalReportsProcessed: number;
+  issuesExtracted: ExtractedIssue[];
+  priorityDistribution: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
   };
-  executiveSummary: string;
-  nextSteps: string[];
-  escalationRequired: boolean;
-  escalationReason?: string;
+  summaryReport: string;
+  recommendedActions: string[];
+  processingTimestamp: string;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const confirmedReportsSection = context.confirmedReports
+  const reportsList = context.confirmedReports
     .map(
       (report) =>
-        `- ${report.employeeName} (${report.employeeId}): ${report.status}\n  提出時刻: ${report.submittedAt}\n  内容: ${report.reportContent}`
+        `- ${report.employeeName} (${report.employeeId}): ${report.reportContent}`
     )
     .join("\n");
 
-  const extractedIssuesSection = context.extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.severity.toUpperCase()}] ${issue.title} (${issue.issueId})\n  説明: ${issue.description}\n  関連者: ${issue.relatedEmployees.join(", ")}\n  カテゴリ: ${issue.category}`
-    )
-    .join("\n");
+  const issueKeywordsStr = context.extractionCriteria.issueKeywords.join(", ");
+  const bottleneckIndicatorsStr =
+    context.extractionCriteria.bottleneckIndicators.join(", ");
+  const riskLevelsStr = context.extractionCriteria.riskLevels.join(", ");
 
-  const prompt = `あなたは日報管理システムの課題優先度判定エージェントです。
+  const criticalKeywordsStr = context.priorityRules.criticalKeywords.join(
+    ", "
+  );
+  const highPriorityKeywordsStr =
+    context.priorityRules.highPriorityKeywords.join(", ");
+  const mediumPriorityKeywordsStr =
+    context.priorityRules.mediumPriorityKeywords.join(", ");
+  const lowPriorityKeywordsStr =
+    context.priorityRules.lowPriorityKeywords.join(", ");
 
-【タスク】
-確認済みの日報から抽出された課題について、以下の基準に基づいて優先度を判定し、分類してください。
+  return `You are an AI agent responsible for extracting and prioritizing issues from daily reports.
 
-【確認済み日報一覧】
-${confirmedReportsSection}
+## Task: Extract Issues and Determine Priority
 
-【抽出済み課題一覧】
-${extractedIssuesSection}
+### Confirmed Reports to Analyze:
+${reportsList}
 
-【優先度判定基準】
-- ビジネスインパクト: ${context.priorityJudgmentCriteria.businessImpact}
-- 緊急度: ${context.priorityJudgmentCriteria.urgency}
-- 依存関係: ${context.priorityJudgmentCriteria.dependencies}
-- リソース可用性: ${context.priorityJudgmentCriteria.resourceAvailability}
+### Extraction Criteria:
+- Issue Keywords: ${issueKeywordsStr}
+- Bottleneck Indicators: ${bottleneckIndicatorsStr}
+- Risk Levels: ${riskLevelsStr}
 
-【実行条件】
-- 報告期限: ${context.reportingDeadline}
-- 現在時刻: ${context.currentTimestamp}
+### Priority Classification Rules:
+- Critical Priority Keywords: ${criticalKeywordsStr}
+- High Priority Keywords: ${highPriorityKeywordsStr}
+- Medium Priority Keywords: ${mediumPriorityKeywordsStr}
+- Low Priority Keywords: ${lowPriorityKeywordsStr}
 
-【出力要件】
-1. 各課題に対して1-100の優先度スコアを付与してください
-2. 優先度レベル（critical/high/medium/low）を判定してください
-3. 判定理由を明確に記述してください
-4. 推奨アクションを提示してください
-5. 目標解決時期を設定してください
-6. 課題を以下に分類してください:
-   - ブロッカー（プロジェクト進行を阻害する課題）
-   - リスク（潜在的な問題）
-   - 改善（効率化・品質向上の機会）
-   - 監視対象（継続監視が必要な項目）
-7. エグゼクティブサマリーを作成してください
-8. 次のステップを提示してください
-9. エスカレーションが必要な場合はその理由を記述してください
+### Instructions:
+1. Analyze each report for issues, bottlenecks, and risks
+2. Extract and categorize each identified issue
+3. Assign priority levels based on the provided keywords and context
+4. Generate a summary report with recommended actions
+5. Organize issues by priority for management review
 
-【判定ルール】
-- Critical: ビジネスに直結する障害、セキュリティ問題、納期に関わる重大な遅延
-- High: 複数チームに影響する課題、重要な機能の不具合、1日以上の遅延リスク
-- Medium: 単一チームに影響する課題、軽微な機能不具合、対応可能な遅延
-- Low: 改善提案、軽微な問題、対応期限に余裕がある課題
+### Output Requirements:
+- Provide a structured list of extracted issues with:
+  - Issue ID (auto-generated)
+  - Description
+  - Reported by (employee name)
+  - Category (issue/bottleneck/risk)
+  - Priority level (critical/high/medium/low)
+  - Affected areas
+  - Suggested action
+  - Confidence score (0-1)
+- Include priority distribution summary
+- Provide actionable recommendations for management
 
-【出力形式】
-JSON形式で以下の構造で返してください:
-{
-  "prioritizedIssues": [
-    {
-      "issueId": "string",
-      "title": "string",
-      "description": "string",
-      "priority": number,
-      "priorityLevel": "critical|high|medium|low",
-      "reasoning": "string",
-      "recommendedAction": "string",
-      "targetResolution": "string",
-      "assignedOwner": "string (optional)"
-    }
-  ],
-  "issueClassification": {
-    "blockers": ["issueId"],
-    "risks": ["issueId"],
-    "improvements": ["issueId"],
-    "monitoring": ["issueId"]
-  },
-  "executiveSummary": "string",
-  "nextSteps": ["string"],
-  "escalationRequired": boolean,
-  "escalationReason": "string (optional)"
-}`;
+### Deadline Context:
+- Reporting Deadline: ${context.reportingDeadline}
+- Current Timestamp: ${context.currentTimestamp}
 
-  return prompt;
+Proceed with issue extraction and prioritization.`;
 }

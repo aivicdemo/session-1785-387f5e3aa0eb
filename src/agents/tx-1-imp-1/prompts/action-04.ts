@@ -13,7 +13,7 @@ export interface Action04Context {
     issues: string;
   };
   submissionDeadline: string;
-  systemRegistrationStatus: "pending" | "success" | "failed";
+  systemTimestamp: string;
 }
 
 export interface Action04ValidationResult {
@@ -27,74 +27,80 @@ export interface Action04ValidationResult {
   };
 }
 
-export interface Action04PromptInput {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
-  };
+export function buildAction04Prompt(context: Action04Context): string {
+  const {
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
+  } = context;
+
+  const promptContent = `
+# 日報入力内容の妥当性検証タスク
+
+## タスク概要
+エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
+
+## 検証対象者情報
+- エンジニアID: ${engineerId}
+- エンジニア名: ${engineerName}
+- 報告日: ${reportDate}
+- システム時刻: ${systemTimestamp}
+- 提出期限: ${submissionDeadline}
+
+## 受け取った入力内容
+### 昨日の実績
+${previousReportContent.yesterday}
+
+### 本日の予定
+${previousReportContent.today}
+
+### 抱えている課題
+${previousReportContent.issues}
+
+## 検証基準
+1. **完全性チェック**
+   - 各項目が空白でないこと
+   - 最小文字数（各項目50文字以上）を満たしていること
+
+2. **適切性チェック**
+   - 昨日の実績が具体的で測定可能であること
+   - 本日の予定が現実的で達成可能であること
+   - 課題が明確に記述されていること
+
+3. **形式チェック**
+   - 日本語で記述されていること
+   - 不適切な表現や誤字脱字がないこと
+
+4. **一貫性チェック**
+   - 昨日の実績と本日の予定に矛盾がないこと
+   - 課題が実績・予定と関連していること
+
+## 出力形式
+JSON形式で以下の構造で返してください：
+{
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
 }
 
-export interface Action04PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  metadata: {
-    action: string;
-    contractId: string;
-    timestamp: string;
-  };
-}
+## 検証結果の判定
+- errors配列が空の場合: isValid = true（登録可能）
+- errors配列に1件以上ある場合: isValid = false（登録不可、修正が必要）
+- warningsは情報提供のみで、isValidの判定には影響しない
 
-export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
-  const { context, validationRules } = input;
+## 注意事項
+- 検証は厳密に行い、不完全な入力は登録を許可しないこと
+- エラーメッセージは具体的で、修正方法を示唆するものにすること
+- 警告は改善提案として、修正を強制しないこと
+`;
 
-  const systemPrompt = `You are a validation agent for the morning report management system.
-Your role is to validate the content of daily reports submitted by engineers.
-You must check for completeness, appropriateness, and compliance with submission guidelines.
-Provide clear validation results with specific error messages and warnings.
-Focus on content quality and adherence to reporting standards.`;
-
-  const userPrompt = `Please validate the following daily report submission:
-
-Engineer: ${context.engineerName} (ID: ${context.engineerId})
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-
-Yesterday's Achievements:
-${context.previousReportContent.yesterday}
-
-Today's Plans:
-${context.previousReportContent.today}
-
-Current Issues/Challenges:
-${context.previousReportContent.issues}
-
-Validation Rules:
-- Yesterday's achievements: minimum ${validationRules.minYesterdayLength} characters, maximum ${validationRules.maxYesterdayLength} characters
-- Today's plans: minimum ${validationRules.minTodayLength} characters, maximum ${validationRules.maxTodayLength} characters
-- Issues/challenges: minimum ${validationRules.minIssuesLength} characters, maximum ${validationRules.maxIssuesLength} characters
-
-Please validate the content and provide:
-1. Overall validation status (valid/invalid)
-2. Specific errors if any
-3. Warnings or suggestions for improvement
-4. Validated and cleaned content ready for system registration`;
-
-  const timestamp = new Date().toISOString();
-
-  return {
-    version: ACTION_04_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    metadata: {
-      action: "action-04",
-      contractId: "tx_1_imp_1",
-      timestamp,
-    },
-  };
+  return promptContent;
 }
