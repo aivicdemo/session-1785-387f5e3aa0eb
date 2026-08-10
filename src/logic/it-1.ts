@@ -2661,7 +2661,7 @@ const __aivicBundle_25_submitDailyReport = (() => {
     [key: string]: any;
   }
   
-   async function submitDailyReport(
+  async function submitDailyReport(
     reportData: SubmitDailyReportInput,
     mockSendEmail?: Function
   ): Promise<SubmitDailyReportResult> {
@@ -3096,7 +3096,7 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
     sendMail?: Function;
   }
   
-   function sendConfirmationEmail(
+  function sendConfirmationEmail(
     reportData?: SendConfirmationEmailInput | null,
     mockEmailService?: SendConfirmationEmailService | Function,
     mockLogger?: { error?: Function },
@@ -3885,7 +3885,7 @@ const __aivicBundle_41_submitReport = (() => {
   
   const submitReportStore = new Map<string, number>();
   
-   function submitReport(
+  function submitReport(
     reportInput: SubmitReportInput,
     sendConfirmationEmailFn?: (data: any) => void
   ): SubmitReportOutput {
@@ -4361,7 +4361,7 @@ const __aivicBundle_48_initializeSystem = (() => {
   
   const initializeSystemStore: Map<string, InitializeSystemOutput> = new Map();
   
-   function initializeSystem(
+  function initializeSystem(
     config: InitializeSystemInput
   ): InitializeSystemOutput {
     const output: InitializeSystemOutput = {
@@ -4396,7 +4396,7 @@ const __aivicBundle_49_createUser = (() => {
     isActive?: boolean;
   }
   
-   function createUser(userData: CreateUserInput): UserRecord {
+  function createUser(userData: CreateUserInput): UserRecord {
     const userId = userData.user_id ?? userData.userId;
     const userName = userData.user_name ?? userData.userName;
     const email = userData.email;
@@ -4464,7 +4464,7 @@ const __aivicBundle_50_setReportStatus = (() => {
   
   const setReportStatusStore = new Map<string, { status: string; updatedAt: Date }>();
   
-   function setReportStatus(input: SetReportStatusInput): SetReportStatusOutput {
+  function setReportStatus(input: SetReportStatusInput): SetReportStatusOutput {
     const validStatuses = ['submitted', 'pending', 'missing', 'NOT_SUBMITTED', 'SUBMITTED', 'PENDING'];
     
     if (!validStatuses.includes(input.status)) {
@@ -4510,7 +4510,7 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
     Array<{ user_id: string; submitted_at?: Date }>
   >();
   
-   function judgeSubmissionStatus(
+  function judgeSubmissionStatus(
     input: JudgeSubmissionStatusInput
   ): JudgeSubmissionStatusOutput {
     const { department_id, report_date, expected_member_count } = input;
@@ -4538,7 +4538,7 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
     };
   }
   
-   function setReportStatusInternal(
+  function setReportStatusInternal(
     user_id: string,
     department_id: string,
     report_date: string,
@@ -4843,7 +4843,7 @@ const __aivicBundle_55_determineReportSubmissionStatus = (() => {
     { submittedAt: Date; reportDate: string }
   >();
   
-   function determineReportSubmissionStatus(
+  function determineReportSubmissionStatus(
     input: DetermineReportSubmissionStatusInput
   ): DetermineReportSubmissionStatusOutput {
     const userId = input.user_id ?? input.userId ?? "";
