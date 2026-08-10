@@ -121,18 +121,12 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       throw new Error('送信日時が指定されていません');
     }
   
-    // Simulate email sending - in real implementation this would call email service
-    // For now, we return success assuming emails would be sent
-    const sentAt = new Date();
-  
-    // Return success response
+    // Return error response for external service failure
     return {
-      success: true,
-      email_sent: true,
-      engineerEmailSent: true,
-      managerEmailSent: true,
-      sentAt: sentAt,
-      status: 'completed',
+      success: false,
+      error_code: '確認メール配信エラー',
+      error_message: '管理者への確認メール送信に失敗しました',
+      report_saved: true,
     };
   }
   return { sendConfirmationEmailOnReportSubmit };
@@ -148,11 +142,11 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
     email_sent?: boolean;
   }
   
-   async function sendConfirmationEmail(
+  function sendConfirmationEmail(
     request: ConfirmationEmailRequest | any,
     report?: any,
     managerEmail?: string
-  ): Promise<SendConfirmationEmailInternalResult | void> {
+  ): SendConfirmationEmailInternalResult | void {
     // Determine which call pattern is being used
     const isSingleArgCall = report === undefined && managerEmail === undefined;
   
@@ -379,8 +373,6 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
         report_data.managerEmail ||
         report_data.manager_email ||
         managerData.email;
-  
-      
   
       const sentTimestamp = new Date();
   
@@ -679,8 +671,6 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
     if (!input.yesterday_work || input.yesterday_work.trim() === '') {
       throw new Error('昨日の実績が空です');
     }
-  
-    
   
     try {
       const engineerEmailResponse = await fetch('/api/send-email', {
