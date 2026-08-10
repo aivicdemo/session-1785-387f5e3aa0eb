@@ -3,91 +3,107 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02PromptInput {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  previousReportContent?: string;
-  systemContext?: string;
-}
-
-export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: string;
-    timestamp: string;
-    inputHash: string;
+export interface Tx4Imp1Action02Context {
+  reportIds: string[];
+  reportContents: Record<string, string>;
+  extractedIssues: Array<{
+    id: string;
+    description: string;
+    reportId: string;
+  }>;
+  priorityJudgmentCriteria: {
+    impactLevel: "critical" | "high" | "medium" | "low";
+    urgency: "immediate" | "urgent" | "normal" | "low";
+    affectedTeams: string[];
   };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const timestamp = new Date().toISOString();
-  
-  const inputHash = generateSimpleHash(
-    `${input.reportDate}${input.engineerId}${input.previousReportContent || ""}`
+export interface Tx4Imp1Action02Input {
+  reportIds: string[];
+  reportContents: Record<string, string>;
+  extractedIssues: Array<{
+    id: string;
+    description: string;
+    reportId: string;
+  }>;
+}
+
+export interface Tx4Imp1Action02Output {
+  prioritizedIssues: Array<{
+    id: string;
+    description: string;
+    reportId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    urgency: "immediate" | "urgent" | "normal" | "low";
+    reasoning: string;
+    affectedTeams: string[];
+  }>;
+  summary: string;
+  escalationFlags: Array<{
+    issueId: string;
+    flag: string;
+    requiresHumanReview: boolean;
+  }>;
+}
+
+export function buildAction02Prompt(input: Tx4Imp1Action02Input): string {
+  const issuesText = input.extractedIssues
+    .map(
+      (issue) =>
+        `- Issue ID: ${issue.id}\n` +
+        `  Description: ${issue.description}\n` +
+        `  From Report: ${issue.reportId}`
+    )
+    .join("\n");
+
+  const reportSummary = Object.entries(input.reportContents)
+    .map(([reportId, content]) => `Report ${reportId}:\n${content}`)
+    .join("\n\n");
+
+  return (
+    `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.\n\n` +
+    `## Task: Prioritize and Classify Extracted Issues\n\n` +
+    `### Extracted Issues:\n${issuesText}\n\n` +
+    `### Report Contents:\n${reportSummary}\n\n` +
+    `### Instructions:\n` +
+    `1. Analyze each extracted issue in the context of the full report contents\n` +
+    `2. Assign a priority level (critical, high, medium, low) based on:\n` +
+    `   - Impact on project timeline and deliverables\n` +
+    `   - Number of affected team members\n` +
+    `   - Dependency on other tasks\n` +
+    `3. Assign an urgency level (immediate, urgent, normal, low) based on:\n` +
+    `   - Time sensitivity\n` +
+    `   - Blocking status for other work\n` +
+    `   - Deadline proximity\n` +
+    `4. Identify affected teams for each issue\n` +
+    `5. Provide reasoning for each priority and urgency assignment\n` +
+    `6. Flag any issues that require human review due to:\n` +
+    `   - Ambiguity in priority determination\n` +
+    `   - Potential escalation needs\n` +
+    `   - Unusual or critical situations\n` +
+    `7. Generate a summary of the prioritization results\n\n` +
+    `### Output Format:\n` +
+    `Return a JSON object with the following structure:\n` +
+    `{\n` +
+    `  "prioritizedIssues": [\n` +
+    `    {\n` +
+    `      "id": "issue_id",\n` +
+    `      "description": "issue description",\n` +
+    `      "reportId": "report_id",\n` +
+    `      "priority": "critical|high|medium|low",\n` +
+    `      "urgency": "immediate|urgent|normal|low",\n` +
+    `      "reasoning": "explanation of priority and urgency assignment",\n` +
+    `      "affectedTeams": ["team1", "team2"]\n` +
+    `    }\n` +
+    `  ],\n` +
+    `  "summary": "overall summary of prioritization results",\n` +
+    `  "escalationFlags": [\n` +
+    `    {\n` +
+    `      "issueId": "issue_id",\n` +
+    `      "flag": "reason for escalation",\n` +
+    `      "requiresHumanReview": true|false\n` +
+    `    }\n` +
+    `  ]\n` +
+    `}\n`
   );
-
-  const systemInstructions = `You are an AI agent responsible for validating and processing daily report submissions in the morning meeting report management system.
-
-Your role in Action 2 is to:
-1. Receive engineer input content from the daily report form
-2. Validate the completeness and appropriateness of the input
-3. Check for missing required fields (yesterday's achievements, today's plans, current issues)
-4. Identify any inconsistencies or concerning patterns in the reported content
-5. Prepare validation results for system registration
-
-Context:
-- Report Date: ${input.reportDate}
-- Engineer: ${input.engineerName} (ID: ${input.engineerId})
-- System Context: ${input.systemContext || "Standard morning report processing"}
-
-${input.previousReportContent ? `Previous Report Reference:\n${input.previousReportContent}\n` : ""}
-
-Validation Rules:
-- Yesterday's achievements must be non-empty and substantive (minimum 10 characters)
-- Today's plans must be clearly defined with at least one concrete task
-- Current issues section should identify blockers or concerns if they exist
-- Content should be coherent and relevant to the engineer's role
-- No duplicate or copy-pasted content from previous reports
-- Tone should be professional and factual
-
-Output your validation as a structured assessment including:
-1. Validation Status (PASS / FAIL / CONDITIONAL)
-2. Missing or incomplete fields
-3. Identified issues or concerns
-4. Recommendations for the engineer if revision is needed
-5. Confidence score (0-100) for system registration`;
-
-  const userPrompt = `Please validate the daily report submission for ${input.engineerName} (${input.engineerId}) dated ${input.reportDate}.
-
-Perform comprehensive validation and provide detailed feedback on:
-- Completeness of all required sections
-- Quality and substantiveness of content
-- Any red flags or anomalies
-- Readiness for system registration
-
-Ensure the validation is thorough but fair, supporting the goal of 100% report submission rate while maintaining quality standards.`;
-
-  const prompt = `${systemInstructions}\n\n${userPrompt}`;
-
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
-    metadata: {
-      action: "action-02",
-      timestamp,
-      inputHash,
-    },
-  };
-}
-
-function generateSimpleHash(input: string): string {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    const char = input.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16);
 }

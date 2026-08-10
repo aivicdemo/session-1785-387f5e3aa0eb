@@ -15,172 +15,128 @@ export interface Action05Context {
     issueId: string;
     title: string;
     description: string;
-    affectedEmployees: string[];
-    category: string;
+    relatedEmployees: string[];
     severity: "low" | "medium" | "high" | "critical";
+    category: string;
   }>;
-  priorityClassifications: Array<{
+  priorityJudgmentCriteria: {
+    businessImpact: string;
+    urgency: string;
+    dependencies: string;
+    resourceAvailability: string;
+  };
+  reportingDeadline: string;
+  currentTimestamp: string;
+}
+
+export interface Action05PromptResult {
+  prioritizedIssues: Array<{
     issueId: string;
+    title: string;
+    description: string;
     priority: number;
-    classification: string;
+    priorityLevel: "critical" | "high" | "medium" | "low";
     reasoning: string;
     recommendedAction: string;
+    targetResolution: string;
+    assignedOwner?: string;
   }>;
-  reportingPeriod: {
-    startDate: string;
-    endDate: string;
+  issueClassification: {
+    blockers: string[];
+    risks: string[];
+    improvements: string[];
+    monitoring: string[];
   };
-  departmentContext: {
-    departmentName: string;
-    totalEmployees: number;
-    submissionRate: number;
-    overallStatus: string;
-  };
+  executiveSummary: string;
+  nextSteps: string[];
+  escalationRequired: boolean;
+  escalationReason?: string;
 }
 
-export interface Action05PromptInput {
-  context: Action05Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
-    timestamp: string;
-  }>;
-  managerPreferences: {
-    priorityThresholds: {
-      critical: number;
-      high: number;
-      medium: number;
-      low: number;
-    };
-    focusAreas: string[];
-    escalationRules: string[];
-  };
-}
-
-export interface Action05PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  contextData: Action05Context;
-  expectedOutputFormat: {
-    finalReportStructure: string;
-    priorityListFormat: string;
-    escalationIndicators: string[];
-  };
-}
-
-export function buildAction05Prompt(input: Action05PromptInput): Action05PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final stage of the daily report management workflow (Action 5 of 6).
-
-Your role is to:
-1. Review all confirmed reports and extracted issues from previous actions
-2. Validate the priority classifications assigned to each issue
-3. Prepare a comprehensive report for the department manager
-4. Identify any escalation-worthy situations
-5. Provide actionable recommendations based on the prioritized issues
-
-You must maintain consistency with the priority thresholds and focus areas specified by the manager.
-All decisions should be traceable and explainable.`;
-
-  const userPrompt = buildUserPrompt(input);
-
-  const expectedOutputFormat = {
-    finalReportStructure: JSON.stringify({
-      reportTitle: "Daily Report Summary and Issue Priority Analysis",
-      generatedAt: "ISO 8601 timestamp",
-      reportingPeriod: input.context.reportingPeriod,
-      departmentOverview: {
-        departmentName: "string",
-        totalEmployees: "number",
-        submissionRate: "percentage",
-        overallStatus: "string"
-      },
-      prioritizedIssuesList: [
-        {
-          rank: "number",
-          issueId: "string",
-          title: "string",
-          priority: "CRITICAL | HIGH | MEDIUM | LOW",
-          affectedEmployees: "string[]",
-          recommendedAction: "string",
-          escalationRequired: "boolean"
-        }
-      ],
-      escalationSummary: {
-        escalationCount: "number",
-        criticalIssues: "Issue[]",
-        recommendedImmediateActions: "string[]"
-      },
-      managerNotes: "string"
-    }),
-    priorityListFormat: "Ordered list from highest to lowest priority with clear justification",
-    escalationIndicators: input.managerPreferences.escalationRules
-  };
-
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    contextData: input.context,
-    expectedOutputFormat
-  };
-}
-
-function buildUserPrompt(input: Action05PromptInput): string {
-  const reportingPeriodStr = `${input.context.reportingPeriod.startDate} to ${input.context.reportingPeriod.endDate}`;
-  
-  const confirmedReportsStr = input.context.confirmedReports
-    .map(report => `- ${report.employeeName} (${report.employeeId}): ${report.status} at ${report.submittedAt}`)
+export function buildAction05Prompt(context: Action05Context): string {
+  const confirmedReportsSection = context.confirmedReports
+    .map(
+      (report) =>
+        `- ${report.employeeName} (${report.employeeId}): ${report.status}\n  提出時刻: ${report.submittedAt}\n  内容: ${report.reportContent}`
+    )
     .join("\n");
 
-  const extractedIssuesStr = input.context.extractedIssues
-    .map(issue => `- [${issue.issueId}] ${issue.title} (${issue.severity}): ${issue.description}`)
+  const extractedIssuesSection = context.extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.severity.toUpperCase()}] ${issue.title} (${issue.issueId})\n  説明: ${issue.description}\n  関連者: ${issue.relatedEmployees.join(", ")}\n  カテゴリ: ${issue.category}`
+    )
     .join("\n");
 
-  const priorityClassificationsStr = input.context.priorityClassifications
-    .map(pc => `- [${pc.issueId}] Priority ${pc.priority}: ${pc.classification} - ${pc.reasoning}`)
-    .join("\n");
+  const prompt = `あなたは日報管理システムの課題優先度判定エージェントです。
 
-  const focusAreasStr = input.managerPreferences.focusAreas.join(", ");
-  const escalationRulesStr = input.managerPreferences.escalationRules.join("\n");
+【タスク】
+確認済みの日報から抽出された課題について、以下の基準に基づいて優先度を判定し、分類してください。
 
-  return `You are processing the final analysis stage for the daily report management system.
+【確認済み日報一覧】
+${confirmedReportsSection}
 
-REPORTING PERIOD: ${reportingPeriodStr}
+【抽出済み課題一覧】
+${extractedIssuesSection}
 
-DEPARTMENT CONTEXT:
-- Department: ${input.context.departmentContext.departmentName}
-- Total Employees: ${input.context.departmentContext.totalEmployees}
-- Submission Rate: ${input.context.departmentContext.submissionRate}%
-- Overall Status: ${input.context.departmentContext.overallStatus}
+【優先度判定基準】
+- ビジネスインパクト: ${context.priorityJudgmentCriteria.businessImpact}
+- 緊急度: ${context.priorityJudgmentCriteria.urgency}
+- 依存関係: ${context.priorityJudgmentCriteria.dependencies}
+- リソース可用性: ${context.priorityJudgmentCriteria.resourceAvailability}
 
-CONFIRMED REPORTS RECEIVED:
-${confirmedReportsStr}
+【実行条件】
+- 報告期限: ${context.reportingDeadline}
+- 現在時刻: ${context.currentTimestamp}
 
-EXTRACTED ISSUES FROM REPORTS:
-${extractedIssuesStr}
+【出力要件】
+1. 各課題に対して1-100の優先度スコアを付与してください
+2. 優先度レベル（critical/high/medium/low）を判定してください
+3. 判定理由を明確に記述してください
+4. 推奨アクションを提示してください
+5. 目標解決時期を設定してください
+6. 課題を以下に分類してください:
+   - ブロッカー（プロジェクト進行を阻害する課題）
+   - リスク（潜在的な問題）
+   - 改善（効率化・品質向上の機会）
+   - 監視対象（継続監視が必要な項目）
+7. エグゼクティブサマリーを作成してください
+8. 次のステップを提示してください
+9. エスカレーションが必要な場合はその理由を記述してください
 
-CURRENT PRIORITY CLASSIFICATIONS:
-${priorityClassificationsStr}
+【判定ルール】
+- Critical: ビジネスに直結する障害、セキュリティ問題、納期に関わる重大な遅延
+- High: 複数チームに影響する課題、重要な機能の不具合、1日以上の遅延リスク
+- Medium: 単一チームに影響する課題、軽微な機能不具合、対応可能な遅延
+- Low: 改善提案、軽微な問題、対応期限に余裕がある課題
 
-MANAGER PREFERENCES:
-- Priority Thresholds: Critical (${input.managerPreferences.priorityThresholds.critical}), High (${input.managerPreferences.priorityThresholds.high}), Medium (${input.managerPreferences.priorityThresholds.medium}), Low (${input.managerPreferences.priorityThresholds.low})
-- Focus Areas: ${focusAreasStr}
+【出力形式】
+JSON形式で以下の構造で返してください:
+{
+  "prioritizedIssues": [
+    {
+      "issueId": "string",
+      "title": "string",
+      "description": "string",
+      "priority": number,
+      "priorityLevel": "critical|high|medium|low",
+      "reasoning": "string",
+      "recommendedAction": "string",
+      "targetResolution": "string",
+      "assignedOwner": "string (optional)"
+    }
+  ],
+  "issueClassification": {
+    "blockers": ["issueId"],
+    "risks": ["issueId"],
+    "improvements": ["issueId"],
+    "monitoring": ["issueId"]
+  },
+  "executiveSummary": "string",
+  "nextSteps": ["string"],
+  "escalationRequired": boolean,
+  "escalationReason": "string (optional)"
+}`;
 
-ESCALATION RULES:
-${escalationRulesStr}
-
-PREVIOUS ACTIONS COMPLETED:
-${input.previousActions
-  .map(action => `Action ${action.actionNumber}: ${action.result} (${action.timestamp})`)
-  .join("\n")}
-
-TASK:
-1. Review and validate all priority classifications
-2. Identify any issues that meet escalation criteria
-3. Prepare a comprehensive final report with prioritized issues
-4. Provide specific, actionable recommendations for the manager
-5. Highlight any anomalies or concerns that require immediate attention
-
-Output your analysis in the specified JSON format with clear justification for each priority assignment.`;
+  return prompt;
 }

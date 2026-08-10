@@ -3,54 +3,91 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
-  reportingDeadline: string;
-  targetDate: string;
-  engineerCount: number;
-  systemName: string;
+export interface Action01PromptInput {
+  reportDate: string;
+  engineerName: string;
+  engineerId: string;
+  previousReportSummary?: string;
+  systemContext?: Record<string, unknown>;
 }
 
-export interface Action01PromptResult {
-  version: string;
-  action: string;
-  instructions: string;
-  context: Action01PromptContext;
-}
-
-export function buildAction01Prompt(
-  context: Action01PromptContext
-): Action01PromptResult {
-  const instructions = `
-You are an AI agent responsible for the first action in the daily report collection and issue extraction workflow.
-
-**Action 1: Send confirmation email to initiate daily report collection**
-
-Context:
-- Target Date: ${context.targetDate}
-- Reporting Deadline: ${context.reportingDeadline}
-- Total Engineers: ${context.engineerCount}
-- System Name: ${context.systemName}
-
-Your task:
-1. Prepare a confirmation email to be sent to all engineers
-2. The email should request submission of daily reports (yesterday's achievements, today's plans, current issues)
-3. Include the reporting deadline in the email
-4. Ensure the email is professional and clear
-5. Prepare the email content for sending through the mail system
-
-Output format:
-- Email subject line
-- Email body content
-- List of recipient email addresses (to be populated by the system)
-- Send timestamp
-
-Do not actually send the email. Prepare the content and metadata for the system to send.
-`;
-
-  return {
-    version: ACTION_01_PROMPT_VERSION,
-    action: "send_confirmation_email",
-    instructions,
-    context,
+export interface Action01PromptOutput {
+  templateGenerated: boolean;
+  templateContent: string;
+  distributionChannels: string[];
+  scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
+    targetAudience: string[];
   };
+}
+
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const {
+    reportDate,
+    engineerName,
+    engineerId,
+    previousReportSummary = "",
+    systemContext = {},
+  } = input;
+
+  const previousContext =
+    previousReportSummary.length > 0
+      ? `\n前日の日報サマリー:\n${previousReportSummary}`
+      : "";
+
+  const systemContextStr =
+    Object.keys(systemContext).length > 0
+      ? `\nシステムコンテキスト:\n${JSON.stringify(systemContext, null, 2)}`
+      : "";
+
+  return `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、エンジニアの日報テンプレートを自動生成して配信してください。
+
+【タスク】
+前日の日報テンプレートを自動生成して配信する
+
+【対象エンジニア】
+- 名前: ${engineerName}
+- ID: ${engineerId}
+- 報告日: ${reportDate}
+${previousContext}
+${systemContextStr}
+
+【生成すべき日報テンプレートの要素】
+1. 昨日の実績セクション
+   - 完了したタスク
+   - 進捗状況
+   - 実績の詳細
+
+2. 本日の予定セクション
+   - 予定されたタスク
+   - 優先度
+   - 予想所要時間
+
+3. 抱えている課題セクション
+   - 現在の課題
+   - 影響範囲
+   - 必要なサポート
+
+【配信方法】
+- メール配信
+- チャットツール通知
+- 管理システムダッシュボード表示
+
+【出力形式】
+以下のJSON形式で応答してください:
+{
+  "templateGenerated": true,
+  "templateContent": "生成されたテンプレートの完全な内容",
+  "distributionChannels": ["email", "chat", "dashboard"],
+  "scheduledTime": "配信予定時刻（ISO 8601形式）",
+  "metadata": {
+    "version": "1.0.0",
+    "generatedAt": "生成時刻（ISO 8601形式）",
+    "targetAudience": ["${engineerId}"]
+  }
+}
+
+テンプレートは明確で記入しやすく、前日の実績を参考にしながらも、新規入力を促すような構成にしてください。`;
 }

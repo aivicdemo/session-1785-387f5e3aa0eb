@@ -3,13 +3,16 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Input {
+export interface Action03Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
+  submittedContent: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  };
   submissionTimestamp: string;
+  deadline: string;
 }
 
 export interface Action03ValidationResult {
@@ -18,69 +21,61 @@ export interface Action03ValidationResult {
   warnings: string[];
 }
 
-export interface Action03RegistrationResult {
-  success: boolean;
-  reportId: string;
-  registeredAt: string;
-  message: string;
+export interface Action03PromptInput {
+  context: Action03Context;
 }
 
-export function buildAction03Prompt(input: Action03Input): string {
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
+export interface Action03PromptOutput {
+  prompt: string;
+  version: string;
+}
 
-## Task: Validate Daily Report Input Content
+export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const { context } = input;
+  
+  const validationInstructions = `
+You are validating a daily report submission for an engineer.
 
-### Engineer Information
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Time: ${input.submissionTimestamp}
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Submission Time: ${context.submissionTimestamp}
+- Deadline: ${context.deadline}
 
-### Submitted Content
-**Yesterday's Accomplishments:**
-${input.yesterdayAccomplishments}
+Submitted Content:
+1. Yesterday's Accomplishments:
+${context.submittedContent.yesterdayAccomplishments}
 
-**Today's Plans:**
-${input.todayPlans}
+2. Today's Plan:
+${context.submittedContent.todayPlan}
 
-**Current Issues/Challenges:**
-${input.currentIssues}
+3. Issues/Challenges:
+${context.submittedContent.issues}
 
-## Validation Criteria
+Validation Tasks:
+1. Check if all three sections are filled with meaningful content (not empty or placeholder text)
+2. Verify that yesterday's accomplishments are specific and measurable
+3. Verify that today's plan is realistic and actionable
+4. Verify that issues are clearly described with context
+5. Check for consistency between yesterday's plan and today's accomplishments
+6. Identify any red flags or concerns that require escalation
+7. Assess whether the submission is on time or late
 
-1. **Completeness Check**
-   - All three sections (yesterday, today, issues) must have content
-   - Minimum 10 characters per section
-   - No placeholder or template text remaining
-
-2. **Appropriateness Check**
-   - Content must be work-related
-   - No offensive or inappropriate language
-   - Realistic and achievable plans
-   - Genuine issues/challenges (not trivial)
-
-3. **Consistency Check**
-   - Today's plans should logically follow from yesterday's accomplishments
-   - Issues should be relevant to the work context
-   - No contradictory statements
-
-4. **Quality Check**
-   - Clear and understandable language
-   - Specific rather than vague descriptions
-   - Actionable items in today's plans
-
-## Output Format
-
-Provide validation result as JSON:
+Output your validation result as a JSON object with the following structure:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "summary": string
+  "isOnTime": boolean,
+  "requiresEscalation": boolean,
+  "escalationReason": string | null
 }
 
-- errors: Critical issues that prevent registration
-- warnings: Minor issues that should be addressed but don't block registration
-- summary: Brief explanation of validation result`;
+Be thorough but fair in your assessment. Minor formatting issues should be warnings, not errors.
+`;
 
-  return prompt;
+  return {
+    prompt: validationInstructions,
+    version: ACTION_03_PROMPT_VERSION,
+  };
 }

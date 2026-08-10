@@ -3,77 +3,61 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04PromptContext {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  escalationThreshold: number;
+  targetDate: string;
+  departmentId: string;
+  engineerIds: string[];
 }
 
-export interface Action04PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: string;
-    purpose: string;
-    timestamp: string;
-  };
+export interface Action04PromptResult {
+  escalationCandidates: Array<{
+    engineerId: string;
+    engineerName: string;
+    daysOverdue: number;
+    lastReminderSentAt: string | null;
+    reminderCount: number;
+  }>;
+  escalationMessage: string;
+  shouldEscalate: boolean;
 }
 
-export function buildAction04Prompt(
-  input: Action04PromptInput
-): Action04PromptOutput {
+export function buildAction04Prompt(context: Action04PromptContext): string {
   const {
     reportingDeadline,
-    overdueThresholdHours,
-    escalationRules,
-  } = input;
+    escalationThreshold,
+    targetDate,
+    departmentId,
+    engineerIds,
+  } = context;
 
-  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (tx-2-imp-1).
-
-Your task is to send reminder notifications to members who have not submitted their daily reports.
+  return `You are an AI agent responsible for escalating non-reporting cases in the daily report management system.
 
 ## Context
+- Target Date: ${targetDate}
 - Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdHours} hours
-- Maximum Reminders per Member: ${escalationRules.maxReminders}
-- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
+- Escalation Threshold (days overdue): ${escalationThreshold}
+- Department ID: ${departmentId}
+- Engineer IDs to Monitor: ${engineerIds.join(", ")}
 
-## Responsibilities
-1. Identify members who have exceeded the overdue threshold
-2. Check reminder history to ensure maximum reminder limit is not exceeded
-3. Compose and send reminder notifications via email and chat
-4. Log all reminder activities with timestamps
-5. Handle escalation cases where multiple reminders have been sent
+## Task
+Analyze the current reporting status and determine which engineers require escalation notification.
 
-## Escalation Conditions
-- Same member receives multiple reminders without submitting report
-- System errors occur during notification delivery
-- Special cases that don't fit standard reminder rules
+## Escalation Criteria
+1. Engineer has not submitted a report by the deadline
+2. Days overdue exceeds the escalation threshold
+3. Previous reminders have been sent without response
+4. Escalation should be sent to the department manager
 
-## Output Format
-Provide a structured response containing:
-- List of members to be reminded
-- Reminder message content
-- Delivery channels (email, chat)
-- Timestamp of action
-- Any escalation flags
+## Output Requirements
+Provide a JSON response with:
+- escalationCandidates: Array of engineers requiring escalation
+- escalationMessage: Summary message for the manager
+- shouldEscalate: Boolean indicating if escalation is needed
 
-## Constraints
-- Do not send more than ${escalationRules.maxReminders} reminders to the same member
-- Maintain ${escalationRules.reminderIntervalMinutes} minute intervals between reminders
-- Log all actions for audit trail
-- Respect member preferences for notification channels`;
-
-  return {
-    prompt,
-    version: ACTION_04_PROMPT_VERSION,
-    metadata: {
-      action: "action-04",
-      purpose: "Send reminder notifications to overdue report submitters",
-      timestamp: new Date().toISOString(),
-    },
-  };
+## Important Notes
+- Consider the frequency of previous reminders to avoid over-notification
+- Escalation should be proportional to the severity of the delay
+- Include context about the engineer's typical reporting patterns if available`;
 }

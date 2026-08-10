@@ -22,23 +22,27 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThresholdMinutes: number;
+  escalationThresholds: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Tx3Imp1IdentifiedMember {
   memberId: string;
   memberName: string;
-  status: "not_reported" | "delayed";
-  hoursOverdue?: number;
-  lastReminderSentAt?: string;
-  reminderCount: number;
+  status: "not_submitted" | "overdue";
+  daysSinceDeadline: number;
+  previousReminderCount: number;
 }
 
 export interface Tx3Imp1Action02Output {
   identifiedMembers: Tx3Imp1IdentifiedMember[];
-  totalNotReported: number;
-  totalDelayed: number;
+  escalationCandidates: Tx3Imp1IdentifiedMember[];
   analysisTimestamp: string;
+  totalAnalyzed: number;
+  totalNonSubmitted: number;
+  totalOverdue: number;
 }
 
 export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
@@ -46,74 +50,52 @@ export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
     confirmationEmailContent,
     currentTimestamp,
     submissionDeadline,
-    escalationThresholdMinutes,
+    escalationThresholds,
   } = context;
 
-  const notReportedMembers = confirmationEmailContent.reportedMembers.filter(
-    (m) => m.status === "pending"
-  );
-  const delayedMembers = confirmationEmailContent.reportedMembers.filter(
-    (m) => m.status === "overdue"
-  );
-
-  const notReportedList = notReportedMembers
-    .map((m) => `- ${m.memberName} (ID: ${m.memberId})`)
+  const reportStatus = confirmationEmailContent.reportedMembers
+    .map(
+      (member) =>
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
+          member.submittedAt ? ` at ${member.submittedAt}` : ""
+        }`
+    )
     .join("\n");
 
-  const delayedList = delayedMembers
-    .map((m) => `- ${m.memberName} (ID: ${m.memberId}), submitted at: ${m.submittedAt}`)
-    .join("\n");
+  return `You are an AI agent responsible for identifying non-submitting and overdue report members from confirmation email content.
 
-  return `You are an AI agent responsible for identifying non-reporting and delayed report members from confirmation email content.
-
-## Task: Identify Non-Reporting and Delayed Members
-
-### Confirmation Email Details
-- Email ID: ${confirmationEmailContent.emailId}
-- Sent At: ${confirmationEmailContent.sentAt}
-- Recipient: ${confirmationEmailContent.recipientName}
-- Subject: ${confirmationEmailContent.subject}
-
-### Current Context
+## Current Context
 - Current Timestamp: ${currentTimestamp}
 - Submission Deadline: ${submissionDeadline}
-- Escalation Threshold: ${escalationThresholdMinutes} minutes
+- Max Reminders Allowed: ${escalationThresholds.maxReminders}
+- Reminder Interval: ${escalationThresholds.reminderIntervalMinutes} minutes
 
-### Members Not Yet Reported
-${notReportedList || "None"}
+## Confirmation Email Content
+Email ID: ${confirmationEmailContent.emailId}
+Sent At: ${confirmationEmailContent.sentAt}
+Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientId})
+Subject: ${confirmationEmailContent.subject}
 
-### Members with Delayed Reports
-${delayedList || "None"}
+## Reported Members Status
+${reportStatus}
 
-### Your Task
-1. Analyze the confirmation email content to identify all members who have not submitted their reports
-2. Identify members whose reports are delayed beyond the submission deadline
-3. Calculate hours overdue for each delayed member
-4. Determine escalation priority based on delay duration
-5. Check if previous reminders have been sent to these members
-6. Output a structured list of identified members with their status and escalation information
+## Your Task
+1. Analyze the confirmation email content to identify all members with status "pending" or "overdue"
+2. For each non-submitted member, calculate days since deadline
+3. Determine which members should be escalated based on:
+   - Status is "overdue" (past deadline)
+   - Previous reminder count is below max threshold
+   - Escalation interval has passed since last reminder
+4. Return structured data with identified members and escalation candidates
 
-### Output Format
-Return a JSON object with the following structure:
-{
-  "identifiedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "status": "not_reported" | "delayed",
-      "hoursOverdue": number (only for delayed members),
-      "lastReminderSentAt": "ISO8601 timestamp or null",
-      "reminderCount": number
-    }
-  ],
-  "totalNotReported": number,
-  "totalDelayed": number,
-  "analysisTimestamp": "ISO8601 timestamp"
-}
+## Output Format
+Return a JSON object with:
+- identifiedMembers: array of all non-submitted/overdue members with their details
+- escalationCandidates: array of members who should receive reminders now
+- analysisTimestamp: ISO timestamp of analysis
+- totalAnalyzed: count of members analyzed
+- totalNonSubmitted: count of members not yet submitted
+- totalOverdue: count of members past deadline
 
-### Important Notes
-- Be precise in identifying members from the email content
-- Calculate overdue hours accurately based on current timestamp and deadline
-- Prioritize members with longer delays for escalation
-- Ensure all identified members are included in the output`;
+Ensure accuracy in member identification and escalation logic.`;
 }

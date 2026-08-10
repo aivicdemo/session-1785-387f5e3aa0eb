@@ -5,86 +5,152 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  submissionDeadline: string;
-  escalationThreshold: number;
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>;
+  priorityFramework?: {
+    urgency: string[];
+    impact: string[];
+    effort: string[];
+  };
 }
 
 interface Action03PromptOutput {
-  prompt: string;
   version: string;
+  prompt: string;
+  instructions: {
+    task: string;
+    context: string;
+    constraints: string[];
+    outputFormat: string;
+  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const { reportContent, submissionDeadline, escalationThreshold } = input;
+  const priorityFramework = input.priorityFramework || {
+    urgency: ["即座", "本日中", "明日まで", "週内", "来週以降"],
+    impact: ["重大", "高", "中", "低"],
+    effort: ["小", "中", "大"],
+  };
 
-  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily reports and determining their priority levels.
+  const issuesContext = input.extractedIssues
+    .map(
+      (issue, idx) =>
+        `${idx + 1}. [${issue.category}] ${issue.title}\n   詳細: ${issue.description}`
+    )
+    .join("\n");
 
-## Task: Extract Issues and Determine Priority
+  const teamContext = input.teamMembers
+    .map((member) => `- ${member.name} (${member.department})`)
+    .join("\n");
 
-### Input Report Content:
-${reportContent}
+  const promptText = `# 日報課題の優先度判定タスク
 
-### Submission Deadline:
-${submissionDeadline}
+## 背景
+朝会報告管理システムから収集された日報内容に基づき、抽出された課題について優先度を自動判定します。
 
-### Escalation Threshold (days overdue):
-${escalationThreshold}
+## 入力情報
 
-## Instructions:
+### 報告内容の要約
+${input.reportContent}
 
-1. **Analyze Report Content**: Review the provided daily report content to identify any mentioned issues, blockers, or bottlenecks.
+### 抽出済み課題一覧
+${issuesContext}
 
-2. **Extract Issues**: List all identified issues with:
-   - Issue description
-   - Affected team member or area
-   - Current status
-   - Impact assessment
+### チームメンバー
+${teamContext}
 
-3. **Determine Priority**: Classify each issue into priority levels:
-   - CRITICAL: Blocks multiple team members or critical path items
-   - HIGH: Significant impact on project timeline or deliverables
-   - MEDIUM: Moderate impact, can be addressed in current sprint
-   - LOW: Minor issues, can be deferred
+## 優先度判定フレームワーク
 
-4. **Assess Escalation Need**: Determine if any issues require immediate escalation based on:
-   - Severity level
-   - Impact on project timeline
-   - Resource constraints
-   - Dependencies on other teams
+### 緊急度レベル
+${priorityFramework.urgency.map((u, i) => `${i + 1}. ${u}`).join("\n")}
 
-5. **Generate Summary**: Create a structured summary including:
-   - Total issues identified
-   - Issues by priority level
-   - Recommended escalation actions
-   - Suggested next steps
+### 影響度レベル
+${priorityFramework.impact.map((i, idx) => `${idx + 1}. ${i}`).join("\n")}
 
-## Output Format:
-Provide the analysis in a structured JSON format with the following schema:
+### 対応工数
+${priorityFramework.effort.map((e, i) => `${i + 1}. ${e}`).join("\n")}
+
+## タスク
+
+以下の観点から各課題の優先度を判定してください：
+
+1. **緊急度の評価**: 課題が解決されない場合の時間的制約を判定
+2. **影響度の評価**: 課題が与える組織・プロジェクトへの影響範囲と深刻度を判定
+3. **対応工数の評価**: 課題解決に必要な工数を見積もり
+4. **優先度スコアの算出**: 緊急度 × 影響度 / 対応工数 で相対的な優先度を計算
+5. **分類**: 優先度スコアに基づき、以下のいずれかに分類
+   - P0 (最優先): スコア 8 以上、即座の対応が必須
+   - P1 (高優先): スコア 5-7、本日中の対応が望ましい
+   - P2 (中優先): スコア 2-4、週内の対応を推奨
+   - P3 (低優先): スコア 1未満、来週以降の対応で可
+
+## 出力形式
+
+JSON形式で以下の構造で返してください：
+
+\`\`\`json
 {
-  "issuesIdentified": number,
-  "issues": [
+  "prioritizedIssues": [
     {
-      "id": string,
-      "description": string,
-      "affectedArea": string,
-      "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-      "impact": string,
-      "requiresEscalation": boolean,
-      "recommendedAction": string
+      "issueId": "string",
+      "title": "string",
+      "priority": "P0" | "P1" | "P2" | "P3",
+      "urgency": "string",
+      "impact": "string",
+      "effort": "string",
+      "score": number,
+      "reasoning": "string",
+      "recommendedAction": "string",
+      "assignmentSuggestion": "string or null"
     }
   ],
-  "escalationSummary": {
-    "criticalCount": number,
-    "highCount": number,
-    "requiresImmediateAction": boolean,
-    "recommendedEscalationActions": string[]
+  "summary": {
+    "totalIssues": number,
+    "p0Count": number,
+    "p1Count": number,
+    "p2Count": number,
+    "p3Count": number,
+    "criticalRisks": "string[]",
+    "overallAssessment": "string"
   },
-  "overallAssessment": string
-}`;
+  "escalationRequired": boolean,
+  "escalationReason": "string or null"
+}
+\`\`\`
+
+## 制約事項
+
+- 判定は客観的かつ一貫性を保つこと
+- 同一優先度内での相対的な順序も示すこと
+- 判定根拠は明確に記述すること
+- 通常と異なる事象や重大リスクが検出された場合は escalationRequired を true に設定
+`;
 
   return {
-    prompt,
     version: ACTION_03_PROMPT_VERSION,
+    prompt: promptText,
+    instructions: {
+      task: "日報から抽出された課題について、緊急度・影響度・対応工数を総合的に評価し、優先度を自動判定・分類する",
+      context:
+        "朝会準備時間の短縮と課題対応の効率化を目的とした、AIによる自動優先度判定プロセス",
+      constraints: [
+        "判定は客観的かつ一貫性を保つこと",
+        "判定根拠は明確に記述すること",
+        "通常と異なる事象は escalation フラグで報告すること",
+        "複数課題の優先度が同等の場合は相対的な順序を示すこと",
+      ],
+      outputFormat:
+        "JSON形式で、優先度判定結果、スコア、根拠、推奨アクション、サマリーを含む",
+    },
   };
 }
 

@@ -7,97 +7,98 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedReportContent: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
+  previousReportContent?: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
-  submissionTimestamp: string;
-  systemRegistrationStatus: "pending" | "success" | "failed";
-  registrationErrorMessage?: string;
+  submissionDeadline: string;
+  systemName: string;
 }
 
-export interface Action05PromptInput {
-  context: Action05Context;
-  adminEmailAddresses: string[];
-  reportManagementSystemName: string;
-  confirmationEmailTemplate?: string;
-}
-
-export interface Action05PromptOutput {
-  promptText: string;
+export interface Action05PromptResult {
   version: string;
-  actionType: "send_confirmation_email";
-  targetAudience: "admin";
+  action: number;
+  purpose: string;
+  instructions: string;
+  context: Action05Context;
+  expectedOutput: string;
+  constraints: string[];
 }
 
 export function buildAction05Prompt(
-  input: Action05PromptInput
-): Action05PromptOutput {
-  const {
-    context,
-    adminEmailAddresses,
-    reportManagementSystemName,
-    confirmationEmailTemplate,
-  } = input;
+  context: Action05Context
+): Action05PromptResult {
+  const instructions = `
+You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-  const basePrompt = `You are an automated email dispatch agent for the morning report management system.
+**Action 5: Validate Report Content**
 
-## Task: Send Confirmation Email to Administrators
+Your task is to validate the engineer's daily report input for completeness and appropriateness before registration.
 
-### Report Details
+**Context:**
 - Engineer ID: ${context.engineerId}
 - Engineer Name: ${context.engineerName}
 - Report Date: ${context.reportDate}
-- Submission Timestamp: ${context.submissionTimestamp}
-- System Registration Status: ${context.systemRegistrationStatus}
+- Submission Deadline: ${context.submissionDeadline}
+- System: ${context.systemName}
 
-### Report Content
-**Yesterday's Accomplishments:**
-${context.submittedReportContent.yesterdayAccomplishments}
+**Validation Criteria:**
+1. All required fields are completed (yesterday's results, today's plan, issues)
+2. Content is substantive and not empty or placeholder text
+3. Issues are clearly articulated with context
+4. Text length is reasonable (not excessively short or long)
+5. No obvious errors or inconsistencies
+6. Content is appropriate and professional
 
-**Today's Plans:**
-${context.submittedReportContent.todayPlans}
-
-**Current Issues:**
-${context.submittedReportContent.currentIssues}
-
-### Recipients
-${adminEmailAddresses.map((email) => `- ${email}`).join("\n")}
-
-### System Information
-- Report Management System: ${reportManagementSystemName}
-- Registration Status: ${context.systemRegistrationStatus}${
-    context.registrationErrorMessage
-      ? `\n- Error Details: ${context.registrationErrorMessage}`
-      : ""
-  }
-
-### Email Composition Instructions
-1. Generate a professional confirmation email
-2. Include all report details in a clear, structured format
-3. Confirm successful registration in the ${reportManagementSystemName}
-4. Provide timestamp of confirmation
-5. Include system reference ID for tracking
-6. Add footer with system information
-
-### Email Template Override
+**Previous Report Reference (if available):**
 ${
-  confirmationEmailTemplate
-    ? `Use the following template as base:\n${confirmationEmailTemplate}`
-    : "Use standard professional business email format"
+  context.previousReportContent
+    ? `
+Yesterday's Results: ${context.previousReportContent.yesterday}
+Today's Plan: ${context.previousReportContent.today}
+Issues: ${context.previousReportContent.issues}
+`
+    : "No previous report available"
 }
 
-### Output Requirements
-- Email Subject: Clear, includes engineer name and date
-- Email Body: Well-formatted, includes all report sections
-- Recipient List: All administrator email addresses
-- Send Status: Confirmation of dispatch`;
+**Output Format:**
+Return a JSON object with:
+{
+  "isValid": boolean,
+  "validationStatus": "VALID" | "INCOMPLETE" | "INAPPROPRIATE" | "ERROR",
+  "issues": string[],
+  "recommendations": string[],
+  "escalationRequired": boolean,
+  "escalationReason": string | null,
+  "timestamp": string
+}
+
+**Escalation Conditions:**
+- Content is incomplete or missing required fields
+- Content appears inappropriate or concerning
+- Validation cannot be completed due to system error
+- Content significantly deviates from expected format
+`;
+
+  const constraints = [
+    "Do not modify the input content",
+    "Do not make assumptions about missing information",
+    "Flag ambiguous or unclear content for human review",
+    "Maintain consistency with previous report patterns",
+    "Ensure validation is objective and rule-based",
+    "Do not reject valid content due to style preferences",
+  ];
 
   return {
-    promptText: basePrompt,
     version: ACTION_05_PROMPT_VERSION,
-    actionType: "send_confirmation_email",
-    targetAudience: "admin",
+    action: 5,
+    purpose:
+      "Validate daily report content for completeness and appropriateness before system registration",
+    instructions,
+    context,
+    expectedOutput:
+      "Validation result with status, identified issues, and escalation flag",
+    constraints,
   };
 }

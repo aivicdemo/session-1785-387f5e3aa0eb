@@ -11,14 +11,20 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
-  unreportedMembers: string[];
-  delayedMembers: string[];
-  analysisTimestamp: string;
-  escalationRecommendations: Array<{
-    memberId: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
+  missingReporters: Array<{
+    employeeId: string;
+    employeeName: string;
+    reason: "not_submitted" | "delayed";
+    hoursOverdue?: number;
   }>;
+  escalationTargets: Array<{
+    employeeId: string;
+    employeeName: string;
+    escalationLevel: number;
+    recommendedAction: "first_reminder" | "second_reminder" | "manager_escalation";
+  }>;
+  analysisTimestamp: string;
+  confidence: number;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
@@ -29,63 +35,73 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     previousEscalationCount = {},
   } = input;
 
-  const escalationInfo = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([empId, count]) => `  - Employee ${empId}: ${count} previous reminder(s)`)
     .join("\n");
 
-  return `# 報告漏れ・遅延部員特定プロンプト (Action 01)
+  return `You are an AI agent responsible for identifying missing and delayed daily reports from confirmation emails and determining escalation targets.
 
-## 目的
-確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象の判定を行う
+## Task: Analyze Report Submission Status and Determine Escalation Targets
 
-## 入力情報
-### 確認メール内容
-\`\`\`
+### Input Information:
+**Confirmation Email Content:**
 ${confirmationEmailContent}
-\`\`\`
 
-### システム情報
-- 報告期限: ${reportDeadline}
-- 現在時刻: ${currentTimestamp}
+**Report Deadline:** ${reportDeadline}
+**Current Timestamp:** ${currentTimestamp}
 
-### 催促履歴
-${escalationInfo || "なし"}
+**Previous Escalation History:**
+${escalationCountSummary || "  - No previous escalations recorded"}
 
-## 実行タスク
-1. 確認メール内容から以下を抽出してください:
-   - 報告未提出者のリスト
-   - 期限超過で遅延している部員のリスト
-   - 各部員の最後の報告時刻
+### Your Responsibilities:
 
-2. 以下の基準で催促対象を判定してください:
-   - 未提出: 即座に催促対象
-   - 遅延: 期限から30分以上超過で催促対象
-   - 複数回催促済み: エスカレーション対象として記録
+1. **Identify Missing and Delayed Reporters:**
+   - Parse the confirmation email to extract submission status for each employee
+   - Determine which employees have NOT submitted their reports
+   - Calculate hours overdue for delayed submissions
+   - Classify each as either "not_submitted" or "delayed"
 
-3. 各催促対象について優先度を判定してください:
-   - high: 1時間以上遅延、または3回以上催促済み
-   - medium: 30分～1時間遅延、または2回催促済み
-   - low: 30分以内の軽微な遅延、初回催促
+2. **Determine Escalation Targets:**
+   - Evaluate each missing/delayed reporter against escalation rules:
+     * First escalation: Send reminder email
+     * Second escalation (within 24 hours): Send reminder via chat
+     * Third escalation (within 48 hours): Escalate to manager
+   - Consider previous escalation count for each employee
+   - Recommend appropriate action level
 
-## 出力形式
-JSON形式で以下の構造で返してください:
-\`\`\`json
+3. **Output Requirements:**
+   - Provide structured JSON response with:
+     * List of missing reporters with details
+     * List of escalation targets with recommended actions
+     * Analysis timestamp
+     * Confidence score (0-1) for the analysis
+
+### Output Format:
+Return a JSON object matching this structure:
 {
-  "unreportedMembers": ["member_id_1", "member_id_2"],
-  "delayedMembers": ["member_id_3"],
-  "analysisTimestamp": "ISO8601形式のタイムスタンプ",
-  "escalationRecommendations": [
+  "missingReporters": [
     {
-      "memberId": "member_id",
-      "reason": "具体的な理由",
-      "priority": "high|medium|low"
+      "employeeId": "string",
+      "employeeName": "string",
+      "reason": "not_submitted" | "delayed",
+      "hoursOverdue": number (optional, only for delayed)
     }
-  ]
+  ],
+  "escalationTargets": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationLevel": number (1, 2, or 3),
+      "recommendedAction": "first_reminder" | "second_reminder" | "manager_escalation"
+    }
+  ],
+  "analysisTimestamp": "ISO 8601 timestamp",
+  "confidence": number (0-1)
 }
-\`\`\`
 
-## 注意事項
-- 誤検知を避けるため、確認メール内容から明確に読み取れる情報のみを使用してください
-- システムエラーで情報が不完全な場合は、その旨を記録してください
-- 同一部員への過度な催促を防ぐため、催促履歴を考慮してください`;
+### Rules:
+- Only include employees with actual missing or delayed reports
+- Escalation level should increase based on previous escalation count
+- Confidence should reflect certainty in the analysis (lower if email format is ambiguous)
+- Ensure all employee IDs and names are accurately extracted from the email`;
 }

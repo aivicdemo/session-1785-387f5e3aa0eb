@@ -5,80 +5,85 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  oversightThresholdMinutes: number;
-  escalationContext?: string;
+  overdueThresholdHours: number;
+  escalationContactEmail: string;
+  systemName: string;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPrompt: string;
+  userPromptTemplate: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const {
-    reportingDeadline,
-    currentTime,
-    oversightThresholdMinutes,
-    escalationContext = "",
-  } = input;
+  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails and determining escalation targets.
 
-  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from confirmation email contents in the morning report management system.
+Your role in the "Morning Report Management System" (tx-2-imp-1) is to:
+1. Monitor the daily report submission status at a scheduled time
+2. Automatically identify unreported and delayed members
+3. Create a list of unreported and delayed members
+4. Send notification emails to the department head
 
-Your role is to:
-1. Parse confirmation email contents to identify which team members have not submitted their reports
-2. Determine which team members have submitted reports but are delayed beyond the threshold
-3. Classify team members into categories: on-time, delayed, and unreported
-4. Generate a structured list of unreported and delayed members for escalation
+Context:
+- System Name: ${input.systemName}
+- Reporting Deadline: ${input.reportingDeadline}
+- Overdue Threshold: ${input.overdueThresholdHours} hours
+- Escalation Contact: ${input.escalationContactEmail}
 
-You must be precise and systematic in your analysis. Only mark a team member as unreported if there is clear evidence they have not submitted. Only mark as delayed if the submission time exceeds the configured threshold.
+You must analyze confirmation email contents and determine:
+- Which team members have not submitted their reports
+- Which team members have submitted reports but exceeded the deadline
+- The severity of each delay
+- Whether escalation to management is required
 
-Reporting deadline: ${reportingDeadline}
-Current time: ${currentTime}
-Oversight threshold (minutes): ${oversightThresholdMinutes}
-${escalationContext ? `Additional context: ${escalationContext}` : ""}`;
+Provide clear, actionable information for the department head to make decisions about follow-up actions.`;
 
-  const userPrompt = `Analyze the confirmation email contents and identify:
-1. Team members who have not submitted their reports (unreported)
-2. Team members who submitted reports but exceeded the deadline by more than ${oversightThresholdMinutes} minutes (delayed)
-3. Team members who submitted on time
+  const userPromptTemplate = `Analyze the following confirmation email data and identify unreported and delayed team members:
 
-Provide the analysis in the following JSON structure:
+Email Data:
+{emailData}
+
+Reporting Deadline: ${input.reportingDeadline}
+Current Time: {currentTime}
+Overdue Threshold: ${input.overdueThresholdHours} hours
+
+Please provide:
+1. List of unreported members (with employee IDs and names)
+2. List of delayed members (with submission times and delay duration)
+3. Severity assessment (critical/high/medium/low)
+4. Recommended escalation actions
+5. Summary for department head notification
+
+Format your response as structured JSON with the following schema:
 {
-  "onTime": [
+  "unreportedMembers": [
     {
-      "memberId": "string",
-      "memberName": "string",
-      "submissionTime": "ISO8601 timestamp"
+      "employeeId": string,
+      "name": string,
+      "expectedSubmissionTime": string
     }
   ],
-  "delayed": [
+  "delayedMembers": [
     {
-      "memberId": "string",
-      "memberName": "string",
-      "submissionTime": "ISO8601 timestamp",
-      "delayMinutes": number
+      "employeeId": string,
+      "name": string,
+      "submissionTime": string,
+      "delayHours": number,
+      "severity": "critical" | "high" | "medium" | "low"
     }
   ],
-  "unreported": [
-    {
-      "memberId": "string",
-      "memberName": "string"
-    }
-  ],
-  "summary": {
-    "totalMembers": number,
-    "onTimeCount": number,
-    "delayedCount": number,
-    "unreportedCount": number
-  }
+  "totalUnreported": number,
+  "totalDelayed": number,
+  "escalationRequired": boolean,
+  "escalationReason": string,
+  "departmentHeadNotification": string
 }`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPrompt,
+    userPromptTemplate,
   };
 }
 

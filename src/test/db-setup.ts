@@ -8,8 +8,8 @@ interface TableRow {
 }
 
 interface TableOperations {
-  del(): Promise<void>;
-  insert(row: TableRow): Promise<void>;
+  del(): Promise<number>;
+  insert(row: TableRow | TableRow[]): Promise<void>;
   where(conditions: Record<string, unknown>): Promise<TableRow[]>;
 }
 
@@ -27,13 +27,18 @@ const createTestDatabase = async (): Promise<TestDatabase> => {
 
   const testDb: TestDatabase = (tableName: TableName): TableOperations => {
     return {
-      del: async () => {
+      del: async (): Promise<number> => {
+        const count = tables[tableName].length;
         tables[tableName] = [];
+        return count;
       },
-      insert: async (row: TableRow) => {
-        tables[tableName].push(row);
+
+      insert: async (row: TableRow | TableRow[]): Promise<void> => {
+        const rows = Array.isArray(row) ? row : [row];
+        tables[tableName].push(...rows);
       },
-      where: async (conditions: Record<string, unknown>) => {
+
+      where: async (conditions: Record<string, unknown>): Promise<TableRow[]> => {
         return tables[tableName].filter((row) => {
           return Object.entries(conditions).every(([key, value]) => {
             return row[key] === value;
@@ -46,7 +51,7 @@ const createTestDatabase = async (): Promise<TestDatabase> => {
   return testDb;
 };
 
-const cleanupTestDatabase = async (testDb: TestDatabase): Promise<void> => {
+const cleanupTestDatabase = async (db: TestDatabase): Promise<void> => {
   const tableNames: TableName[] = [
     "users",
     "daily_reports",
@@ -55,7 +60,7 @@ const cleanupTestDatabase = async (testDb: TestDatabase): Promise<void> => {
   ];
 
   for (const tableName of tableNames) {
-    await testDb(tableName).del();
+    await db(tableName).del();
   }
 };
 

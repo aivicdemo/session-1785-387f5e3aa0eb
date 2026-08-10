@@ -28,22 +28,11 @@ const priorityJudgmentLogs: Array<{
 
 const confirmationEmailHistories: Array<{
   exec_id?: string;
-  manager_id?: string;
-  recipient_id?: string;
-  email?: string;
-  status?: string;
-  timestamp?: Date;
+  [key: string]: unknown;
 }> = [];
 
 export async function insertConfirmationEmailHistory(
-  record: {
-    exec_id?: string;
-    manager_id?: string;
-    recipient_id?: string;
-    email?: string;
-    status?: string;
-    timestamp?: Date;
-  }
+  record: Record<string, unknown>
 ): Promise<void> {
   confirmationEmailHistories.push(record);
 }

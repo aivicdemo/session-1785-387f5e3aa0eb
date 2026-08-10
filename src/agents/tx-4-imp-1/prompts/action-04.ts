@@ -3,129 +3,113 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
-  reportContent: string;
+export interface Action04PromptContext {
+  reportCollectionStatus: {
+    totalEngineers: number;
+    submittedCount: number;
+    pendingEngineers: string[];
+    overdueEngineers: string[];
+  };
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
+    reportedBy: string;
+    severity: "low" | "medium" | "high" | "critical";
+  }>;
+  priorityClassification: Array<{
+    issueId: string;
+    priority: number;
     category: string;
-  }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
-  }>;
-  priorityFramework: {
-    criteria: string[];
-    levels: string[];
-  };
-}
-
-export interface Action04PromptOutput {
-  prioritizedIssues: Array<{
-    issueId: string;
-    title: string;
-    priority: string;
-    priorityScore: number;
     reasoning: string;
-    affectedMembers: string[];
-    recommendedAction: string;
   }>;
-  issueSummary: {
-    totalIssues: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-  };
-  escalationFlags: Array<{
-    issueId: string;
-    flag: string;
-    reason: string;
-  }>;
+  reportingDeadline: string;
+  currentTimestamp: string;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const priorityLevels = input.priorityFramework.levels.join(", ");
-  const criteria = input.priorityFramework.criteria
-    .map((c, i) => `${i + 1}. ${c}`)
-    .join("\n");
+export interface Action04PromptResult {
+  action: "escalate" | "proceed" | "hold";
+  reasoning: string;
+  nextSteps: string[];
+  requiresHumanReview: boolean;
+  reviewReason?: string;
+}
 
-  const issuesText = input.extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
-    )
-    .join("\n");
+export function buildAction04Prompt(context: Action04PromptContext): string {
+  const submissionRate = (
+    (context.reportCollectionStatus.submittedCount /
+      context.reportCollectionStatus.totalEngineers) *
+    100
+  ).toFixed(1);
 
-  const teamText = input.teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
+  const pendingList =
+    context.reportCollectionStatus.pendingEngineers.length > 0
+      ? context.reportCollectionStatus.pendingEngineers.join(", ")
+      : "なし";
 
-  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
+  const overdueList =
+    context.reportCollectionStatus.overdueEngineers.length > 0
+      ? context.reportCollectionStatus.overdueEngineers.join(", ")
+      : "なし";
 
-## Task: Prioritize and Classify Extracted Issues
+  const issuesSection =
+    context.extractedIssues.length > 0
+      ? context.extractedIssues
+          .map(
+            (issue) =>
+              `- [${issue.severity.toUpperCase()}] ${issue.title} (報告者: ${issue.reportedBy})\n  ${issue.description}`
+          )
+          .join("\n")
+      : "抽出された課題なし";
 
-### Input Report Content:
-${input.reportContent}
+  const prioritySection =
+    context.priorityClassification.length > 0
+      ? context.priorityClassification
+          .map(
+            (p) =>
+              `- 優先度 ${p.priority}: ${p.category} (理由: ${p.reasoning})`
+          )
+          .join("\n")
+      : "優先度分類なし";
 
-### Extracted Issues to Prioritize:
-${issuesText}
+  return `# 日報収集から課題抽出・優先度判定までの自動実行 - Action 04
 
-### Team Members Context:
-${teamText}
+## 現在の状況
+- 報告期限: ${context.reportingDeadline}
+- 現在時刻: ${context.currentTimestamp}
+- 提出率: ${submissionRate}% (${context.reportCollectionStatus.submittedCount}/${context.reportCollectionStatus.totalEngineers})
+- 未提出者: ${pendingList}
+- 期限超過者: ${overdueList}
 
-### Priority Framework:
-Available Priority Levels: ${priorityLevels}
+## 抽出された課題・ボトルネック
+${issuesSection}
 
-Priority Determination Criteria:
-${criteria}
+## 課題の優先度分類
+${prioritySection}
 
-### Instructions:
-1. Analyze each extracted issue against the priority framework criteria
-2. Assign a priority level (${priorityLevels}) to each issue
-3. Provide a numerical priority score (1-100, where 100 is highest priority)
-4. Explain the reasoning for each priority assignment
-5. Identify which team members are affected by each issue
-6. Recommend specific actions for each issue
-7. Flag any issues that require escalation or special attention
-8. Provide a summary count of issues by priority level
+## 判定タスク
+以下の条件に基づいて、次のアクションを判定してください:
 
-### Output Format:
-Return a JSON object with the following structure:
+1. **提出率が100%未満の場合**: 未提出者への再催促が必要か判定
+2. **期限超過者がいる場合**: エスカレーション対象か判定
+3. **抽出課題の優先度判定**: 
+   - Critical: 即座に対応が必要な課題
+   - High: 本日中に対応すべき課題
+   - Medium: 今週中に対応すべき課題
+   - Low: 優先度が低い課題
+4. **人的レビュー要否**: 以下の場合は人的レビューが必須
+   - 複数の Critical 課題が同時に検出された
+   - 通常と異なるパターンの課題が検出された
+   - 優先度判定が困難な同等レベルの課題がある
+   - 重大なリスク課題が検出された
+
+## 出力形式
+JSON形式で以下を返してください:
 {
-  "prioritizedIssues": [
-    {
-      "issueId": "string",
-      "title": "string",
-      "priority": "string",
-      "priorityScore": number,
-      "reasoning": "string",
-      "affectedMembers": ["string"],
-      "recommendedAction": "string"
-    }
-  ],
-  "issueSummary": {
-    "totalIssues": number,
-    "criticalCount": number,
-    "highCount": number,
-    "mediumCount": number,
-    "lowCount": number
-  },
-  "escalationFlags": [
-    {
-      "issueId": "string",
-      "flag": "string",
-      "reason": "string"
-    }
-  ]
-}
-
-### Constraints:
-- Ensure all issues are assigned a priority level
-- Priority scores must be consistent with assigned priority levels
-- Reasoning must be specific and reference the priority criteria
-- Escalation flags should only be set for issues requiring special attention
-- Affected members should be identified based on the report content and team context`;
+  "action": "escalate" | "proceed" | "hold",
+  "reasoning": "判定理由を簡潔に説明",
+  "nextSteps": ["次のステップ1", "次のステップ2", ...],
+  "requiresHumanReview": true | false,
+  "reviewReason": "人的レビューが必要な場合のみ記入"
+}`;
 }

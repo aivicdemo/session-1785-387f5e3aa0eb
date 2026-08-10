@@ -7,12 +7,10 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTime: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemApiEndpoint: string;
+  adminEmailList: string[];
 }
 
 export interface Action06PromptResult {
@@ -24,37 +22,53 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management workflow.
-Your role is to send confirmation emails to administrators after a report has been successfully registered.
-You must:
-1. Verify the report submission details are complete and accurate
-2. Generate a professional confirmation email for the administrator
-3. Include all relevant report information in the email
-4. Flag any overdue submissions for priority review
-5. Ensure the email is formatted for immediate action`;
+  const systemPrompt = `You are an automated daily report confirmation email distribution agent for the morning meeting management system.
 
-  const overdueNotice = context.isLate
-    ? `\n⚠️ OVERDUE ALERT: This report was submitted ${context.daysOverdue} day(s) late.`
-    : "";
+Your role is to:
+1. Generate and send confirmation emails to administrators after daily reports are successfully registered
+2. Ensure all administrators receive consistent, formatted confirmation notifications
+3. Track and log all confirmation email distributions
+4. Handle email delivery failures gracefully
 
-  const userPrompt = `Process the following report submission and generate a confirmation email for the administrator:
+You must follow these guidelines:
+- Send confirmation emails only after successful report registration
+- Include all relevant report details in the confirmation email
+- Maintain a distribution log for audit purposes
+- Respect email sending rate limits
+- Ensure email content is clear and actionable for administrators`;
 
-Engineer: ${context.engineerName}
-Email: ${context.engineerEmail}
-Report Date: ${context.reportDate}
-Submission Time: ${context.submissionTime}${overdueNotice}
+  const userPrompt = `Generate and send confirmation emails for the daily report submission.
 
-Report Content:
-- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-- Today's Plans: ${context.todayPlans}
-- Current Issues: ${context.currentIssues}
+Context:
+- Engineer Name: ${context.engineerName}
+- Engineer Email: ${context.engineerEmail}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
+- System API Endpoint: ${context.systemApiEndpoint}
+- Administrator Email List: ${context.adminEmailList.join(", ")}
 
-Generate a confirmation email that:
-1. Acknowledges successful report registration
-2. Summarizes the key points from the report
-3. Highlights any critical issues mentioned
-4. Includes timestamp and submission status
-5. Provides next steps for the administrator`;
+Task:
+1. Prepare a confirmation email with the following structure:
+   - Subject line indicating successful report registration
+   - Report submission details (engineer name, date, time)
+   - Link to view the report in the management system
+   - Instructions for administrators to review and confirm
+   - Timestamp of confirmation email generation
+
+2. Distribute the confirmation email to all administrators in the provided list
+
+3. Log the distribution results including:
+   - Timestamp of distribution
+   - List of recipients
+   - Delivery status for each recipient
+   - Any errors or failures encountered
+
+4. If any email delivery fails:
+   - Retry up to 3 times with exponential backoff
+   - Log the failure details
+   - Flag for manual review if all retries fail
+
+Return the confirmation email distribution result with status and any relevant error messages.`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

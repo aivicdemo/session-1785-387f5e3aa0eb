@@ -7,94 +7,228 @@ export interface Action02PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
   systemTime: string;
-  reportSubmissionStatuses: Array<{
+  reportStatusList: Array<{
     employeeId: string;
     employeeName: string;
-    submitted: boolean;
-    submittedAt?: string;
+    departmentId: string;
+    departmentName: string;
+    submissionTime: string | null;
+    isSubmitted: boolean;
+    isOverdue: boolean;
   }>;
 }
 
 export interface Action02PromptOutput {
+  version: string;
+  timestamp: string;
   unsubmittedEmployees: Array<{
     employeeId: string;
     employeeName: string;
-  }>;
-  overdueEmployees: Array<{
-    employeeId: string;
-    employeeName: string;
+    departmentId: string;
+    departmentName: string;
     hoursOverdue: number;
   }>;
-  summaryList: {
-    totalEmployees: number;
+  delayedEmployees: Array<{
+    employeeId: string;
+    employeeName: string;
+    departmentId: string;
+    departmentName: string;
+    submissionTime: string;
+    minutesLate: number;
+  }>;
+  summaryByDepartment: Array<{
+    departmentId: string;
+    departmentName: string;
+    totalCount: number;
     submittedCount: number;
     unsubmittedCount: number;
     overdueCount: number;
+  }>;
+  notificationContent: {
+    subject: string;
+    body: string;
+    recipientRole: string;
   };
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
-  const {
-    reportingDeadline,
-    overdueThresholdHours,
-    systemTime,
-    reportSubmissionStatuses,
-  } = input;
+  const timestamp = new Date().toISOString();
+  
+  const unsubmittedList = input.reportStatusList.filter(
+    (report) => !report.isSubmitted
+  );
+  
+  const overdueList = input.reportStatusList.filter(
+    (report) => report.isOverdue && report.isSubmitted
+  );
 
-  const unsubmitted = reportSubmissionStatuses.filter((s) => !s.submitted);
-  const submitted = reportSubmissionStatuses.filter((s) => s.submitted);
+  const departmentMap = new Map<
+    string,
+    {
+      name: string;
+      total: number;
+      submitted: number;
+      unsubmitted: number;
+      overdue: number;
+    }
+  >();
 
-  const deadlineTime = new Date(reportingDeadline).getTime();
-  const currentTime = new Date(systemTime).getTime();
-  const overdueThresholdMs = overdueThresholdHours * 60 * 60 * 1000;
+  input.reportStatusList.forEach((report) => {
+    if (!departmentMap.has(report.departmentId)) {
+      departmentMap.set(report.departmentId, {
+        name: report.departmentName,
+        total: 0,
+        submitted: 0,
+        unsubmitted: 0,
+        overdue: 0,
+      });
+    }
 
-  const overdue = submitted.filter((s) => {
-    if (!s.submittedAt) return false;
-    const submittedTime = new Date(s.submittedAt).getTime();
-    return submittedTime > deadlineTime;
+    const dept = departmentMap.get(report.departmentId)!;
+    dept.total += 1;
+
+    if (report.isSubmitted) {
+      dept.submitted += 1;
+      if (report.isOverdue) {
+        dept.overdue += 1;
+      }
+    } else {
+      dept.unsubmitted += 1;
+    }
   });
 
-  const promptText = `
-You are an AI agent responsible for identifying unsubmitted and overdue daily reports.
+  const summaryByDepartment = Array.from(departmentMap.entries()).map(
+    ([deptId, deptData]) => ({
+      departmentId: deptId,
+      departmentName: deptData.name,
+      totalCount: deptData.total,
+      submittedCount: deptData.submitted,
+      unsubmittedCount: deptData.unsubmitted,
+      overdueCount: deptData.overdue,
+    })
+  );
 
-Current System Time: ${systemTime}
-Reporting Deadline: ${reportingDeadline}
-Overdue Threshold: ${overdueThresholdHours} hours
+  const unsubmittedEmployees = unsubmittedList.map((report) => {
+    const deadlineTime = new Date(input.reportingDeadline).getTime();
+    const currentTime = new Date(input.systemTime).getTime();
+    const hoursOverdue = Math.floor(
+      (currentTime - deadlineTime) / (1000 * 60 * 60)
+    );
 
-Total Employees: ${reportSubmissionStatuses.length}
-Submitted Reports: ${submitted.length}
-Unsubmitted Reports: ${unsubmitted.length}
-Overdue Reports: ${overdue.length}
+    return {
+      employeeId: report.employeeId,
+      employeeName: report.employeeName,
+      departmentId: report.departmentId,
+      departmentName: report.departmentName,
+      hoursOverdue: Math.max(0, hoursOverdue),
+    };
+  });
 
-Unsubmitted Employees:
-${unsubmitted.map((e) => `- ${e.employeeName} (ID: ${e.employeeId})`).join("\n") || "None"}
+  const delayedEmployees = overdueList.map((report) => {
+    const submissionTime = new Date(report.submissionTime!).getTime();
+    const deadlineTime = new Date(input.reportingDeadline).getTime();
+    const minutesLate = Math.floor((submissionTime - deadlineTime) / (1000 * 60));
 
-Overdue Employees (submitted after deadline):
-${overdue
-  .map((e) => {
-    const submittedTime = new Date(e.submittedAt!).getTime();
-    const hoursOverdue = Math.round((submittedTime - deadlineTime) / (60 * 60 * 1000));
-    return `- ${e.employeeName} (ID: ${e.employeeId}): ${hoursOverdue} hours overdue`;
-  })
-  .join("\n") || "None"}
+    return {
+      employeeId: report.employeeId,
+      employeeName: report.employeeName,
+      departmentId: report.departmentId,
+      departmentName: report.departmentName,
+      submissionTime: report.submissionTime!,
+      minutesLate: Math.max(0, minutesLate),
+    };
+  });
 
-Task: Analyze the report submission status and identify:
-1. All employees who have not submitted their reports
-2. All employees whose reports were submitted after the deadline
-3. Create a summary list with total counts
+  const totalUnsubmitted = unsubmittedEmployees.length;
+  const totalDelayed = delayedEmployees.length;
+  const totalEmployees = input.reportStatusList.length;
+  const submittedOnTime = totalEmployees - totalUnsubmitted - totalDelayed;
 
-Respond with a JSON object containing:
-{
-  "unsubmittedEmployees": [{"employeeId": "...", "employeeName": "..."}],
-  "overdueEmployees": [{"employeeId": "...", "employeeName": "...", "hoursOverdue": number}],
-  "summaryList": {
-    "totalEmployees": number,
-    "submittedCount": number,
-    "unsubmittedCount": number,
-    "overdueCount": number
-  }
+  const notificationContent = {
+    subject: `日報提出状況レポート - ${new Date(input.systemTime).toLocaleDateString("ja-JP")}`,
+    body: `
+【日報提出状況サマリー】
+- 提出期限: ${input.reportingDeadline}
+- 確認時刻: ${input.systemTime}
+
+【全体統計】
+- 総人数: ${totalEmployees}名
+- 期限内提出: ${submittedOnTime}名
+- 遅延提出: ${totalDelayed}名
+- 未提出: ${totalUnsubmitted}名
+
+【部門別統計】
+${summaryByDepartment
+  .map(
+    (dept) =>
+      `${dept.departmentName}: 提出${dept.submittedCount}/${dept.totalCount}名 (未提出${dept.unsubmittedCount}名, 遅延${dept.overdueCount}名)`
+  )
+  .join("\n")}
+
+【未提出者一覧】
+${
+  unsubmittedEmployees.length > 0
+    ? unsubmittedEmployees
+        .map(
+          (emp) =>
+            `- ${emp.employeeName}(${emp.departmentName}): ${emp.hoursOverdue}時間超過`
+        )
+        .join("\n")
+    : "なし"
 }
-`;
 
-  return promptText;
+【遅延提出者一覧】
+${
+  delayedEmployees.length > 0
+    ? delayedEmployees
+        .map(
+          (emp) =>
+            `- ${emp.employeeName}(${emp.departmentName}): ${emp.minutesLate}分遅延`
+        )
+        .join("\n")
+    : "なし"
+}
+    `.trim(),
+    recipientRole: "manager",
+  };
+
+  const prompt = `
+あなたは日報管理システムの自動判定エージェントです。
+以下の日報提出状況データを分析し、未提出者と遅延者を特定してください。
+
+【入力データ】
+報告期限: ${input.reportingDeadline}
+遅延判定閾値: ${input.overdueThresholdHours}時間
+現在時刻: ${input.systemTime}
+
+【提出状況一覧】
+${input.reportStatusList
+  .map(
+    (report) =>
+      `- ${report.employeeName}(${report.departmentName}): ${report.isSubmitted ? `提出済み(${report.submissionTime})` : "未提出"}`
+  )
+  .join("\n")}
+
+【判定ルール】
+1. 提出期限を過ぎても未提出の場合: 未提出者として特定
+2. 提出期限から${input.overdueThresholdHours}時間以上遅れて提出した場合: 遅延者として特定
+3. 部門ごとの提出状況を集計
+
+【出力形式】
+以下の形式で判定結果を出力してください:
+
+未提出者:
+${unsubmittedEmployees.map((emp) => `- ${emp.employeeName}(${emp.departmentName}): ${emp.hoursOverdue}時間超過`).join("\n") || "なし"}
+
+遅延提出者:
+${delayedEmployees.map((emp) => `- ${emp.employeeName}(${emp.departmentName}): ${emp.minutesLate}分遅延`).join("\n") || "なし"}
+
+部門別集計:
+${summaryByDepartment.map((dept) => `${dept.departmentName}: 提出${dept.submittedCount}/${dept.totalCount}名`).join("\n")}
+
+部長への通知内容:
+${notificationContent.body}
+  `.trim();
+
+  return prompt;
 }
