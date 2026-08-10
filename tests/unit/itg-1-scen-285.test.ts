@@ -81,7 +81,8 @@ describe("日報入力フォームの提供と送信機能", () => {
 
     await runTx2Imp1Agent(
       test_db,
-      mock_ai_client
+      mock_ai_client,
+      fixed_current_time
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
