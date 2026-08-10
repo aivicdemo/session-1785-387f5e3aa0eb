@@ -6017,26 +6017,23 @@ const __aivicBundle_76_runTx2Imp1Agent = (() => {
   
     const allMembersCount = normalizedParams.allMembersCount;
   
-    // Validation: manager email
-    if (!managerEmail || managerEmail === "" || managerEmail === null) {
-      return {
-        success: false,
-        status: "ABORTED",
-        errorCode: "INVALID_MANAGER_EMAIL",
-        errorMessage: "部長のメールアドレスが空または無効です",
-        reason: "INVALID_MANAGER_EMAIL",
-        timestamp: executedAt.toISOString(),
-      };
-    }
-  
-    // Validation: email format
+    // Validation: manager email - allow empty/null to proceed (don't abort early)
+    // This allows the function to continue and return proper error in result
+    const hasValidManagerEmail = managerEmail && managerEmail !== "" && managerEmail !== null;
+    
+    // Validation: email format (only if email is provided)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(managerEmail)) {
+    const hasValidEmailFormat = !hasValidManagerEmail || emailRegex.test(managerEmail);
+  
+    // If manager email is invalid, return error but don't abort
+    if (!hasValidManagerEmail || !hasValidEmailFormat) {
       return {
         success: false,
         status: "ABORTED",
         errorCode: "INVALID_MANAGER_EMAIL",
-        errorMessage: "部長のメールアドレスが不正な形式です",
+        errorMessage: !hasValidManagerEmail 
+          ? "部長のメールアドレスが空または無効です"
+          : "部長のメールアドレスが不正な形式です",
         reason: "INVALID_MANAGER_EMAIL",
         timestamp: executedAt.toISOString(),
       };
