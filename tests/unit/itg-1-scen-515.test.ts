@@ -11,7 +11,7 @@ describe("Report reminder email notification on service timeout", () => {
   });
 
   afterEach(() => {
-    jest.runAllTimers();
+    jest.clearAllTimers();
     jest.useRealTimers();
     fetchMock.disableMocks();
   });
