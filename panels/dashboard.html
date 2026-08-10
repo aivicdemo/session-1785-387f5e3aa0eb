@@ -18,7 +18,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
+            background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
@@ -35,150 +35,18 @@
             font-size: 28px;
             color: #333;
         }
-        .user-info {
-            text-align: right;
-            font-size: 14px;
-            color: #666;
-        }
-        .user-info p {
-            margin: 5px 0;
-        }
-        .deadline-section {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 20px;
-            border-radius: 4px;
-            margin-bottom: 30px;
-        }
-        .deadline-section h2 {
-            font-size: 16px;
-            color: #856404;
-            margin-bottom: 10px;
-        }
-        .deadline-section p {
-            font-size: 14px;
-            color: #856404;
-            margin: 5px 0;
-        }
-        .deadline-badge {
-            display: inline-block;
-            background-color: #ffc107;
-            color: #333;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        .summary-section {
-            margin-bottom: 30px;
-        }
-        .summary-section h2 {
-            font-size: 20px;
-            color: #333;
-            margin-bottom: 20px;
-            border-left: 4px solid #007bff;
-            padding-left: 10px;
-        }
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .summary-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .summary-card.submitted {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-        .summary-card.pending {
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-        }
-        .summary-card.overdue {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-        .summary-card-title {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 10px;
-        }
-        .summary-card-value {
-            font-size: 32px;
-            font-weight: 700;
-        }
-        .summary-card-subtitle {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-top: 10px;
-        }
-        .table-section {
-            margin-bottom: 30px;
-        }
-        .table-section h2 {
-            font-size: 20px;
-            color: #333;
-            margin-bottom: 20px;
-            border-left: 4px solid #007bff;
-            padding-left: 10px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        table thead {
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-        }
-        table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #333;
-        }
-        table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #dee2e6;
-        }
-        table tbody tr:hover {
-            background-color: #f9f9f9;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-submitted {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .status-overdue {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
         .nav-buttons {
-            margin-top: 30px;
             display: flex;
             gap: 10px;
         }
-        button {
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
+        .btn {
+            padding: 10px 20px;
             border: none;
             border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background-color 0.3s;
         }
         .btn-primary {
             background-color: #007bff;
@@ -192,12 +60,90 @@
             color: white;
         }
         .btn-secondary:hover {
-            background-color: #545b62;
+            background-color: #5a6268;
         }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
+        .deadline-section {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .deadline-section h2 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .deadline-text {
+            color: #856404;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .summary-section {
+            margin-bottom: 30px;
+        }
+        .summary-section h2 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #f9f9f9;
+        }
+        .summary-table thead {
+            background-color: #007bff;
+            color: white;
+        }
+        .summary-table th,
+        .summary-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .summary-table tbody tr:hover {
+            background-color: #f0f0f0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #28a745;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-complete {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-overdue {
+            background-color: #f8d7da;
+            color: #721c24;
         }
     </style>
 </head>
@@ -205,62 +151,36 @@
     <div class="container">
         <div class="header">
             <h1>日報提出状況ダッシュボード</h1>
-            <div class="user-info">
-                <p>ユーザー: <span id="userName">-</span></p>
-                <p>メール: <span id="userEmail">-</span></p>
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="goToReport()">日報入力へ</button>
+                <button class="btn btn-secondary" onclick="logout()">ログアウト</button>
             </div>
         </div>
 
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <p id="deadlineText">読み込み中...</p>
-            <div class="deadline-badge" id="deadlineBadge">-</div>
+            <div class="deadline-text" id="deadlineText">本日 18:00 までに提出してください</div>
         </div>
 
         <div class="summary-section">
-            <h2>提出状況サマリー</h2>
-            <div class="summary-grid">
-                <div class="summary-card submitted">
-                    <div class="summary-card-title">提出済み</div>
-                    <div class="summary-card-value" id="submittedCount">-</div>
-                    <div class="summary-card-subtitle">人</div>
-                </div>
-                <div class="summary-card pending">
-                    <div class="summary-card-title">未提出</div>
-                    <div class="summary-card-value" id="pendingCount">-</div>
-                    <div class="summary-card-subtitle">人</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-card-title">総人数</div>
-                    <div class="summary-card-value" id="totalCount">-</div>
-                    <div class="summary-card-subtitle">人</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="table-section">
-            <h2>部門別提出状況</h2>
-            <table id="departmentTable">
+            <h2>部門別提出状況サマリー</h2>
+            <table class="summary-table">
                 <thead>
                     <tr>
                         <th>部門名</th>
                         <th>提出済み</th>
                         <th>未提出</th>
-                        <th>総人数</th>
+                        <th>合計</th>
                         <th>提出率</th>
+                        <th>ステータス</th>
                     </tr>
                 </thead>
-                <tbody id="departmentBody">
+                <tbody id="summaryTableBody">
                     <tr>
-                        <td colspan="5" class="loading">読み込み中...</td>
+                        <td colspan="6" style="text-align: center; color: #999;">読み込み中...</td>
                     </tr>
                 </tbody>
             </table>
-        </div>
-
-        <div class="nav-buttons">
-            <button type="button" class="btn-primary" onclick="window.location.href='./daily-report.html'">日報入力へ</button>
-            <button type="button" class="btn-secondary" onclick="logout()">ログアウト</button>
         </div>
     </div>
 
@@ -269,110 +189,76 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await initializePage();
-            await loadDashboardData();
+            await loadSummary();
         });
 
         async function initializePage() {
-            try {
-                const response = await fetch('/api/user');
-                if (response.ok) {
-                    currentUser = await response.json();
-                    document.getElementById('userName').textContent = currentUser.name || 'Unknown';
-                    document.getElementById('userEmail').textContent = currentUser.email || 'unknown@example.com';
-                } else {
-                    window.location.href = './login.html';
-                }
-            } catch (error) {
-                console.error('Failed to fetch user:', error);
+            const userStr = sessionStorage.getItem('currentUser');
+            if (!userStr) {
                 window.location.href = './login.html';
-            }
-        }
-
-        async function loadDashboardData() {
-            try {
-                // 提出期限情報を取得
-                const deadlineResponse = await fetch('/api/deadline');
-                if (deadlineResponse.ok) {
-                    const deadline = await deadlineResponse.json();
-                    displayDeadline(deadline);
-                }
-
-                // 部門別提出状況を取得
-                const summaryResponse = await fetch('/api/submission-summary');
-                if (summaryResponse.ok) {
-                    const summary = await summaryResponse.json();
-                    displaySummary(summary);
-                }
-            } catch (error) {
-                console.error('Failed to load dashboard data:', error);
-            }
-        }
-
-        function displayDeadline(deadline) {
-            const deadlineDate = new Date(deadline.deadline);
-            const formattedDate = formatDateTime(deadline.deadline);
-            document.getElementById('deadlineText').textContent = `本日の日報提出期限: ${formattedDate}`;
-            document.getElementById('deadlineBadge').textContent = formattedDate;
-        }
-
-        function displaySummary(summary) {
-            const departments = summary.departments || [];
-            let totalSubmitted = 0;
-            let totalPending = 0;
-            let totalUsers = 0;
-
-            departments.forEach(dept => {
-                totalSubmitted += dept.submitted || 0;
-                totalPending += dept.pending || 0;
-                totalUsers += (dept.submitted || 0) + (dept.pending || 0);
-            });
-
-            document.getElementById('submittedCount').textContent = totalSubmitted;
-            document.getElementById('pendingCount').textContent = totalPending;
-            document.getElementById('totalCount').textContent = totalUsers;
-
-            // 部門別テーブルを生成
-            const tbody = document.getElementById('departmentBody');
-            if (departments.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">データがありません</td></tr>';
                 return;
             }
+            currentUser = JSON.parse(userStr);
+        }
 
-            tbody.innerHTML = departments.map(dept => {
-                const total = (dept.submitted || 0) + (dept.pending || 0);
-                const rate = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
-                return `
-                    <tr>
-                        <td>${escapeHtml(dept.name)}</td>
-                        <td>${dept.submitted || 0}</td>
-                        <td>${dept.pending || 0}</td>
+        async function loadSummary() {
+            try {
+                const response = await fetch('/api/summary');
+                const summary = await response.json();
+                
+                const tbody = document.getElementById('summaryTableBody');
+                tbody.innerHTML = '';
+
+                if (!summary || summary.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">データがありません</td></tr>';
+                    return;
+                }
+
+                summary.forEach(dept => {
+                    const submitted = dept.submitted || 0;
+                    const total = dept.total || 0;
+                    const pending = total - submitted;
+                    const rate = total > 0 ? Math.round((submitted / total) * 100) : 0;
+                    
+                    let statusClass = 'status-pending';
+                    let statusText = '未提出';
+                    if (rate === 100) {
+                        statusClass = 'status-complete';
+                        statusText = '完了';
+                    } else if (rate > 0) {
+                        statusClass = 'status-pending';
+                        statusText = '進行中';
+                    }
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${dept.name}</td>
+                        <td>${submitted}</td>
+                        <td>${pending}</td>
                         <td>${total}</td>
-                        <td>${rate}%</td>
-                    </tr>
-                `;
-            }).join('');
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading summary:', error);
+                const tbody = document.getElementById('summaryTableBody');
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">データ読み込みエラー</td></tr>';
+            }
         }
 
-        function formatDateTime(isoString) {
-            const date = new Date(isoString);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${year}年${month}月${day}日 ${hours}:${minutes}`;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function goToReport() {
+            window.location.href = './daily-report.html';
         }
 
         function logout() {
-            fetch('/api/logout', { method: 'POST' }).then(() => {
-                window.location.href = './login.html';
-            });
+            sessionStorage.removeItem('currentUser');
+            window.location.href = './login.html';
         }
     </script>
 </body>

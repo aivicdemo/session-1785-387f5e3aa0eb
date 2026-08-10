@@ -1196,7 +1196,7 @@ const __aivicBundle_12_validateAndSubmitReport = (() => {
       yesterday_achievement: yesterday,
       today_plan: today,
       current_issues: issue,
-      message: "日報が正常に送信されました",
+      message: "報告を送信しました",
       form_reset: true,
       success: true,
       recordId: recordId,

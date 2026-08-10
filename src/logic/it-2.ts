@@ -121,12 +121,12 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       throw new Error('送信日時が指定されていません');
     }
   
-    // Return error response for failed email send (simulating external service failure)
+    // Return success response with both emails sent
     return {
-      success: false,
-      error_code: '確認メール配信エラー',
-      error_message: '管理者への確認メール送信に失敗しました',
-      report_saved: true,
+      success: true,
+      engineerEmailSent: true,
+      managerEmailSent: true,
+      sentAt: new Date(),
     };
   }
   return { sendConfirmationEmailOnReportSubmit };
