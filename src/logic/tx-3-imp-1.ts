@@ -69,9 +69,9 @@ const __aivicBundle_1_runTx3Imp1Agent = (() => {
       delayedEmployees
     );
   
-    // Check if this is a special case that requires human confirmation
+    // Check if this is a special case that doesn't match promotion rules
     if (aiEvaluation.isSpecialCase || aiEvaluation.requiresHumanReview) {
-      // Abort transaction to prevent side effects
+      // Abort transaction before any side effects
       dbTransaction.isAborted = true;
   
       // Create follow-up notification for manager
@@ -82,12 +82,12 @@ const __aivicBundle_1_runTx3Imp1Agent = (() => {
         reason: 'special_case_not_matching_rules'
       };
   
-      // Call manager notification handler
+      // Issue manager notification
       managerNotificationHandler(followUpNotification);
   
       // Record follow-up decision in transaction
       dbTransaction.records.push({
-        id: `follow_up_${Date.now()}`,
+        id: `follow_up_decision_${Date.now()}`,
         type: 'follow_up_decision',
         data: {
           status: 'requires_human_confirmation',
@@ -99,13 +99,13 @@ const __aivicBundle_1_runTx3Imp1Agent = (() => {
   
       // Record manager escalation notification
       dbTransaction.records.push({
-        id: `escalation_${Date.now()}`,
+        id: `manager_notification_${Date.now()}`,
         type: 'manager_escalation_notification',
         data: {
           escalationTriggeredAt: new Date().toISOString(),
           requiresManagerReview: true,
-          unreportedEmployees: unreportedEmployees.map(emp => emp.name),
-          delayedEmployees: delayedEmployees.map(emp => emp.name),
+          unreportedEmployees: unreportedEmployees.map(e => e.name),
+          delayedEmployees: delayedEmployees.map(e => e.name),
           reason: 'special_case_not_matching_rules'
         }
       });
@@ -119,38 +119,44 @@ const __aivicBundle_1_runTx3Imp1Agent = (() => {
       };
     }
   
-    // Normal case: proceed with promotion mail and chat
-    // Record promotion mail log
+    // Standard promotion flow for non-special cases
+    const followUpNotification: FollowUpNotification = {
+      issuedToManager: false,
+      escalationFlag: false,
+      requiresHumanConfirmation: false,
+      reason: ''
+    };
+  
+    // Send promotion mail
     dbTransaction.records.push({
-      id: `mail_${Date.now()}`,
+      id: `promotion_mail_log_${Date.now()}`,
       type: 'promotion_mail_log',
       data: {
         sentAt: new Date().toISOString(),
-        unreportedEmployees: unreportedEmployees.map(emp => emp.name),
-        delayedEmployees: delayedEmployees.map(emp => emp.name)
+        targetEmployees: [...unreportedEmployees, ...delayedEmployees].map(
+          e => e.name
+        ),
+        mailType: 'follow_up_reminder'
       }
     });
   
-    // Record promotion chat log
+    // Send promotion chat
     dbTransaction.records.push({
-      id: `chat_${Date.now()}`,
+      id: `promotion_chat_log_${Date.now()}`,
       type: 'promotion_chat_log',
       data: {
         sentAt: new Date().toISOString(),
-        unreportedEmployees: unreportedEmployees.map(emp => emp.name),
-        delayedEmployees: delayedEmployees.map(emp => emp.name)
+        targetEmployees: [...unreportedEmployees, ...delayedEmployees].map(
+          e => e.name
+        ),
+        chatType: 'follow_up_reminder'
       }
     });
   
     return {
       escalationOccurred: false,
       escalationReason: '',
-      followUpNotification: {
-        issuedToManager: false,
-        escalationFlag: false,
-        requiresHumanConfirmation: false,
-        reason: ''
-      },
+      followUpNotification,
       promotionMailSent: true,
       promotionChatSent: true
     };
