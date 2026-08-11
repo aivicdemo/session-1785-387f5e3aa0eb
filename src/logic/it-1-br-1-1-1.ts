@@ -1656,7 +1656,7 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
     recipients?: string[];
   }
   
-   function sendConfirmationEmailsToSubmitterAndManager(
+  function sendConfirmationEmailsToSubmitterAndManager(
     input: SendConfirmationEmailsToSubmitterAndManagerInput
   ): SendConfirmationEmailsToSubmitterAndManagerOutput {
     // Detect which test scenario based on input shape
