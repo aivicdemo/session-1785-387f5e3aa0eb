@@ -8,9 +8,9 @@ export interface Action06Context {
   engineerEmail: string;
   reportDate: string;
   yesterdayAccomplishments: string;
-  todayPlan: string;
+  todayPlans: string;
   currentIssues: string;
-  submissionTimestamp: string;
+  submissionTime: string;
   isLate: boolean;
   daysOverdue: number;
 }
@@ -23,37 +23,42 @@ export interface Action06PromptResult {
   context: Action06Context;
 }
 
-export function buildAction06Prompt(
-  context: Action06Context
-): Action06PromptResult {
-  const systemPrompt = `You are an AI agent responsible for sending confirmation emails to administrators after engineers submit their daily reports. Your role is to:
-1. Verify that the submitted report contains all required information
-2. Generate a professional confirmation email for the administrator
-3. Include summary of the engineer's report (accomplishments, plans, issues)
-4. Flag any overdue submissions with appropriate urgency indicators
-5. Provide structured data for logging and tracking purposes
+export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
+  const systemPrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have not submitted their daily reports.
 
-Always maintain a professional tone and ensure all critical information is clearly communicated.`;
+Your role is to:
+1. Identify engineers who have exceeded the submission deadline
+2. Determine the appropriate reminder message based on how overdue the report is
+3. Generate a professional and encouraging reminder notification
+4. Log the reminder action for tracking purposes
 
-  const userPrompt = `Process the following engineer's daily report submission and generate a confirmation email to be sent to the administrator:
+Guidelines:
+- Be respectful and professional in tone
+- Acknowledge the delay without being accusatory
+- Provide clear next steps for submission
+- Consider the severity based on days overdue
+- Ensure the message motivates timely submission`;
 
-Engineer Name: ${context.engineerName}
-Engineer Email: ${context.engineerEmail}
+  const userPrompt = `Process the following overdue report submission:
+
+Engineer: ${context.engineerName}
+Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Timestamp: ${context.submissionTimestamp}
-Is Late: ${context.isLate}
 Days Overdue: ${context.daysOverdue}
+Last Submission Time: ${context.submissionTime}
 
-Report Content:
-- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-- Today's Plan: ${context.todayPlan}
-- Current Issues: ${context.currentIssues}
+Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+Today's Plans: ${context.todayPlans}
+Current Issues: ${context.currentIssues}
 
-Please generate:
-1. A confirmation email subject line
-2. A professional confirmation email body
-3. Any flags or alerts for the administrator
-4. Structured metadata for the submission record`;
+Generate a reminder notification that:
+1. Acknowledges the submission delay
+2. Requests immediate submission if not yet completed
+3. Provides encouragement and support
+4. Includes clear submission instructions
+5. Specifies the new deadline if applicable
+
+Format the response as a structured reminder notification.`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

@@ -3,70 +3,73 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Context {
-  engineerId: string;
+export interface Action03PromptInput {
   engineerName: string;
-  submittedContent: {
-    yesterdayAccomplishments: string;
-    todayPlan: string;
-    issues: string;
-  };
-  submissionTimestamp: string;
-  systemDeadline: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionDeadline: string;
+  systemName: string;
 }
 
-export interface Action03ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  validatedContent: {
+export interface Action03PromptOutput {
+  validationStatus: "valid" | "invalid";
+  validationErrors: string[];
+  registrationPayload: {
+    engineerName: string;
+    engineerEmail: string;
     yesterdayAccomplishments: string;
-    todayPlan: string;
-    issues: string;
+    todayPlans: string;
+    currentIssues: string;
+    submittedAt: string;
   };
+  nextAction: "register" | "request_correction" | "escalate";
 }
 
-export function buildAction03Prompt(context: Action03Context): string {
-  const deadlineExceeded =
-    new Date(context.submissionTimestamp) > new Date(context.systemDeadline);
+export function buildAction03Prompt(input: Action03PromptInput): string {
+  const prompt = `You are an AI agent responsible for validating daily report input content.
 
-  const prompt = `You are validating a daily report submission for the morning meeting automation system.
+System: ${input.systemName}
+Engineer: ${input.engineerName} (${input.engineerEmail})
+Submission Deadline: ${input.submissionDeadline}
 
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Submission Time: ${context.submissionTimestamp}
-- System Deadline: ${context.systemDeadline}
-- Deadline Status: ${deadlineExceeded ? "EXCEEDED" : "ON TIME"}
+The engineer has submitted the following daily report:
 
-Submitted Content:
-1. Yesterday's Accomplishments:
-${context.submittedContent.yesterdayAccomplishments}
+Yesterday's Accomplishments:
+${input.yesterdayAccomplishments}
 
-2. Today's Plan:
-${context.submittedContent.todayPlan}
+Today's Plans:
+${input.todayPlans}
 
-3. Issues/Concerns:
-${context.submittedContent.issues}
+Current Issues:
+${input.currentIssues}
 
-Validation Tasks:
-1. Check if all three sections are filled with meaningful content (not empty or placeholder text)
-2. Verify that yesterday's accomplishments are specific and measurable
-3. Verify that today's plan is clear and actionable
-4. Verify that issues are clearly described with context
-5. Identify any inconsistencies or red flags
-6. Flag if content appears incomplete or inappropriate
+Your task is to:
+1. Validate that all required fields are filled and contain meaningful content
+2. Check for completeness and appropriateness of the input
+3. Identify any validation errors or concerns
+4. Determine if the report is ready for registration or requires correction
 
-Provide validation result in the following JSON format:
+Validation criteria:
+- Yesterday's Accomplishments: Must not be empty, should describe concrete work completed
+- Today's Plans: Must not be empty, should describe specific tasks planned
+- Current Issues: Can be empty if no issues, but if present should be clearly described
+- All fields should be professional and relevant to work context
+
+Respond with a JSON object containing:
 {
-  "isValid": boolean,
-  "errors": [list of critical issues that prevent acceptance],
-  "warnings": [list of minor issues or concerns],
-  "validatedContent": {
-    "yesterdayAccomplishments": "cleaned/normalized content",
-    "todayPlan": "cleaned/normalized content",
-    "issues": "cleaned/normalized content"
-  }
+  "validationStatus": "valid" | "invalid",
+  "validationErrors": [list of error messages if invalid],
+  "registrationPayload": {
+    "engineerName": "${input.engineerName}",
+    "engineerEmail": "${input.engineerEmail}",
+    "yesterdayAccomplishments": [validated content],
+    "todayPlans": [validated content],
+    "currentIssues": [validated content],
+    "submittedAt": [current ISO timestamp]
+  },
+  "nextAction": "register" | "request_correction" | "escalate"
 }`;
 
   return prompt;

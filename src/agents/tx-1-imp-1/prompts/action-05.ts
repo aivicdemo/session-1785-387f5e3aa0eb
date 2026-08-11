@@ -13,25 +13,18 @@ export interface Action05Context {
     issues: string;
   };
   submissionDeadline: string;
-  systemRegistrationStatus: "pending" | "success" | "failed";
-  registrationErrorMessage?: string;
+  systemTimestamp: string;
 }
 
-export interface Action05PromptResult {
-  version: string;
-  action: "send_confirmation_email";
-  targetAdminEmails: string[];
-  emailSubject: string;
-  emailBody: string;
-  reportSummary: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    registrationTimestamp: string;
-    registrationStatus: "success" | "failed";
+export interface Action05ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  validatedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
-  nextAction: "monitor_submission" | "escalate_error";
-  escalationReason?: string;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
@@ -41,80 +34,69 @@ export function buildAction05Prompt(context: Action05Context): string {
     reportDate,
     previousReportContent,
     submissionDeadline,
-    systemRegistrationStatus,
-    registrationErrorMessage,
+    systemTimestamp,
   } = context;
 
-  const statusSection =
-    systemRegistrationStatus === "success"
-      ? `日報登録ステータス: 成功
-登録完了時刻: ${new Date().toISOString()}
-次のアクション: 管理者に確認メールを送信`
-      : `日報登録ステータス: 失敗
-エラー内容: ${registrationErrorMessage || "不明なエラー"}
-次のアクション: エスカレーション対応`;
+  const promptContent = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-  const prompt = `# Action 05: 日報登録完了後の確認メール自動配信
+## Task: Validate Daily Report Content (Action 05)
 
-## 実行コンテキスト
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- 提出期限: ${submissionDeadline}
+### Engineer Information
+- Engineer ID: ${engineerId}
+- Engineer Name: ${engineerName}
+- Report Date: ${reportDate}
+- System Timestamp: ${systemTimestamp}
+- Submission Deadline: ${submissionDeadline}
 
-## 登録内容
-### 昨日の実績
+### Report Content to Validate
+**Yesterday's Achievements:**
 ${previousReportContent.yesterday}
 
-### 本日の予定
+**Today's Plans:**
 ${previousReportContent.today}
 
-### 抱えている課題
+**Current Issues/Challenges:**
 ${previousReportContent.issues}
 
-## 登録結果
-${statusSection}
+### Validation Rules
+1. **Completeness Check**
+   - All three sections (yesterday, today, issues) must have content
+   - Minimum 10 characters per section
+   - No placeholder or template text remaining
 
-## 指示
-以下の条件に基づいて、適切なアクションを実行してください:
+2. **Appropriateness Check**
+   - Content must be relevant to work activities
+   - No offensive, discriminatory, or inappropriate language
+   - No sensitive personal information
 
-1. **登録成功時**:
-   - 管理者メールアドレス一覧に確認メールを自動配信
-   - メール件名: "[日報確認] ${engineerName}さんの日報が登録されました (${reportDate})"
-   - メール本文に以下を含める:
-     * エンジニア名と報告日
-     * 昨日の実績・本日の予定・課題の要約
-     * 登録完了時刻
-     * 朝会での確認予定時刻
+3. **Consistency Check**
+   - Today's plans should logically follow from yesterday's achievements
+   - Issues should be specific and actionable
+   - No contradictory statements
 
-2. **登録失敗時**:
-   - エスカレーション判定を実施
-   - 失敗原因がシステムエラーか入力エラーかを分類
-   - 対応方針を決定 (再試行 / 手動対応 / エンジニアへの連絡)
+4. **Format Check**
+   - Clear and concise language
+   - Proper sentence structure
+   - No excessive formatting or special characters
 
-3. **メール配信の注意点**:
-   - スパム判定を避けるため、送信元を明確に設定
-   - 配信失敗時のリトライロジックを適用
-   - 配信結果をログに記録
-
-## 出力形式
-JSON形式で以下の構造で返却してください:
+### Output Format
+Return a JSON object with the following structure:
 {
-  "version": "1.0.0",
-  "action": "send_confirmation_email" | "escalate_error",
-  "targetAdminEmails": ["admin1@example.com", "admin2@example.com"],
-  "emailSubject": "メール件名",
-  "emailBody": "メール本文",
-  "reportSummary": {
-    "engineerId": "${engineerId}",
-    "engineerName": "${engineerName}",
-    "reportDate": "${reportDate}",
-    "registrationTimestamp": "ISO8601形式の登録完了時刻",
-    "registrationStatus": "success" | "failed"
-  },
-  "nextAction": "monitor_submission" | "escalate_error",
-  "escalationReason": "エスカレーション理由 (失敗時のみ)"
-}`;
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
+}
 
-  return prompt;
+### Instructions
+- If validation fails, provide specific error messages in the "errors" array
+- If there are minor issues that don't prevent submission, add them to "warnings"
+- In "validatedContent", return the cleaned/normalized version of the content
+- Be strict but fair in validation - the goal is to ensure quality reports for the morning meeting`;
+
+  return promptContent;
 }

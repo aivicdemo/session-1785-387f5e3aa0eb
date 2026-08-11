@@ -6,7 +6,7 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Tx3Imp1ConfirmationEmailContent {
   emailId: string;
   sentAt: string;
-  recipientId: string;
+  recipientEmail: string;
   recipientName: string;
   subject: string;
   body: string;
@@ -22,30 +22,45 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThresholds: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  reminderThresholdMinutes: number;
+  maxReminderAttempts: number;
+  communicationChannels: Array<"email" | "chat">;
 }
 
 export interface Tx3Imp1IdentifiedMember {
   memberId: string;
   memberName: string;
-  status: "not_submitted" | "delayed";
+  memberEmail: string;
+  status: "not_submitted" | "overdue";
   daysSinceDeadline: number;
-  reminderCount: number;
+  previousReminderCount: number;
+  shouldRemind: boolean;
+  reminderReason: string;
 }
 
 export interface Tx3Imp1Action02Output {
   identifiedMembers: Tx3Imp1IdentifiedMember[];
-  escalationCandidates: Tx3Imp1IdentifiedMember[];
+  reminderTargets: Tx3Imp1IdentifiedMember[];
   analysisTimestamp: string;
+  totalMembersAnalyzed: number;
+  totalNotSubmitted: number;
+  totalOverdue: number;
+  totalReminderTargets: number;
 }
 
 export function buildAction02Prompt(
   context: Tx3Imp1PromptContext
 ): string {
-  const membersList = context.confirmationEmailContent.reportedMembers
+  const {
+    confirmationEmailContent,
+    currentTimestamp,
+    submissionDeadline,
+    reminderThresholdMinutes,
+    maxReminderAttempts,
+    communicationChannels,
+  } = context;
+
+  const reportedMembersText = confirmationEmailContent.reportedMembers
     .map(
       (member) =>
         `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
@@ -54,62 +69,70 @@ export function buildAction02Prompt(
     )
     .join("\n");
 
-  const deadline = new Date(context.submissionDeadline);
-  const current = new Date(context.currentTimestamp);
-  const hoursOverdue = Math.floor(
-    (current.getTime() - deadline.getTime()) / (1000 * 60 * 60)
-  );
+  const channelsText = communicationChannels.join(", ");
 
-  return `You are an AI agent responsible for identifying members with missing or delayed reports from confirmation email content.
+  return `You are an AI agent responsible for identifying members who have not submitted their daily reports and determining which ones should receive reminder notifications.
 
-## Task
-Analyze the confirmation email content and identify:
-1. Members who have NOT submitted their reports (status: "pending")
-2. Members whose reports are OVERDUE (status: "overdue")
-3. Determine which members should receive reminder notifications based on escalation thresholds
+## Task: Analyze Confirmation Email and Identify Reminder Targets
 
-## Confirmation Email Content
-Subject: ${context.confirmationEmailContent.subject}
-Sent At: ${context.confirmationEmailContent.sentAt}
+### Confirmation Email Content:
+- Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
+- Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientEmail})
+- Subject: ${confirmationEmailContent.subject}
 
-Reported Members Status:
-${membersList}
+### Report Status Summary:
+${reportedMembersText}
 
-## Current Context
-- Current Timestamp: ${context.currentTimestamp}
-- Submission Deadline: ${context.submissionDeadline}
-- Hours Since Deadline: ${hoursOverdue}
-- Max Reminders Allowed: ${context.escalationThresholds.maxReminders}
-- Reminder Interval: ${context.escalationThresholds.reminderIntervalMinutes} minutes
+### Current Context:
+- Current Timestamp: ${currentTimestamp}
+- Submission Deadline: ${submissionDeadline}
+- Reminder Threshold: ${reminderThresholdMinutes} minutes after deadline
+- Max Reminder Attempts: ${maxReminderAttempts}
+- Available Communication Channels: ${channelsText}
 
-## Output Requirements
-Return a JSON object with the following structure:
+## Analysis Requirements:
+
+1. **Identify Not Submitted Members**: Extract all members with status "pending" or "not_submitted"
+2. **Identify Overdue Members**: Extract all members with status "overdue"
+3. **Determine Reminder Eligibility**: For each identified member, determine if they should receive a reminder based on:
+   - Time elapsed since deadline
+   - Previous reminder count (must be less than ${maxReminderAttempts})
+   - Reminder threshold (${reminderThresholdMinutes} minutes)
+4. **Prioritize Reminder Targets**: Order reminder targets by:
+   - Days overdue (descending)
+   - Previous reminder count (ascending)
+
+## Output Format:
+
+Provide a JSON object with the following structure:
 {
   "identifiedMembers": [
     {
       "memberId": "string",
       "memberName": "string",
-      "status": "not_submitted" | "delayed",
+      "memberEmail": "string",
+      "status": "not_submitted" | "overdue",
       "daysSinceDeadline": number,
-      "reminderCount": number
+      "previousReminderCount": number,
+      "shouldRemind": boolean,
+      "reminderReason": "string"
     }
   ],
-  "escalationCandidates": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number,
-      "reminderCount": number
-    }
+  "reminderTargets": [
+    // Same structure as identifiedMembers, filtered for shouldRemind: true
   ],
-  "analysisTimestamp": "ISO8601 timestamp"
+  "analysisTimestamp": "string (ISO 8601)",
+  "totalMembersAnalyzed": number,
+  "totalNotSubmitted": number,
+  "totalOverdue": number,
+  "totalReminderTargets": number
 }
 
-## Rules
-- Include all members with status "pending" or "overdue" in identifiedMembers
-- Include only members who have not exceeded maxReminders in escalationCandidates
-- Calculate daysSinceDeadline as the number of complete days since the deadline
-- Set reminderCount to 0 for initial identification (will be tracked by orchestrator)
-- Return analysisTimestamp as the current timestamp in ISO8601 format`;
+## Important Notes:
+- Only include members who have not submitted or are overdue
+- Calculate daysSinceDeadline as the difference between currentTimestamp and submissionDeadline
+- Set shouldRemind to true only if: status is "overdue" AND previousReminderCount < ${maxReminderAttempts} AND daysSinceDeadline >= (${reminderThresholdMinutes} / 1440)
+- Provide clear, actionable reminderReason for each target
+- Ensure all timestamps are in ISO 8601 format`;
 }

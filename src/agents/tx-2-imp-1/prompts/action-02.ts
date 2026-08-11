@@ -5,11 +5,11 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
+  overdueThresholdMinutes: number;
   notificationChannels: string[];
   escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
+    repeatOffenderThreshold: number;
+    systemErrorHandling: string;
   };
 }
 
@@ -17,81 +17,62 @@ export interface Action02PromptOutput {
   prompt: string;
   version: string;
   metadata: {
-    actionNumber: 2;
-    contractId: "tx_2_imp_1";
+    action: string;
+    contract: string;
     purpose: string;
-    expectedOutput: string;
   };
 }
 
-export function buildAction02Prompt(
-  input: Action02PromptInput
-): Action02PromptOutput {
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
   const {
     reportingDeadline,
-    overdueThresholdHours,
+    overdueThresholdMinutes,
     notificationChannels,
     escalationRules,
   } = input;
 
-  const prompt = `You are an AI agent responsible for Action 2 of the tx_2_imp_1 contract: "未提出者と遅延者を自動判定する" (Automatically identify non-submitters and delayed submitters).
+  const channelsList = notificationChannels.join(", ");
 
-Your task is to:
-1. Analyze the current report submission status across all team members
-2. Identify members who have not submitted their reports by the deadline: ${reportingDeadline}
-3. Identify members whose reports are overdue by more than ${overdueThresholdHours} hours
-4. Classify each member into one of these categories:
-   - "on_time": Report submitted before deadline
-   - "delayed": Report submitted after deadline but within grace period
-   - "overdue": Report not submitted or severely overdue
-   - "not_submitted": No report received
+  const prompt = `You are an AI agent responsible for Action 2 of the Daily Report Management System (tx_2_imp_1).
 
-Input data will include:
-- Team member list with IDs and names
-- Report submission timestamps for each member
-- Current system time
+## Your Task
+Identify unreported and delayed team members from the daily report submission status, and notify the department head.
 
-Output format must be JSON with the following structure:
-{
-  "timestamp": "ISO 8601 timestamp",
-  "analysis_period": {
-    "deadline": "${reportingDeadline}",
-    "threshold_hours": ${overdueThresholdHours}
-  },
-  "results": {
-    "on_time": [{ "member_id": string, "member_name": string, "submitted_at": string }],
-    "delayed": [{ "member_id": string, "member_name": string, "submitted_at": string, "delay_minutes": number }],
-    "overdue": [{ "member_id": string, "member_name": string, "last_submission": string | null, "overdue_hours": number }],
-    "not_submitted": [{ "member_id": string, "member_name": string }]
-  },
-  "summary": {
-    "total_members": number,
-    "submitted_count": number,
-    "not_submitted_count": number,
-    "delayed_count": number,
-    "on_time_percentage": number
-  },
-  "notification_targets": {
-    "channels": ${JSON.stringify(notificationChannels)},
-    "escalation_config": {
-      "max_reminders": ${escalationRules.maxReminders},
-      "reminder_interval_minutes": ${escalationRules.reminderIntervalMinutes}
-    }
-  }
-}
+## Context
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdMinutes} minutes
+- Notification Channels: ${channelsList}
+- Repeat Offender Threshold: ${escalationRules.repeatOffenderThreshold} occurrences
+- System Error Handling: ${escalationRules.systemErrorHandling}
 
-Ensure accuracy in timestamp comparisons and member categorization. Handle edge cases where submission times are exactly at the deadline boundary.`;
+## Autonomous Actions to Execute
+1. Check the submission status of all team members at the configured time
+2. Automatically identify unreported and delayed members
+3. Create a list of unreported and delayed members
+4. Send notification email to the department head
+
+## Escalation Conditions
+- System failure preventing report submission status verification
+- Repeated reporting failures by specific team members requiring intervention decision
+
+## Output Requirements
+- Provide a structured list of unreported members with timestamps
+- Provide a structured list of delayed members with submission times
+- Include recommendation for escalation if applicable
+- Log all actions taken with timestamps
+
+## Constraints
+- Do not make assumptions about member availability
+- Verify data integrity before reporting
+- Maintain audit trail of all notifications sent`;
 
   return {
     prompt,
     version: ACTION_02_PROMPT_VERSION,
     metadata: {
-      actionNumber: 2,
-      contractId: "tx_2_imp_1",
-      purpose:
-        "Automatically identify non-submitters and delayed submitters from report submission status",
-      expectedOutput:
-        "JSON object containing categorized member lists and submission analysis",
+      action: "action-02",
+      contract: "tx_2_imp_1",
+      purpose: "Identify unreported and delayed team members and notify department head",
     },
   };
 }

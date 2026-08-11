@@ -7,11 +7,12 @@ export interface Action01PromptInput {
   reportDate: string;
   engineerName: string;
   engineerId: string;
-  previousReportContent?: string;
-  systemContext?: string;
+  departmentName: string;
+  submissionDeadline: string;
 }
 
 export interface Action01PromptOutput {
+  templateId: string;
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
@@ -22,48 +23,58 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     reportDate,
     engineerName,
     engineerId,
-    previousReportContent = "",
-    systemContext = "",
+    departmentName,
+    submissionDeadline,
   } = input;
 
-  const previousReportSection =
-    previousReportContent.length > 0
-      ? `\n\n## 前日の日報内容\n${previousReportContent}`
-      : "";
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-  const systemContextSection =
-    systemContext.length > 0
-      ? `\n\n## システムコンテキスト\n${systemContext}`
-      : "";
+## 実行日時
+${new Date().toISOString()}
 
-  return `# 日報テンプレート自動生成プロンプト
+## 対象エンジニア情報
+- 名前: ${engineerName}
+- ID: ${engineerId}
+- 部門: ${departmentName}
 
-## 目的
-エンジニア向けの日報テンプレートを自動生成し、入力を促進する。
+## 日報対象日
+${reportDate}
 
-## 対象者情報
-- エンジニア名: ${engineerName}
-- エンジニアID: ${engineerId}
-- 報告日: ${reportDate}
+## 提出期限
+${submissionDeadline}
 
-## 生成要件
-1. 前日の実績入力セクション
-2. 本日の予定入力セクション
-3. 抱えている課題入力セクション
-4. 提出期限と注意事項
+## タスク
+以下の手順に従い、前日の日報テンプレートを自動生成して配信してください:
 
-## テンプレート生成ガイドライン
-- 簡潔で入力しやすい形式にする
-- 必須項目と任意項目を明確に区別する
-- 前日の内容を参考にしながら、本日の予定を立てやすくする
-- 課題は具体的かつ解決可能な形で記述するよう促す
-${previousReportSection}${systemContextSection}
+1. **テンプレート生成**
+   - 昨日の実績入力セクション
+   - 本日の予定入力セクション
+   - 抱えている課題入力セクション
+   - 備考欄
+   を含むテンプレートを生成
 
-## 出力形式
-生成されたテンプレートは以下の構造を持つこと:
-- 日報ヘッダー（日付、エンジニア名）
-- 前日実績セクション
-- 本日予定セクション
-- 課題セクション
-- 提出ボタンと期限表示`;
+2. **配信チャネル決定**
+   - メール
+   - チャットツール
+   - 日報管理システム内通知
+   から適切なチャネルを選択
+
+3. **配信スケジュール**
+   - 提出期限の24時間前に配信
+   - リマインダーを提出期限の1時間前に送信
+
+4. **出力形式**
+   以下の JSON 形式で結果を返却:
+   {
+     "templateId": "生成されたテンプレートの一意識別子",
+     "templateContent": "テンプレートの本文内容",
+     "distributionChannels": ["配信チャネルのリスト"],
+     "scheduledTime": "配信予定時刻 (ISO 8601形式)"
+   }
+
+## 制約条件
+- テンプレートは日本語で作成
+- 入力項目は明確で簡潔に
+- 提出期限を明記
+- エンジニアの負担を最小化するよう設計`;
 }

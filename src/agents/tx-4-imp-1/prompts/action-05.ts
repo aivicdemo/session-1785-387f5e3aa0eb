@@ -7,8 +7,19 @@ export interface Action05Context {
   confirmationEmailContent: string;
   reportSubmissionDeadline: string;
   currentTimestamp: string;
-  previousExtractedIssues?: ExtractedIssue[];
-  teamMembers: TeamMember[];
+  previousExtractedIssues?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    reportedBy: string;
+    reportDate: string;
+  }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    department: string;
+  }>;
 }
 
 export interface ExtractedIssue {
@@ -16,126 +27,214 @@ export interface ExtractedIssue {
   title: string;
   description: string;
   reportedBy: string;
+  reportDate: string;
   category: string;
   severity: "critical" | "high" | "medium" | "low";
   affectedAreas: string[];
   proposedSolution?: string;
 }
 
-export interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  role: string;
-}
-
-export interface IssueExtractionResult {
-  extractedIssues: ExtractedIssue[];
-  totalIssuesFound: number;
-  criticalIssuesCount: number;
-  analysisTimestamp: string;
-  confidenceScores: Record<string, number>;
-}
-
-export interface PriorityClassification {
+export interface IssuePrioritization {
   issueId: string;
-  priority: 1 | 2 | 3 | 4 | 5;
+  priority: number;
   reasoning: string;
-  relatedIssues: string[];
-  recommendedAction: string;
+  dependencies: string[];
+  estimatedImpact: string;
 }
 
-export interface Action05Output {
+export interface Action05PromptResult {
   extractedIssues: ExtractedIssue[];
-  priorityClassifications: PriorityClassification[];
-  reportSummary: string;
-  escalationFlags: EscalationFlag[];
-  readyForPresentation: boolean;
-}
-
-export interface EscalationFlag {
-  type: "critical_issue" | "repeated_problem" | "deadline_miss" | "system_error" | "unusual_pattern";
-  severity: "high" | "medium" | "low";
-  description: string;
-  affectedMembers?: string[];
-  recommendedAction: string;
+  prioritizedIssues: IssuePrioritization[];
+  summaryReport: string;
+  escalationFlags: Array<{
+    flag: string;
+    severity: "critical" | "high" | "medium" | "low";
+    description: string;
+  }>;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const basePrompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily report confirmation emails and classifying them by priority.
+  const issueHistorySection =
+    context.previousExtractedIssues && context.previousExtractedIssues.length > 0
+      ? `
+## 前回抽出された課題（参考情報）
+${context.previousExtractedIssues
+  .map(
+    (issue) => `
+- ID: ${issue.id}
+  タイトル: ${issue.title}
+  説明: ${issue.description}
+  報告者: ${issue.reportedBy}
+  報告日: ${issue.reportDate}
+`
+  )
+  .join("")}
+`
+      : "";
 
-## Context Information
-- Confirmation Email Content: ${context.confirmationEmailContent}
-- Report Submission Deadline: ${context.reportSubmissionDeadline}
-- Current Timestamp: ${context.currentTimestamp}
-- Team Members Count: ${context.teamMembers.length}
+  const teamMembersSection =
+    context.teamMembers && context.teamMembers.length > 0
+      ? `
+## チームメンバー一覧
+${context.teamMembers
+  .map(
+    (member) => `
+- ${member.name} (${member.id}) - ${member.department}
+  Email: ${member.email}
+`
+  )
+  .join("")}
+`
+      : "";
 
-## Your Task
-1. Analyze the confirmation email content to identify all reported issues and bottlenecks
-2. Extract structured information about each issue including:
-   - Issue title and description
-   - Reporter information
-   - Category classification
-   - Severity assessment (critical/high/medium/low)
-   - Affected areas or teams
-   - Proposed solutions if mentioned
+  return `# Action 05: 課題・ボトルネック抽出と優先度判定
 
-3. Classify extracted issues by priority (1-5, where 1 is highest priority)
-4. Identify any escalation conditions:
-   - Critical or blocking issues
-   - Repeated problems from previous reports
-   - Deadline misses or submission delays
-   - System errors or technical blockers
-   - Unusual patterns or anomalies
+## 目的
+確認メール内容から日報の課題・ボトルネックを自動抽出し、優先度を判定・分類する。
 
-5. Generate a concise report summary suitable for presentation to leadership
+## 入力情報
 
-## Output Requirements
-Return a JSON object with the following structure:
+### 確認メール内容
+\`\`\`
+${context.confirmationEmailContent}
+\`\`\`
+
+### 日報提出期限
+${context.reportSubmissionDeadline}
+
+### 現在時刻
+${context.currentTimestamp}
+
+${issueHistorySection}
+
+${teamMembersSection}
+
+## 実行タスク
+
+### タスク 1: 課題・ボトルネック抽出
+確認メール内容から以下の情報を抽出してください：
+
+1. **課題の特定**
+   - 報告された課題・問題点
+   - ボトルネック・制約条件
+   - リスク・懸念事項
+   - 進捗阻害要因
+
+2. **課題の分類**
+   - 技術的課題
+   - プロセス課題
+   - リソース課題
+   - 外部依存課題
+   - その他
+
+3. **課題の詳細情報**
+   - 課題ID（自動採番）
+   - タイトル
+   - 詳細説明
+   - 報告者
+   - 報告日時
+   - 影響範囲
+
+### タスク 2: 優先度判定・分類
+抽出された各課題について、以下の基準で優先度を判定してください：
+
+1. **優先度レベル**
+   - Critical (1): システム停止、重大な遅延、安全性問題
+   - High (2): 主要機能の障害、重要な遅延
+   - Medium (3): 部分的な機能障害、軽微な遅延
+   - Low (4): 軽微な問題、改善提案
+
+2. **判定基準**
+   - 業務への影響度
+   - 解決の緊急性
+   - 依存関係の複雑さ
+   - リソース要件
+   - 他の課題との関連性
+
+3. **優先度の根拠**
+   - 判定理由を明確に記述
+   - 依存関係を明示
+   - 推定される影響を説明
+
+### タスク 3: エスカレーション判定
+以下の条件に該当する場合はエスカレーションフラグを立ててください：
+
+1. **Critical課題の検出**
+   - システム停止リスク
+   - 安全性・セキュリティ問題
+   - 契約違反の可能性
+
+2. **複数課題の相互依存**
+   - 解決順序が重要な場合
+   - 並行解決が困難な場合
+
+3. **リソース不足**
+   - 対応に特別なスキルが必要
+   - 外部支援が必要
+
+4. **異常パターン**
+   - 同一部員からの繰り返し報告
+   - 予期しない課題の発生
+
+## 出力形式
+
+JSON形式で以下の構造で返してください：
+
+\`\`\`json
 {
   "extractedIssues": [
     {
-      "id": "string",
-      "title": "string",
-      "description": "string",
-      "reportedBy": "string",
-      "category": "string",
-      "severity": "critical|high|medium|low",
-      "affectedAreas": ["string"],
-      "proposedSolution": "string or null"
+      "id": "ISSUE-001",
+      "title": "課題タイトル",
+      "description": "詳細説明",
+      "reportedBy": "報告者名",
+      "reportDate": "2024-01-15T09:30:00Z",
+      "category": "技術的課題",
+      "severity": "high",
+      "affectedAreas": ["エリア1", "エリア2"],
+      "proposedSolution": "提案されている解決策"
     }
   ],
-  "priorityClassifications": [
+  "prioritizedIssues": [
     {
-      "issueId": "string",
-      "priority": 1-5,
-      "reasoning": "string",
-      "relatedIssues": ["string"],
-      "recommendedAction": "string"
+      "issueId": "ISSUE-001",
+      "priority": 1,
+      "reasoning": "優先度判定の理由",
+      "dependencies": ["ISSUE-002"],
+      "estimatedImpact": "推定される影響"
     }
   ],
-  "reportSummary": "string",
+  "summaryReport": "全体的な課題状況の要約",
   "escalationFlags": [
     {
-      "type": "critical_issue|repeated_problem|deadline_miss|system_error|unusual_pattern",
-      "severity": "high|medium|low",
-      "description": "string",
-      "affectedMembers": ["string"] or null,
-      "recommendedAction": "string"
+      "flag": "CRITICAL_ISSUE_DETECTED",
+      "severity": "critical",
+      "description": "エスカレーション理由"
     }
-  ],
-  "readyForPresentation": boolean
+  ]
 }
+\`\`\`
 
-## Classification Guidelines
-- Priority 1: Critical blockers requiring immediate action
-- Priority 2: High-impact issues affecting multiple teams
-- Priority 3: Medium-impact issues with workarounds available
-- Priority 4: Low-impact issues or nice-to-have improvements
-- Priority 5: Informational items or future considerations
+## 注意事項
 
-Ensure all extracted issues are clearly categorized and prioritized for efficient decision-making.`;
+1. **正確性**
+   - 報告内容から客観的に課題を抽出する
+   - 推測や仮定は明示する
 
-  return basePrompt;
+2. **完全性**
+   - 報告されたすべての課題を抽出する
+   - 潜在的なリスクも検討する
+
+3. **一貫性**
+   - 前回抽出された課題との関連性を確認する
+   - 同一課題の重複を避ける
+
+4. **実用性**
+   - 優先度判定は実行可能性を考慮する
+   - 部長の意思決定に役立つ情報を提供する
+
+5. **エスカレーション**
+   - 判定ルールに該当しない特殊ケースは明示する
+   - 人間の最終確認が必要な場合を明確にする
+`;
 }

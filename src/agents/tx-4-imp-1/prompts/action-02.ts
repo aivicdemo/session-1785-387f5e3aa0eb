@@ -5,50 +5,130 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportContent: string;
-  submissionDeadline: string;
-  escalationThreshold: number;
-  previousEscalationCount: number;
+  engineerName: string;
+  submissionDate: string;
+  validationRules?: {
+    minLength?: number;
+    maxLength?: number;
+    requiredFields?: string[];
+  };
 }
 
 export interface Action02PromptOutput {
-  shouldEscalate: boolean;
-  escalationReason: string;
-  recommendedAction: string;
-  riskLevel: "low" | "medium" | "high";
+  isValid: boolean;
+  validationErrors: string[];
+  sanitizedContent: string;
+  warnings: string[];
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
   const {
     reportContent,
-    submissionDeadline,
-    escalationThreshold,
-    previousEscalationCount,
+    engineerName,
+    submissionDate,
+    validationRules = {
+      minLength: 10,
+      maxLength: 5000,
+      requiredFields: ["yesterday", "today", "issues"],
+    },
   } = input;
 
-  const escalationStatus =
-    previousEscalationCount >= escalationThreshold ? "exceeded" : "within";
+  const requiredFieldsText =
+    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
+  const minLength = validationRules.minLength || 10;
+  const maxLength = validationRules.maxLength || 5000;
 
-  return `You are an AI agent responsible for analyzing daily report submissions and determining escalation conditions.
+  return `You are a validation agent for daily report submissions in a morning meeting management system.
 
-Current Report Analysis:
-- Report Content: ${reportContent}
-- Submission Deadline: ${submissionDeadline}
-- Escalation Threshold: ${escalationThreshold}
-- Previous Escalation Count: ${previousEscalationCount}
-- Escalation Status: ${escalationStatus}
+Task: Validate the following daily report submission from engineer "${engineerName}" submitted on ${submissionDate}.
 
-Your task is to:
-1. Analyze the report content for completeness and appropriateness
-2. Determine if escalation is necessary based on the escalation conditions
-3. Identify the specific reason for escalation if applicable
-4. Recommend the appropriate action (notify manager, send reminder, flag for review, etc.)
-5. Assess the risk level (low, medium, high)
+Report Content:
+---
+${reportContent}
+---
 
-Escalation Conditions:
-- Report content is incomplete or inappropriate
-- Submission deadline has been significantly exceeded
-- System error occurred during registration
-- Multiple escalations have already been triggered for the same employee
+Validation Rules:
+1. Content length must be between ${minLength} and ${maxLength} characters
+2. Report must contain all required sections: ${requiredFieldsText}
+3. Content must be professional and relevant to work activities
+4. No offensive, discriminatory, or inappropriate language
+5. Must contain specific, actionable information (not vague or generic)
 
-Provide your analysis in a structured format with clear reasoning for each decision.`;
+Please analyze the report and provide:
+1. Whether the report is VALID or INVALID
+2. List any validation errors found
+3. Sanitized version of the content (remove any sensitive information)
+4. Any warnings or suggestions for improvement
+
+Respond in JSON format with keys: isValid (boolean), validationErrors (array of strings), sanitizedContent (string), warnings (array of strings)`;
+}
+
+export function validateAction02Input(
+  input: Action02PromptInput
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!input.reportContent || typeof input.reportContent !== "string") {
+    errors.push("reportContent must be a non-empty string");
+  }
+
+  if (!input.engineerName || typeof input.engineerName !== "string") {
+    errors.push("engineerName must be a non-empty string");
+  }
+
+  if (!input.submissionDate || typeof input.submissionDate !== "string") {
+    errors.push("submissionDate must be a non-empty string");
+  }
+
+  if (input.validationRules) {
+    if (
+      input.validationRules.minLength !== undefined &&
+      typeof input.validationRules.minLength !== "number"
+    ) {
+      errors.push("validationRules.minLength must be a number");
+    }
+
+    if (
+      input.validationRules.maxLength !== undefined &&
+      typeof input.validationRules.maxLength !== "number"
+    ) {
+      errors.push("validationRules.maxLength must be a number");
+    }
+
+    if (
+      input.validationRules.requiredFields !== undefined &&
+      !Array.isArray(input.validationRules.requiredFields)
+    ) {
+      errors.push("validationRules.requiredFields must be an array");
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+export function parseAction02Response(
+  responseText: string
+): Action02PromptOutput {
+  try {
+    const parsed = JSON.parse(responseText);
+
+    return {
+      isValid: Boolean(parsed.isValid),
+      validationErrors: Array.isArray(parsed.validationErrors)
+        ? parsed.validationErrors
+        : [],
+      sanitizedContent: String(parsed.sanitizedContent || ""),
+      warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
+    };
+  } catch {
+    return {
+      isValid: false,
+      validationErrors: ["Failed to parse validation response"],
+      sanitizedContent: "",
+      warnings: ["Response parsing error"],
+    };
+  }
 }

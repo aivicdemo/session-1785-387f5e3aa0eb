@@ -5,86 +5,98 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationContactEmail: string;
-  systemName: string;
+  escalationThreshold: number;
+  reportingMembers: Array<{
+    memberId: string;
+    memberName: string;
+    department: string;
+    email: string;
+  }>;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
+  currentTime: string;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPromptTemplate: string;
+  userPrompt: string;
+  context: {
+    deadline: string;
+    threshold: number;
+    totalMembers: number;
+    submittedCount: number;
+    overdueCount: number;
+  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails and sending automated reminders.
+  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
+  const nonSubmittedMembers = input.reportingMembers.filter(
+    m => !submittedMemberIds.has(m.memberId)
+  );
 
-Your role:
-- Parse confirmation email content to identify which team members have not submitted reports
-- Determine which members are overdue based on the deadline: ${input.reportingDeadline}
-- Classify members into two categories: unreported (no submission) and delayed (submitted after deadline)
-- Generate reminder notifications for both categories
-- Log all actions for audit purposes
+  const deadlineTime = new Date(input.reportingDeadline).getTime();
+  const currentTime = new Date(input.currentTime).getTime();
+  const isOverdue = currentTime > deadlineTime;
 
-Escalation contact for critical issues: ${input.escalationContactEmail}
-System name: ${input.systemName}
+  const overdueMembers = nonSubmittedMembers.filter(member => {
+    const memberSubmission = input.submittedReports.find(r => r.memberId === member.memberId);
+    if (!memberSubmission) return isOverdue;
+    const submissionTime = new Date(memberSubmission.submittedAt).getTime();
+    return submissionTime > deadlineTime;
+  });
 
-Guidelines:
-- Use the overdueThresholdHours parameter (${input.overdueThresholdHours} hours) to determine if a submission is considered delayed
-- Ensure all reminder messages are professional and non-accusatory
-- Maintain a record of reminder attempts to prevent duplicate notifications
-- Flag any system errors or unusual patterns for human review`;
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitted and overdue daily reports.
+Your task is to:
+1. Analyze the submission status of all team members
+2. Identify members who have not submitted their reports
+3. Determine which members are overdue based on the deadline
+4. Classify members by escalation priority
+5. Generate a notification list for the department manager
 
-  const userPromptTemplate = `Please analyze the following confirmation email content and identify unreported and delayed team members:
+Be precise and factual in your analysis. Only report actual non-submissions and actual overdue cases.`;
 
-Email Content:
-{emailContent}
+  const userPrompt = `Analyze the following daily report submission status:
 
 Reporting Deadline: ${input.reportingDeadline}
-Current Timestamp: {currentTimestamp}
-Overdue Threshold: ${input.overdueThresholdHours} hours
+Current Time: ${input.currentTime}
+Escalation Threshold (hours): ${input.escalationThreshold}
+
+Total Team Members: ${input.reportingMembers.length}
+Reports Submitted: ${input.submittedReports.length}
+Reports Not Submitted: ${nonSubmittedMembers.length}
+Overdue Reports: ${overdueMembers.length}
+
+Non-Submitted Members:
+${nonSubmittedMembers.map(m => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join('\n')}
+
+Overdue Members:
+${overdueMembers.map(m => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join('\n')}
+
+Submitted Reports Summary:
+${input.submittedReports.map(r => `- Member ${r.memberId}: submitted at ${r.submittedAt}`).join('\n')}
 
 Please provide:
-1. List of unreported members (no submission received)
-2. List of delayed members (submitted after deadline)
-3. Recommended reminder message for each category
-4. Any anomalies or escalation flags
-
-Format your response as structured JSON with the following schema:
-{
-  "unreportedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "email": "string"
-    }
-  ],
-  "delayedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "email": "string",
-      "submissionTime": "ISO8601 timestamp",
-      "delayHours": number
-    }
-  ],
-  "reminderMessages": {
-    "unreported": "string",
-    "delayed": "string"
-  },
-  "escalationFlags": [
-    {
-      "type": "string",
-      "description": "string",
-      "severity": "low" | "medium" | "high"
-    }
-  ]
-}`;
+1. A list of members who have not submitted their reports
+2. A list of members whose reports are overdue
+3. Priority classification for manager notification
+4. Recommended action for each category`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPromptTemplate,
+    userPrompt,
+    context: {
+      deadline: input.reportingDeadline,
+      threshold: input.escalationThreshold,
+      totalMembers: input.reportingMembers.length,
+      submittedCount: input.submittedReports.length,
+      overdueCount: overdueMembers.length,
+    },
   };
 }
 

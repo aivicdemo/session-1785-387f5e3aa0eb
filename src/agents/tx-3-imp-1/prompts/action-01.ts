@@ -14,7 +14,7 @@ export interface Action01PromptOutput {
   unreportedMembers: Array<{
     memberId: string;
     memberName: string;
-    reason: "not_submitted" | "late_submission";
+    reason: "not_submitted" | "delayed";
     submissionTime?: string;
   }>;
   escalationTargets: Array<{
@@ -26,9 +26,7 @@ export interface Action01PromptOutput {
   analysisTimestamp: string;
 }
 
-export function buildAction01Prompt(
-  input: Action01PromptInput
-): string {
+export function buildAction01Prompt(input: Action01PromptInput): string {
   const {
     confirmationEmailContent,
     reportDeadline,
@@ -37,38 +35,53 @@ export function buildAction01Prompt(
   } = input;
 
   const escalationCountSummary = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
+    .map(([memberId, count]) => `${memberId}: ${count}回`)
     .join("\n");
 
-  return `# 報告漏れ・遅延部員特定アクション
+  return `# 報告漏れ・遅延部員特定プロンプト (Action 01)
+
+## 目的
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定する
 
 ## 入力情報
-- 確認メール内容:
+
+### 確認メール内容
 \`\`\`
 ${confirmationEmailContent}
 \`\`\`
+
+### システム情報
 - 報告期限: ${reportDeadline}
 - 現在時刻: ${currentTimestamp}
-- 過去の催促履歴:
+- 前回までの催促回数:
 ${escalationCountSummary || "なし"}
 
-## タスク
-以下の手順で報告漏れ・遅延部員を特定し、催促対象を判定してください:
+## 判定ルール
 
-1. 確認メール内容から、報告を提出していない部員と遅延している部員を特定する
-2. 各部員について、未提出か遅延かの理由を分類する
-3. 過去の催促履歴を参考に、催促対象かどうかを判定する
-4. 催促レベルを決定する（初回催促、2回目以降など）
+1. **報告漏れの定義**
+   - 期限時刻までに日報が提出されていない
+   - 確認メール内で「未提出」と明記されている
+
+2. **遅延の定義**
+   - 期限を超過して提出されている
+   - 期限から1時間以上の遅延
+
+3. **催促対象の判定**
+   - 初回催促: 報告漏れまたは遅延が確認された時点
+   - 2回目以降: 前回催促から2時間以上経過し、未提出のまま
+   - 上限: 同一部員への催促は最大3回まで
 
 ## 出力形式
-JSON形式で以下の構造で返してください:
+
+JSON形式で以下の構造で返却してください:
+
 \`\`\`json
 {
   "unreportedMembers": [
     {
       "memberId": "string",
       "memberName": "string",
-      "reason": "not_submitted" | "late_submission",
+      "reason": "not_submitted" | "delayed",
       "submissionTime": "ISO8601形式またはnull"
     }
   ],
@@ -76,19 +89,16 @@ JSON形式で以下の構造で返してください:
     {
       "memberId": "string",
       "memberName": "string",
-      "escalationLevel": number,
-      "shouldEscalate": boolean
+      "escalationLevel": "number",
+      "shouldEscalate": "boolean"
     }
   ],
   "analysisTimestamp": "ISO8601形式"
 }
 \`\`\`
 
-## 判定ルール
-- 報告期限を過ぎても提出がない場合: 未提出(not_submitted)
-- 報告期限後に提出された場合: 遅延(late_submission)
-- 同一部員への催促は最大3回までとする
-- 3回以上の催促履歴がある場合はescalationLevel=3、shouldEscalate=falseとする
-- 初回催促の場合はescalationLevel=1、shouldEscalate=true
-- 2回目催促の場合はescalationLevel=2、shouldEscalate=true`;
+## 注意事項
+- 誤検知を防ぐため、確認メール内容から明確に判定できる情報のみを抽出
+- 催促上限に達した部員は shouldEscalate を false に設定
+- 分析タイムスタンプは現在時刻を使用`;
 }

@@ -7,9 +7,11 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
+  submittedContent: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  };
   submissionTimestamp: string;
 }
 
@@ -19,103 +21,96 @@ export interface Action04ValidationResult {
   warnings: string[];
 }
 
-export interface Action04RegistrationPayload {
-  engineerId: string;
-  engineerName: string;
-  reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
-  validationStatus: "valid" | "warning";
+export interface Action04RegistrationResult {
+  success: boolean;
+  reportId: string;
+  registeredAt: string;
+  message: string;
 }
 
-export function buildAction04Prompt(context: Action04Context): string {
-  const prompt = `You are an AI agent responsible for registering daily reports in the management system.
+export interface Action04PromptInput {
+  context: Action04Context;
+  validationRules: {
+    minYesterdayLength: number;
+    minTodayLength: number;
+    minIssuesLength: number;
+    maxYesterdayLength: number;
+    maxTodayLength: number;
+    maxIssuesLength: number;
+  };
+}
 
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
+export interface Action04PromptOutput {
+  action: "register" | "reject" | "escalate";
+  validation: Action04ValidationResult;
+  registration?: Action04RegistrationResult;
+  escalationReason?: string;
+  nextAction: string;
+}
+
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const {
+    context,
+    validationRules,
+  } = input;
+
+  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
+
+## Current Task: Validate and Register Daily Report (Action 04)
+
+### Engineer Information
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
 - Report Date: ${context.reportDate}
 - Submission Time: ${context.submissionTimestamp}
 
-Report Content:
-- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-- Today's Plans: ${context.todayPlans}
-- Current Issues: ${context.currentIssues}
+### Submitted Content
+**Yesterday's Accomplishments:**
+${context.submittedContent.yesterdayAccomplishments}
 
-Task: Register this daily report in the management system.
+**Today's Plan:**
+${context.submittedContent.todayPlan}
 
-Steps:
-1. Validate that all required fields are present and properly formatted
-2. Check for any data inconsistencies or anomalies
-3. Prepare the registration payload with all necessary information
-4. Register the report in the system
-5. Confirm successful registration and log the transaction
+**Issues/Challenges:**
+${context.submittedContent.issues}
 
-Output the registration result in JSON format with the following structure:
-{
-  "success": boolean,
-  "registrationId": string,
-  "timestamp": string,
-  "validationStatus": "valid" | "warning",
-  "issues": string[]
-}`;
+### Validation Rules
+- Minimum length for yesterday's accomplishments: ${validationRules.minYesterdayLength} characters
+- Minimum length for today's plan: ${validationRules.minTodayLength} characters
+- Minimum length for issues: ${validationRules.minIssuesLength} characters
+- Maximum length for yesterday's accomplishments: ${validationRules.maxYesterdayLength} characters
+- Maximum length for today's plan: ${validationRules.maxTodayLength} characters
+- Maximum length for issues: ${validationRules.maxIssuesLength} characters
+
+### Your Tasks
+1. Validate the submitted content against the validation rules
+2. Check for completeness and appropriateness of the report
+3. Identify any errors or warnings
+4. Determine if the report should be registered, rejected, or escalated
+5. If valid, prepare for registration in the management system
+6. If invalid or problematic, provide clear escalation reasons
+
+### Validation Criteria
+- All fields must be filled with content meeting length requirements
+- Content should be coherent and relevant to daily report context
+- No obvious spam, inappropriate content, or placeholder text
+- Report should demonstrate meaningful work activities and planning
+
+### Output Format
+Provide your analysis in the following structure:
+- Validation Status (valid/invalid)
+- List of any errors found
+- List of any warnings
+- Recommended Action (register/reject/escalate)
+- If registering: Generate a report ID and confirm registration details
+- If escalating: Provide clear reason for escalation
+- Next action to be taken
+
+### Important Notes
+- Incomplete or inappropriate reports should be escalated for human review
+- Escalation conditions include: incomplete content, suspicious patterns, or system errors
+- Maintain professional standards in validation
+- Ensure all decisions are logged for audit purposes`;
 
   return prompt;
-}
-
-export function validateAction04Input(context: Action04Context): Action04ValidationResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (!context.engineerId || context.engineerId.trim() === "") {
-    errors.push("Engineer ID is required");
-  }
-
-  if (!context.engineerName || context.engineerName.trim() === "") {
-    errors.push("Engineer name is required");
-  }
-
-  if (!context.reportDate || context.reportDate.trim() === "") {
-    errors.push("Report date is required");
-  }
-
-  if (!context.yesterdayAccomplishments || context.yesterdayAccomplishments.trim() === "") {
-    warnings.push("Yesterday's accomplishments field is empty");
-  }
-
-  if (!context.todayPlans || context.todayPlans.trim() === "") {
-    warnings.push("Today's plans field is empty");
-  }
-
-  if (!context.currentIssues || context.currentIssues.trim() === "") {
-    warnings.push("Current issues field is empty");
-  }
-
-  if (!context.submissionTimestamp || context.submissionTimestamp.trim() === "") {
-    errors.push("Submission timestamp is required");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-}
-
-export function buildAction04RegistrationPayload(
-  context: Action04Context,
-  validationResult: Action04ValidationResult
-): Action04RegistrationPayload {
-  return {
-    engineerId: context.engineerId,
-    engineerName: context.engineerName,
-    reportDate: context.reportDate,
-    yesterdayAccomplishments: context.yesterdayAccomplishments,
-    todayPlans: context.todayPlans,
-    currentIssues: context.currentIssues,
-    submissionTimestamp: context.submissionTimestamp,
-    validationStatus: validationResult.isValid ? "valid" : "warning",
-  };
 }

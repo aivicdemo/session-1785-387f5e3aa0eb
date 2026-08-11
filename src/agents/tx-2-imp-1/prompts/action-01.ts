@@ -20,72 +20,53 @@ export interface Action01PromptInput {
 export interface Action01PromptOutput {
   templateId: string;
   templateContent: string;
-  distributionPlan: {
-    recipients: string[];
-    scheduledTime: string;
-    channels: string[];
-  };
-  validationRules: Array<{
-    field: string;
-    rule: string;
-    errorMessage: string;
-  }>;
+  distributionList: string[];
+  scheduledTime: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
   const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelList = input.systemContext.notificationChannels.join("、");
+  const channelInfo = input.systemContext.notificationChannels.join("、");
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  return `# 日報テンプレート自動生成・配信タスク
 
-## 実行目的
-前日の日報テンプレートを自動生成し、対象エンジニア全員に配信する。
+## タスク概要
+前日の日報テンプレートを自動生成して、全エンジニアに配信してください。
 
-## 入力情報
+## 対象情報
 - 対象日付: ${input.targetDate}
 - 報告期限: ${input.reportingDeadline}
 - 対象エンジニア: ${engineerNames}
-- 配信チャネル: ${channelList}
-- 日報管理システムURL: ${input.systemContext.reportManagementSystemUrl}
+- 配信チャネル: ${channelInfo}
 
-## 実行タスク
-1. 前日の日報テンプレートを生成する
-   - 昨日の実績入力欄
-   - 本日の予定入力欄
-   - 抱えている課題入力欄
-   - 必須項目の明示
+## 生成すべきテンプレート内容
+1. 昨日の実績セクション
+   - 完了したタスク
+   - 実績の詳細
+   - 時間配分
 
-2. テンプレート配信計画を立案する
-   - 配信対象: 全エンジニア
-   - 配信チャネル: ${channelList}
-   - 配信スケジュール: 朝会開始の1時間前
+2. 本日の予定セクション
+   - 予定タスク
+   - 優先度
+   - 予想時間
 
-3. 入力内容の妥当性検証ルールを定義する
-   - 必須項目の入力確認
-   - 文字数制限の設定
-   - 形式チェック項目
+3. 抱えている課題セクション
+   - 課題内容
+   - 影響範囲
+   - 必要なサポート
+
+## 配信要件
+- 全エンジニアに同時配信
+- 報告期限を明記
+- 回答フォーマットを統一
+- 管理システムURL: ${input.systemContext.reportManagementSystemUrl}
 
 ## 出力形式
-以下の構造でJSON形式で返却する:
+JSON形式で以下を返してください:
 {
-  "templateId": "テンプレートの一意識別子",
-  "templateContent": "HTML形式のテンプレート内容",
-  "distributionPlan": {
-    "recipients": ["エンジニアメールアドレス配列"],
-    "scheduledTime": "ISO8601形式の配信予定時刻",
-    "channels": ["配信チャネル配列"]
-  },
-  "validationRules": [
-    {
-      "field": "フィールド名",
-      "rule": "検証ルール",
-      "errorMessage": "エラーメッセージ"
-    }
-  ]
-}
-
-## 制約条件
-- テンプレートは全エンジニアで統一
-- 配信時刻は朝会開始の1時間前に固定
-- 検証ルールは厳密だが、エンジニアの負担を増やさない範囲で設定`;
+  "templateId": "生成されたテンプレートID",
+  "templateContent": "テンプレートの完全な内容",
+  "distributionList": ["engineer1@example.com", "engineer2@example.com"],
+  "scheduledTime": "配信予定時刻"
+}`;
 }
