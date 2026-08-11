@@ -3237,24 +3237,15 @@ export const validateAndSendMorningReportWithConfirmationEmail = __aivicBundle_3
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSendMorningReportWithConfirmationEmail */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailWithValidation exports=sendConfirmationEmailWithValidation */
-const __aivicBundle_32_sendConfirmationEmailWithValidation = (() => {
+const __aivicBundle_sendConfirmationEmailWithValidation = (() => {
   async function sendConfirmationEmailWithValidation(
-    reportSubmissionRequest: {
-      user_id: string;
-      user_name: string;
-      department_id: string;
-      yesterday_result: string;
-      today_plan: string;
-      issues: string;
-      manager_user_id: string;
-      submitted_at: Date;
-    },
+    reportSubmissionRequest: any,
     sendEmailFn: Function
   ): Promise<void> {
     if (!reportSubmissionRequest.manager_user_id || reportSubmissionRequest.manager_user_id.trim() === '') {
       return;
     }
-  
+
     await sendEmailFn({
       user_id: reportSubmissionRequest.user_id,
       user_name: reportSubmissionRequest.user_name,
@@ -3268,7 +3259,7 @@ const __aivicBundle_32_sendConfirmationEmailWithValidation = (() => {
   }
   return { sendConfirmationEmailWithValidation };
 })();
-export const sendConfirmationEmailWithValidation = __aivicBundle_32_sendConfirmationEmailWithValidation.sendConfirmationEmailWithValidation;
+export const sendConfirmationEmailWithValidation = __aivicBundle_sendConfirmationEmailWithValidation.sendConfirmationEmailWithValidation;
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendConfirmationEmailWithValidation */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailWithManagerValidation exports=sendConfirmationEmailWithManagerValidation */

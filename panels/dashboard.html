@@ -31,7 +31,7 @@
     .deadline-section {
       background-color: #fff3cd;
       border-left: 4px solid #ffc107;
-      padding: 15px;
+      padding: 20px;
       border-radius: 4px;
       margin-bottom: 30px;
     }
@@ -40,60 +40,71 @@
       font-size: 16px;
       margin-bottom: 10px;
     }
-    .deadline-text {
+    .deadline-section p {
       color: #856404;
       font-size: 18px;
-      font-weight: bold;
-    }
-    .summary-section {
-      margin-top: 30px;
-    }
-    .summary-section h2 {
-      color: #333;
-      font-size: 20px;
-      margin-bottom: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background-color: #f8f9fa;
-      color: #333;
       font-weight: 600;
     }
-    tr:hover {
+    .summary-section {
+      margin-bottom: 30px;
+    }
+    .summary-section h2 {
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
       background-color: #f9f9f9;
+    }
+    .summary-table thead {
+      background-color: #007bff;
+      color: white;
+    }
+    .summary-table th {
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      border: 1px solid #ddd;
+    }
+    .summary-table td {
+      padding: 15px;
+      border: 1px solid #ddd;
+    }
+    .summary-table tbody tr:hover {
+      background-color: #f0f0f0;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 24px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .progress-fill {
+      height: 100%;
+      background-color: #28a745;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
     }
     .nav-link {
       display: inline-block;
-      margin-bottom: 20px;
+      margin-top: 20px;
       color: #007bff;
       text-decoration: none;
-      font-size: 14px;
+      font-weight: 500;
     }
     .nav-link:hover {
       text-decoration: underline;
-    }
-    .btn-report {
-      display: inline-block;
-      padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-      font-size: 14px;
-      margin-top: 20px;
-      transition: background-color 0.3s;
-    }
-    .btn-report:hover {
-      background-color: #0056b3;
     }
   </style>
 </head>
@@ -103,76 +114,77 @@
     
     <div class="deadline-section">
       <h2>提出期限</h2>
-      <div class="deadline-text" id="deadline">本日 18:00</div>
+      <p id="deadline">毎日 18:00 までに提出してください</p>
     </div>
     
     <div class="summary-section">
       <h2>部門別提出状況サマリー</h2>
-      <table id="summaryTable">
+      <table class="summary-table">
         <thead>
           <tr>
             <th>部門名</th>
             <th>提出済み</th>
             <th>未提出</th>
             <th>提出率</th>
+            <th>進捗</th>
           </tr>
         </thead>
-        <tbody id="summaryBody">
-          <tr>
-            <td colspan="4" style="text-align: center; color: #999;">読み込み中...</td>
-          </tr>
+        <tbody id="summaryTableBody">
+          <!-- 動的に生成される -->
         </tbody>
       </table>
     </div>
     
-    <a href="./daily-report.html" class="btn-report">日報を入力・送信する</a>
+    <a href="./daily-report.html" class="nav-link">日報入力・送信へ</a>
   </div>
   
   <script>
-    // ダッシュボード情報を読み込む
-    async function loadDashboard() {
-      try {
-        const response = await fetch('/api/dashboard');
-        const data = await response.json();
-        
-        // 提出期限を表示
-        const deadline = new Date();
-        deadline.setHours(18, 0, 0, 0);
-        document.getElementById('deadline').textContent = deadline.toLocaleString('ja-JP', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        
-        // 部門別提出状況を表示
-        const summaryBody = document.getElementById('summaryBody');
-        summaryBody.innerHTML = '';
-        
-        if (data.departments && data.departments.length > 0) {
-          data.departments.forEach(dept => {
-            const total = dept.submitted + dept.notSubmitted;
-            const rate = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${dept.name}</td>
-              <td>${dept.submitted}</td>
-              <td>${dept.notSubmitted}</td>
-              <td>${rate}%</td>
-            `;
-            summaryBody.appendChild(row);
-          });
-        } else {
-          summaryBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">データがありません</td></tr>';
-        }
-      } catch (error) {
-        console.error('Failed to load dashboard:', error);
-        document.getElementById('summaryBody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">読み込みに失敗しました</td></tr>';
-      }
+    // 部門別提出状況データ
+    const departmentData = [
+      { name: '営業部', submitted: 8, total: 10 },
+      { name: '企画部', submitted: 6, total: 8 },
+      { name: '技術部', submitted: 9, total: 10 },
+      { name: '管理部', submitted: 5, total: 5 }
+    ];
+    
+    // 提出期限を表示
+    function initDeadline() {
+      const deadlineEl = document.getElementById('deadline');
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      deadlineEl.textContent = `${year}年${month}月${day}日 18:00 までに提出してください`;
     }
     
-    loadDashboard();
+    // 部門別提出状況サマリーを表示
+    function renderSummary() {
+      const tbody = document.getElementById('summaryTableBody');
+      tbody.innerHTML = departmentData.map(dept => {
+        const rate = Math.round((dept.submitted / dept.total) * 100);
+        return `
+          <tr>
+            <td>${dept.name}</td>
+            <td>${dept.submitted}</td>
+            <td>${dept.total - dept.submitted}</td>
+            <td>${rate}%</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    // 初期化
+    function init() {
+      initDeadline();
+      renderSummary();
+    }
+    
+    init();
   </script>
 </body>
 </html>

@@ -3352,12 +3352,6 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
       };
     }
 
-    // Check retry configuration for loop continuation
-    const maxRetryAttempts = retryConfig?.max_retry_attempts ?? 0;
-    const currentAttemptCount = retryConfig?.current_attempt_count ?? 0;
-    const shouldContinueRetryLoop =
-      maxRetryAttempts > 0 && currentAttemptCount < maxRetryAttempts;
-
     // Build recipient list for email delivery
     const recipientList = [
       {
@@ -3371,6 +3365,12 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
         recipient_name: normalizedData.managerName,
       },
     ];
+
+    // Check retry configuration for loop continuation
+    const maxRetryAttempts = retryConfig?.max_retry_attempts ?? 0;
+    const currentAttemptCount = retryConfig?.current_attempt_count ?? 0;
+    const shouldContinueRetryLoop =
+      maxRetryAttempts > 0 && currentAttemptCount < maxRetryAttempts;
 
     // If retry config is provided, return extended result for retry loop scenario
     if (retryConfig) {
@@ -3408,9 +3408,9 @@ const __aivicBundle_judgeReportSubmissionTiming = (() => {
   }): { is_delayed: boolean; judgment: string } {
     const meetingTime = input.meeting_start_time.getTime();
     const submissionTime = input.report_submission_time.getTime();
-  
+
     const isDelayed = submissionTime >= meetingTime;
-  
+
     return {
       is_delayed: isDelayed,
       judgment: isDelayed ? "遅延あり" : "遅延なし",
@@ -3432,10 +3432,10 @@ const __aivicBundle_determineSubmissionDelay = (() => {
     delay_category: string;
   } {
     const { meeting_start_time_ms, submission_time_ms } = input;
-  
+
     const delay_milliseconds = submission_time_ms - meeting_start_time_ms;
     const is_delayed = delay_milliseconds > 0;
-  
+
     let delay_category: string;
     if (delay_milliseconds <= 0) {
       delay_category = '時間内';
@@ -3453,7 +3453,7 @@ const __aivicBundle_determineSubmissionDelay = (() => {
       const hours = Math.floor(delay_milliseconds / 3600000);
       delay_category = `${hours}時間超過`;
     }
-  
+
     return {
       is_delayed,
       delay_milliseconds,
