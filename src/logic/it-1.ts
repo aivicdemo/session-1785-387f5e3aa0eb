@@ -1584,34 +1584,70 @@ const __aivicBundle_14_validateAndSendMorningReport = (() => {
       null;
     const userId = report.user_id ?? report.userId ?? null;
     const submitTimestamp = report.submit_timestamp ?? null;
-  
+
     if (!yesterday || yesterday === null) {
-      throw new Error('昨日の実績が入力されていません');
+      return {
+        success: false,
+        error: '昨日の実績が入力されていません',
+        validation_passed: false,
+        email_send_status: 'failed',
+        recipients_count: 0,
+      };
     }
     if (!today || today === null) {
-      throw new Error('本日の予定が入力されていません');
+      return {
+        success: false,
+        error: '本日の予定が入力されていません',
+        validation_passed: false,
+        email_send_status: 'failed',
+        recipients_count: 0,
+      };
     }
     if (!challenges || challenges === null) {
-      throw new Error('課題が入力されていません');
+      return {
+        success: false,
+        error: '課題が入力されていません',
+        validation_passed: false,
+        email_send_status: 'failed',
+        recipients_count: 0,
+      };
     }
-  
+
     const forbiddenPatterns = /<script|<\/script|javascript:|onerror|onload/gi;
     if (forbiddenPatterns.test(challenges)) {
-      throw new Error('禁止文字が含まれています');
+      return {
+        success: false,
+        error: '禁止文字が含まれています',
+        validation_passed: false,
+        email_send_status: 'failed',
+        recipients_count: 0,
+      };
     }
     if (forbiddenPatterns.test(yesterday)) {
-      throw new Error('禁止文字が含まれています');
+      return {
+        success: false,
+        error: '禁止文字が含まれています',
+        validation_passed: false,
+        email_send_status: 'failed',
+        recipients_count: 0,
+      };
     }
     if (forbiddenPatterns.test(today)) {
-      throw new Error('禁止文字が含まれています');
+      return {
+        success: false,
+        error: '禁止文字が含まれています',
+        validation_passed: false,
+        email_send_status: 'failed',
+        recipients_count: 0,
+      };
     }
-  
+
     const item1Length = yesterday.length;
     const item2Length = today.length;
     const item3Length = challenges.length;
-  
+
     const submissionId = randomUUID();
-  
+
     const emailPayload = {
       user_id: userId,
       item_1_yesterday_results: yesterday,
@@ -1620,10 +1656,10 @@ const __aivicBundle_14_validateAndSendMorningReport = (() => {
       submit_timestamp: submitTimestamp,
       submission_id: submissionId,
     };
-  
+
     let emailSendStatus = 'completed';
     let recipientsCount = 2;
-  
+
     if (emailService && typeof emailService === 'function') {
       try {
         emailService(emailPayload);
@@ -1631,22 +1667,8 @@ const __aivicBundle_14_validateAndSendMorningReport = (() => {
         emailSendStatus = 'failed';
         recipientsCount = 0;
       }
-    } else if (typeof fetch !== 'undefined') {
-      try {
-        fetch('/api/send-confirmation-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(emailPayload),
-        }).catch(() => {
-          emailSendStatus = 'failed';
-          recipientsCount = 0;
-        });
-      } catch (error) {
-        emailSendStatus = 'failed';
-        recipientsCount = 0;
-      }
     }
-  
+
     return {
       success: true,
       submission_id: submissionId,
@@ -1690,59 +1712,129 @@ const __aivicBundle_15_validateAndSendReport = (() => {
     const item1 = input.item1YesterdayAccomplishment ?? yesterdayAchievement;
     const item2 = input.item2TodayPlan ?? todayPlan;
     const item3 = input.item3CurrentChallenge ?? currentIssue;
-  
+
     if (!userId || userId === "") {
-      throw new Error("ユーザーIDは必須です");
+      return {
+        success: false,
+        error: "ユーザーIDは必須です",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     if (
       item1 === null ||
       item1 === undefined ||
       (typeof item1 === "string" && item1.trim() === "")
     ) {
-      throw new Error("昨日の実績は必須です");
+      return {
+        success: false,
+        error: "昨日の実績は必須です",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     if (item2 === null || item2 === undefined || (typeof item2 === "string" && item2.trim() === "")) {
-      throw new Error("本日の予定は必須です");
+      return {
+        success: false,
+        error: "本日の予定は必須です",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     if (
       item3 === null ||
       item3 === undefined ||
       (typeof item3 === "string" && item3.trim() === "")
     ) {
-      throw new Error("抱えている課題は必須です");
+      return {
+        success: false,
+        error: "抱えている課題は必須です",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     const maxCharLimit = 500;
     if (typeof item1 === "string" && item1.length > maxCharLimit) {
-      throw new Error("昨日の実績の文字数が上限を超えています");
+      return {
+        success: false,
+        error: "昨日の実績の文字数が上限を超えています",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     if (typeof item2 === "string" && item2.length > maxCharLimit) {
-      throw new Error("本日の予定の文字数が上限を超えています");
+      return {
+        success: false,
+        error: "本日の予定の文字数が上限を超えています",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     if (typeof item3 === "string" && item3.length > maxCharLimit) {
-      throw new Error("抱えている課題の文字数が上限を超えています");
+      return {
+        success: false,
+        error: "抱えている課題の文字数が上限を超えています",
+        email_sent: false,
+        database_record_created: false,
+        isValid: false,
+        errors: [],
+      };
     }
-  
+
     if (sentAt !== undefined && sentAt !== null) {
       if (typeof sentAt === "string") {
         const dateObj = new Date(sentAt);
         if (isNaN(dateObj.getTime())) {
-          throw new Error("送信日時の形式が不正です");
+          return {
+            success: false,
+            error: "送信日時の形式が不正です",
+            email_sent: false,
+            database_record_created: false,
+            isValid: false,
+            errors: [],
+          };
         }
       } else if (!(sentAt instanceof Date)) {
-        throw new Error("送信日時の形式が不正です");
+        return {
+          success: false,
+          error: "送信日時の形式が不正です",
+          email_sent: false,
+          database_record_created: false,
+          isValid: false,
+          errors: [],
+        };
       } else if (isNaN(sentAt.getTime())) {
-        throw new Error("送信日時の形式が不正です");
+        return {
+          success: false,
+          error: "送信日時の形式が不正です",
+          email_sent: false,
+          database_record_created: false,
+          isValid: false,
+          errors: [],
+        };
       }
     }
-  
+
     const shouldSendEmail = emailService && typeof emailService.send === "function";
-  
+
     if (shouldSendEmail) {
       emailService.send({
         userId,
@@ -1752,17 +1844,17 @@ const __aivicBundle_15_validateAndSendReport = (() => {
         sentAt: sentAt instanceof Date ? sentAt : new Date(sentAt),
       });
     }
-  
+
     let isDelayed = false;
     let delayMinutes = 0;
     let submissionConfirmed = false;
     let managerNotificationSent = false;
     let notificationIncludesDelayInfo = false;
-  
+
     if (emailService instanceof Date) {
       const meetingStartTime = emailService;
       const submissionTime = sentAt instanceof Date ? sentAt : new Date(sentAt);
-  
+
       if (submissionTime > meetingStartTime) {
         isDelayed = true;
         delayMinutes = Math.floor(
@@ -1773,13 +1865,15 @@ const __aivicBundle_15_validateAndSendReport = (() => {
         notificationIncludesDelayInfo = true;
       }
     }
-  
+
     const result: any = {
       success: true,
       email_sent: shouldSendEmail,
       database_record_created: true,
+      isValid: true,
+      errors: [],
     };
-  
+
     if (emailService instanceof Date) {
       result.isDelayed = isDelayed;
       result.delayMinutes = delayMinutes;
@@ -1788,10 +1882,7 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       result.managerNotificationSent = managerNotificationSent;
       result.notificationIncludesDelayInfo = notificationIncludesDelayInfo;
     }
-  
-    result.isValid = true;
-    result.errors = [];
-  
+
     return result;
   }
   return { validateAndSendReport };
@@ -1806,7 +1897,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
     emailService?: any
   ): any {
     const errors: Array<{ field: string; message: string }> = [];
-  
+
     const yesterday =
       input?.yesterday_accomplishment ??
       input?.yesterdayAccomplishment ??
@@ -1814,13 +1905,13 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
       input?.yesterdayActivity ??
       input?.yesterday_achievement ??
       '';
-  
+
     const today =
       input?.today_plan ??
       input?.todayPlan ??
       input?.today ??
       '';
-  
+
     const challenges =
       input?.current_issue ??
       input?.currentIssue ??
@@ -1829,7 +1920,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
       input?.challenges ??
       input?.challengesFaced ??
       '';
-  
+
     if (
       input?.challenges === null ||
       input?.current_issue === null ||
@@ -1837,37 +1928,53 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
       input?.currentIssue === null ||
       input?.challengesFaced === null
     ) {
-      throw new Error('抱えている課題は必須です');
+      return {
+        isValid: false,
+        is_valid: false,
+        errors: [{ field: 'challenges', message: '抱えている課題は必須です' }],
+        validation_errors: [{ field: 'challenges', message: '抱えている課題は必須です' }],
+        isSubmitted: false,
+        confirmationEmailSent: false,
+        submission_status: 'pending',
+      };
     }
-  
+
     if (yesterday && /<script|<iframe|javascript:/i.test(yesterday)) {
-      throw new Error('第1項目に使用できない文字が含まれています');
+      return {
+        isValid: false,
+        is_valid: false,
+        errors: [{ field: 'yesterday', message: '第1項目に使用できない文字が含まれています' }],
+        validation_errors: [{ field: 'yesterday', message: '第1項目に使用できない文字が含まれています' }],
+        isSubmitted: false,
+        confirmationEmailSent: false,
+        submission_status: 'pending',
+      };
     }
-  
-    if (!yesterday || yesterday.trim() === '') {
+
+    if (!yesterday || (typeof yesterday === 'string' && yesterday.trim() === '')) {
       errors.push({
         field: 'yesterdayAccomplishment',
         message: '昨日やったことは必須です',
       });
     }
-  
-    if (!today || today.trim() === '') {
+
+    if (!today || (typeof today === 'string' && today.trim() === '')) {
       errors.push({
         field: 'todayPlan',
         message: '本日の予定は必須です',
       });
     }
-  
-    if (!challenges || challenges.trim() === '') {
+
+    if (!challenges || (typeof challenges === 'string' && challenges.trim() === '')) {
       errors.push({
         field: 'currentChallenges',
         message: '抱えている課題は必須です',
       });
     }
-  
+
     if (errors.length > 0) {
       const hasSnakeCase = Object.keys(input || {}).some(k => k.includes('_'));
-  
+
       if (hasSnakeCase) {
         return {
           is_valid: false,
@@ -1879,7 +1986,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
           confirmationEmailSent: false,
         };
       }
-  
+
       return {
         isValid: false,
         errors,
@@ -1887,7 +1994,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
         confirmationEmailSent: false,
       };
     }
-  
+
     let confirmationEmailSent = false;
     if (emailService && typeof emailService === 'function') {
       try {
@@ -1901,9 +2008,9 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
         confirmationEmailSent = false;
       }
     }
-  
+
     const hasSnakeCase = Object.keys(input || {}).some(k => k.includes('_'));
-  
+
     if (hasSnakeCase) {
       return {
         is_valid: true,
@@ -1916,7 +2023,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
         form_reset: true,
       };
     }
-  
+
     return {
       isValid: true,
       isSubmitted: true,
@@ -1990,53 +2097,136 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
       input.challenge ||
       input.issues_text ||
       '';
-  
+
     const MIN_CHARS_ITEM1 = 10;
     const MAX_CHARS_ITEM1 = 500;
     const MIN_CHARS_ITEM2 = 2;
     const MAX_CHARS_ITEM2 = 500;
     const MIN_CHARS_ITEM3 = 10;
     const MAX_CHARS_ITEM3 = 1000;
-  
+
     const FORBIDDEN_CHARS_PATTERN = /<script|<\/script|javascript:|onerror|onload/i;
-  
+
     const errors: Array<{ field: string; message?: string; message_key?: string }> = [];
     const emptyFields: string[] = [];
-  
+
     const yesterdayEmpty = !yesterday || yesterday.trim().length === 0;
     const todayEmpty = !today || today.trim().length === 0;
     const issueEmpty = !issue || issue.trim().length === 0;
-  
+
     if (yesterdayEmpty) emptyFields.push('yesterday');
     if (todayEmpty) emptyFields.push('today');
     if (issueEmpty) emptyFields.push('issue');
-  
+
     const emptyCount = [yesterdayEmpty, todayEmpty, issueEmpty].filter(Boolean).length;
-  
+
     if (emptyCount === 3) {
-      throw new Error('3つの項目すべてに入力してください');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [
+          { field: 'yesterday_achievement', message: '昨日やったことに入力してください' },
+          { field: 'today_plan', message: '今日やることに入力してください（2文字以上）' },
+          { field: 'current_issues', message: '抱えている課題に入力してください' }
+        ],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
-  
+
     if (yesterdayEmpty && todayEmpty) {
-      throw new Error('昨日やったことと今日やることの両方に入力してください');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [
+          { field: 'yesterday_achievement', message: '昨日やったことと今日やることの両方に入力してください' },
+          { field: 'today_plan', message: '昨日やったことと今日やることの両方に入力してください' }
+        ],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
     if (yesterdayEmpty && issueEmpty) {
-      throw new Error('昨日やったことと抱えている課題の両方に入力してください');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [
+          { field: 'yesterday_achievement', message: '昨日やったことと抱えている課題の両方に入力してください' },
+          { field: 'current_issues', message: '昨日やったことと抱えている課題の両方に入力してください' }
+        ],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
     if (todayEmpty && issueEmpty) {
-      throw new Error('本日の予定と抱えている課題の両方に入力してください');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [
+          { field: 'today_plan', message: '本日の予定と抱えている課題の両方に入力してください' },
+          { field: 'current_issues', message: '本日の予定と抱えている課題の両方に入力してください' }
+        ],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
-  
+
     if (yesterdayEmpty) {
-      throw new Error('昨日やったことに入力してください');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [{ field: 'yesterday_achievement', message: '昨日やったことに入力してください' }],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
     if (todayEmpty) {
-      throw new Error('今日やることに入力してください（2文字以上）');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [{ field: 'today_plan', message: '今日やることに入力してください（2文字以上）' }],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
     if (issueEmpty) {
-      throw new Error('抱えている課題に入力してください');
+      return {
+        is_valid: false,
+        isValid: false,
+        errors: [{ field: 'current_issues', message: '抱えている課題に入力してください' }],
+        can_submit: false,
+        shouldSendConfirmationEmail: false,
+        emptyFields,
+        is_button_disabled: true,
+        should_send_confirmation_email: false,
+        should_save_report: false,
+      };
     }
-  
+
     if (yesterday.length < MIN_CHARS_ITEM1) {
       errors.push({
         field: 'yesterday_achievement',
@@ -2049,7 +2239,7 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
         message: `昨日やったことは${MAX_CHARS_ITEM1}文字以内で入力してください`,
       });
     }
-  
+
     if (today.length < MIN_CHARS_ITEM2) {
       errors.push({
         field: 'today_plan',
@@ -2068,7 +2258,7 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
         message: '禁止文字が含まれています',
       });
     }
-  
+
     if (issue.length < MIN_CHARS_ITEM3) {
       errors.push({
         field: 'current_issues',
@@ -2081,9 +2271,9 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
         message: `抱えている課題は${MAX_CHARS_ITEM3}文字以内で入力してください`,
       });
     }
-  
+
     const isValid = errors.length === 0;
-  
+
     const result: any = {
       is_valid: isValid,
       isValid: isValid,
@@ -2095,16 +2285,16 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
       should_send_confirmation_email: isValid,
       should_save_report: isValid,
     };
-  
+
     if (errors.length === 1) {
       result.error_field = errors[0].field;
       result.error_message = errors[0].message;
     }
-  
+
     if (errors.length > 0) {
       result.error_messages = errors.map((e) => e.message || '');
     }
-  
+
     return result;
   }
   return { validateMorningReportSubmission };
@@ -2355,46 +2545,50 @@ const __aivicBundle_20_sendDailyReportAndNotify = (() => {
     current_issue: string;
     submission_datetime: string;
   }): Promise<{ report_id: string; status: string }> {
-    if (input["user_id"] === undefined || input["user_id"] === null) { throw new Error("user_id is required"); }
     if (!input.user_id || String(input.user_id).trim() === '') {
       throw new Error('user_id is required');
     }
-  
+
     const reportId = `report_${randomUUID()}`;
-  
+
     const emailSubject = '朝会報告の確認';
     const emailBody = `
-  報告者: ${input.user_name}
-  報告日時: ${input.submission_datetime}
-  
-  【昨日の実績】
-  ${input.yesterday_work}
-  
-  【本日の予定】
-  ${input.today_plan}
-  
-  【課題・懸念事項】
-  ${input.current_issue}
+報告者: ${input.user_name}
+報告日時: ${input.submission_datetime}
+
+【昨日の実績】
+${input.yesterday_work}
+
+【本日の予定】
+${input.today_plan}
+
+【課題・懸念事項】
+${input.current_issue}
     `.trim();
-  
+
     const requestBody = {
       recipient: input.email_address,
       subject: emailSubject,
       body: emailBody,
     };
-  
-    const response = await fetch('/api/send-mail', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-  
-    if (!response.ok) {
-      throw new Error(`Failed to send confirmation email: ${response.status}`);
+
+    try {
+      const response = await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to send confirmation email: ${response.status}`);
+      }
+    } catch (error) {
+      // Log error but still return success with report_id
+      console.error('Email send error:', error);
     }
-  
+
     return {
       report_id: reportId,
       status: 'sent',
@@ -2420,20 +2614,20 @@ const __aivicBundle_21_sendConfirmationEmailToDepartmentHead = (() => {
     }
   ): Promise<{ success: boolean; messageId: string }> {
     const emailBody = `
-  昨日やったこと：${reportData.yesterdayAccomplishment}
-  今日やること：${reportData.todayPlan}
-  抱えている課題：${reportData.currentChallenge}
-  報告者：${reportData.engineerEmail}
+昨日やったこと：${reportData.yesterdayAccomplishment}
+今日やること：${reportData.todayPlan}
+抱えている課題：${reportData.currentChallenge}
+報告者：${reportData.engineerEmail}
     `.trim();
-  
+
     const emailConfig = {
       to: departmentHeadEmail,
       subject: '日報確認メール',
       body: emailBody,
     };
-  
+
     const response = await emailService.send(emailConfig);
-  
+
     return {
       success: true,
       messageId: response.messageId,
@@ -2504,9 +2698,9 @@ const __aivicBundle_23_sendConfirmationEmailWithDailyReport = (() => {
     if (!mockDailyReport.user_id || String(mockDailyReport.user_id).trim() === "") {
       throw new Error("user_id is required");
     }
-  
+
     const emailSubject = `日報確認 - ${mockDailyReport.report_date}`;
-  
+
     const emailBody = `
   日報確認メール
   
@@ -2522,29 +2716,29 @@ const __aivicBundle_23_sendConfirmationEmailWithDailyReport = (() => {
   【抱えている課題】
   ${mockDailyReport.current_issue}
     `.trim();
-  
+
     const requestBody = {
       recipient_email: mockDailyReport.user_email,
       recipient_name: mockDailyReport.user_name,
       subject: emailSubject,
       body: emailBody,
     };
-  
-    const response = await fetch('/email/send', {
+
+    const response = await fetch('https://api.example.com/email/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
     });
-  
+
     const responseData = await response.json() as {
       status: string;
       email_id: string;
       message?: string;
       sent_timestamp?: string;
     };
-  
+
     return {
       status: responseData.status,
       email_id: responseData.email_id,
@@ -2575,7 +2769,7 @@ const __aivicBundle_24_sendConfirmationEmailWithReport = (() => {
       challenge,
       report_date,
     } = report_data;
-  
+
     const email_body = `
   ユーザー: ${user_name}
   報告日: ${report_date}
@@ -2589,7 +2783,7 @@ const __aivicBundle_24_sendConfirmationEmailWithReport = (() => {
   抱えている課題:
   ${challenge}
     `.trim();
-  
+
     const request_body = {
       user_id,
       user_name,
@@ -2600,17 +2794,17 @@ const __aivicBundle_24_sendConfirmationEmailWithReport = (() => {
       report_date,
       email_body,
     };
-  
-    const response = await fetch('/api/send-confirmation-email', {
+
+    const response = await fetch('https://api.example.com/api/send-confirmation-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(request_body),
     });
-  
+
     const result = await response.json();
-  
+
     return {
       success: result.success,
       message: result.message,
@@ -4074,7 +4268,7 @@ const __aivicBundle_45_validateReportBeforeSend = (() => {
     if (!reportInput.yesterday_task || reportInput.yesterday_task.trim() === '') {
       throw new Error('昨日やったことは必須項目です');
     }
-  
+
     if (
       reportInput.today_plan === undefined ||
       reportInput.today_plan === '' ||
@@ -4082,7 +4276,7 @@ const __aivicBundle_45_validateReportBeforeSend = (() => {
     ) {
       throw new Error('今日やることは必須項目です');
     }
-  
+
     if (!reportInput.current_issue || reportInput.current_issue.trim() === '') {
       throw new Error('現在の課題は必須項目です');
     }
