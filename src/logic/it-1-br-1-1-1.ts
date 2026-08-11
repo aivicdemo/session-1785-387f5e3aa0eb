@@ -749,12 +749,12 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
     if (input.managerEmail === null || input.managerEmail === undefined) {
       throw new Error('部長メールアドレスが未設定です');
     }
-
+  
     // Determine output shape based on input structure
     const hasReports = Array.isArray(input.reports);
     const hasEmployees = Array.isArray(input.employees);
     const hasReportContent = input.reportContent && typeof input.reportContent === 'object';
-
+  
     // Case 1: Single report with reporter and manager (reportContent provided)
     if (hasReportContent && input.reporterId && input.reporterEmail) {
       const emailSender = input.emailSender || (async () => ({ success: true }));
@@ -776,7 +776,7 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         };
       }
     }
-
+  
     // Case 2: Multiple reports with employees and manager (unified format)
     if (hasReports && hasEmployees && input.managerEmail && input.managerId) {
       const maxDisplayable = input.maxDisplayableCount || input.reports.length;
@@ -788,11 +788,11 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         todayPlan: report.todayPlan || report.today_plan || '',
         currentIssue: report.currentIssue || report.current_issue || '',
       }));
-
+  
       const employeeEmailsSent = displayReports
         .map((report: any) => report.employeeId || report.employee_id)
         .filter(Boolean);
-
+  
       return {
         success: true,
         employeeEmailsSent,
@@ -801,9 +801,11 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         formattedReports,
       };
     }
-
+  
     // Case 3: Department-based input (snake_case fields)
     if (input.department_id && input.employees !== undefined) {
+      
+      
       return {
         success: true,
         error: undefined,
@@ -812,7 +814,7 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         escalation_triggered: false,
       };
     }
-
+  
     // Default fallback
     return {
       success: true,
@@ -877,7 +879,7 @@ const __aivicBundle_8_sendDailyReportConfirmationEmail = (() => {
       report_content,
       send_email_callback,
     } = input;
-
+  
     // 朝会開始予定時刻より後の時刻では処理をスキップ
     if (current_time.getTime() >= morning_meeting_start_time.getTime()) {
       return {
@@ -885,7 +887,7 @@ const __aivicBundle_8_sendDailyReportConfirmationEmail = (() => {
         reason: '朝会開始時刻を過ぎているため処理をスキップしました',
       };
     }
-
+  
     // 朝会開始時刻より前の場合、部長への確認メールを送信
     const subject = `日報送信状況確認 - ${reporter_user_id}`;
     const body = `
@@ -894,9 +896,9 @@ const __aivicBundle_8_sendDailyReportConfirmationEmail = (() => {
   本日の予定: ${report_content.today_plan}
   現在の課題: ${report_content.current_issues}
     `.trim();
-
+  
     send_email_callback(department_head_email, subject, body);
-
+  
     return {
       processing_skipped: false,
     };
@@ -935,30 +937,30 @@ const __aivicBundle_9_sendConfirmationEmailsToReporterAndDirector = (() => {
       if (morningMeetingScheduledTime === "") {
         return { success: true, emails_sent: 0 };
       }
-
+  
       // directorData が null または必須フィールドが欠けている場合
       if (!directorData || !directorData.email || !directorData.user_name) {
         throw new Error("部長情報が不足しています");
       }
-
+  
       // reporterData が null または必須フィールドが欠けている場合
       if (!reporterData || !reporterData.email) {
         throw new Error("報告者情報が不足しています");
       }
-
+  
       // メール送信処理（実装では実際のメール送信を行う）
       // ここではスキップされたため、メール送信は呼び出されない
       return { success: true, emails_sent: 0 };
     }
-
+  
     // 1引数形式の場合
     const { reporter_user_id, reporter_email, director_email, report_date, yesterday_achievement, today_plan, current_issues, email_service_url, directorUser, reports } = input;
-
+  
     // directorUser が null の場合、エラーを throw
     if (directorUser === null) {
       throw new Error("部長情報が不足しています");
     }
-
+  
     // email_service_url が指定されている場合、メール送信サービスへのリクエストを実行
     if (email_service_url) {
       try {
@@ -976,17 +978,17 @@ const __aivicBundle_9_sendConfirmationEmailsToReporterAndDirector = (() => {
             `,
           }),
         });
-
+  
         if (!response.ok) {
           throw new Error("メール送信サービスが利用不可です");
         }
-
+  
         return { success: true, emails_sent: 2 };
       } catch (error) {
         throw new Error(`メール送信サービスエラー: ${(error as Error).message}`);
       }
     }
-
+  
     // reports 配列が指定されている場合、フォーマットして返す
     if (reports && Array.isArray(reports)) {
       const formatted_reports = reports.map((report: any) => ({
@@ -996,14 +998,14 @@ const __aivicBundle_9_sendConfirmationEmailsToReporterAndDirector = (() => {
         today_plan: report.today_plan,
         current_issue: report.current_issue,
       }));
-
+  
       return {
         success: true,
         emails_sent: 2,
         formatted_reports,
       };
     }
-
+  
     return { success: true, emails_sent: 0 };
   }
   return { sendConfirmationEmailsToReporterAndDirector };
@@ -1023,14 +1025,6 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
     error_message?: string;
     notification_sent_to_manager: boolean;
     logs?: string[];
-    emailsSent?: number;
-    skipped?: boolean;
-    reason?: string;
-    loopStatus?: string;
-    loopTerminatedAt?: string;
-    confirmedReportData?: any;
-    systemLog?: any;
-    remindingLoopClosed?: boolean;
     employeeEmailsSent?: string[];
     managerEmailSent?: string;
     reportCount?: number;
@@ -1042,6 +1036,14 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
     }>;
     all_reporters_submitted?: boolean;
     total_submitted_count?: number;
+    loopStatus?: string;
+    loopTerminatedAt?: string;
+    confirmedReportData?: any;
+    systemLog?: any;
+    remindingLoopClosed?: boolean;
+    emailsSent?: number;
+    skipped?: boolean;
+    reason?: string;
     reminder_emails_sent_count?: number;
   } {
     const logs: string[] = [];
@@ -13126,56 +13128,3 @@ const __aivicBundle_validatePromptLoopTimeout = (() => {
 })();
 export const validatePromptLoopTimeout = __aivicBundle_validatePromptLoopTimeout.validatePromptLoopTimeout;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validatePromptLoopTimeout */
-
-
-/* AIVIC_FUNCTION_BUNDLE_START owner=generateManagerNotificationContent exports=generateManagerNotificationContent */
-const __aivicBundle_generateManagerNotificationContent = (() => {
-  function generateManagerNotificationContent(input: {
-    submissionStatus: Array<{
-      userId: string;
-      userName: string;
-      departmentId: string;
-      submitted: boolean;
-      submittedAt: string | null;
-    }>;
-    departmentId: string;
-    meetingScheduledTime: string;
-  }): {
-    unsubmittedEmployeeNames: string[];
-    unsubmittedCount: number;
-    submittedCount: number;
-    title: string;
-    totalEmployeeCount: number;
-  } {
-    if (!input.submissionStatus || !Array.isArray(input.submissionStatus)) {
-      throw new Error('submissionStatus is required');
-    }
-    if (!input.departmentId) {
-      throw new Error('departmentId is required');
-    }
-    if (!input.meetingScheduledTime) {
-      throw new Error('meetingScheduledTime is required');
-    }
-
-    const unsubmittedEmployees = input.submissionStatus.filter(s => !s.submitted);
-    const submittedEmployees = input.submissionStatus.filter(s => s.submitted);
-
-    const unsubmittedEmployeeNames = unsubmittedEmployees.map(e => e.userName);
-    const unsubmittedCount = unsubmittedEmployees.length;
-    const submittedCount = submittedEmployees.length;
-    const totalEmployeeCount = input.submissionStatus.length;
-
-    const title = unsubmittedCount > 0 ? '未送信者がいます' : '全員送信完了';
-
-    return {
-      unsubmittedEmployeeNames,
-      unsubmittedCount,
-      submittedCount,
-      title,
-      totalEmployeeCount,
-    };
-  }
-  return { generateManagerNotificationContent };
-})();
-export const generateManagerNotificationContent = __aivicBundle_generateManagerNotificationContent.generateManagerNotificationContent;
-/* AIVIC_FUNCTION_BUNDLE_END owner=generateManagerNotificationContent */
