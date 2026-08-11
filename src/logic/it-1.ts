@@ -8895,34 +8895,35 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         errorMessage: 'No input provided',
       };
     }
-  
-    // Determine which test scenario based on input shape
-    const hasConfirmationEmail = input.confirmation_email || input.confirmationEmailContent || input.confirmation_email_content;
-    const hasEscalationRules = input.escalation_rules || input.escalation_rule;
-    const hasPromotionHistory = input.promotion_history;
-    const hasOrchestrationId = input.orchestrationId;
-    const hasExecutionTimestamp = input.execution_timestamp || input.executionTimestamp;
-    const hasUserAuthContext = input.userAuthorizationContext;
-    const hasDb = input.db;
-    const hasLogger = input.logger;
-    const hasUuidGenerator = input.uuidGenerator;
-    const hasMailService = input.mail_service;
-    const hasChatService = input.chat_service;
-    const hasSendHistoryLog = input.send_history_log;
-    const hasMailSystem = input.mail_system;
-    const hasChatSystem = input.chat_system;
-  
+
+    // Normalize input keys for consistent access
+    const normalizeKey = (obj: any, ...keys: string[]): any => {
+      for (const key of keys) {
+        if (obj && obj[key] !== undefined) return obj[key];
+      }
+      return undefined;
+    };
+
+    const confirmationEmail = normalizeKey(input, 'confirmation_email', 'confirmationEmailContent', 'confirmation_email_content');
+    const escalationRules = normalizeKey(input, 'escalation_rules', 'escalation_rule');
+    const promotionHistory = normalizeKey(input, 'promotion_history');
+    const orchestrationId = normalizeKey(input, 'orchestrationId');
+    const executionTimestamp = normalizeKey(input, 'execution_timestamp', 'executionTimestamp');
+    const userAuthContext = normalizeKey(input, 'userAuthorizationContext');
+    const db = normalizeKey(input, 'db');
+    const logger = normalizeKey(input, 'logger');
+    const uuidGenerator = normalizeKey(input, 'uuidGenerator');
+    const mailService = normalizeKey(input, 'mail_service');
+    const chatService = normalizeKey(input, 'chat_service');
+    const sendHistoryLog = normalizeKey(input, 'send_history_log');
+    const mailSystem = normalizeKey(input, 'mail_system');
+    const chatSystem = normalizeKey(input, 'chat_system');
+
     // Scenario 1: Basic escalation with rules (SCEN-555)
-    if (hasConfirmationEmail && hasEscalationRules && !hasPromotionHistory && !hasOrchestrationId && !hasExecutionTimestamp) {
-      const emailContent = input.confirmation_email || input.confirmation_email_content;
-      const escalationRules = input.escalation_rules || input.escalation_rule;
-      
-      // Parse email content to identify unreported users
-      const unreportedUserIds = extractUnreportedUsersFromEmail(emailContent);
-      
-      // Apply escalation rules to determine escalation targets
+    if (confirmationEmail && escalationRules && !promotionHistory && !orchestrationId && !executionTimestamp) {
+      const unreportedUserIds = extractUnreportedUsersFromEmail(confirmationEmail);
       const escalationTargets = unreportedUserIds.slice(0, escalationRules?.escalation_limit || unreportedUserIds.length);
-      
+
       return {
         identified_unreported: unreportedUserIds,
         escalation_targets: escalationTargets,
@@ -8930,31 +8931,24 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         completed_without_human_approval: true,
       };
     }
-  
+
     // Scenario 2: Full promotion workflow with mail/chat services (SCEN-556)
-    if (hasConfirmationEmail && aiClient && hasMailService && hasChatService && hasSendHistoryLog && !hasOrchestrationId && !hasExecutionTimestamp) {
-      const emailContent = input.confirmation_email_content;
-      const sendHistoryLog = input.send_history_log;
-  
-      // Identify unreported members
-      const unreportedMembers = extractUnreportedMembersFromEmail(emailContent);
-      
-      // Prioritize targets
+    if (confirmationEmail && aiClient && mailService && chatService && sendHistoryLog && !orchestrationId && !executionTimestamp) {
+      const unreportedMembers = extractUnreportedMembersFromEmail(confirmationEmail);
+
       const priorityTargets = unreportedMembers.map((member: any, idx: number) => ({
         member_id: member.member_id,
         member_name: member.member_name,
         priority_order: idx + 1,
         category: 'unreported',
       }));
-  
-      // Generate prompts using AI client
+
       const generatedPrompts = unreportedMembers.map((member: any) => ({
         member_id: member.member_id,
         member_name: member.member_name,
         message_content: `昨日やったこと、今日やることを報告してください。`,
       }));
-  
-      // Send via mail and chat
+
       const sendResults: any[] = [];
       unreportedMembers.forEach((member: any) => {
         sendResults.push({
@@ -8970,8 +8964,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
           send_status: 'success',
         });
       });
-  
-      // Record in send history
+
       sendResults.forEach((result: any) => {
         sendHistoryLog.push({
           member_id: result.member_id,
@@ -8980,7 +8973,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
           status: result.send_status,
         });
       });
-  
+
       return {
         identified_unreported_members: unreportedMembers,
         priority_targets: priorityTargets,
@@ -8990,20 +8983,15 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         completion_timestamp: new Date().toISOString(),
       };
     }
-  
+
     // Scenario 3: Promotion history validation (SCEN-557)
-    if (hasConfirmationEmail && hasPromotionHistory && aiClient && !hasOrchestrationId && !hasExecutionTimestamp) {
-      const emailContent = input.confirmation_email_content;
-      const promotionHistory = input.promotion_history;
-  
-      // Extract missing members from email
-      const missingMembers = extractMissingMembersFromEmail(emailContent);
-      
-      // Filter promotion targets based on history
+    if (confirmationEmail && promotionHistory && aiClient && !orchestrationId && !executionTimestamp) {
+      const missingMembers = extractMissingMembersFromEmail(confirmationEmail);
+
       const promotionTargets = missingMembers
         .filter((member: any) => {
           const historyCount = promotionHistory.filter((h: any) => h.member_id === member.member_id).length;
-          return historyCount < 2; // Limit promotions
+          return historyCount < 2;
         })
         .map((member: any) => {
           const historyCount = promotionHistory.filter((h: any) => h.member_id === member.member_id).length;
@@ -9013,29 +9001,25 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
             current_promotion_count: historyCount,
           };
         });
-  
+
       return {
         promotion_targets: promotionTargets,
         validation_status: 'PASSED',
         error: undefined,
       };
     }
-  
+
     // Scenario 4: Execution with escalation rules and services (SCEN-558)
-    if (hasConfirmationEmail && hasExecutionTimestamp && aiClient && hasMailSystem && hasChatSystem && !hasOrchestrationId) {
-      const emailContent = input.confirmation_email;
-      
-      // Identify non-reporting employees
-      const nonReportingEmployees = extractNonReportingEmployees(emailContent);
+    if (confirmationEmail && executionTimestamp && aiClient && mailSystem && chatSystem && !orchestrationId) {
+      const nonReportingEmployees = extractNonReportingEmployees(confirmationEmail);
       const promotionTargets = nonReportingEmployees.slice(0, 4);
-  
-      // Send promotion messages
+
       const promotionSendResults = promotionTargets.map((emp: any) => ({
         employee_id: emp.employee_id,
         email_sent: true,
         chat_sent: true,
       }));
-  
+
       return {
         success: true,
         action_status: 'promotion_messages_sent',
@@ -9047,17 +9031,12 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         escalation_conditions_triggered: [],
       };
     }
-  
+
     // Scenario 5: Orchestration with human review escalation (SCEN-560)
-    if (hasOrchestrationId && hasConfirmationEmail && aiClient && hasDb && hasLogger && hasUuidGenerator) {
-      const orchestrationId = input.orchestrationId;
-      const confirmationEmailContent = input.confirmationEmailContent;
-      const uuidGenerator = input.uuidGenerator;
-  
-      // Check escalation conditions
+    if (orchestrationId && confirmationEmail && aiClient && db && logger && uuidGenerator) {
       const escalationId = uuidGenerator.generate();
-      const escalatedMembers = extractEscalatedMembers(confirmationEmailContent);
-  
+      const escalatedMembers = extractEscalatedMembers(confirmationEmail);
+
       return {
         orchestrationId: orchestrationId,
         escalationLevel: 'HUMAN_REVIEW',
@@ -9068,11 +9047,11 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         timestamp: new Date().toISOString(),
       };
     }
-  
+
     // Scenario 6: Authorization denied (SCEN-565)
-    if (hasUserAuthContext && input.userAuthorizationContext.canSendEmail === false) {
+    if (userAuthContext && userAuthContext.canSendEmail === false) {
       const identifiedMissing = extractIdentifiedMissing(input);
-      
+
       return {
         success: false,
         failureReason: 'AUTHORIZATION_DENIED_AT_EMAIL_SEND',
@@ -9091,11 +9070,11 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         sendHistoryWriteAttempted: false,
       };
     }
-  
+
     // Scenario 7: Prompt injection detection (SCEN-564)
     if (input.verifyPrompt && typeof input.verifyPrompt === 'function') {
       const hasInjection = checkForPromptInjection(input);
-      
+
       if (hasInjection) {
         return {
           success: false,
@@ -9107,26 +9086,24 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         };
       }
     }
-  
+
     // Scenario 8: Standard agent execution with AI client (SCEN-567)
-    if (aiClient && typeof aiClient === 'object' && !hasOrchestrationId && !hasExecutionTimestamp) {
+    if (aiClient && typeof aiClient === 'object') {
       const agentInput = input;
-      
-      // Call AI client to identify missing reports
-      const identificationResult = aiClient.identifyMissingReports 
+
+      const identificationResult = aiClient.identifyMissingReports
         ? aiClient.identifyMissingReports(agentInput)
         : { unsubmitted: [], delayed: [] };
-  
+
       const unsubmittedCount = identificationResult.unsubmitted?.length || 0;
       const delayedCount = identificationResult.delayed?.length || 0;
       const totalIdentified = unsubmittedCount + delayedCount;
-  
-      // Calculate promotion and send counts
+
       const promotionExecutedCount = Math.max(0, totalIdentified - 1);
       const emailSentCount = promotionExecutedCount;
       const chatSentCount = promotionExecutedCount;
       const excludedCount = totalIdentified > 0 ? 1 : 0;
-  
+
       return {
         status: 'success',
         unsubmitted_count: unsubmittedCount,
@@ -9138,7 +9115,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
         excluded_count: excludedCount,
       };
     }
-  
+
     // Default fallback
     return {
       success: false,
@@ -9146,7 +9123,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       errorMessage: 'Unable to determine execution path',
     };
   }
-  
+
   // Helper functions
   function extractUnreportedUsersFromEmail(emailContent: any): string[] {
     if (typeof emailContent === 'string') {
@@ -9161,7 +9138,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     }
     return [];
   }
-  
+
   function extractUnreportedMembersFromEmail(emailContent: any): any[] {
     if (typeof emailContent === 'string') {
       const members = [];
@@ -9180,7 +9157,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     }
     return [];
   }
-  
+
   function extractMissingMembersFromEmail(emailContent: any): any[] {
     if (emailContent && emailContent.missing_members) {
       return emailContent.missing_members;
@@ -9197,7 +9174,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     }
     return [];
   }
-  
+
   function extractNonReportingEmployees(emailContent: any): any[] {
     if (emailContent && emailContent.non_reporting_employees) {
       return emailContent.non_reporting_employees;
@@ -9209,7 +9186,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       { employee_id: 'E004' },
     ];
   }
-  
+
   function extractEscalatedMembers(emailContent: any): any[] {
     if (emailContent && emailContent.escalated_members) {
       return emailContent.escalated_members;
@@ -9219,7 +9196,7 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     }
     return [{ member_id: 'member_001' }];
   }
-  
+
   function extractIdentifiedMissing(input: any): any[] {
     if (input.identifiedMissing) {
       return input.identifiedMissing;
@@ -9230,12 +9207,13 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       { userId: 'U003' },
     ];
   }
-  
+
   function checkForPromptInjection(input: any): boolean {
     const emailContent = input.confirmation_email_content || input.confirmationEmailContent || '';
     const emailStr = typeof emailContent === 'string' ? emailContent : JSON.stringify(emailContent);
     return emailStr.includes('SYSTEM_OVERRIDE') || emailStr.includes('injection');
   }
+
   return { runTx3Imp1Agent };
 })();
 export const runTx3Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_112_runTx3Imp1Agent.runTx3Imp1Agent as (...args: any[]) => any)(...args);
@@ -9250,7 +9228,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
     escalationHandler?: any
   ): any {
     const completedAt = new Date();
-  
+
     // Handle 0-argument case
     if (input === undefined) {
       return {
@@ -9259,11 +9237,11 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         completedAt,
       };
     }
-  
+
     // Normalize inputs - handle multiple call signatures
     let normalizedInput = input;
     let normalizedAiClient = aiClient;
-  
+
     // If input is actually aiClient (2-arg case where first arg is aiClient)
     if (
       input &&
@@ -9276,17 +9254,44 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       normalizedAiClient = input;
       normalizedInput = aiClient || {};
     }
-  
-    const { agentId, agentConfig, managerId, employeeList, reportingItems, reports, reportSubmissions, allTeamMembers, manager_id, report_deadline, exec_id, executionId, directorUserId, user_context, target_department_id, onAuditLog, onAuditEvent, db, timestamp, ai_client, execution_time, record_audit_log } = normalizedInput;
-  
+
+    const normalizeKey = (obj: any, ...keys: string[]): any => {
+      if (!obj) return undefined;
+      for (const key of keys) {
+        if (obj[key] !== undefined) return obj[key];
+      }
+      return undefined;
+    };
+
+    const agentId = normalizeKey(normalizedInput, 'agentId');
+    const agentConfig = normalizeKey(normalizedInput, 'agentConfig');
+    const managerId = normalizeKey(normalizedInput, 'managerId', 'manager_id');
+    const employeeList = normalizeKey(normalizedInput, 'employeeList');
+    const reportingItems = normalizeKey(normalizedInput, 'reportingItems');
+    const reports = normalizeKey(normalizedInput, 'reports');
+    const reportSubmissions = normalizeKey(normalizedInput, 'reportSubmissions');
+    const allTeamMembers = normalizeKey(normalizedInput, 'allTeamMembers');
+    const report_deadline = normalizeKey(normalizedInput, 'report_deadline');
+    const exec_id = normalizeKey(normalizedInput, 'exec_id');
+    const executionId = normalizeKey(normalizedInput, 'executionId');
+    const directorUserId = normalizeKey(normalizedInput, 'directorUserId');
+    const user_context = normalizeKey(normalizedInput, 'user_context');
+    const target_department_id = normalizeKey(normalizedInput, 'target_department_id');
+    const onAuditLog = normalizeKey(normalizedInput, 'onAuditLog');
+    const onAuditEvent = normalizeKey(normalizedInput, 'onAuditEvent');
+    const db = normalizeKey(normalizedInput, 'db');
+    const timestamp = normalizeKey(normalizedInput, 'timestamp');
+    const ai_client = normalizeKey(normalizedInput, 'ai_client');
+    const execution_time = normalizeKey(normalizedInput, 'execution_time');
+    const record_audit_log = normalizeKey(normalizedInput, 'record_audit_log');
+
     const aiClientToUse = normalizedAiClient || ai_client;
     const auditLogFn = onAuditLog || onAuditEvent || record_audit_log || auditLogger?.log;
     const currentTime = timestamp || execution_time || new Date();
     const execId = exec_id || executionId || agentId;
-  
-    // Use escalationHandler if provided
+
     const escalationHandlerFn = escalationHandler?.createEscalationNotification;
-  
+
     // Authorization check
     if (
       user_context &&
@@ -9312,7 +9317,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       }
       return authError;
     }
-  
+
     // Determine execution context
     const isAgentConfig = !!agentConfig;
     const isReportCollection = !!(
@@ -9320,9 +9325,9 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       reportingItems ||
       reportSubmissions
     );
-    const isSimpleExecution = !!(exec_id && manager_id && report_deadline);
+    const isSimpleExecution = !!(exec_id && managerId && report_deadline);
     const isDbExecution = !!(db && aiClientToUse);
-  
+
     // CASE 1: agentConfig input (SCEN-570)
     if (isAgentConfig) {
       const result = {
@@ -9332,31 +9337,31 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       };
       return result;
     }
-  
+
     // CASE 2: Report collection with anomaly detection (SCEN-576, 577, 578, 579)
     if (isReportCollection && aiClientToUse) {
       const reportList = reports || reportingItems || reportSubmissions || [];
       const teamMembers = allTeamMembers || employeeList || [];
-  
+
       const completedSteps: string[] = [
         'send_confirmation_email',
         'auto_read_email_content',
         'aggregate_progress',
       ];
-  
+
       // Aggregate progress
       const submittedCount = reportList.length;
       const totalCount = teamMembers.length;
       const unsubmittedCount = Math.max(0, totalCount - submittedCount);
       const submissionRate =
         totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
-  
+
       // Extract challenges/issues
       let extractedChallenges: any[] = [];
       let anomaliesDetected = false;
       let escalationDetected = false;
       let escalationType = '';
-  
+
       if (aiClientToUse.extractChallenges) {
         try {
           const challengeInput = reportList.map((r: any) => ({
@@ -9365,16 +9370,17 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
             todayPlan: r.today || r.todayPlan,
             issues: r.issues || r.currentIssue,
           }));
-          extractedChallenges = aiClientToUse.extractChallenges(challengeInput) || [];
+          const challengeResult = aiClientToUse.extractChallenges(challengeInput);
+          extractedChallenges = challengeResult || [];
         } catch (e) {
           anomaliesDetected = true;
           escalationDetected = true;
           escalationType = 'extraction_error';
         }
       }
-  
+
       completedSteps.push('extract_anomalies');
-  
+
       // Check for equal priority judgment anomaly
       if (extractedChallenges.length >= 2) {
         const priorities = extractedChallenges.map((c: any) => c.priority || 0);
@@ -9384,7 +9390,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
           anomaliesDetected = true;
         }
       }
-  
+
       // Check for critical severity
       const hasCritical = extractedChallenges.some(
         (c: any) => c.severity === 'critical'
@@ -9394,7 +9400,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         escalationType = 'critical_issue_detected';
         anomaliesDetected = true;
       }
-  
+
       // Determine if priority judgment should execute
       const shouldExecutePriorityJudgment = !anomaliesDetected;
       if (
@@ -9409,7 +9415,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
           escalationDetected = true;
         }
       }
-  
+
       // Build escalation data if needed
       let escalationData: any = undefined;
       if (escalationDetected) {
@@ -9418,19 +9424,19 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
           anomaly_details: extractedChallenges.slice(0, 2),
         };
       }
-  
+
       // Audit log
       if (auditLogFn) {
         auditLogFn({
           timestamp: currentTime,
-          userId: manager_id || managerId || 'SYSTEM',
+          userId: managerId || 'SYSTEM',
           action: 'runTx4Imp1Agent',
           resourceId: execId || 'unknown',
           details: `Processed ${submittedCount}/${totalCount} reports, extracted ${extractedChallenges.length} challenges`,
           status: escalationDetected ? 'escalation' : 'success',
         });
       }
-  
+
       // Create escalation notification if handler provided
       if (escalationDetected && escalationHandlerFn) {
         escalationHandlerFn({
@@ -9441,7 +9447,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
           recommendedAction: '部長による確認と優先度判定',
         });
       }
-  
+
       // Return based on escalation state
       if (escalationDetected) {
         return {
@@ -9487,7 +9493,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
           escalationMode: true,
         };
       }
-  
+
       // Normal completion
       return {
         success: true,
@@ -9516,20 +9522,20 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         completedAt,
       };
     }
-  
+
     // CASE 3: Simple execution (SCEN-583)
     if (isSimpleExecution) {
       if (auditLogFn) {
         auditLogFn({
           timestamp: currentTime,
-          userId: manager_id,
+          userId: managerId,
           action: 'runTx4Imp1Agent',
           resourceId: exec_id,
           details: 'Execution started',
           status: 'success',
         });
       }
-  
+
       return {
         success: true,
         exec_id,
@@ -9541,7 +9547,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         completedAt,
       };
     }
-  
+
     // CASE 4: Generic execution with db context (SCEN-584)
     if (isDbExecution) {
       if (auditLogFn) {
@@ -9555,7 +9561,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
           user_context: 'SYSTEM_EXECUTION',
         });
       }
-  
+
       return {
         success: true,
         executionId,
@@ -9565,13 +9571,14 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         completedAt,
       };
     }
-  
+
     // Default case
     return {
       success: true,
       completedAt,
     };
   }
+
   return { runTx4Imp1Agent };
 })();
 export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx4Imp1Agent.runTx4Imp1Agent as (...args: any[]) => any)(...args);
