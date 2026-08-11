@@ -1299,16 +1299,6 @@ const __aivicBundle_12_validateAndSubmitReport = (() => {
         errors.push({ field: "issue", message: "抱えている課題は必須項目です" });
       }
   
-      if (yesterdayEmpty) {
-        throw new Error("昨日やったことが未入力です。必須項目です");
-      }
-      if (todayEmpty) {
-        throw new Error("今日やることが未入力です。必須項目です");
-      }
-      if (issueEmpty) {
-        throw new Error("抱えている課題は必須項目です");
-      }
-  
       return {
         isValid: false,
         is_valid: false,
@@ -1352,7 +1342,7 @@ const __aivicBundle_12_validateAndSubmitReport = (() => {
       success: true,
       isValid: true,
       is_valid: true,
-      message: "報告を送信しました",
+      message: "日報が正常に送信されました",
       form_reset: true,
       shouldSendConfirmationEmail: true,
       mailSent: true,
