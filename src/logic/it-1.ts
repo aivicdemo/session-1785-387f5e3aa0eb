@@ -6036,7 +6036,7 @@ export const sendAggregatedReportEmail = __aivicBundle_75_sendAggregatedReportEm
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendAggregatedReportEmail */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx2Imp1Agent exports=runTx2Imp1Agent */
-const __aivicBundle_76_runTx2Imp1Agent = (() => {
+const __aivicBundle_runTx2Imp1Agent = (() => {
   async function runTx2Imp1Agent(
     params?: any,
     aiClient?: Tx2Imp1AiClient,
@@ -6088,6 +6088,18 @@ const __aivicBundle_76_runTx2Imp1Agent = (() => {
       const submittedReports = config.submittedReports || config.submitted_reports || config.reports || [];
       const allMembersCount = config.allMembersCount || allUsers.length || 0;
   
+      // Check for null reportId early
+      if (config.reportId === null) {
+        return {
+          success: false,
+          status: 'error',
+          errorCode: 'INVALID_REPORT_ID',
+          errorMessage: 'レポートIDが無効です',
+          mailDeliveryAttempted: false,
+          managerNotificationSent: false,
+        };
+      }
+  
       if (!managerEmail || managerEmail === '' || managerEmail === null) {
         return {
           success: false,
@@ -6115,17 +6127,6 @@ const __aivicBundle_76_runTx2Imp1Agent = (() => {
           status: 'error',
           errorCode: 'INVALID_DEPARTMENT_ID',
           errorMessage: '部門IDが空または無効です',
-        };
-      }
-  
-      if (config.reportId === null || (config.reportId !== undefined && config.reportId === '')) {
-        return {
-          success: false,
-          status: 'error',
-          errorCode: 'INVALID_REPORT_ID',
-          errorMessage: 'レポートIDが無効です',
-          mailDeliveryAttempted: false,
-          managerNotificationSent: false,
         };
       }
   
@@ -6351,7 +6352,7 @@ const __aivicBundle_76_runTx2Imp1Agent = (() => {
   }
   return { runTx2Imp1Agent };
 })();
-export const runTx2Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_76_runTx2Imp1Agent.runTx2Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx2Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx2Imp1Agent.runTx2Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx2Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=prioritizeChallengeTargets exports=prioritizeChallengeTargets */
@@ -9402,7 +9403,7 @@ export const runTx3Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__a
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx3Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx4Imp1Agent exports=runTx4Imp1Agent */
-const __aivicBundle_113_runTx4Imp1Agent = (() => {
+const __aivicBundle_runTx4Imp1Agent = (() => {
   function runTx4Imp1Agent(
     input?: any,
     aiClient?: any,
@@ -9734,7 +9735,7 @@ const __aivicBundle_113_runTx4Imp1Agent = (() => {
   }
   return { runTx4Imp1Agent };
 })();
-export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_113_runTx4Imp1Agent.runTx4Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx4Imp1Agent.runTx4Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx4Imp1Agent */
 
 
