@@ -5,12 +5,11 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  escalationThreshold: number;
   reportingMembers: Array<{
     memberId: string;
     memberName: string;
-    department: string;
     email: string;
+    department: string;
   }>;
   submittedReports: Array<{
     memberId: string;
@@ -26,65 +25,66 @@ interface Action03PromptOutput {
   userPrompt: string;
   context: {
     deadline: string;
-    threshold: number;
     totalMembers: number;
     submittedCount: number;
-    overdueCount: number;
+    overdueMembers: string[];
+    nonSubmittedMembers: string[];
   };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const currentTimeMs = new Date(input.currentTime).getTime();
+  const deadlineMs = new Date(input.reportingDeadline).getTime();
+  const isOverdue = currentTimeMs > deadlineMs;
+
   const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
   const nonSubmittedMembers = input.reportingMembers.filter(
     m => !submittedMemberIds.has(m.memberId)
   );
 
-  const deadlineTime = new Date(input.reportingDeadline).getTime();
-  const currentTime = new Date(input.currentTime).getTime();
-  const isOverdue = currentTime > deadlineTime;
-
-  const overdueMembers = nonSubmittedMembers.filter(member => {
-    const memberSubmission = input.submittedReports.find(r => r.memberId === member.memberId);
-    if (!memberSubmission) return isOverdue;
-    const submissionTime = new Date(memberSubmission.submittedAt).getTime();
-    return submissionTime > deadlineTime;
-  });
+  const overdueMembers = input.submittedReports
+    .filter(report => {
+      const submittedMs = new Date(report.submittedAt).getTime();
+      return submittedMs > deadlineMs;
+    })
+    .map(report => {
+      const member = input.reportingMembers.find(m => m.memberId === report.memberId);
+      return member ? member.memberName : report.memberId;
+    });
 
   const systemPrompt = `You are an AI agent responsible for identifying non-submitted and overdue daily reports.
 Your task is to:
-1. Analyze the submission status of all team members
-2. Identify members who have not submitted their reports
-3. Determine which members are overdue based on the deadline
-4. Classify members by escalation priority
-5. Generate a notification list for the department manager
+1. Identify members who have not submitted their reports
+2. Identify members whose reports were submitted after the deadline
+3. Classify members by submission status
+4. Prepare a summary for the department head
 
-Be precise and factual in your analysis. Only report actual non-submissions and actual overdue cases.`;
+Be precise and factual in your analysis. Focus on the data provided without speculation.`;
 
-  const userPrompt = `Analyze the following daily report submission status:
+  const nonSubmittedList = nonSubmittedMembers
+    .map(m => `- ${m.memberName} (${m.department})`)
+    .join("\n");
+
+  const overdueList = overdueMembers.length > 0
+    ? overdueMembers.map(name => `- ${name}`).join("\n")
+    : "None";
+
+  const userPrompt = `Analyze the following daily report submission status as of ${input.currentTime}:
 
 Reporting Deadline: ${input.reportingDeadline}
-Current Time: ${input.currentTime}
-Escalation Threshold (hours): ${input.escalationThreshold}
-
-Total Team Members: ${input.reportingMembers.length}
+Total Members: ${input.reportingMembers.length}
 Reports Submitted: ${input.submittedReports.length}
-Reports Not Submitted: ${nonSubmittedMembers.length}
-Overdue Reports: ${overdueMembers.length}
 
-Non-Submitted Members:
-${nonSubmittedMembers.map(m => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join('\n')}
+Non-Submitted Members (${nonSubmittedMembers.length}):
+${nonSubmittedList || "None"}
 
-Overdue Members:
-${overdueMembers.map(m => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join('\n')}
-
-Submitted Reports Summary:
-${input.submittedReports.map(r => `- Member ${r.memberId}: submitted at ${r.submittedAt}`).join('\n')}
+Overdue Submissions (${overdueMembers.length}):
+${overdueList}
 
 Please provide:
-1. A list of members who have not submitted their reports
-2. A list of members whose reports are overdue
-3. Priority classification for manager notification
-4. Recommended action for each category`;
+1. A summary of submission status
+2. List of members requiring follow-up
+3. Recommended actions for the department head`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
@@ -92,10 +92,10 @@ Please provide:
     userPrompt,
     context: {
       deadline: input.reportingDeadline,
-      threshold: input.escalationThreshold,
       totalMembers: input.reportingMembers.length,
       submittedCount: input.submittedReports.length,
-      overdueCount: overdueMembers.length,
+      overdueMembers,
+      nonSubmittedMembers: nonSubmittedMembers.map(m => m.memberName),
     },
   };
 }

@@ -8,43 +8,86 @@ export interface Action01Context {
   engineerName: string;
   previousDayReportDate: string;
   reportDeadline: string;
-  systemName: string;
+  systemUrl: string;
 }
 
 export interface Action01PromptResult {
   version: string;
   action: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action01Context;
+  objective: string;
+  instructions: string[];
+  template: {
+    subject: string;
+    body: string;
+    placeholders: Record<string, string>;
+  };
+  constraints: string[];
 }
 
 export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
-  const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
-Your role is to generate and distribute daily report templates to engineers.
-You must ensure the template is clear, includes all required fields, and is delivered on time.
-The template should include sections for: yesterday's achievements, today's plans, and current issues.
-Maintain a professional and encouraging tone to promote timely submissions.`;
-
-  const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
-The report is for the date: ${context.previousDayReportDate}
-Submission deadline: ${context.reportDeadline}
-System name: ${context.systemName}
-
-Please create a clear, structured template that:
-1. Requests yesterday's achievements in a concise format
-2. Requests today's planned tasks
-3. Requests any current issues or blockers
-4. Includes the submission deadline
-5. Provides clear instructions for submission
-
-Format the template in a way that is easy for the engineer to fill out.`;
+  const placeholders: Record<string, string> = {
+    engineerName: context.engineerName,
+    engineerId: context.engineerId,
+    reportDate: context.previousDayReportDate,
+    deadline: context.reportDeadline,
+    systemUrl: context.systemUrl,
+  };
 
   return {
     version: ACTION_01_PROMPT_VERSION,
-    action: "action-01",
-    systemPrompt,
-    userPrompt,
-    context,
+    action: "Generate and distribute daily report template",
+    objective:
+      "Automatically generate and distribute the previous day's daily report template to all engineers before the morning meeting",
+    instructions: [
+      "Generate a daily report template based on the previous day's date",
+      "Include sections for: yesterday's achievements, today's plans, and current issues",
+      "Personalize the template with the engineer's name and ID",
+      "Set the submission deadline clearly in the template",
+      "Distribute the template via email to the engineer",
+      "Log the distribution timestamp and recipient information",
+      "Ensure the template includes a direct link to the report submission system",
+    ],
+    template: {
+      subject: "【日報テンプレート】{reportDate} の日報入力のお願い",
+      body: `{engineerName} さん
+
+お疲れ様です。
+
+{reportDate} の日報テンプレートをお送りします。
+以下の項目について、{deadline} までにご入力ください。
+
+【入力項目】
+1. 昨日の実績
+   - 完了したタスク
+   - 進捗状況
+
+2. 本日の予定
+   - 予定されているタスク
+   - 優先順位
+
+3. 抱えている課題
+   - 現在の課題
+   - 対応状況
+
+【提出方法】
+以下のリンクから日報管理システムにアクセスし、入力してください：
+{systemUrl}
+
+エンジニアID: {engineerId}
+
+ご不明な点がございましたら、お気軽にお問い合わせください。
+
+よろしくお願いいたします。`,
+      placeholders,
+    },
+    constraints: [
+      "Template must be generated before 8:00 AM",
+      "All required fields must be clearly marked",
+      "Submission deadline must be at least 30 minutes before the morning meeting",
+      "Template must include system access instructions",
+      "Distribution must be logged for audit purposes",
+      "Template must be in Japanese language",
+      "Email must include engineer ID for system tracking",
+    ],
   };
 }

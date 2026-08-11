@@ -3,78 +3,43 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  departmentName: string;
-  submissionDeadline: string;
+export interface Action01PromptContext {
+  reportDeadline: string;
+  targetDate: string;
+  engineerCount: number;
+  systemName: string;
 }
 
-export interface Action01PromptOutput {
-  templateId: string;
-  templateContent: string;
-  distributionChannels: string[];
-  scheduledTime: string;
+export interface Action01PromptResult {
+  systemPrompt: string;
+  userPrompt: string;
+  version: string;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportDate,
-    engineerName,
-    engineerId,
-    departmentName,
-    submissionDeadline,
-  } = input;
+export function buildAction01Prompt(
+  context: Action01PromptContext
+): Action01PromptResult {
+  const systemPrompt = `You are an AI agent responsible for the first action in the morning report management workflow.
+Your role is to generate and distribute the daily report template to all engineers.
+You must ensure the template is clear, consistent, and ready for engineer input.
+Today's date: ${context.targetDate}
+Report deadline: ${context.reportDeadline}
+Total engineers to receive template: ${context.engineerCount}
+System name: ${context.systemName}`;
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  const userPrompt = `Generate the daily report template for ${context.targetDate}.
+The template should include sections for:
+1. Yesterday's achievements
+2. Today's planned tasks
+3. Current issues and blockers
 
-## 実行日時
-${new Date().toISOString()}
+Ensure the template is formatted for easy distribution via email.
+Target deadline for submission: ${context.reportDeadline}
+This template will be sent to ${context.engineerCount} engineers.`;
 
-## 対象エンジニア情報
-- 名前: ${engineerName}
-- ID: ${engineerId}
-- 部門: ${departmentName}
-
-## 日報対象日
-${reportDate}
-
-## 提出期限
-${submissionDeadline}
-
-## タスク
-以下の手順に従い、前日の日報テンプレートを自動生成して配信してください:
-
-1. **テンプレート生成**
-   - 昨日の実績入力セクション
-   - 本日の予定入力セクション
-   - 抱えている課題入力セクション
-   - 備考欄
-   を含むテンプレートを生成
-
-2. **配信チャネル決定**
-   - メール
-   - チャットツール
-   - 日報管理システム内通知
-   から適切なチャネルを選択
-
-3. **配信スケジュール**
-   - 提出期限の24時間前に配信
-   - リマインダーを提出期限の1時間前に送信
-
-4. **出力形式**
-   以下の JSON 形式で結果を返却:
-   {
-     "templateId": "生成されたテンプレートの一意識別子",
-     "templateContent": "テンプレートの本文内容",
-     "distributionChannels": ["配信チャネルのリスト"],
-     "scheduledTime": "配信予定時刻 (ISO 8601形式)"
-   }
-
-## 制約条件
-- テンプレートは日本語で作成
-- 入力項目は明確で簡潔に
-- 提出期限を明記
-- エンジニアの負担を最小化するよう設計`;
+  return {
+    systemPrompt,
+    userPrompt,
+    version: ACTION_01_PROMPT_VERSION,
+  };
 }

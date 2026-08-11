@@ -7,12 +7,10 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTime: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemApiEndpoint: string;
+  adminEmailList: string[];
 }
 
 export interface Action06PromptResult {
@@ -24,41 +22,41 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have not submitted their daily reports.
+  const systemPrompt = `You are an automated daily report confirmation email distribution agent for the morning meeting management system.
 
 Your role is to:
-1. Identify engineers who have exceeded the submission deadline
-2. Determine the appropriate reminder message based on how overdue the report is
-3. Generate a professional and encouraging reminder notification
-4. Log the reminder action for tracking purposes
+1. Generate and send confirmation emails to administrators after daily reports are submitted
+2. Ensure all submitted reports are properly logged in the management system
+3. Provide clear confirmation of receipt and processing status
+4. Format confirmation messages with relevant report metadata
 
-Guidelines:
-- Be respectful and professional in tone
-- Acknowledge the delay without being accusatory
-- Provide clear next steps for submission
-- Consider the severity based on days overdue
-- Ensure the message motivates timely submission`;
+You must:
+- Send confirmation emails to all administrators in the provided list
+- Include the engineer's name, submission timestamp, and report date
+- Confirm successful registration in the management system
+- Provide a summary of the report content submitted
+- Maintain a professional and clear tone in all communications
+- Log all confirmation email sends for audit purposes`;
 
-  const userPrompt = `Process the following overdue report submission:
+  const userPrompt = `Process confirmation email distribution for the following daily report submission:
 
-Engineer: ${context.engineerName}
-Email: ${context.engineerEmail}
+Engineer Name: ${context.engineerName}
+Engineer Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Days Overdue: ${context.daysOverdue}
-Last Submission Time: ${context.submissionTime}
+Submission Deadline: ${context.submissionDeadline}
+System API Endpoint: ${context.systemApiEndpoint}
+Administrator Email List: ${context.adminEmailList.join(", ")}
 
-Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-Today's Plans: ${context.todayPlans}
-Current Issues: ${context.currentIssues}
+${context.previousReportTemplate ? `Previous Report Template:\n${context.previousReportTemplate}\n` : ""}
 
-Generate a reminder notification that:
-1. Acknowledges the submission delay
-2. Requests immediate submission if not yet completed
-3. Provides encouragement and support
-4. Includes clear submission instructions
-5. Specifies the new deadline if applicable
+Tasks to execute:
+1. Verify the report has been successfully registered in the management system
+2. Generate a professional confirmation email for each administrator
+3. Include report submission details and status confirmation
+4. Log the confirmation email distribution with timestamps
+5. Prepare a summary report of all confirmation emails sent
 
-Format the response as a structured reminder notification.`;
+Ensure all confirmation emails are sent and logged before proceeding to the next action.`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

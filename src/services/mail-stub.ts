@@ -2,42 +2,50 @@
 // module: src/services/mail-stub.ts
 
 interface MailServiceCallRecord {
-  to: string;
-  subject: string;
-  body: string;
+  method: string;
+  args: unknown[];
   timestamp: Date;
 }
 
 interface StubMailService {
-  sendMail(to: string, subject: string, body: string): Promise<void>;
+  sendNotificationEmail(
+    managerUserId: string,
+    listId: string,
+    memberCount: number
+  ): Promise<{ success: boolean; messageId: string }>;
   clearCallHistory(): void;
   getCallHistory(): MailServiceCallRecord[];
-  getCallCount(): number;
+}
+
+class InMemoryStubMailService implements StubMailService {
+  private callHistory: MailServiceCallRecord[] = [];
+
+  async sendNotificationEmail(
+    managerUserId: string,
+    listId: string,
+    memberCount: number
+  ): Promise<{ success: boolean; messageId: string }> {
+    this.callHistory.push({
+      method: 'sendNotificationEmail',
+      args: [managerUserId, listId, memberCount],
+      timestamp: new Date(),
+    });
+
+    return {
+      success: true,
+      messageId: `msg_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+    };
+  }
+
+  clearCallHistory(): void {
+    this.callHistory = [];
+  }
+
+  getCallHistory(): MailServiceCallRecord[] {
+    return [...this.callHistory];
+  }
 }
 
 export function getStubMailService(): StubMailService {
-  const callHistory: MailServiceCallRecord[] = [];
-
-  return {
-    async sendMail(to: string, subject: string, body: string): Promise<void> {
-      callHistory.push({
-        to,
-        subject,
-        body,
-        timestamp: new Date(),
-      });
-    },
-
-    clearCallHistory(): void {
-      callHistory.length = 0;
-    },
-
-    getCallHistory(): MailServiceCallRecord[] {
-      return [...callHistory];
-    },
-
-    getCallCount(): number {
-      return callHistory.length;
-    },
-  };
+  return new InMemoryStubMailService();
 }

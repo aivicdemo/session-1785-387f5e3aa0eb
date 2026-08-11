@@ -57,7 +57,7 @@ class InMemoryDatabase implements DatabaseConnection {
     const table = this.tables.get(tableName);
     if (!table) return Promise.resolve([]);
 
-    const whereMatch = sql.match(/WHERE\s+(.+?)(?:$|;)/i);
+    const whereMatch = sql.match(/WHERE\s+(.+?)(?:;|$)/i);
     if (!whereMatch) {
       table.clear();
       return Promise.resolve([]);
@@ -87,9 +87,11 @@ class InMemoryDatabase implements DatabaseConnection {
     const columnsMatch = sql.match(/\(([^)]+)\)/);
     if (!columnsMatch) return Promise.resolve([]);
 
-    const columns = columnsMatch[1].split(',').map((c) => c.trim());
-    const row: QueryResult = {};
+    const columns = columnsMatch[1]
+      .split(',')
+      .map((c) => c.trim());
 
+    const row: QueryResult = {};
     columns.forEach((col, idx) => {
       row[col] = params[idx];
     });
@@ -116,10 +118,10 @@ class InMemoryDatabase implements DatabaseConnection {
     const table = this.tables.get(tableName);
     if (!table) return Promise.resolve([]);
 
-    const countMatch = sql.match(/COUNT\s*\(\s*\*\s*\)\s+as\s+(\w+)/i);
+    const countMatch = sql.match(/COUNT\(\*\)\s+as\s+(\w+)/i);
     if (countMatch) {
       const countAlias = countMatch[1];
-      const whereMatch = sql.match(/WHERE\s+(.+?)(?:$|;)/i);
+      const whereMatch = sql.match(/WHERE\s+(.+?)(?:;|$)/i);
       let count = table.size;
 
       if (whereMatch) {
@@ -136,12 +138,8 @@ class InMemoryDatabase implements DatabaseConnection {
     }
 
     const results: QueryResult[] = [];
-    const whereMatch = sql.match(/WHERE\s+(.+?)(?:$|;)/i);
-
     table.forEach((row) => {
-      if (!whereMatch || this.evaluateWhere(whereMatch[1], row, params)) {
-        results.push(row);
-      }
+      results.push(row);
     });
 
     return Promise.resolve(results);

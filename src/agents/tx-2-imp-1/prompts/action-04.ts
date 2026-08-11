@@ -7,136 +7,92 @@ export interface Action04PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
   escalationRules: {
-    firstReminderHours: number;
-    secondReminderHours: number;
     maxReminders: number;
+    reminderIntervalMinutes: number;
   };
-  departmentMembers: Array<{
-    id: string;
-    name: string;
-    email: string;
-    department: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
-  currentTime: string;
 }
 
 export interface Action04PromptOutput {
-  escalationCandidates: Array<{
-    memberId: string;
-    memberName: string;
-    memberEmail: string;
-    department: string;
-    hoursOverdue: number;
-    reminderCount: number;
-    shouldEscalate: boolean;
-    escalationReason: string;
-  }>;
-  summary: {
-    totalMembers: number;
-    submittedCount: number;
-    overdueCount: number;
-    escalationCount: number;
+  prompt: string;
+  version: string;
+  metadata: {
+    action: number;
+    contract: string;
+    purpose: string;
   };
-  timestamp: string;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const submittedMemberIds = new Set(
-    input.submittedReports.map((r) => r.memberId)
-  );
+export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
+  } = input;
 
-  const currentDate = new Date(input.currentTime);
-  const deadlineDate = new Date(input.reportingDeadline);
-  const timeDiffMs = currentDate.getTime() - deadlineDate.getTime();
-  const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (tx_2_imp_1).
 
-  const nonSubmittedMembers = input.departmentMembers.filter(
-    (member) => !submittedMemberIds.has(member.id)
-  );
+Your task is to identify unreported and delayed team members based on the confirmation email content and reporting status.
 
-  const overdueMembers = nonSubmittedMembers.filter(
-    () => timeDiffHours > input.overdueThresholdHours
-  );
+Context:
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- Maximum Reminders: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-  const escalationCandidates = overdueMembers.filter((member) => {
-    const hoursOverdue = timeDiffHours - input.overdueThresholdHours;
-    return hoursOverdue > input.escalationRules.firstReminderHours;
-  });
+Instructions:
+1. Analyze the confirmation email content to identify which team members have not submitted their daily reports
+2. Determine which team members have submitted reports but are past the deadline
+3. Classify team members into the following categories:
+   - Not Submitted: Team members with no report submission
+   - Delayed: Team members who submitted but exceeded the deadline
+   - On Time: Team members who submitted within the deadline
+4. For each delayed or non-submitted team member, assess escalation status based on reminder history
+5. Generate a structured list with the following information for each team member:
+   - Name
+   - Status (Not Submitted / Delayed / On Time)
+   - Submission Time (if applicable)
+   - Hours Overdue (if applicable)
+   - Reminder Count
+   - Escalation Level
+6. Identify any patterns or anomalies in reporting behavior
+7. Provide recommendations for escalation actions
 
-  const memberList = input.departmentMembers
-    .map(
-      (m) =>
-        `- ${m.name} (${m.id}): ${m.email} [${m.department}]`
-    )
-    .join("\n");
+Output Format:
+Return a JSON object with:
+{
+  "timestamp": "ISO 8601 timestamp",
+  "reportingDeadline": "${reportingDeadline}",
+  "analysisResults": {
+    "totalTeamMembers": number,
+    "submitted": number,
+    "notSubmitted": number,
+    "delayed": number,
+    "teamMembers": [
+      {
+        "name": string,
+        "status": "Not Submitted" | "Delayed" | "On Time",
+        "submissionTime": string | null,
+        "hoursOverdue": number | null,
+        "reminderCount": number,
+        "escalationLevel": "Low" | "Medium" | "High" | "Critical",
+        "requiresAction": boolean
+      }
+    ]
+  },
+  "escalationRecommendations": {
+    "immediateAction": string[],
+    "followUpRequired": string[],
+    "notes": string
+  }
+}`;
 
-  const submittedList = input.submittedReports
-    .map((r) => {
-      const member = input.departmentMembers.find((m) => m.id === r.memberId);
-      return `- ${member?.name || r.memberId}: submitted at ${r.submittedAt}`;
-    })
-    .join("\n");
-
-  const nonSubmittedList = nonSubmittedMembers
-    .map((m) => `- ${m.name} (${m.id}): ${m.email}`)
-    .join("\n");
-
-  const overdueList = overdueMembers
-    .map((m) => {
-      const hoursOverdue = timeDiffHours - input.overdueThresholdHours;
-      return `- ${m.name} (${m.id}): ${hoursOverdue.toFixed(1)} hours overdue`;
-    })
-    .join("\n");
-
-  const escalationList = escalationCandidates
-    .map((m) => {
-      const hoursOverdue = timeDiffHours - input.overdueThresholdHours;
-      return `- ${m.name} (${m.id}): ${hoursOverdue.toFixed(1)} hours overdue, escalation required`;
-    })
-    .join("\n");
-
-  const prompt = `You are an AI agent responsible for identifying reporting delays and escalation candidates.
-
-Current Time: ${input.currentTime}
-Reporting Deadline: ${input.reportingDeadline}
-Overdue Threshold: ${input.overdueThresholdHours} hours
-Current Time Difference from Deadline: ${timeDiffHours.toFixed(1)} hours
-
-Escalation Rules:
-- First Reminder Threshold: ${input.escalationRules.firstReminderHours} hours after deadline
-- Second Reminder Threshold: ${input.escalationRules.secondReminderHours} hours after deadline
-- Maximum Reminders: ${input.escalationRules.maxReminders}
-
-Department Members (Total: ${input.departmentMembers.length}):
-${memberList}
-
-Submitted Reports (Count: ${input.submittedReports.length}):
-${submittedList || "None"}
-
-Non-Submitted Members (Count: ${nonSubmittedMembers.length}):
-${nonSubmittedList || "All members have submitted"}
-
-Overdue Members (Count: ${overdueMembers.length}):
-${overdueList || "No overdue members"}
-
-Escalation Candidates (Count: ${escalationCandidates.length}):
-${escalationList || "No escalation candidates"}
-
-Task: Analyze the reporting status and determine which members require escalation action.
-
-For each escalation candidate, provide:
-1. Member ID and Name
-2. Hours overdue
-3. Current reminder count (assume 0 if not tracked)
-4. Whether escalation should proceed
-5. Reason for escalation decision
-
-Return a structured analysis with escalation recommendations.`;
-
-  return prompt;
+  return {
+    prompt,
+    version: ACTION_04_PROMPT_VERSION,
+    metadata: {
+      action: 4,
+      contract: "tx_2_imp_1",
+      purpose: "Identify unreported and delayed team members from confirmation email content",
+    },
+  };
 }

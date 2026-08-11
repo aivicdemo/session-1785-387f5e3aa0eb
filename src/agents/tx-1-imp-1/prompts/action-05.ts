@@ -7,77 +7,56 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
-  submissionDeadline: string;
-  systemTimestamp: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
 export interface Action05ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
+}
+
+export interface Action05RegistrationPayload {
+  engineerId: string;
+  engineerName: string;
+  reportDate: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
+  validationStatus: "valid" | "invalid";
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const {
-    engineerId,
-    engineerName,
-    reportDate,
-    previousReportContent,
-    submissionDeadline,
-    systemTimestamp,
-  } = context;
+  const prompt = `You are an AI agent responsible for registering daily reports to the management system.
 
-  const promptContent = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
+## Task: Register Daily Report to Management System
 
-## Task: Validate Daily Report Content (Action 05)
+### Input Information
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
+- Submission Timestamp: ${context.submissionTimestamp}
 
-### Engineer Information
-- Engineer ID: ${engineerId}
-- Engineer Name: ${engineerName}
-- Report Date: ${reportDate}
-- System Timestamp: ${systemTimestamp}
-- Submission Deadline: ${submissionDeadline}
+### Your Responsibilities
+1. Validate that all required fields are present and properly formatted
+2. Check for any data inconsistencies or anomalies
+3. Prepare the registration payload for the management system
+4. Ensure data integrity before registration
+5. Log the registration attempt with timestamp
 
-### Report Content to Validate
-**Yesterday's Achievements:**
-${previousReportContent.yesterday}
-
-**Today's Plans:**
-${previousReportContent.today}
-
-**Current Issues/Challenges:**
-${previousReportContent.issues}
-
-### Validation Rules
-1. **Completeness Check**
-   - All three sections (yesterday, today, issues) must have content
-   - Minimum 10 characters per section
-   - No placeholder or template text remaining
-
-2. **Appropriateness Check**
-   - Content must be relevant to work activities
-   - No offensive, discriminatory, or inappropriate language
-   - No sensitive personal information
-
-3. **Consistency Check**
-   - Today's plans should logically follow from yesterday's achievements
-   - Issues should be specific and actionable
-   - No contradictory statements
-
-4. **Format Check**
-   - Clear and concise language
-   - Proper sentence structure
-   - No excessive formatting or special characters
+### Validation Criteria
+- Engineer ID must be non-empty and valid format
+- Report Date must be in YYYY-MM-DD format
+- All text fields must be non-empty and reasonable length (not exceeding 5000 characters)
+- Submission Timestamp must be valid ISO 8601 format
+- Content should not contain suspicious patterns or malformed data
 
 ### Output Format
 Return a JSON object with the following structure:
@@ -85,18 +64,25 @@ Return a JSON object with the following structure:
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "validatedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
+  "registrationPayload": {
+    "engineerId": string,
+    "engineerName": string,
+    "reportDate": string,
+    "yesterdayAccomplishments": string,
+    "todayPlans": string,
+    "currentIssues": string,
+    "submissionTimestamp": string,
+    "validationStatus": "valid" | "invalid"
   }
 }
 
-### Instructions
-- If validation fails, provide specific error messages in the "errors" array
-- If there are minor issues that don't prevent submission, add them to "warnings"
-- In "validatedContent", return the cleaned/normalized version of the content
-- Be strict but fair in validation - the goal is to ensure quality reports for the morning meeting`;
+### Decision Logic
+- If any required field is missing or invalid, set isValid to false and list errors
+- If data is present but has minor issues, add to warnings but keep isValid as true if critical fields are valid
+- Proceed with registration only if isValid is true
+- Log all validation results for audit trail
 
-  return promptContent;
+Analyze the input and provide your response in the specified JSON format.`;
+
+  return prompt;
 }

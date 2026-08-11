@@ -4,7 +4,7 @@
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
 export interface Action01PromptInput {
-  reportingDeadline: string;
+  submissionDeadline: string;
   targetDate: string;
   engineerList: Array<{
     id: string;
@@ -13,60 +13,55 @@ export interface Action01PromptInput {
   }>;
   systemContext: {
     reportManagementSystemUrl: string;
-    notificationChannels: string[];
+    confirmationEmailTemplate: string;
   };
 }
 
 export interface Action01PromptOutput {
-  templateId: string;
+  templateGenerated: boolean;
+  distributionScheduled: boolean;
   templateContent: string;
-  distributionList: string[];
+  recipientCount: number;
   scheduledTime: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelInfo = input.systemContext.notificationChannels.join("、");
+  const engineerNames = input.engineerList.map((e) => e.name).join(", ");
+  const engineerCount = input.engineerList.length;
 
-  return `# 日報テンプレート自動生成・配信タスク
+  return `You are an AI agent responsible for the first action in the daily report management workflow.
 
-## タスク概要
-前日の日報テンプレートを自動生成して、全エンジニアに配信してください。
+**Action 1: Generate and distribute the previous day's daily report template automatically**
 
-## 対象情報
-- 対象日付: ${input.targetDate}
-- 報告期限: ${input.reportingDeadline}
-- 対象エンジニア: ${engineerNames}
-- 配信チャネル: ${channelInfo}
+**Context:**
+- Target Date: ${input.targetDate}
+- Submission Deadline: ${input.submissionDeadline}
+- Total Engineers: ${engineerCount}
+- Engineer List: ${engineerNames}
+- Report Management System URL: ${input.systemContext.reportManagementSystemUrl}
 
-## 生成すべきテンプレート内容
-1. 昨日の実績セクション
-   - 完了したタスク
-   - 実績の詳細
-   - 時間配分
+**Task:**
+1. Generate a daily report template for the previous day based on the standard format
+2. Include the following sections:
+   - Yesterday's Achievements (実績)
+   - Today's Plans (予定)
+   - Current Issues/Challenges (抱えている課題)
+3. Prepare the template for distribution to all ${engineerCount} engineers
+4. Schedule the distribution to be sent at the appropriate time before the submission deadline
+5. Ensure the template includes a link to the report management system
 
-2. 本日の予定セクション
-   - 予定タスク
-   - 優先度
-   - 予想時間
+**Template Structure:**
+${input.systemContext.confirmationEmailTemplate}
 
-3. 抱えている課題セクション
-   - 課題内容
-   - 影響範囲
-   - 必要なサポート
+**Output Requirements:**
+- Confirm template generation completion
+- Confirm distribution scheduling
+- Provide the generated template content
+- Specify the number of recipients
+- Specify the scheduled distribution time
 
-## 配信要件
-- 全エンジニアに同時配信
-- 報告期限を明記
-- 回答フォーマットを統一
-- 管理システムURL: ${input.systemContext.reportManagementSystemUrl}
-
-## 出力形式
-JSON形式で以下を返してください:
-{
-  "templateId": "生成されたテンプレートID",
-  "templateContent": "テンプレートの完全な内容",
-  "distributionList": ["engineer1@example.com", "engineer2@example.com"],
-  "scheduledTime": "配信予定時刻"
-}`;
+**Constraints:**
+- Do not send actual emails yet; only prepare for distribution
+- Ensure the template is clear and easy to fill out
+- Include submission deadline information in the template`;
 }

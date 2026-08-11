@@ -11,7 +11,7 @@ interface LogEntry {
 
 const logs: LogEntry[] = [];
 
-export function warn(message: string): void {
+function warn(message: string): void {
   const entry: LogEntry = {
     level: 'warn',
     message,
@@ -20,7 +20,7 @@ export function warn(message: string): void {
   logs.push(entry);
 }
 
-export function info(message: string): void {
+function info(message: string): void {
   const entry: LogEntry = {
     level: 'info',
     message,
@@ -28,3 +28,5 @@ export function info(message: string): void {
   };
   logs.push(entry);
 }
+
+export { warn, info };

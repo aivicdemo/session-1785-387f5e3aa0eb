@@ -4,75 +4,81 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportingDeadline: string;
-  overdueThresholdMinutes: number;
-  notificationChannels: string[];
-  escalationRules: {
-    repeatOffenderThreshold: number;
-    systemErrorHandling: string;
-  };
+  reportDate: string;
+  targetEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  submissionDeadline: string;
+  systemContext: string;
 }
 
 export interface Action02PromptOutput {
   prompt: string;
   version: string;
-  metadata: {
-    action: string;
-    contract: string;
-    purpose: string;
-  };
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdMinutes,
-    notificationChannels,
-    escalationRules,
-  } = input;
+  const engineerList = input.targetEngineers
+    .map((eng) => `- ${eng.name} (${eng.email})`)
+    .join("\n");
 
-  const channelsList = notificationChannels.join(", ");
+  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
 
-  const prompt = `You are an AI agent responsible for Action 2 of the Daily Report Management System (tx_2_imp_1).
+Context:
+- Report Date: ${input.reportDate}
+- Submission Deadline: ${input.submissionDeadline}
+- System Context: ${input.systemContext}
 
-## Your Task
-Identify unreported and delayed team members from the daily report submission status, and notify the department head.
+Target Engineers:
+${engineerList}
 
-## Context
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdMinutes} minutes
-- Notification Channels: ${channelsList}
-- Repeat Offender Threshold: ${escalationRules.repeatOffenderThreshold} occurrences
-- System Error Handling: ${escalationRules.systemErrorHandling}
+Your Task (Action 02):
+Automatically determine which engineers have NOT submitted their daily reports by the deadline.
 
-## Autonomous Actions to Execute
-1. Check the submission status of all team members at the configured time
-2. Automatically identify unreported and delayed members
-3. Create a list of unreported and delayed members
-4. Send notification email to the department head
+Requirements:
+1. Check the submission status of each engineer listed above
+2. Identify engineers who have not submitted reports by the deadline
+3. Identify engineers whose reports are delayed (submitted after deadline)
+4. Create a comprehensive list of non-submitters and delayed submitters
+5. Prepare notification content for the department head
 
-## Escalation Conditions
-- System failure preventing report submission status verification
-- Repeated reporting failures by specific team members requiring intervention decision
+Output Format:
+Return a JSON object with the following structure:
+{
+  "nonSubmitters": [
+    {
+      "engineerId": "string",
+      "engineerName": "string",
+      "email": "string",
+      "status": "not_submitted"
+    }
+  ],
+  "delayedSubmitters": [
+    {
+      "engineerId": "string",
+      "engineerName": "string",
+      "email": "string",
+      "submittedAt": "ISO8601 timestamp",
+      "delayMinutes": number,
+      "status": "delayed"
+    }
+  ],
+  "summary": {
+    "totalEngineers": number,
+    "submitted": number,
+    "notSubmitted": number,
+    "delayed": number,
+    "onTime": number
+  },
+  "notificationContent": "string"
+}
 
-## Output Requirements
-- Provide a structured list of unreported members with timestamps
-- Provide a structured list of delayed members with submission times
-- Include recommendation for escalation if applicable
-- Log all actions taken with timestamps
-
-## Constraints
-- Do not make assumptions about member availability
-- Verify data integrity before reporting
-- Maintain audit trail of all notifications sent`;
+Ensure accuracy in status determination and provide clear, actionable information for the department head.`;
 
   return {
     prompt,
     version: ACTION_02_PROMPT_VERSION,
-    metadata: {
-      action: "action-02",
-      contract: "tx_2_imp_1",
-      purpose: "Identify unreported and delayed team members and notify department head",
-    },
   };
 }

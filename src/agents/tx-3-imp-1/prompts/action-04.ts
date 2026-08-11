@@ -3,67 +3,125 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
+export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  escalationThreshold: number;
-  previousEscalationCount: Record<string, number>;
+  currentTimestamp: string;
+  previousReminders?: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+  reminderRules?: {
+    maxReminderCount: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
-export interface Action04PromptResult {
-  missingReporters: Array<{
+export interface Action04PromptOutput {
+  identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
     reason: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
+    submissionTime?: string;
   }>;
-  escalationTargets: Array<{
+  remindersToSend: Array<{
     employeeId: string;
     employeeName: string;
-    escalationLevel: number;
-    recommendedAction: "email" | "chat" | "both" | "escalate_to_manager";
+    reminderType: "email" | "chat" | "both";
+    message: string;
+    shouldEscalate: boolean;
   }>;
-  timestamp: string;
-  processedCount: number;
+  escalationCases: Array<{
+    employeeId: string;
+    employeeName: string;
+    escalationReason: string;
+    recommendedAction: string;
+  }>;
+  executionLog: {
+    timestamp: string;
+    totalIdentified: number;
+    remindersScheduled: number;
+    escalationCount: number;
+  };
 }
 
-export function buildAction04Prompt(context: Action04PromptContext): string {
-  const systemPrompt = `You are an AI agent responsible for identifying missing reports and determining escalation targets based on confirmation email content.
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const reminderRules = input.reminderRules || {
+    maxReminderCount: 3,
+    reminderIntervalMinutes: 30,
+  };
 
-Your task is to:
-1. Parse the confirmation email content to identify employees who have not submitted their reports
-2. Determine which employees are delayed (submitted after deadline)
-3. Evaluate escalation necessity based on the escalation threshold and previous escalation history
-4. Recommend appropriate escalation actions (email, chat, both, or escalate to manager)
+  const previousRemindersInfo =
+    input.previousReminders && input.previousReminders.length > 0
+      ? `\n前回の催促履歴:\n${input.previousReminders
+          .map(
+            (r) =>
+              `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
+          )
+          .join("\n")}`
+      : "";
 
-Confirmation Email Content:
-${context.confirmationEmailContent}
+  return `あなたは朝会報告管理システムの自動催促エージェントです。
 
-Reporting Deadline: ${context.reportingDeadline}
-Escalation Threshold (days): ${context.escalationThreshold}
-Previous Escalation Count: ${JSON.stringify(context.previousEscalationCount)}
+【タスク】
+確認メール内容から報告漏れ・遅延部員を特定し、催促対象を判定して、メール・チャット送信の準備を行ってください。
 
-Output the result as a JSON object with the following structure:
+【入力情報】
+確認メール内容:
+${input.confirmationEmailContent}
+
+報告期限: ${input.reportingDeadline}
+現在時刻: ${input.currentTimestamp}
+${previousRemindersInfo}
+
+【催促ルール】
+- 最大催促回数: ${reminderRules.maxReminderCount}回
+- 催促間隔: ${reminderRules.reminderIntervalMinutes}分
+- 同一部員への複数回催促後も報告がない場合はエスカレーション対象
+- システムエラーでメール・チャット送信に失敗した場合はエスカレーション対象
+- 催促ルールに該当しない特殊ケースはエスカレーション対象
+
+【出力形式】
+以下のJSON形式で結果を返してください:
+
 {
-  "missingReporters": [
+  "identifiedNonReporters": [
     {
       "employeeId": "string",
       "employeeName": "string",
       "reason": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
+      "submissionTime": "string (遅延の場合のみ)"
     }
   ],
-  "escalationTargets": [
+  "remindersToSend": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "escalationLevel": number,
-      "recommendedAction": "email" | "chat" | "both" | "escalate_to_manager"
+      "reminderType": "email" | "chat" | "both",
+      "message": "string",
+      "shouldEscalate": boolean
     }
   ],
-  "timestamp": "ISO8601 string",
-  "processedCount": number
-}`;
+  "escalationCases": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationReason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "executionLog": {
+    "timestamp": "string",
+    "totalIdentified": number,
+    "remindersScheduled": number,
+    "escalationCount": number
+  }
+}
 
-  return systemPrompt;
+【注意事項】
+- 報告漏れ判定ルールに基づいて正確に判定してください
+- 送信履歴を参考に、不要な重複催促を避けてください
+- 過度な催促を防ぐため、催促回数の上限を厳守してください
+- 判定根拠を明確にしてください`;
 }

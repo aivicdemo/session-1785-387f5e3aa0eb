@@ -3,91 +3,93 @@
 
 type TableName = "users" | "daily_reports" | "report_send_history" | "audit_events";
 
-interface TableData {
-  users: Array<{
-    user_id: string;
-    user_name: string;
-    department: string;
-    role: string;
-  }>;
-  daily_reports: Array<{
-    report_id: string;
-    user_id: string;
-    report_date: string;
-    yesterday_achievement: string;
-    today_plan: string;
-    issues: string;
-    created_at: Date;
-  }>;
-  report_send_history: Array<{
-    history_id: string;
-    user_id: string;
-    report_date: string;
-    sent_at: Date;
-    status: string;
-  }>;
-  audit_events: Array<{
-    event_type: string;
-    target_role: string;
-    unsubmitted_count: number;
-    timestamp: Date;
-    [key: string]: unknown;
-  }>;
+interface TableRow {
+  [key: string]: unknown;
+}
+
+interface TableOperations {
+  del(): Promise<number>;
+  insert(row: TableRow | TableRow[]): Promise<void>;
+  where(conditions: Record<string, unknown>): Promise<TableRow[]>;
 }
 
 interface TestDatabase {
-  (tableName: TableName): {
-    del: () => Promise<void>;
-    insert: (data: unknown) => Promise<void>;
-    where: (conditions: Record<string, unknown>) => Promise<unknown[]>;
+  (tableName: TableName): TableOperations;
+}
+
+const databases = new Map<string, Map<TableName, TableRow[]>>();
+
+function generateDatabaseId(): string {
+  return `test_db_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function createTableOperations(
+  dbId: string,
+  tableName: TableName
+): TableOperations {
+  return {
+    async del(): Promise<number> {
+      const db = databases.get(dbId);
+      if (!db) return 0;
+      const table = db.get(tableName) || [];
+      const count = table.length;
+      db.set(tableName, []);
+      return count;
+    },
+
+    async insert(row: TableRow | TableRow[]): Promise<void> {
+      const db = databases.get(dbId);
+      if (!db) return;
+
+      const table = db.get(tableName) || [];
+      const rows = Array.isArray(row) ? row : [row];
+      table.push(...rows);
+      db.set(tableName, table);
+    },
+
+    async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
+      const db = databases.get(dbId);
+      if (!db) return [];
+
+      const table = db.get(tableName) || [];
+      return table.filter((row) => {
+        return Object.entries(conditions).every(([key, value]) => {
+          return row[key] === value;
+        });
+      });
+    },
   };
 }
 
-const inMemoryStore: Map<TableName, unknown[]> = new Map([
-  ["users", []],
-  ["daily_reports", []],
-  ["report_send_history", []],
-  ["audit_events", []],
-]);
-
 export async function createTestDatabase(): Promise<TestDatabase> {
-  inMemoryStore.clear();
-  inMemoryStore.set("users", []);
-  inMemoryStore.set("daily_reports", []);
-  inMemoryStore.set("report_send_history", []);
-  inMemoryStore.set("audit_events", []);
+  const dbId = generateDatabaseId();
 
-  return (tableName: TableName) => ({
-    del: async () => {
-      inMemoryStore.set(tableName, []);
-    },
-    insert: async (data: unknown) => {
-      const table = inMemoryStore.get(tableName) || [];
-      table.push(data);
-      inMemoryStore.set(tableName, table);
-    },
-    where: async (conditions: Record<string, unknown>) => {
-      const table = inMemoryStore.get(tableName) || [];
-      return table.filter((row: unknown) => {
-        if (typeof row !== "object" || row === null) return false;
-        const rowObj = row as Record<string, unknown>;
-        return Object.entries(conditions).every(
-          ([key, value]) => rowObj[key] === value
-        );
-      });
-    },
-  });
+  const newDb = new Map<TableName, TableRow[]>();
+  newDb.set("users", []);
+  newDb.set("daily_reports", []);
+  newDb.set("report_send_history", []);
+  newDb.set("audit_events", []);
+
+  databases.set(dbId, newDb);
+
+  return (tableName: TableName): TableOperations => {
+    return createTableOperations(dbId, tableName);
+  };
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  const tableNames: TableName[] = [
-    "users",
-    "daily_reports",
-    "report_send_history",
-    "audit_events",
-  ];
-  for (const tableName of tableNames) {
-    await db(tableName).del();
+  const dbIdMatch = (db as unknown as { __dbId?: string }).__dbId;
+  if (dbIdMatch) {
+    databases.delete(dbIdMatch);
+  } else {
+    for (const [dbId, dbInstance] of databases.entries()) {
+      if (
+        dbInstance.get("users") !== undefined &&
+        dbInstance.get("daily_reports") !== undefined
+      ) {
+        databases.delete(dbId);
+        break;
+      }
+    }
   }
-  inMemoryStore.clear();
 }

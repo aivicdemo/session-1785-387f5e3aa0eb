@@ -7,110 +7,77 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedContent: {
-    yesterdayAccomplishments: string;
-    todayPlan: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
-  submissionTimestamp: string;
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
 export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-}
-
-export interface Action04RegistrationResult {
-  success: boolean;
-  reportId: string;
-  registeredAt: string;
-  message: string;
-}
-
-export interface Action04PromptInput {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
+  validatedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
 }
 
-export interface Action04PromptOutput {
-  action: "register" | "reject" | "escalate";
-  validation: Action04ValidationResult;
-  registration?: Action04RegistrationResult;
-  escalationReason?: string;
-  nextAction: string;
-}
-
-export function buildAction04Prompt(input: Action04PromptInput): string {
+export function buildAction04Prompt(context: Action04Context): string {
   const {
-    context,
-    validationRules,
-  } = input;
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
+  } = context;
 
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
+  const prompt = `You are a validation agent for the daily report management system.
 
-## Current Task: Validate and Register Daily Report (Action 04)
+Your task is to validate the engineer's daily report input for completeness and appropriateness.
 
-### Engineer Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Time: ${context.submissionTimestamp}
+Engineer Information:
+- ID: ${engineerId}
+- Name: ${engineerName}
+- Report Date: ${reportDate}
+- Submission Deadline: ${submissionDeadline}
+- Current System Time: ${systemTimestamp}
 
-### Submitted Content
-**Yesterday's Accomplishments:**
-${context.submittedContent.yesterdayAccomplishments}
+Report Content to Validate:
+- Yesterday's Achievements: ${previousReportContent.yesterday}
+- Today's Plans: ${previousReportContent.today}
+- Current Issues/Challenges: ${previousReportContent.issues}
 
-**Today's Plan:**
-${context.submittedContent.todayPlan}
+Validation Rules:
+1. Each section (yesterday, today, issues) must not be empty
+2. Content must be relevant to work activities
+3. Text length should be reasonable (not too short, not excessively long)
+4. No inappropriate or offensive language
+5. Issues section should describe actual blockers or challenges
+6. Content should be coherent and professional
 
-**Issues/Challenges:**
-${context.submittedContent.issues}
+Please validate the report content and respond with:
+1. Overall validity status (valid/invalid)
+2. List of errors (if any)
+3. List of warnings (if any)
+4. Validated and normalized content
 
-### Validation Rules
-- Minimum length for yesterday's accomplishments: ${validationRules.minYesterdayLength} characters
-- Minimum length for today's plan: ${validationRules.minTodayLength} characters
-- Minimum length for issues: ${validationRules.minIssuesLength} characters
-- Maximum length for yesterday's accomplishments: ${validationRules.maxYesterdayLength} characters
-- Maximum length for today's plan: ${validationRules.maxTodayLength} characters
-- Maximum length for issues: ${validationRules.maxIssuesLength} characters
-
-### Your Tasks
-1. Validate the submitted content against the validation rules
-2. Check for completeness and appropriateness of the report
-3. Identify any errors or warnings
-4. Determine if the report should be registered, rejected, or escalated
-5. If valid, prepare for registration in the management system
-6. If invalid or problematic, provide clear escalation reasons
-
-### Validation Criteria
-- All fields must be filled with content meeting length requirements
-- Content should be coherent and relevant to daily report context
-- No obvious spam, inappropriate content, or placeholder text
-- Report should demonstrate meaningful work activities and planning
-
-### Output Format
-Provide your analysis in the following structure:
-- Validation Status (valid/invalid)
-- List of any errors found
-- List of any warnings
-- Recommended Action (register/reject/escalate)
-- If registering: Generate a report ID and confirm registration details
-- If escalating: Provide clear reason for escalation
-- Next action to be taken
-
-### Important Notes
-- Incomplete or inappropriate reports should be escalated for human review
-- Escalation conditions include: incomplete content, suspicious patterns, or system errors
-- Maintain professional standards in validation
-- Ensure all decisions are logged for audit purposes`;
+Format your response as JSON with the following structure:
+{
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
+}`;
 
   return prompt;
 }

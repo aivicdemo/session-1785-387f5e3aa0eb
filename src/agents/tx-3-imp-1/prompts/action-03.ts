@@ -3,66 +3,60 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03PromptContext {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentTimestamp: string;
   escalationThreshold: number;
+  maxReminders: number;
 }
 
-export interface Action03PromptOutput {
-  missingReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    lastReminderSentAt?: string;
-    reminderCount: number;
-  }>;
-  delayedReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    submittedAt: string;
-    delayMinutes: number;
-  }>;
-  escalationCandidates: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
-  }>;
-  actionItems: Array<{
-    targetEmployeeId: string;
-    actionType: "send_reminder_email" | "send_chat_message" | "escalate";
-    message: string;
-    scheduledAt: string;
-  }>;
+export interface Action03PromptResult {
+  unreportedMembers: string[];
+  delayedMembers: string[];
+  escalationTargets: string[];
+  reminderCount: Record<string, number>;
 }
 
-export function buildAction03Prompt(input: Action03PromptInput): string {
-  const systemPrompt = `You are an AI agent responsible for identifying missing and delayed reporters from confirmation email content and determining escalation targets.
+export function buildAction03Prompt(context: Action03PromptContext): string {
+  const {
+    confirmationEmailContent,
+    reportingDeadline,
+    escalationThreshold,
+    maxReminders,
+  } = context;
 
-Your task is to:
-1. Parse the confirmation email content to identify which employees have not submitted their reports
-2. Identify employees whose reports were submitted after the deadline
-3. Determine which employees require escalation based on the escalation threshold (number of previous reminders)
-4. Generate appropriate action items (reminder emails, chat messages, or escalations)
+  return `You are an AI agent responsible for identifying unreported and delayed team members from confirmation email content and determining escalation targets.
 
-Current timestamp: ${input.currentTimestamp}
-Reporting deadline: ${input.reportingDeadline}
-Escalation threshold (max reminders before escalation): ${input.escalationThreshold}
+## Task
+Analyze the confirmation email content and identify:
+1. Team members who have not submitted their reports
+2. Team members whose reports are delayed
+3. Members who should be escalated based on reminder count and threshold
 
-Confirmation email content:
-${input.confirmationEmailContent}
+## Input
+Confirmation Email Content:
+${confirmationEmailContent}
 
-Analyze the email content and provide:
-- List of employees with missing reports (employeeId, name, department, reminder count)
-- List of employees with delayed reports (employeeId, name, department, submission time, delay in minutes)
-- List of escalation candidates (employeeId, name, department, reason, priority level)
-- Action items to be executed (target employee, action type, message, scheduled time)
+Reporting Deadline: ${reportingDeadline}
+Escalation Threshold (hours): ${escalationThreshold}
+Maximum Reminders Allowed: ${maxReminders}
 
-Return the analysis in a structured JSON format matching the expected output schema.`;
+## Output Format
+Return a JSON object with the following structure:
+{
+  "unreportedMembers": ["member1", "member2"],
+  "delayedMembers": ["member3"],
+  "escalationTargets": ["member4"],
+  "reminderCount": {
+    "member1": 1,
+    "member2": 2
+  }
+}
 
-  return systemPrompt;
+## Rules
+- Unreported members: Those with no submission record
+- Delayed members: Those who submitted after the deadline
+- Escalation targets: Members exceeding the reminder threshold or requiring manager intervention
+- Track reminder count to prevent excessive notifications
+- Return valid JSON only`;
 }

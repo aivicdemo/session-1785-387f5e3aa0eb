@@ -3,74 +3,78 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionDeadline: string;
-  systemName: string;
-}
-
-export interface Action03PromptOutput {
-  validationStatus: "valid" | "invalid";
-  validationErrors: string[];
-  registrationPayload: {
-    engineerName: string;
-    engineerEmail: string;
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    submittedAt: string;
+  submittedContent: {
+    yesterdayAccomplishment: string;
+    todayPlan: string;
+    issues: string;
   };
-  nextAction: "register" | "request_correction" | "escalate";
+  submissionTimestamp: string;
+  deadline: string;
 }
 
-export function buildAction03Prompt(input: Action03PromptInput): string {
-  const prompt = `You are an AI agent responsible for validating daily report input content.
+export interface Action03ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
 
-System: ${input.systemName}
-Engineer: ${input.engineerName} (${input.engineerEmail})
-Submission Deadline: ${input.submissionDeadline}
+export function buildAction03Prompt(context: Action03Context): string {
+  const { engineerId, engineerName, submittedContent, submissionTimestamp, deadline } = context;
 
-The engineer has submitted the following daily report:
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-Yesterday's Accomplishments:
-${input.yesterdayAccomplishments}
+**Task: Validate Daily Report Input Content**
 
-Today's Plans:
-${input.todayPlans}
+**Engineer Information:**
+- Engineer ID: ${engineerId}
+- Engineer Name: ${engineerName}
+- Submission Timestamp: ${submissionTimestamp}
+- Deadline: ${deadline}
 
-Current Issues:
-${input.currentIssues}
+**Submitted Content:**
+1. Yesterday's Accomplishment:
+${submittedContent.yesterdayAccomplishment}
 
-Your task is to:
-1. Validate that all required fields are filled and contain meaningful content
-2. Check for completeness and appropriateness of the input
-3. Identify any validation errors or concerns
-4. Determine if the report is ready for registration or requires correction
+2. Today's Plan:
+${submittedContent.todayPlan}
 
-Validation criteria:
-- Yesterday's Accomplishments: Must not be empty, should describe concrete work completed
-- Today's Plans: Must not be empty, should describe specific tasks planned
-- Current Issues: Can be empty if no issues, but if present should be clearly described
-- All fields should be professional and relevant to work context
+3. Issues/Challenges:
+${submittedContent.issues}
 
-Respond with a JSON object containing:
+**Validation Criteria:**
+1. Completeness: All three sections must have meaningful content (not empty or placeholder text)
+2. Clarity: Content should be clear and understandable
+3. Relevance: Content should be relevant to daily work activities
+4. Timeliness: Check if submission is within or beyond the deadline
+5. Consistency: Yesterday's accomplishment should logically relate to today's plan
+6. Issue Specificity: Issues should be specific and actionable, not vague
+
+**Output Format:**
+Return a JSON object with the following structure:
 {
-  "validationStatus": "valid" | "invalid",
-  "validationErrors": [list of error messages if invalid],
-  "registrationPayload": {
-    "engineerName": "${input.engineerName}",
-    "engineerEmail": "${input.engineerEmail}",
-    "yesterdayAccomplishments": [validated content],
-    "todayPlans": [validated content],
-    "currentIssues": [validated content],
-    "submittedAt": [current ISO timestamp]
-  },
-  "nextAction": "register" | "request_correction" | "escalate"
-}`;
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validationDetails": {
+    "completenessCheck": boolean,
+    "clarityCheck": boolean,
+    "relevanceCheck": boolean,
+    "timelinessCheck": boolean,
+    "consistencyCheck": boolean,
+    "issueSpecificityCheck": boolean
+  }
+}
+
+**Instructions:**
+- Identify any missing or incomplete information
+- Flag any content that appears to be placeholder or template text
+- Note any inconsistencies between yesterday's accomplishment and today's plan
+- Check if issues are specific enough for action
+- Determine if submission is on-time or delayed
+- Provide constructive feedback in the errors and warnings arrays`;
 
   return prompt;
 }

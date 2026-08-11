@@ -4,116 +4,116 @@
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
-  reportContent: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
+  reportDeadline: string;
+  reminderThreshold: number;
+  escalationRules: {
+    maxReminderCount: number;
+    escalationAfterDays: number;
+  };
   teamMembers: Array<{
     id: string;
     name: string;
+    email: string;
     department: string;
   }>;
-  priorityFramework?: {
-    urgency: string[];
-    impact: string[];
-    effort: string[];
-  };
+  submissionStatus: Array<{
+    memberId: string;
+    submitted: boolean;
+    submittedAt?: string;
+    reminderCount: number;
+  }>;
 }
 
 interface Action03PromptOutput {
   version: string;
-  prompt: string;
-  instructions: {
+  systemPrompt: string;
+  userPrompt: string;
+  context: {
+    action: string;
+    stage: string;
     objective: string;
-    steps: string[];
-    constraints: string[];
   };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const {
-    reportContent,
-    extractedIssues,
-    teamMembers,
-    priorityFramework = {
-      urgency: ["Critical", "High", "Medium", "Low"],
-      impact: ["Organization-wide", "Team-level", "Individual", "Minor"],
-      effort: ["Quick-fix", "Short-term", "Medium-term", "Long-term"],
-    },
-  } = input;
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitting and delayed team members from confirmation email contents and determining escalation targets. Your role is to:
+1. Parse confirmation email contents to identify members who have not submitted reports
+2. Determine which members require escalation based on submission deadline and reminder rules
+3. Classify members by escalation priority
+4. Prepare escalation targets for automated notification dispatch
 
-  const issuesText = extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
-    )
-    .join("\n");
+Follow these rules:
+- A member is considered non-submitting if their submission status is false
+- Escalation is triggered when: (a) submission deadline has passed, or (b) reminder count exceeds threshold
+- Escalation priority is determined by: days overdue, reminder count, and department criticality
+- Maintain audit trail of all escalation decisions`;
 
-  const teamText = teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
+  const nonSubmittingMembers = input.submissionStatus
+    .filter((status) => !status.submitted)
+    .map((status) => {
+      const member = input.teamMembers.find((m) => m.id === status.memberId);
+      return {
+        memberId: status.memberId,
+        name: member?.name || "Unknown",
+        email: member?.email || "",
+        department: member?.department || "",
+        reminderCount: status.reminderCount,
+      };
+    });
 
-  const priorityFrameworkText = `
-Urgency Levels: ${priorityFramework.urgency.join(", ")}
-Impact Levels: ${priorityFramework.impact.join(", ")}
-Effort Levels: ${priorityFramework.effort.join(", ")}
-`;
+  const escalationTargets = nonSubmittingMembers.filter((member) => {
+    const daysOverdue = calculateDaysOverdue(input.reportDeadline);
+    const shouldEscalate =
+      daysOverdue > 0 ||
+      member.reminderCount >= input.escalationRules.maxReminderCount;
+    return shouldEscalate;
+  });
 
-  const prompt = `You are an AI agent responsible for prioritizing and classifying extracted issues from daily reports.
+  const userPrompt = `Process the following team submission status and determine escalation targets:
 
-## Report Content Summary
-${reportContent}
+Report Deadline: ${input.reportDeadline}
+Reminder Threshold: ${input.reminderThreshold} days
+Max Reminder Count: ${input.escalationRules.maxReminderCount}
+Escalation After Days: ${input.escalationRules.escalationAfterDays}
 
-## Extracted Issues
-${issuesText}
+Non-Submitting Members:
+${JSON.stringify(nonSubmittingMembers, null, 2)}
 
-## Team Members
-${teamText}
+Escalation Targets (preliminary):
+${JSON.stringify(escalationTargets, null, 2)}
 
-## Priority Framework
-${priorityFrameworkText}
+Tasks:
+1. Validate each escalation target against the escalation rules
+2. Assign escalation priority (HIGH, MEDIUM, LOW) based on days overdue and reminder count
+3. Determine notification method (email, chat, or both)
+4. Generate escalation summary for department heads
+5. Identify any special cases requiring human review
 
-## Task
-Analyze each extracted issue and assign:
-1. Priority level (Critical, High, Medium, Low)
-2. Impact scope (Organization-wide, Team-level, Individual, Minor)
-3. Required effort (Quick-fix, Short-term, Medium-term, Long-term)
-4. Recommended action owner from the team
-5. Dependencies or related issues
-6. Risk assessment if not addressed
-
-## Output Format
-For each issue, provide a structured assessment with clear reasoning for priority assignment.`;
-
-  const instructions = {
-    objective:
-      "Automatically prioritize and classify extracted issues from daily reports to provide management with actionable insights",
-    steps: [
-      "Parse and understand the report content context",
-      "Analyze each extracted issue against the priority framework",
-      "Assess urgency based on business impact and timeline",
-      "Evaluate effort required for resolution",
-      "Identify appropriate team member for ownership",
-      "Generate priority classification with justification",
-      "Compile prioritized issue list for management review",
-    ],
-    constraints: [
-      "Must use only the provided priority framework",
-      "Cannot assign priority without documented reasoning",
-      "Must consider team capacity and current workload",
-      "Cannot recommend action owners not in the team list",
-      "Must flag any issues requiring escalation",
-    ],
-  };
+Provide structured output with:
+- Confirmed escalation targets with priority levels
+- Recommended notification methods
+- Special cases flagged for human review
+- Audit trail of escalation decisions`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
-    prompt,
-    instructions,
+    systemPrompt,
+    userPrompt,
+    context: {
+      action: "identify_and_escalate_non_submitters",
+      stage: "escalation_determination",
+      objective:
+        "Identify non-submitting members and determine escalation targets based on submission deadline and reminder rules",
+    },
   };
+}
+
+function calculateDaysOverdue(deadline: string): number {
+  const deadlineDate = new Date(deadline);
+  const now = new Date();
+  const diffTime = now.getTime() - deadlineDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };

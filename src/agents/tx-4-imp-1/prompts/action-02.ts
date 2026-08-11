@@ -26,109 +26,49 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
     reportContent,
     engineerName,
     submissionDate,
-    validationRules = {
-      minLength: 10,
-      maxLength: 5000,
-      requiredFields: ["yesterday", "today", "issues"],
-    },
+    validationRules = {},
   } = input;
 
-  const requiredFieldsText =
-    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
-  const minLength = validationRules.minLength || 10;
-  const maxLength = validationRules.maxLength || 5000;
+  const {
+    minLength = 10,
+    maxLength = 5000,
+    requiredFields = ["yesterday", "today", "issues"],
+  } = validationRules;
 
-  return `You are a validation agent for daily report submissions in a morning meeting management system.
+  const requiredFieldsText = requiredFields
+    .map((field) => `- ${field}`)
+    .join("\n");
 
-Task: Validate the following daily report submission from engineer "${engineerName}" submitted on ${submissionDate}.
+  return `You are a validation agent for the daily report management system.
 
-Report Content:
----
+Your task is to validate the following daily report submission:
+
+**Engineer Name:** ${engineerName}
+**Submission Date:** ${submissionDate}
+**Report Content:**
 ${reportContent}
----
 
-Validation Rules:
-1. Content length must be between ${minLength} and ${maxLength} characters
-2. Report must contain all required sections: ${requiredFieldsText}
-3. Content must be professional and relevant to work activities
-4. No offensive, discriminatory, or inappropriate language
-5. Must contain specific, actionable information (not vague or generic)
+**Validation Rules:**
+- Minimum content length: ${minLength} characters
+- Maximum content length: ${maxLength} characters
+- Required fields to be present:
+${requiredFieldsText}
 
-Please analyze the report and provide:
-1. Whether the report is VALID or INVALID
-2. List any validation errors found
-3. Sanitized version of the content (remove any sensitive information)
-4. Any warnings or suggestions for improvement
+Please perform the following validations:
 
-Respond in JSON format with keys: isValid (boolean), validationErrors (array of strings), sanitizedContent (string), warnings (array of strings)`;
+1. Check if the report content meets the length requirements
+2. Verify that all required fields are present and contain meaningful content
+3. Identify any incomplete or inappropriate sections
+4. Check for common formatting issues or missing information
+5. Provide specific feedback on what needs to be corrected
+
+Return your validation result in the following JSON format:
+{
+  "isValid": boolean,
+  "validationErrors": string[],
+  "sanitizedContent": string,
+  "warnings": string[]
 }
 
-export function validateAction02Input(
-  input: Action02PromptInput
-): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!input.reportContent || typeof input.reportContent !== "string") {
-    errors.push("reportContent must be a non-empty string");
-  }
-
-  if (!input.engineerName || typeof input.engineerName !== "string") {
-    errors.push("engineerName must be a non-empty string");
-  }
-
-  if (!input.submissionDate || typeof input.submissionDate !== "string") {
-    errors.push("submissionDate must be a non-empty string");
-  }
-
-  if (input.validationRules) {
-    if (
-      input.validationRules.minLength !== undefined &&
-      typeof input.validationRules.minLength !== "number"
-    ) {
-      errors.push("validationRules.minLength must be a number");
-    }
-
-    if (
-      input.validationRules.maxLength !== undefined &&
-      typeof input.validationRules.maxLength !== "number"
-    ) {
-      errors.push("validationRules.maxLength must be a number");
-    }
-
-    if (
-      input.validationRules.requiredFields !== undefined &&
-      !Array.isArray(input.validationRules.requiredFields)
-    ) {
-      errors.push("validationRules.requiredFields must be an array");
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
-}
-
-export function parseAction02Response(
-  responseText: string
-): Action02PromptOutput {
-  try {
-    const parsed = JSON.parse(responseText);
-
-    return {
-      isValid: Boolean(parsed.isValid),
-      validationErrors: Array.isArray(parsed.validationErrors)
-        ? parsed.validationErrors
-        : [],
-      sanitizedContent: String(parsed.sanitizedContent || ""),
-      warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
-    };
-  } catch {
-    return {
-      isValid: false,
-      validationErrors: ["Failed to parse validation response"],
-      sanitizedContent: "",
-      warnings: ["Response parsing error"],
-    };
-  }
+Be thorough but fair in your validation. Focus on ensuring the report is complete and appropriate for management system registration.`;
 }

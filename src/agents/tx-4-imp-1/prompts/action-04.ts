@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04Context {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,126 +11,84 @@ export interface Action04PromptInput {
     description: string;
     category: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
   }>;
-  priorityFramework: {
-    criteria: string[];
-    levels: string[];
-  };
+  escalationFlags: Array<{
+    issueId: string;
+    reason: string;
+    requiresHumanReview: boolean;
+  }>;
 }
 
-export interface Action04PromptOutput {
-  prioritizedIssues: Array<{
-    id: string;
+export interface Action04Input {
+  confirmationEmailContent: string;
+  collectedReports: Array<{
+    engineerId: string;
+    reportText: string;
+    submittedAt: string;
+  }>;
+  previousPriorityContext?: Record<string, string>;
+}
+
+export interface Action04Output {
+  context: Action04Context;
+  prioritizedIssuesList: Array<{
+    rank: number;
+    issueId: string;
     title: string;
+    priority: "critical" | "high" | "medium" | "low";
+    affectedEngineers: string[];
     description: string;
-    category: string;
-    priority: string;
-    priorityScore: number;
-    reasoning: string;
-    affectedMembers: string[];
     recommendedAction: string;
   }>;
-  issuesSummary: {
-    totalCount: number;
+  summaryReport: {
+    totalIssuesExtracted: number;
     criticalCount: number;
     highCount: number;
     mediumCount: number;
     lowCount: number;
+    escalationRequired: boolean;
+    escalationReasons: string[];
   };
-  bottlenecks: Array<{
-    type: string;
-    description: string;
-    impact: string;
-    suggestedResolution: string;
-  }>;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reportContentSection = `## 日報内容
-${input.reportContent}`;
+export function buildAction04Prompt(input: Action04Input): string {
+  const reportSummary = input.collectedReports
+    .map(
+      (report) =>
+        `[Engineer: ${report.engineerId}]\n${report.reportText}\n[Submitted: ${report.submittedAt}]`
+    )
+    .join("\n\n");
 
-  const extractedIssuesSection = `## 抽出済み課題
-${input.extractedIssues
-  .map(
-    (issue) => `
-- ID: ${issue.id}
-  タイトル: ${issue.title}
-  説明: ${issue.description}
-  カテゴリ: ${issue.category}
-`
-  )
-  .join("")}`;
+  const previousContext = input.previousPriorityContext
+    ? `\n\nPrevious Priority Context:\n${JSON.stringify(input.previousPriorityContext, null, 2)}`
+    : "";
 
-  const teamMembersSection = `## チームメンバー
-${input.teamMembers
-  .map(
-    (member) => `
-- ${member.name} (${member.id}) - ${member.department}
-`
-  )
-  .join("")}`;
+  return `You are an AI agent responsible for extracting issues and determining their priority from collected daily reports.
 
-  const priorityFrameworkSection = `## 優先度判定フレームワーク
-判定基準:
-${input.priorityFramework.criteria.map((c) => `- ${c}`).join("\n")}
+Task: Analyze the following collected reports and confirmation email content to:
+1. Extract all issues, bottlenecks, and risks mentioned
+2. Categorize each issue
+3. Assign priority levels (critical, high, medium, low)
+4. Identify any escalation conditions
+5. Provide actionable recommendations
 
-優先度レベル:
-${input.priorityFramework.levels.map((l) => `- ${l}`).join("\n")}`;
+Confirmation Email Content:
+${input.confirmationEmailContent}
 
-  const taskSection = `## タスク
-以下の手順で課題の優先度を判定・分類してください:
+Collected Reports:
+${reportSummary}${previousContext}
 
-1. 各課題について、提供された判定基準に基づいて優先度を評価する
-2. 優先度スコア (0-100) を算出する
-3. 各課題の判定理由を明確に記述する
-4. 課題が影響を与えるチームメンバーを特定する
-5. 各課題に対する推奨アクションを提案する
-6. ボトルネック（複数課題に共通する根本原因）を特定する
-7. 優先度別に課題を分類し、サマリーを作成する
+For each issue identified:
+- Assign a unique ID
+- Provide clear title and description
+- Categorize (e.g., technical, resource, schedule, dependency, risk)
+- Determine priority based on impact and urgency
+- List affected engineers
+- Provide recommended action
 
-出力形式は JSON とし、以下の構造に従ってください:
-{
-  "prioritizedIssues": [
-    {
-      "id": "課題ID",
-      "title": "課題タイトル",
-      "description": "課題説明",
-      "category": "カテゴリ",
-      "priority": "優先度レベル",
-      "priorityScore": 数値,
-      "reasoning": "判定理由",
-      "affectedMembers": ["メンバーID"],
-      "recommendedAction": "推奨アクション"
-    }
-  ],
-  "issuesSummary": {
-    "totalCount": 数値,
-    "criticalCount": 数値,
-    "highCount": 数値,
-    "mediumCount": 数値,
-    "lowCount": 数値
-  },
-  "bottlenecks": [
-    {
-      "type": "ボトルネックタイプ",
-      "description": "説明",
-      "impact": "影響範囲",
-      "suggestedResolution": "解決提案"
-    }
-  ]
-}`;
-
-  return `${reportContentSection}
-
-${extractedIssuesSection}
-
-${teamMembersSection}
-
-${priorityFrameworkSection}
-
-${taskSection}`;
+Output your analysis in a structured format that can be parsed into prioritized issue lists and escalation flags.`;
 }
