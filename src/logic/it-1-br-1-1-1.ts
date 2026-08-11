@@ -10890,10 +10890,10 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
       if (
         report &&
         report.user_id &&
-        report.yesterday_achievement &&
-        report.today_plan &&
-        report.current_issues &&
-        report.submission_datetime
+        report.yesterday_results &&
+        report.today_plans &&
+        report.challenges &&
+        report.submission_timestamp
       ) {
         approvedReportCount++;
       }
@@ -10906,10 +10906,10 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
     for (const report of reports) {
       if (report) {
         emailBody += `【${report.user_id}】\n`;
-        emailBody += `昨日やったこと: ${report.yesterday_achievement || ""}\n`;
-        emailBody += `今日やること: ${report.today_plan || ""}\n`;
-        emailBody += `抱えている課題: ${report.current_issues || ""}\n`;
-        emailBody += `報告時刻: ${report.submission_datetime || ""}\n`;
+        emailBody += `昨日やったこと: ${report.yesterday_results || ""}\n`;
+        emailBody += `今日やること: ${report.today_plans || ""}\n`;
+        emailBody += `抱えている課題: ${report.challenges || ""}\n`;
+        emailBody += `報告時刻: ${report.submission_timestamp || ""}\n`;
         emailBody += "-".repeat(50) + "\n\n";
       }
     }
