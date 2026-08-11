@@ -6759,7 +6759,7 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
     reportDeadlineDay?: string;
     submittedAt?: Date | null;
     reportDeadlineMinutesBefore?: number;
-  }): ReportDeadlineStatus & { statusMessage: string; isAcceptable: boolean } {
+  }): any {
     const now = input.currentDateTime || new Date();
   
     // Parse morning meeting start time
@@ -6803,8 +6803,8 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
   
     if (input.submittedAt === null || input.submittedAt === undefined) {
       status = "not_submitted";
-      isWithinDeadline = false;
-      minutesRemaining = 0;
+      isWithinDeadline = now <= deadlineTime;
+      minutesRemaining = isWithinDeadline ? Math.max(0, Math.floor((deadlineTime.getTime() - now.getTime()) / 60000)) : 0;
       reportSubmissionTime = null;
     } else {
       const submittedTime = new Date(input.submittedAt);
@@ -6825,7 +6825,7 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
   
     // Determine if within deadline based on current time vs deadline
     const isCurrentlyWithinDeadline = now <= deadlineTime;
-    const finalStatus = isCurrentlyWithinDeadline ? "within-deadline" : status;
+    const finalStatus = isCurrentlyWithinDeadline && status === "not_submitted" ? "within-deadline" : status;
   
     const statusMessage =
       finalStatus === "within-deadline"
@@ -6869,7 +6869,7 @@ const __aivicBundle_99_shouldTerminateCourtesynotificationLoop = (() => {
   function shouldTerminateCourtesynotificationLoop(
     userId: string,
     maxAttempts: number,
-    loopState?: PromptionLoopState,
+    loopState?: any,
     currentTime?: Date,
     maxTimeoutMinutes?: number
   ): boolean {
@@ -7716,7 +7716,7 @@ const __aivicBundle_110_validateReminderLimit = (() => {
     lastReminderTime?: Date,
     currentTime?: Date,
     minIntervalMinutes?: number
-  ): ReminderLimitValidationResult {
+  ): any {
     // Handle case where only maxReminderLimit is passed (from test)
     if (
       maxReminderLimit !== undefined &&
@@ -12781,22 +12781,23 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
 
     // メール本文を構築
     const subject = `【朝会報告】未報告部員のお知らせ`;
-    const body = `部長殿\n\n以下の部員から朝会報告がまだ提出されていません。\n\n未報告部員: ${memberNameList}\n\nお手数ですが、ご確認ください。`;
-
+    let body = `部長殿\n\n以下の部員から朝会報告がまだ提出されていません。\n\n未報告部員: ${memberNameList}\n\n`;
+    
     // managerName, reportDate, reportDeadline, maxNotificationAttempts を使用して通知ロジックに組み込む
-    let notificationContext = '';
     if (reportDate) {
-      notificationContext += `報告日: ${reportDate}\n`;
+      body += `報告日: ${reportDate}\n`;
     }
     if (reportDeadline) {
-      notificationContext += `期限: ${reportDeadline.toISOString()}\n`;
+      body += `期限: ${reportDeadline.toISOString()}\n`;
     }
     if (managerName) {
-      notificationContext += `部長: ${managerName}\n`;
+      body += `部長: ${managerName}\n`;
     }
     if (maxNotificationAttempts !== undefined) {
-      notificationContext += `最大通知回数: ${maxNotificationAttempts}\n`;
+      body += `最大通知回数: ${maxNotificationAttempts}\n`;
     }
+    
+    body += `\nお手数ですが、ご確認ください。`;
 
     // emailService が提供されている場合はそれを使用、そうでなければ fetch を使用
     let result: { success: boolean; message?: string };
@@ -12824,7 +12825,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
             to: department_head_email,
             subject: subject,
             body: body,
-            context: notificationContext,
           }),
         });
 

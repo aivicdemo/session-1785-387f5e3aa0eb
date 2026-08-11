@@ -2233,15 +2233,13 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
     const errors: Array<{ field: string; message: string }> = [];
 
-    // reportDate は任意フィールド（test が渡さない場合がある）
     const reportDate = formData?.reportDate || formData?.report_date || '';
     const department = formData?.department || formData?.department_id || '';
     const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
     const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
     const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
-    // reportDate は形式チェックのみ（空でも許可）
-    if (reportDate && !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+    if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
     
@@ -2672,9 +2670,8 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8)}`;
     
-    // mail log ID を決定的に生成：日付 + 連番
     const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
-    const logSuffix = '001'; // 最初の送信は常に 001
+    const logSuffix = '001';
     const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
 
     const userEmail = reportData?.user_email || reportData?.userEmail || "";
