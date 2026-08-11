@@ -181,7 +181,7 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
     if (reportContent === null || reportContent === undefined) {
       throw new Error("朝会報告内容が null のため、メール送信を中断します");
     }
-  
+
     // sendDateTime フィールドの検証
     const sendDateTime = request.sendDateTime;
     if (sendDateTime === null || sendDateTime === undefined) {
@@ -552,7 +552,7 @@ const __aivicBundle_10_sendConfirmationEmailsForDailyReport = (() => {
       submitted_at?: string;
     },
     services: {
-      sendEmail?: (recipient_email: string, subject: string, body: string) => Promise<{ success: boolean }>;
+      sendEmail: (recipient_email: string, subject: string, body: string) => Promise<{ success: boolean }>;
       logError?: (message: string, details?: any) => void;
       saveDailyReport?: (data: any) => Promise<any>;
     }
