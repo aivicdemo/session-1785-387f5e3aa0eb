@@ -10873,7 +10873,7 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
   
     const reports = input.reports || [];
     const adminEmail = input.admin_email_address;
-    const reportSubmissionDate = input.reportSubmissionDate;
+    const reportSubmissionDate = input.reportSubmissionDate || input.report_submission_date;
   
     const processedReportCount = reports.length;
     let approvedReportCount = 0;

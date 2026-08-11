@@ -1,5 +1,7 @@
 import { validateDailyReport } from "../../src/logic/it-1";
 
+const fetchMock = require('jest-fetch-mock');
+
 describe("朝会報告送信フォーム", () => {
   // SCEN-178
   test("項目1の文字数が最大許容値直下で送信が続行される", () => {
