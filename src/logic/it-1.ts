@@ -6039,10 +6039,8 @@ const __aivicBundle_76_runTx2Imp1Agent = (() => {
     params?: any,
     aiClient?: Tx2Imp1AiClient,
     loggerOrServices?: any,
-    configOrCallback?: any,
-    executionIdOrDateProvider?: any
+    configOrCallback?: any
   ): Promise<any> {
-    if (executionIdOrDateProvider === undefined || executionIdOrDateProvider === null) { throw new Error("executionIdOrDateProvider is required"); }
     try {
       let config: any = {};
       let services: any = {};

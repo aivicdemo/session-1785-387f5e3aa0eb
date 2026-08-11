@@ -37,45 +37,39 @@
         }
         .deadline-section h2 {
             color: #856404;
-            font-size: 16px;
             margin-bottom: 10px;
+            font-size: 16px;
         }
         .deadline-text {
             color: #856404;
             font-size: 18px;
-            font-weight: 600;
+            font-weight: bold;
         }
         .summary-section {
             margin-bottom: 30px;
         }
         .summary-section h2 {
             color: #333;
-            font-size: 20px;
             margin-bottom: 20px;
+            font-size: 20px;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
             background: white;
         }
-        .summary-table thead {
-            background-color: #f8f9fa;
-        }
-        .summary-table th {
-            padding: 15px;
-            text-align: left;
-            color: #333;
-            font-weight: 600;
-            border-bottom: 2px solid #dee2e6;
-            font-size: 14px;
-        }
+        .summary-table th,
         .summary-table td {
             padding: 15px;
-            border-bottom: 1px solid #dee2e6;
-            color: #666;
-            font-size: 14px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .summary-table tbody tr:hover {
+        .summary-table th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+        }
+        .summary-table tr:hover {
             background-color: #f9f9f9;
         }
         .progress-bar {
@@ -95,24 +89,31 @@
             justify-content: center;
             color: white;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: bold;
         }
-        .nav-button {
-            margin-top: 30px;
-        }
-        .nav-button a {
+        .nav-link {
             display: inline-block;
-            padding: 12px 24px;
-            background-color: #0066cc;
-            color: white;
+            margin-bottom: 20px;
+            color: #007bff;
             text-decoration: none;
-            border-radius: 4px;
             font-size: 14px;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
         }
-        .nav-button a:hover {
-            background-color: #0052a3;
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        .btn-report {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .btn-report:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
@@ -122,7 +123,7 @@
         
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <div class="deadline-text" id="deadlineText">2024年12月31日 17:00</div>
+            <div class="deadline-text" id="deadline">本日 18:00 まで</div>
         </div>
         
         <div class="summary-section">
@@ -131,49 +132,44 @@
                 <thead>
                     <tr>
                         <th>部門名</th>
-                        <th>提出済み</th>
-                        <th>未提出</th>
+                        <th>提出済み / 総人数</th>
                         <th>提出率</th>
                     </tr>
                 </thead>
-                <tbody id="summaryTableBody">
+                <tbody id="summaryBody">
                     <tr>
                         <td>営業部</td>
-                        <td>8</td>
-                        <td>2</td>
+                        <td><span id="sales-submitted">8</span> / <span id="sales-total">10</span></td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 80%;">80%</div>
+                                <div class="progress-fill" id="sales-progress" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>企画部</td>
-                        <td>6</td>
-                        <td>1</td>
+                        <td><span id="planning-submitted">5</span> / <span id="planning-total">6</span></td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 85.7%;">85.7%</div>
+                                <div class="progress-fill" id="planning-progress" style="width: 83.33%;">83%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>技術部</td>
-                        <td>10</td>
-                        <td>0</td>
+                        <td><span id="tech-submitted">12</span> / <span id="tech-total">15</span></td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 100%;">100%</div>
+                                <div class="progress-fill" id="tech-progress" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>管理部</td>
-                        <td>5</td>
-                        <td>2</td>
+                        <td><span id="admin-submitted">4</span> / <span id="admin-total">5</span></td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 71.4%;">71.4%</div>
+                                <div class="progress-fill" id="admin-progress" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
@@ -181,24 +177,58 @@
             </table>
         </div>
         
-        <div class="nav-button">
-            <a href="./daily-report.html">日報入力・送信へ</a>
-        </div>
+        <a href="./daily-report.html" class="btn-report">日報を入力・送信する</a>
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 提出期限を表示
-            const deadline = new Date('2024-12-31T17:00:00');
+        function init() {
+            // Set deadline
+            const today = new Date();
+            const deadline = new Date(today);
+            deadline.setHours(18, 0, 0, 0);
+            
             const deadlineText = deadline.toLocaleString('ja-JP', {
-                year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            document.getElementById('deadlineText').textContent = deadlineText;
-        });
+            
+            document.getElementById('deadline').textContent = `${deadlineText} まで`;
+            
+            // Load summary data from localStorage or use defaults
+            loadSummaryData();
+        }
+        
+        function loadSummaryData() {
+            // For now, using hardcoded data
+            // In a real app, this would come from an API
+            const summaryData = [
+                { dept: '営業部', submitted: 8, total: 10 },
+                { dept: '企画部', submitted: 5, total: 6 },
+                { dept: '技術部', submitted: 12, total: 15 },
+                { dept: '管理部', submitted: 4, total: 5 }
+            ];
+            
+            summaryData.forEach(item => {
+                const percentage = Math.round((item.submitted / item.total) * 100);
+                const deptKey = item.dept.replace(/部/g, '').toLowerCase();
+                
+                // Update counts
+                const submittedEl = document.getElementById(`${deptKey}-submitted`);
+                const totalEl = document.getElementById(`${deptKey}-total`);
+                const progressEl = document.getElementById(`${deptKey}-progress`);
+                
+                if (submittedEl) submittedEl.textContent = item.submitted;
+                if (totalEl) totalEl.textContent = item.total;
+                if (progressEl) {
+                    progressEl.style.width = `${percentage}%`;
+                    progressEl.textContent = `${percentage}%`;
+                }
+            });
+        }
+        
+        init();
     </script>
 </body>
 </html>

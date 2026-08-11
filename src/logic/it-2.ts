@@ -72,8 +72,6 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     reportSubmission: ConfirmationEmailRequest,
     config?: any
   ): ConfirmationEmailResponse {
-    if (reportSubmission["userId"] === undefined || reportSubmission["userId"] === null) { throw new Error("userId is required"); }
-    
     // Determine sender email from submission or config
     const senderEmail =
       reportSubmission.sender_email ||
@@ -235,7 +233,6 @@ const __aivicBundle_3_sendConfirmationEmailOnSubmission = (() => {
     reportSubmissionData: ConfirmationEmailRequest,
     managerInfo: any
   ): void {
-    if (reportSubmissionData["userId"] === undefined || reportSubmissionData["userId"] === null) { throw new Error("userId is required"); }
     if (managerInfo.manager_email === null || managerInfo.manager_email === undefined) {
       throw new Error('部長のメールアドレスが設定されていません');
     }
@@ -283,7 +280,6 @@ const __aivicBundle_4_sendConfirmationEmailToManager = (() => {
     reportContent: ConfirmationEmailRequest,
     managerEmail: string
   ): void {
-    if (reportContent["userId"] === undefined || reportContent["userId"] === null) { throw new Error("userId is required"); }
     if (!managerEmail || managerEmail.trim() === '') {
       throw new Error('部長のメールアドレスが指定されていません');
     }
@@ -323,7 +319,6 @@ const __aivicBundle_5_notifyConfirmationEmailOnSubmit = (() => {
     submissionData: ConfirmationEmailRequest,
     departmentMaster: any
   ): void {
-    if (submissionData["userId"] === undefined || submissionData["userId"] === null) { throw new Error("userId is required"); }
     const managerEmail =
       departmentMaster?.manager_email ?? departmentMaster?.managerEmail;
   
@@ -490,7 +485,6 @@ export const validateAndSendConfirmationEmail = __aivicBundle_7_validateAndSendC
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailNotification exports=sendConfirmationEmailNotification */
 const __aivicBundle_8_sendConfirmationEmailNotification = (() => {
   function sendConfirmationEmailNotification(reportData: ConfirmationEmailRequest): void {
-    if (reportData["userId"] === undefined || reportData["userId"] === null) { throw new Error("userId is required"); }
     if (reportData.sendDateTime === undefined || reportData.sendDateTime === null) {
       throw new Error("sendDateTime is required");
     }
@@ -609,7 +603,6 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
   async function sendConfirmationEmailAndLogFailure(
     input: ConfirmationEmailRequest
   ): Promise<void> {
-    if (input["userId"] === undefined || input["userId"] === null) { throw new Error("userId is required"); }
     const {
       user_id,
       user_name,
@@ -786,7 +779,6 @@ const __aivicBundle_12_sendMorningReportWithNotification = (() => {
     reportData: ConfirmationEmailRequest,
     sendEmailMock?: EmailServiceInterface
   ): void {
-    if (reportData["userId"] === undefined || reportData["userId"] === null) { throw new Error("userId is required"); }
     if (!sendEmailMock) {
       return;
     }
