@@ -12967,7 +12967,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     }
   ): Promise<any> {
     const sentAt = new Date();
-  
+
     // 重複を除外して一意な部員を抽出
     const uniqueMembersMap = new Map<string, { user_id: string; member_name: string; email: string }>();
     for (const member of non_reported_members) {
@@ -12980,17 +12980,17 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
       }
     }
     const uniqueMembers = Array.from(uniqueMembersMap.values());
-  
+
     // 部員名リストを作成（「、」で区切る）
     const memberNameList = uniqueMembers.map((m) => m.member_name).join('、');
-  
+
     // メール本文を構築
     const subject = `【朝会報告】未報告部員のお知らせ`;
     const body = `部長殿\n\n以下の部員から朝会報告がまだ提出されていません。\n\n未報告部員: ${memberNameList}\n\nお手数ですが、ご確認ください。`;
-  
+
     // emailService が提供されている場合はそれを使用、そうでなければ fetch を使用
     let result: { success: boolean; message?: string };
-  
+
     if (emailService && emailService.send) {
       try {
         const sendResult = await emailService.send(department_head_email, subject, body);
@@ -13016,7 +13016,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
             body: body,
           }),
         });
-  
+
         result = await response.json();
       } catch (error) {
         result = {
@@ -13025,13 +13025,13 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
         };
       }
     }
-  
+
     // 通知継続判定
     let shouldContinueNotifying = true;
     let successCount = 0;
     let failureCount = 0;
     const failedMembers: Array<{ memberId: string; reason: string }> = [];
-  
+
     if (result.success) {
       successCount = uniqueMembers.length;
       // maxNotificationAttempts が指定されている場合、通知回数をチェック
@@ -13048,7 +13048,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
         });
       }
     }
-  
+
     // managerName, reportDate, reportDeadline を検証・使用
     if (managerName !== undefined && managerName !== null) {
       // マネージャー名は通知コンテキストとして使用
@@ -13059,7 +13059,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     if (reportDeadline !== undefined && reportDeadline !== null) {
       // レポート期限は通知コンテキストとして使用
     }
-  
+
     return {
       success: result.success,
       message: result.message,
