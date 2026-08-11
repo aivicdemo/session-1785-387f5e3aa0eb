@@ -73,6 +73,7 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     config?: any
   ): ConfirmationEmailResponse {
     if (reportSubmission["userId"] === undefined || reportSubmission["userId"] === null) { throw new Error("userId is required"); }
+    
     // Determine sender email from submission or config
     const senderEmail =
       reportSubmission.sender_email ||
@@ -141,7 +142,7 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
     email_sent?: boolean;
   }
   
-   function sendConfirmationEmail(
+  function sendConfirmationEmail(
     request: ConfirmationEmailRequest | any,
     report?: any,
     managerEmail?: string
@@ -381,7 +382,7 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
   
   const sendConfirmationEmailOnSubmitManagerStore: Map<string, SendConfirmationEmailOnSubmitManagerRecord> = new Map();
   
-   async function sendConfirmationEmailOnSubmit(
+  async function sendConfirmationEmailOnSubmit(
     reportData: SendConfirmationEmailOnSubmitInput
   ): Promise<ConfirmationEmailResponse> {
     const managerId = reportData.manager_id;
@@ -870,7 +871,7 @@ const __aivicBundle_13_sendReportWithNotification = (() => {
   
   let mockSendMailToDepartmentHead: jest.Mock;
   
-   function sendReportWithNotification(
+  function sendReportWithNotification(
     reportingEngineer: SendReportWithNotificationInput,
     morningReportData: SendReportWithNotificationReportData
   ): void {

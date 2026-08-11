@@ -13082,3 +13082,64 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
 })();
 export const sendReportMissingReminderNotification = __aivicBundle_177_sendReportMissingReminderNotification.sendReportMissingReminderNotification;
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendReportMissingReminderNotification */
+
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validatePromptLoopTimeout exports=validatePromptLoopTimeout */
+const __aivicBundle_validatePromptLoopTimeout = (() => {
+  function validatePromptLoopTimeout(input: {
+    promptStartTime: Date;
+    maxPromptAttempts: number;
+    promptTimeoutMinutes: number;
+    currentPromptAttemptCount: number;
+    reportReceivedTime: Date | null;
+    morningMeetingStartTime: Date;
+    currentTime?: Date;
+  }): {
+    shouldContinuePrompting: boolean;
+    isTimeoutExceeded: boolean;
+    isMaxAttemptsReached: boolean;
+    recommendedAction: 'continue' | 'stop' | 'notifyManager';
+    elapsedMinutes: number;
+    minutesUntilMeeting: number;
+  } {
+    const currentTime = input.currentTime || new Date();
+    const elapsedMs = currentTime.getTime() - input.promptStartTime.getTime();
+    const elapsedMinutes = Math.floor(elapsedMs / 60000);
+    const minutesUntilMeetingMs = input.morningMeetingStartTime.getTime() - currentTime.getTime();
+    const minutesUntilMeeting = Math.floor(minutesUntilMeetingMs / 60000);
+
+    const isTimeoutExceeded = elapsedMinutes >= input.promptTimeoutMinutes;
+    const isMaxAttemptsReached = input.currentPromptAttemptCount >= input.maxPromptAttempts;
+    const hasReportBeenReceived = input.reportReceivedTime !== null;
+
+    let recommendedAction: 'continue' | 'stop' | 'notifyManager' = 'continue';
+    let shouldContinuePrompting = true;
+
+    if (hasReportBeenReceived) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'stop';
+    } else if (minutesUntilMeeting <= 30) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'notifyManager';
+    } else if (isTimeoutExceeded && isMaxAttemptsReached) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'notifyManager';
+    } else if (isTimeoutExceeded || isMaxAttemptsReached) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'notifyManager';
+    }
+
+    return {
+      shouldContinuePrompting,
+      isTimeoutExceeded,
+      isMaxAttemptsReached,
+      recommendedAction,
+      elapsedMinutes,
+      minutesUntilMeeting,
+    };
+  }
+
+  return { validatePromptLoopTimeout };
+})();
+export const validatePromptLoopTimeout = __aivicBundle_validatePromptLoopTimeout.validatePromptLoopTimeout;
+/* AIVIC_FUNCTION_BUNDLE_END owner=validatePromptLoopTimeout */
