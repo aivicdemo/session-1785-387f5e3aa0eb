@@ -89,25 +89,18 @@ class InMemoryDatabase implements DatabaseConnection {
 
     const columns = columnsMatch[1].split(',').map((c) => c.trim());
     const row: QueryResult = {};
-    let paramIndex = 0;
 
-    for (const col of columns) {
-      if (col === 'created_at' && sql.toUpperCase().includes('NOW()')) {
-        row[col] = new Date().toISOString();
-      } else if (paramIndex < params.length) {
-        row[col] = params[paramIndex];
-        paramIndex++;
-      }
-    }
+    columns.forEach((col, idx) => {
+      row[col] = params[idx];
+    });
 
-    const keyCol = this.getPrimaryKeyColumn(tableName);
-    const key = String(row[keyCol] || this.generateId(tableName));
-    row[keyCol] = key;
+    const hasReturning = sql.toUpperCase().includes('RETURNING');
+    const returningMatch = sql.match(/RETURNING\s+(\w+)/i);
 
+    const key = `${tableName}_${Date.now()}_${Math.random()}`;
     table.set(key, row);
 
-    const returningMatch = sql.match(/RETURNING\s+(\w+)/i);
-    if (returningMatch) {
+    if (hasReturning && returningMatch) {
       const returningCol = returningMatch[1];
       return Promise.resolve([{ [returningCol]: row[returningCol] }]);
     }
@@ -123,23 +116,33 @@ class InMemoryDatabase implements DatabaseConnection {
     const table = this.tables.get(tableName);
     if (!table) return Promise.resolve([]);
 
-    let results: QueryResult[] = Array.from(table.values());
+    const countMatch = sql.match(/COUNT\s*\(\s*\*\s*\)\s+as\s+(\w+)/i);
+    if (countMatch) {
+      const countAlias = countMatch[1];
+      const whereMatch = sql.match(/WHERE\s+(.+?)(?:$|;)/i);
+      let count = table.size;
 
-    const whereMatch = sql.match(/WHERE\s+(.+?)(?:$|;)/i);
-    if (whereMatch) {
-      const whereClause = whereMatch[1];
-      results = results.filter((row) =>
-        this.evaluateWhere(whereClause, row, params)
-      );
-    }
-
-    const selectMatch = sql.match(/SELECT\s+(.+?)\s+FROM/i);
-    if (selectMatch) {
-      const selectClause = selectMatch[1];
-      if (selectClause.includes('COUNT(*)')) {
-        return Promise.resolve([{ cnt: results.length }]);
+      if (whereMatch) {
+        const whereClause = whereMatch[1];
+        count = 0;
+        table.forEach((row) => {
+          if (this.evaluateWhere(whereClause, row, params)) {
+            count++;
+          }
+        });
       }
+
+      return Promise.resolve([{ [countAlias]: count }]);
     }
+
+    const results: QueryResult[] = [];
+    const whereMatch = sql.match(/WHERE\s+(.+?)(?:$|;)/i);
+
+    table.forEach((row) => {
+      if (!whereMatch || this.evaluateWhere(whereMatch[1], row, params)) {
+        results.push(row);
+      }
+    });
 
     return Promise.resolve(results);
   }
@@ -149,32 +152,13 @@ class InMemoryDatabase implements DatabaseConnection {
     row: QueryResult,
     params: unknown[]
   ): boolean {
-    if (whereClause.includes('=')) {
-      const parts = whereClause.split('=').map((p) => p.trim());
-      const colName = parts[0];
-      if (parts[1] === '?') {
-        return row[colName] === params[0];
-      }
+    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/);
+    if (eqMatch) {
+      const column = eqMatch[1];
+      return row[column] === params[0];
     }
+
     return true;
-  }
-
-  private getPrimaryKeyColumn(tableName: string): string {
-    const keyMap: Record<string, string> = {
-      departments: 'department_id',
-      users: 'user_id',
-      unreported_members: 'list_id',
-      mail_queue: 'id',
-      audit_log: 'id',
-    };
-    return keyMap[tableName] || 'id';
-  }
-
-  private generateId(tableName: string): string {
-    const current = this.sequences.get(tableName) || 0;
-    const next = current + 1;
-    this.sequences.set(tableName, next);
-    return `${tableName}_${next}`;
   }
 }
 

@@ -12,94 +12,65 @@ export interface Action02Context {
     engineerName: string;
     submissionTimestamp: string;
   };
-  validationRules: {
-    minAccomplishmentsLength: number;
-    minPlansLength: number;
-    minIssuesLength: number;
-    maxAccomplishmentsLength: number;
-    maxPlansLength: number;
-    maxIssuesLength: number;
-  };
 }
 
-export interface ValidationResult {
+export interface Action02ValidationResult {
   isValid: boolean;
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
-}
-
-export interface ValidationError {
-  field: string;
-  code: string;
-  message: string;
-  severity: "critical" | "high";
-}
-
-export interface ValidationWarning {
-  field: string;
-  code: string;
-  message: string;
+  errors: string[];
+  warnings: string[];
+  validatedInput: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
+  };
 }
 
 export function buildAction02Prompt(context: Action02Context): string {
   const {
-    engineerInput,
-    validationRules,
+    engineerInput: {
+      yesterdayAccomplishments,
+      todayPlans,
+      currentIssues,
+      engineerId,
+      engineerName,
+      submissionTimestamp,
+    },
   } = context;
 
-  const prompt = `You are an AI agent responsible for validating daily report input content.
+  return `You are validating a daily report submission for the morning meeting automation system.
 
-## Input Content to Validate
-- Engineer ID: ${engineerInput.engineerId}
-- Engineer Name: ${engineerInput.engineerName}
-- Submission Timestamp: ${engineerInput.submissionTimestamp}
+Engineer Information:
+- ID: ${engineerId}
+- Name: ${engineerName}
+- Submission Time: ${submissionTimestamp}
 
-### Yesterday's Accomplishments
-${engineerInput.yesterdayAccomplishments}
+Daily Report Content:
+1. Yesterday's Accomplishments:
+${yesterdayAccomplishments}
 
-### Today's Plans
-${engineerInput.todayPlans}
+2. Today's Plans:
+${todayPlans}
 
-### Current Issues
-${engineerInput.currentIssues}
+3. Current Issues/Challenges:
+${currentIssues}
 
-## Validation Rules
-- Minimum accomplishments length: ${validationRules.minAccomplishmentsLength} characters
-- Minimum plans length: ${validationRules.minPlansLength} characters
-- Minimum issues length: ${validationRules.minIssuesLength} characters
-- Maximum accomplishments length: ${validationRules.maxAccomplishmentsLength} characters
-- Maximum plans length: ${validationRules.maxPlansLength} characters
-- Maximum issues length: ${validationRules.maxIssuesLength} characters
+Validation Requirements:
+- All three sections must contain meaningful content (not empty or just whitespace)
+- Yesterday's accomplishments should describe completed work with specific details
+- Today's plans should outline concrete tasks and objectives
+- Current issues should identify actual blockers or challenges (can be "None" if truly no issues)
+- Content should be professional and relevant to engineering work
+- No section should exceed 500 characters
+- Timestamps must be valid and recent (within last 24 hours)
 
-## Validation Tasks
-1. Check if all required fields are present and non-empty
-2. Verify content length constraints for each field
-3. Detect incomplete or inappropriate content
-4. Identify potential quality issues or anomalies
-5. Generate validation report with errors and warnings
+Please validate this submission and respond with:
+1. Whether the submission is valid (true/false)
+2. Any validation errors found
+3. Any warnings about content quality
+4. The validated and normalized input
 
-## Output Format
-Return a JSON object with the following structure:
-{
-  "isValid": boolean,
-  "errors": [
-    {
-      "field": string,
-      "code": string,
-      "message": string,
-      "severity": "critical" | "high"
-    }
-  ],
-  "warnings": [
-    {
-      "field": string,
-      "code": string,
-      "message": string
-    }
-  ]
-}
-
-Perform thorough validation and return the result.`;
-
-  return prompt;
+Respond in JSON format with keys: isValid, errors (array), warnings (array), validatedInput (object with same structure as input)`;
 }

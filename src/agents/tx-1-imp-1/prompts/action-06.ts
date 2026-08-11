@@ -17,52 +17,52 @@ export interface Action06Context {
 
 export interface Action06PromptResult {
   version: string;
-  action: number;
+  action: string;
   systemPrompt: string;
   userPrompt: string;
   context: Action06Context;
 }
 
-export function buildAction06Prompt(
-  context: Action06Context
-): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management system.
-Your role is to send confirmation emails to administrators after a daily report has been successfully submitted.
-You must compose professional, clear confirmation emails that include:
-- Engineer name and submission timestamp
-- Summary of submitted content (accomplishments, plans, issues)
-- Confirmation of successful registration
-- Any relevant status flags (late submission, overdue days)
+export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
+  const systemPrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have not submitted their daily reports.
 
-Maintain a formal tone appropriate for business communication.
-Include all necessary details for administrative tracking and follow-up.`;
+Your role is to:
+1. Identify engineers who have exceeded the submission deadline
+2. Determine the appropriate reminder message based on how overdue the report is
+3. Generate a professional and encouraging reminder notification
+4. Log the reminder action for tracking purposes
 
-  const userPrompt = `Generate a confirmation email for the following submitted daily report:
+Guidelines:
+- Be respectful and professional in tone
+- Acknowledge the delay without being accusatory
+- Provide clear next steps for submission
+- Consider the severity based on days overdue
+- Ensure the message motivates timely submission`;
+
+  const userPrompt = `Process the following overdue report submission:
 
 Engineer: ${context.engineerName}
 Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Time: ${context.submissionTime}
-${context.isLate ? `Status: LATE SUBMISSION (${context.daysOverdue} days overdue)` : "Status: On-time submission"}
+Days Overdue: ${context.daysOverdue}
+Last Submission Time: ${context.submissionTime}
 
-Yesterday's Accomplishments:
-${context.yesterdayAccomplishments}
+Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+Today's Plans: ${context.todayPlans}
+Current Issues: ${context.currentIssues}
 
-Today's Plans:
-${context.todayPlans}
+Generate a reminder notification that:
+1. Acknowledges the submission delay
+2. Requests immediate submission if not yet completed
+3. Provides encouragement and support
+4. Includes clear submission instructions
+5. Specifies the new deadline if applicable
 
-Current Issues/Concerns:
-${context.currentIssues}
-
-Please generate:
-1. A professional confirmation email subject line
-2. A complete confirmation email body
-3. Any flags or alerts for the administrator if this is a late submission
-4. Suggested follow-up actions if needed`;
+Format the response as a structured reminder notification.`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,
-    action: 6,
+    action: "action-06",
     systemPrompt,
     userPrompt,
     context,

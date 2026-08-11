@@ -43,64 +43,51 @@ interface TestDatabase {
   };
 }
 
-const inMemoryStore = new Map<string, Map<string, unknown[]>>();
+const inMemoryStore: Map<TableName, unknown[]> = new Map([
+  ["users", []],
+  ["daily_reports", []],
+  ["report_send_history", []],
+  ["audit_events", []],
+]);
 
-function initializeStore(): void {
+export async function createTestDatabase(): Promise<TestDatabase> {
   inMemoryStore.clear();
-  inMemoryStore.set("users", new Map());
-  inMemoryStore.set("daily_reports", new Map());
-  inMemoryStore.set("report_send_history", new Map());
-  inMemoryStore.set("audit_events", new Map());
-}
+  inMemoryStore.set("users", []);
+  inMemoryStore.set("daily_reports", []);
+  inMemoryStore.set("report_send_history", []);
+  inMemoryStore.set("audit_events", []);
 
-function matchesConditions(
-  record: Record<string, unknown>,
-  conditions: Record<string, unknown>
-): boolean {
-  return Object.entries(conditions).every(([key, value]) => {
-    return record[key] === value;
+  return (tableName: TableName) => ({
+    del: async () => {
+      inMemoryStore.set(tableName, []);
+    },
+    insert: async (data: unknown) => {
+      const table = inMemoryStore.get(tableName) || [];
+      table.push(data);
+      inMemoryStore.set(tableName, table);
+    },
+    where: async (conditions: Record<string, unknown>) => {
+      const table = inMemoryStore.get(tableName) || [];
+      return table.filter((row: unknown) => {
+        if (typeof row !== "object" || row === null) return false;
+        const rowObj = row as Record<string, unknown>;
+        return Object.entries(conditions).every(
+          ([key, value]) => rowObj[key] === value
+        );
+      });
+    },
   });
 }
 
-export async function createTestDatabase(): Promise<TestDatabase> {
-  initializeStore();
-
-  const testDb: TestDatabase = (tableName: TableName) => {
-    const store = inMemoryStore.get(tableName);
-    if (!store) {
-      throw new Error(`Table ${tableName} not found`);
-    }
-
-    return {
-      del: async () => {
-        store.clear();
-      },
-      insert: async (data: unknown) => {
-        const records = store.get("_records") || [];
-        records.push(data);
-        store.set("_records", records);
-      },
-      where: async (conditions: Record<string, unknown>) => {
-        const records = (store.get("_records") || []) as Record<string, unknown>[];
-        return records.filter((record) => matchesConditions(record, conditions));
-      },
-    };
-  };
-
-  return testDb;
-}
-
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  const tables: TableName[] = [
+  const tableNames: TableName[] = [
     "users",
     "daily_reports",
     "report_send_history",
     "audit_events",
   ];
-
-  for (const table of tables) {
-    await db(table).del();
+  for (const tableName of tableNames) {
+    await db(tableName).del();
   }
-
   inMemoryStore.clear();
 }

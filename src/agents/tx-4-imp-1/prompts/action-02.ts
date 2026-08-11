@@ -18,7 +18,7 @@ export interface Action02PromptOutput {
   isValid: boolean;
   validationErrors: string[];
   sanitizedContent: string;
-  summary: string;
+  warnings: string[];
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
@@ -35,38 +35,100 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
 
   const requiredFieldsText =
     validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
+  const minLength = validationRules.minLength || 10;
+  const maxLength = validationRules.maxLength || 5000;
 
-  return `You are a validation agent for the daily report management system.
+  return `You are a validation agent for daily report submissions in a morning meeting management system.
 
-Your task is to validate the following daily report submission:
+Task: Validate the following daily report submission from engineer "${engineerName}" submitted on ${submissionDate}.
 
-**Engineer Name:** ${engineerName}
-**Submission Date:** ${submissionDate}
-**Report Content:**
+Report Content:
+---
 ${reportContent}
+---
 
-**Validation Rules:**
-- Minimum content length: ${validationRules.minLength} characters
-- Maximum content length: ${validationRules.maxLength} characters
-- Required sections: ${requiredFieldsText}
-- Content must be professional and relevant to work activities
-- No offensive or inappropriate language
-- Must contain specific, actionable information
+Validation Rules:
+1. Content length must be between ${minLength} and ${maxLength} characters
+2. Report must contain all required sections: ${requiredFieldsText}
+3. Content must be professional and relevant to work activities
+4. No offensive, discriminatory, or inappropriate language
+5. Must contain specific, actionable information (not vague or generic)
 
-Please perform the following validations:
-1. Check if the report meets the minimum and maximum length requirements
-2. Verify that all required sections are present
-3. Assess the quality and appropriateness of the content
-4. Identify any missing or incomplete information
-5. Provide a sanitized version of the content if valid
+Please analyze the report and provide:
+1. Whether the report is VALID or INVALID
+2. List any validation errors found
+3. Sanitized version of the content (remove any sensitive information)
+4. Any warnings or suggestions for improvement
 
-Return your analysis in the following JSON format:
-{
-  "isValid": boolean,
-  "validationErrors": string[],
-  "sanitizedContent": string,
-  "summary": string
+Respond in JSON format with keys: isValid (boolean), validationErrors (array of strings), sanitizedContent (string), warnings (array of strings)`;
 }
 
-Be strict but fair in your validation. Only mark as invalid if there are genuine issues that would prevent proper report processing.`;
+export function validateAction02Input(
+  input: Action02PromptInput
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!input.reportContent || typeof input.reportContent !== "string") {
+    errors.push("reportContent must be a non-empty string");
+  }
+
+  if (!input.engineerName || typeof input.engineerName !== "string") {
+    errors.push("engineerName must be a non-empty string");
+  }
+
+  if (!input.submissionDate || typeof input.submissionDate !== "string") {
+    errors.push("submissionDate must be a non-empty string");
+  }
+
+  if (input.validationRules) {
+    if (
+      input.validationRules.minLength !== undefined &&
+      typeof input.validationRules.minLength !== "number"
+    ) {
+      errors.push("validationRules.minLength must be a number");
+    }
+
+    if (
+      input.validationRules.maxLength !== undefined &&
+      typeof input.validationRules.maxLength !== "number"
+    ) {
+      errors.push("validationRules.maxLength must be a number");
+    }
+
+    if (
+      input.validationRules.requiredFields !== undefined &&
+      !Array.isArray(input.validationRules.requiredFields)
+    ) {
+      errors.push("validationRules.requiredFields must be an array");
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+export function parseAction02Response(
+  responseText: string
+): Action02PromptOutput {
+  try {
+    const parsed = JSON.parse(responseText);
+
+    return {
+      isValid: Boolean(parsed.isValid),
+      validationErrors: Array.isArray(parsed.validationErrors)
+        ? parsed.validationErrors
+        : [],
+      sanitizedContent: String(parsed.sanitizedContent || ""),
+      warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
+    };
+  } catch {
+    return {
+      isValid: false,
+      validationErrors: ["Failed to parse validation response"],
+      sanitizedContent: "",
+      warnings: ["Response parsing error"],
+    };
+  }
 }

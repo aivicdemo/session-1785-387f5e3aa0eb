@@ -7,32 +7,24 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedReportContent: {
-    yesterdayAccomplishments: string;
-    todayPlan: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
-  submissionTimestamp: string;
-  isLate: boolean;
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
-export interface Action05PromptResult {
-  validationStatus: "valid" | "invalid" | "partial";
-  validationErrors: string[];
-  registrationPayload: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    content: {
-      yesterdayAccomplishments: string;
-      todayPlan: string;
-      issues: string;
-    };
-    submittedAt: string;
-    isLate: boolean;
+export interface Action05ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  validatedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
-  confirmationEmailRecipients: string[];
-  confirmationEmailContent: string;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
@@ -40,84 +32,71 @@ export function buildAction05Prompt(context: Action05Context): string {
     engineerId,
     engineerName,
     reportDate,
-    submittedReportContent,
-    submissionTimestamp,
-    isLate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
   } = context;
 
-  const lateIndicator = isLate ? "[遅延]" : "[定時]";
+  const promptContent = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-  const prompt = `
-# Action 05: 日報内容の妥当性検証と管理システム登録
+## Task: Validate Daily Report Content (Action 05)
 
-## 入力情報
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- 提出時刻: ${submissionTimestamp}
-- 提出状況: ${lateIndicator}
+### Engineer Information
+- Engineer ID: ${engineerId}
+- Engineer Name: ${engineerName}
+- Report Date: ${reportDate}
+- System Timestamp: ${systemTimestamp}
+- Submission Deadline: ${submissionDeadline}
 
-## 提出された日報内容
-### 昨日の実績
-${submittedReportContent.yesterdayAccomplishments}
+### Report Content to Validate
+**Yesterday's Achievements:**
+${previousReportContent.yesterday}
 
-### 本日の予定
-${submittedReportContent.todayPlan}
+**Today's Plans:**
+${previousReportContent.today}
 
-### 抱えている課題
-${submittedReportContent.issues}
+**Current Issues/Challenges:**
+${previousReportContent.issues}
 
-## 実行タスク
+### Validation Rules
+1. **Completeness Check**
+   - All three sections (yesterday, today, issues) must have content
+   - Minimum 10 characters per section
+   - No placeholder or template text remaining
 
-### 1. 入力内容の妥当性検証
-以下の項目について検証してください：
-- 各項目が空白でないか
-- 昨日の実績が具体的で測定可能か
-- 本日の予定が実現可能か
-- 課題の記述が明確か
-- 不適切な表現や機密情報の漏洩がないか
+2. **Appropriateness Check**
+   - Content must be relevant to work activities
+   - No offensive, discriminatory, or inappropriate language
+   - No sensitive personal information
 
-### 2. 検証結果の判定
-- すべての項目が妥当な場合: "valid"
-- 複数の項目に問題がある場合: "invalid"
-- 一部の項目に改善の余地がある場合: "partial"
+3. **Consistency Check**
+   - Today's plans should logically follow from yesterday's achievements
+   - Issues should be specific and actionable
+   - No contradictory statements
 
-### 3. 管理システム登録ペイロードの作成
-検証が "valid" または "partial" の場合、以下の形式で登録ペイロードを作成してください：
+4. **Format Check**
+   - Clear and concise language
+   - Proper sentence structure
+   - No excessive formatting or special characters
+
+### Output Format
+Return a JSON object with the following structure:
 {
-  "engineerId": "${engineerId}",
-  "engineerName": "${engineerName}",
-  "reportDate": "${reportDate}",
-  "content": {
-    "yesterdayAccomplishments": "...",
-    "todayPlan": "...",
-    "issues": "..."
-  },
-  "submittedAt": "${submissionTimestamp}",
-  "isLate": ${isLate}
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
 }
 
-### 4. 確認メール配信対象の特定
-管理者（部長）のメールアドレスを特定し、確認メール配信対象リストに追加してください。
+### Instructions
+- If validation fails, provide specific error messages in the "errors" array
+- If there are minor issues that don't prevent submission, add them to "warnings"
+- In "validatedContent", return the cleaned/normalized version of the content
+- Be strict but fair in validation - the goal is to ensure quality reports for the morning meeting`;
 
-### 5. 確認メール内容の作成
-以下の内容を含む確認メールを作成してください：
-- エンジニア名と報告日
-- 提出状況（定時/遅延）
-- 日報内容の要約
-- 登録完了の確認
-- 必要に応じて改善提案
-
-## 出力形式
-JSON形式で以下の構造で返してください：
-{
-  "validationStatus": "valid" | "invalid" | "partial",
-  "validationErrors": ["エラー1", "エラー2"],
-  "registrationPayload": { ... },
-  "confirmationEmailRecipients": ["admin@example.com"],
-  "confirmationEmailContent": "..."
-}
-`;
-
-  return prompt;
+  return promptContent;
 }
