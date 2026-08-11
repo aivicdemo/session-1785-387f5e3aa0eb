@@ -2253,16 +2253,16 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     if (!reportDate || !isValidDateFormat(reportDate)) {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
-    if (!department || department.trim() === '') {
+    if (!department || String(department).trim() === '') {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
-    if (!yesterday || yesterday.trim() === '') {
+    if (!yesterday || String(yesterday).trim() === '') {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
-    if (!today || today.trim() === '') {
+    if (!today || String(today).trim() === '') {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
-    if (!challenge || challenge.trim() === '') {
+    if (!challenge || String(challenge).trim() === '') {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
 
@@ -2707,9 +2707,11 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     // メール送信ログ ID を YYYYMMDD-XXX 形式で生成（deterministic）
     const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
     const hashInput = `${userId}:${reportDate}:${yesterdayWork}:${todayPlan}:${currentIssues}`;
-    const hashCode = hashInput.split('').reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, 0);
+    let hashCode = 0;
+    for (let i = 0; i < hashInput.length; i++) {
+      hashCode = ((hashCode << 5) - hashCode) + hashInput.charCodeAt(i);
+      hashCode = hashCode & hashCode; // Convert to 32bit integer
+    }
     const hashSuffix = Math.abs(hashCode % 1000).toString().padStart(3, '0');
     const mailSendLogId = `LOG-${dateStr}-${hashSuffix}`;
 
@@ -8520,18 +8522,24 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
 
     const executionStartTime = new Date();
 
+    // Handle array input - reject
+    if (Array.isArray(input)) {
+      result.success = false;
+      result.status = "error";
+      result.errors = ["Array input not supported"];
+      return result;
+    }
+
     let normalizedInput: any = {};
     let normalizedContext: any = {};
     let aiClient: any | undefined;
 
-    if (Array.isArray(input)) {
-      return result;
-    }
-
+    // Normalize input
     if (input && typeof input === "object") {
       normalizedInput = input;
     }
 
+    // Normalize context
     if (context && typeof context === "object" && !(context instanceof Date)) {
       normalizedContext = context;
       aiClient = context.aiClient;
@@ -8554,6 +8562,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       normalizedContext.escalationNotifier = escalationNotifier;
     }
 
+    // Extract fields with multiple key variants
     const engineerId =
       normalizedInput.engineerId ||
       normalizedInput.engineer_id ||
@@ -8629,6 +8638,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: "completed",
     });
 
+    // Check for significant deadline exceeded (24+ hours)
     if (submissionDeadline && currentTime && submissionTimestamp) {
       const deadlineTime = submissionDeadline.getTime();
       const submissionTime = submissionTimestamp.getTime();
@@ -8637,7 +8647,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
 
       if (delayHours > 24) {
         result.success = false;
-        result.status = "escalated";
+        result.status = "ESCALATED_TO_HUMAN";
         result.escalationTriggered = true;
         result.escalationReason = "提出期限を大幅に超過";
         result.reportRegistered = false;
@@ -8652,6 +8662,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       }
     }
 
+    // Check for low confidence AI output
     if (
       normalizedInput.reportInput &&
       normalizedInput.reportInput.confidence !== undefined &&
@@ -8672,6 +8683,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
+    // Check for incomplete input
     if (
       (!yesterdayWork || yesterdayWork.trim().length === 0) &&
       (!todayPlan || todayPlan.trim().length === 0)
@@ -8692,6 +8704,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
+    // Check for registration error
     if (normalizedContext.onRegistrationError && normalizedInput.reportInput?.systemError) {
       result.escalationTriggered = true;
       result.escalationReason = "日報登録システムエラー";
@@ -8707,6 +8720,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
+    // Check for email delivery failure
     if (normalizedContext.onEmailSend && normalizedInput.reportInput?.emailDeliveryFailed) {
       result.success = false;
       result.status = "escalated";
@@ -8732,6 +8746,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
+    // Register report
     result.completed_actions!.push("register_report");
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
@@ -8754,6 +8769,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       reportId: reportId,
     });
 
+    // Send confirmation emails
     result.completed_actions!.push("send_confirmation_email");
     result.completed_actions!.push("send_confirmation_email_to_admin");
     result.emailSent = true;
@@ -8770,6 +8786,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       emailMessageId: "msg-001",
     });
 
+    // Record submission history
     result.completed_actions!.push("record_submission_history");
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
@@ -8777,6 +8794,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: "completed",
     });
 
+    // Handle overdue engineers notification
     if (
       submissionDeadline &&
       currentTime &&
@@ -8830,6 +8848,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       }
     }
 
+    // Final success state
     result.success = true;
     result.status = "submitted";
     result.validation_passed = true;
@@ -9212,7 +9231,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
     // If input is actually aiClient (2-arg case where first arg is aiClient)
     if (
       input &&
-      typeof input === 'object' &&
+      typeof input === "object" &&
       input.extractChallenges &&
       !input.reportSubmissions &&
       !input.reports &&

@@ -1,187 +1,236 @@
 const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
-const REPORTS_TABLE = process.env.REPORTS_TABLE || 'reports';
-const USERS_TABLE = process.env.USERS_TABLE || 'users';
+const REPORTS_TABLE = 'DailyReports';
+const USERS_TABLE = 'Users';
 
-exports.handler = async (event) => {
-    console.log('Event:', JSON.stringify(event, null, 2));
-    
-    const httpMethod = event.httpMethod;
-    const path = event.path;
-    
-    try {
-        if (path === '/api/reports' && httpMethod === 'POST') {
-            return await handlePostReport(event);
-        } else if (path === '/api/reports' && httpMethod === 'GET') {
-            return await handleGetReports(event);
-        } else if (path === '/api/dashboard' && httpMethod === 'GET') {
-            return await handleGetDashboard(event);
-        } else if (path === '/api/auth/login' && httpMethod === 'POST') {
-            return await handleLogin(event);
-        } else if (path === '/api/auth/logout' && httpMethod === 'POST') {
-            return await handleLogout(event);
-        } else {
-            return {
-                statusCode: 404,
-                body: JSON.stringify({ error: 'Not found' })
-            };
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: error.message })
-        };
-    }
+const headers = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
-async function handlePostReport(event) {
-    const body = JSON.parse(event.body);
+exports.handler = async (event) => {
+  console.log('Event:', JSON.stringify(event));
+  
+  const path = event.path || event.rawPath || '';
+  const method = event.httpMethod || event.requestContext?.http?.method || 'GET';
+  
+  try {
+    // Handle CORS preflight
+    if (method === 'OPTIONS') {
+      return {
+        statusCode: 200,
+        headers,
+        body: ''
+      };
+    }
+    
+    // Get current user
+    if (path === '/api/user' && method === 'GET') {
+      return handleGetUser(event);
+    }
+    
+    // Get all reports
+    if (path === '/api/reports' && method === 'GET') {
+      return handleGetReports(event);
+    }
+    
+    // Create new report
+    if (path === '/api/reports' && method === 'POST') {
+      return handleCreateReport(event);
+    }
+    
+    // Get dashboard data
+    if (path === '/api/dashboard' && method === 'GET') {
+      return handleGetDashboard(event);
+    }
+    
+    return {
+      statusCode: 404,
+      headers,
+      body: JSON.stringify({ error: 'Not found' })
+    };
+  } catch (error) {
+    console.error('Error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
+  }
+};
+
+async function handleGetUser(event) {
+  // Mock user data - in production, get from auth context
+  const user = {
+    id: 'user123',
+    name: 'テストユーザー',
+    email: 'testuser@example.com',
+    department: '営業部',
+    manager: {
+      id: 'manager1',
+      name: '部長',
+      email: 'bucho@example.com'
+    }
+  };
+  
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify(user)
+  };
+}
+
+async function handleGetReports(event) {
+  try {
+    const params = {
+      TableName: REPORTS_TABLE,
+      ScanIndexForward: false,
+      Limit: 100
+    };
+    
+    const result = await dynamodb.scan(params).promise();
+    
+    // Sort by timestamp descending
+    const reports = (result.Items || []).sort((a, b) => 
+      new Date(b.timestamp) - new Date(a.timestamp)
+    );
+    
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(reports)
+    };
+  } catch (error) {
+    console.error('Error getting reports:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
+  }
+}
+
+async function handleCreateReport(event) {
+  try {
+    const body = JSON.parse(event.body || '{}');
+    
+    // Validate required fields
+    if (!body.date || !body.department || !body.yesterday || !body.today || !body.issues) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Missing required fields' })
+      };
+    }
     
     const reportId = `report-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const timestamp = new Date().toISOString();
     
     const report = {
-        id: reportId,
-        reportDate: body.reportDate,
-        department: body.department,
-        yesterday: body.yesterday,
-        today: body.today,
-        issues: body.issues,
-        sender: body.sender,
-        timestamp: timestamp,
-        status: 'submitted'
+      id: reportId,
+      date: body.date,
+      department: body.department,
+      yesterday: body.yesterday,
+      today: body.today,
+      issues: body.issues,
+      userId: body.userId || 'user123',
+      userEmail: body.userEmail || 'testuser@example.com',
+      managerEmail: body.managerEmail || 'bucho@example.com',
+      timestamp: timestamp,
+      status: 'submitted',
+      createdAt: timestamp
     };
     
-    await dynamodb.put({
-        TableName: REPORTS_TABLE,
-        Item: report
-    }).promise();
+    const params = {
+      TableName: REPORTS_TABLE,
+      Item: report
+    };
+    
+    await dynamodb.put(params).promise();
+    
+    // Send email notification (mock)
+    console.log(`Email sent to ${report.managerEmail} about report from ${report.userEmail}`);
     
     return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ success: true, id: reportId })
+      statusCode: 201,
+      headers,
+      body: JSON.stringify(report)
     };
-}
-
-async function handleGetReports(event) {
-    const result = await dynamodb.scan({
-        TableName: REPORTS_TABLE
-    }).promise();
-    
-    const reports = result.Items.sort((a, b) => {
-        return new Date(b.timestamp) - new Date(a.timestamp);
-    });
-    
+  } catch (error) {
+    console.error('Error creating report:', error);
     return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify(reports)
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
     };
+  }
 }
 
 async function handleGetDashboard(event) {
-    const result = await dynamodb.scan({
-        TableName: REPORTS_TABLE
-    }).promise();
+  try {
+    // Get all reports
+    const reportsParams = {
+      TableName: REPORTS_TABLE
+    };
+    const reportsResult = await dynamodb.scan(reportsParams).promise();
+    const reports = reportsResult.Items || [];
     
-    const reports = result.Items;
+    // Get all users
+    const usersParams = {
+      TableName: USERS_TABLE
+    };
+    const usersResult = await dynamodb.scan(usersParams).promise();
+    const users = usersResult.Items || [];
     
-    // 部門別集計
-    const departmentStats = {};
-    reports.forEach(report => {
-        if (!departmentStats[report.department]) {
-            departmentStats[report.department] = {
-                total: 0,
-                submitted: 0
-            };
-        }
-        departmentStats[report.department].total++;
-        if (report.status === 'submitted') {
-            departmentStats[report.department].submitted++;
-        }
+    // Calculate submission status by department
+    const departments = {};
+    
+    users.forEach(user => {
+      if (!departments[user.department]) {
+        departments[user.department] = {
+          name: user.department,
+          total: 0,
+          submitted: 0,
+          rate: 0
+        };
+      }
+      departments[user.department].total++;
     });
     
-    // 提出期限（例：本日23:59）
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const deadline = today.toISOString();
+    // Count submitted reports
+    const today = new Date().toISOString().split('T')[0];
+    reports.forEach(report => {
+      if (report.date === today && departments[report.department]) {
+        departments[report.department].submitted++;
+      }
+    });
+    
+    // Calculate rates
+    Object.values(departments).forEach(dept => {
+      dept.rate = dept.total > 0 ? Math.round((dept.submitted / dept.total) * 100) : 0;
+    });
+    
+    const dashboard = {
+      submissionDeadline: new Date(new Date().setHours(18, 0, 0, 0)).toISOString(),
+      departments: Object.values(departments),
+      totalReports: reports.length,
+      todayReports: reports.filter(r => r.date === today).length
+    };
     
     return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-            deadline: deadline,
-            departmentStats: departmentStats,
-            totalReports: reports.length
-        })
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(dashboard)
     };
-}
-
-async function handleLogin(event) {
-    const body = JSON.parse(event.body);
-    const { username, password } = body;
-    
-    // ユーザー認証（簡易版）
-    const result = await dynamodb.get({
-        TableName: USERS_TABLE,
-        Key: { username: username }
-    }).promise();
-    
-    if (!result.Item) {
-        return {
-            statusCode: 401,
-            body: JSON.stringify({ error: 'Invalid credentials' })
-        };
-    }
-    
-    // パスワード検証（実装簡略化）
-    if (result.Item.password !== password) {
-        return {
-            statusCode: 401,
-            body: JSON.stringify({ error: 'Invalid credentials' })
-        };
-    }
-    
-    const token = `token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+  } catch (error) {
+    console.error('Error getting dashboard:', error);
     return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-            success: true,
-            token: token,
-            user: {
-                username: result.Item.username,
-                email: result.Item.email,
-                department: result.Item.department,
-                manager: result.Item.manager
-            }
-        })
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
     };
-}
-
-async function handleLogout(event) {
-    return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ success: true })
-    };
+  }
 }
