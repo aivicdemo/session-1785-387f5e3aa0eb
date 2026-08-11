@@ -4,7 +4,7 @@
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
 export interface Action01PromptInput {
-  submissionDeadline: string;
+  reportingDeadline: string;
   targetDate: string;
   engineerList: Array<{
     id: string;
@@ -13,55 +13,96 @@ export interface Action01PromptInput {
   }>;
   systemContext: {
     reportManagementSystemUrl: string;
-    confirmationEmailTemplate: string;
+    notificationChannels: string[];
   };
 }
 
 export interface Action01PromptOutput {
-  templateGenerated: boolean;
-  distributionScheduled: boolean;
   templateContent: string;
-  recipientCount: number;
-  scheduledTime: string;
+  distributionPlan: {
+    recipients: string[];
+    sendTime: string;
+    channels: string[];
+  };
+  validationRules: Array<{
+    field: string;
+    required: boolean;
+    constraints: string[];
+  }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join(", ");
-  const engineerCount = input.engineerList.length;
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const deadline = new Date(input.reportingDeadline).toLocaleString("ja-JP");
+  const targetDateFormatted = new Date(input.targetDate).toLocaleDateString(
+    "ja-JP",
+    {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }
+  );
 
-  return `You are an AI agent responsible for the first action in the daily report management workflow.
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-**Action 1: Generate and distribute the previous day's daily report template automatically**
+## 実行目的
+前日の日報テンプレートを自動生成してエンジニアに配信し、本日の日報入力を促進する
 
-**Context:**
-- Target Date: ${input.targetDate}
-- Submission Deadline: ${input.submissionDeadline}
-- Total Engineers: ${engineerCount}
-- Engineer List: ${engineerNames}
-- Report Management System URL: ${input.systemContext.reportManagementSystemUrl}
+## 対象者
+${engineerNames}
 
-**Task:**
-1. Generate a daily report template for the previous day based on the standard format
-2. Include the following sections:
-   - Yesterday's Achievements (実績)
-   - Today's Plans (予定)
-   - Current Issues/Challenges (抱えている課題)
-3. Prepare the template for distribution to all ${engineerCount} engineers
-4. Schedule the distribution to be sent at the appropriate time before the submission deadline
-5. Ensure the template includes a link to the report management system
+## 実行日時
+対象日付: ${targetDateFormatted}
+提出期限: ${deadline}
 
-**Template Structure:**
-${input.systemContext.confirmationEmailTemplate}
+## 生成すべき日報テンプレート内容
+以下の項目を含む日報テンプレートを生成してください:
 
-**Output Requirements:**
-- Confirm template generation completion
-- Confirm distribution scheduling
-- Provide the generated template content
-- Specify the number of recipients
-- Specify the scheduled distribution time
+1. **昨日の実績**
+   - 完了したタスク
+   - 実装内容
+   - テスト実施状況
+   - ドキュメント作成状況
 
-**Constraints:**
-- Do not send actual emails yet; only prepare for distribution
-- Ensure the template is clear and easy to fill out
-- Include submission deadline information in the template`;
+2. **本日の予定**
+   - 予定タスク
+   - 優先順位
+   - 見積もり時間
+
+3. **抱えている課題**
+   - 課題内容
+   - 影響範囲
+   - 必要なサポート
+
+4. **その他**
+   - 特記事項
+   - 連絡事項
+
+## 配信計画
+- 配信先: ${input.engineerList.map((e) => e.email).join(", ")}
+- 配信チャネル: ${input.systemContext.notificationChannels.join(", ")}
+- 配信タイミング: 朝会開始の30分前
+
+## 入力妥当性検証ルール
+- 昨日の実績: 必須、100文字以上
+- 本日の予定: 必須、100文字以上
+- 抱えている課題: 任意、記入時は50文字以上
+- 各項目は日本語で記入すること
+
+## 配信メッセージテンプレート
+件名: 【日報】${targetDateFormatted}分の日報入力のお願い
+本文:
+お疲れ様です。
+本日の日報入力をお願いします。
+提出期限: ${deadline}
+以下のテンプレートに従って入力してください。
+
+[テンプレート内容]
+
+ご協力よろしくお願いします。
+
+## 成功基準
+- テンプレートが全エンジニアに配信されたこと
+- 配信ログが記録されたこと
+- 配信エラーが発生していないこと`;
 }

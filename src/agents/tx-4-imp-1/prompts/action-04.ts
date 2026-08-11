@@ -3,92 +3,97 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04Context {
-  reportContent: string;
+export interface Action04PromptContext {
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    category: string;
+    reportedBy: string;
+    reportDate: string;
   }>;
-  priorityAssignments: Array<{
+  priorityClassifications: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  escalationFlags: Array<{
-    issueId: string;
-    reason: string;
-    requiresHumanReview: boolean;
-  }>;
-}
-
-export interface Action04Input {
-  confirmationEmailContent: string;
-  collectedReports: Array<{
-    engineerId: string;
-    reportText: string;
-    submittedAt: string;
-  }>;
-  previousPriorityContext?: Record<string, string>;
-}
-
-export interface Action04Output {
-  context: Action04Context;
-  prioritizedIssuesList: Array<{
-    rank: number;
-    issueId: string;
-    title: string;
-    priority: "critical" | "high" | "medium" | "low";
-    affectedEngineers: string[];
-    description: string;
-    recommendedAction: string;
-  }>;
-  summaryReport: {
-    totalIssuesExtracted: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-    escalationRequired: boolean;
-    escalationReasons: string[];
+  departmentName: string;
+  reportingPeriod: {
+    startDate: string;
+    endDate: string;
   };
 }
 
-export function buildAction04Prompt(input: Action04Input): string {
-  const reportSummary = input.collectedReports
-    .map(
-      (report) =>
-        `[Engineer: ${report.engineerId}]\n${report.reportText}\n[Submitted: ${report.submittedAt}]`
-    )
-    .join("\n\n");
+export interface Action04PromptResult {
+  systemPrompt: string;
+  userPrompt: string;
+  version: string;
+}
 
-  const previousContext = input.previousPriorityContext
-    ? `\n\nPrevious Priority Context:\n${JSON.stringify(input.previousPriorityContext, null, 2)}`
-    : "";
+export function buildAction04Prompt(
+  context: Action04PromptContext
+): Action04PromptResult {
+  const systemPrompt = `You are an AI agent responsible for the final step of the daily report management system.
+Your task is to review extracted issues and their priority classifications, then provide a comprehensive summary report.
 
-  return `You are an AI agent responsible for extracting issues and determining their priority from collected daily reports.
+You must:
+1. Validate the priority classifications assigned to each issue
+2. Identify any issues that may require escalation
+3. Provide reasoning for priority adjustments if needed
+4. Generate a structured report for the department manager
+5. Flag any unusual patterns or concerning trends
 
-Task: Analyze the following collected reports and confirmation email content to:
-1. Extract all issues, bottlenecks, and risks mentioned
-2. Categorize each issue
-3. Assign priority levels (critical, high, medium, low)
-4. Identify any escalation conditions
-5. Provide actionable recommendations
+Output format must be JSON with the following structure:
+{
+  "validatedPriorities": [
+    {
+      "issueId": string,
+      "priority": "critical" | "high" | "medium" | "low",
+      "validated": boolean,
+      "adjustmentReasoning": string | null
+    }
+  ],
+  "escalationFlags": [
+    {
+      "issueId": string,
+      "reason": string,
+      "recommendedAction": string
+    }
+  ],
+  "reportSummary": {
+    "totalIssuesExtracted": number,
+    "criticalCount": number,
+    "highCount": number,
+    "mediumCount": number,
+    "lowCount": number,
+    "trends": string[]
+  },
+  "managerNotification": {
+    "subject": string,
+    "body": string,
+    "priority": "urgent" | "normal"
+  }
+}`;
 
-Confirmation Email Content:
-${input.confirmationEmailContent}
+  const issuesJson = JSON.stringify(context.extractedIssues, null, 2);
+  const prioritiesJson = JSON.stringify(
+    context.priorityClassifications,
+    null,
+    2
+  );
 
-Collected Reports:
-${reportSummary}${previousContext}
+  const userPrompt = `Review and validate the following issue priorities for ${context.departmentName} (${context.reportingPeriod.startDate} to ${context.reportingPeriod.endDate}):
 
-For each issue identified:
-- Assign a unique ID
-- Provide clear title and description
-- Categorize (e.g., technical, resource, schedule, dependency, risk)
-- Determine priority based on impact and urgency
-- List affected engineers
-- Provide recommended action
+Extracted Issues:
+${issuesJson}
 
-Output your analysis in a structured format that can be parsed into prioritized issue lists and escalation flags.`;
+Current Priority Classifications:
+${prioritiesJson}
+
+Please validate these classifications, identify any escalation needs, and generate a manager notification.`;
+
+  return {
+    systemPrompt,
+    userPrompt,
+    version: ACTION_04_PROMPT_VERSION,
+  };
 }

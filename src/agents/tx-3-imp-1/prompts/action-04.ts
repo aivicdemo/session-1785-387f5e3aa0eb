@@ -23,105 +23,156 @@ export interface Action04PromptOutput {
     employeeId: string;
     employeeName: string;
     reason: "not_submitted" | "delayed";
-    submissionTime?: string;
+    daysSinceDeadline: number;
   }>;
   remindersToSend: Array<{
     employeeId: string;
     employeeName: string;
-    reminderType: "email" | "chat" | "both";
-    message: string;
-    shouldEscalate: boolean;
+    reminderCount: number;
+    shouldRemind: boolean;
+    reason: string;
   }>;
-  escalationCases: Array<{
+  reminderMessages: Array<{
     employeeId: string;
-    employeeName: string;
-    escalationReason: string;
-    recommendedAction: string;
+    emailContent: string;
+    chatContent: string;
   }>;
-  executionLog: {
-    timestamp: string;
-    totalIdentified: number;
-    remindersScheduled: number;
-    escalationCount: number;
-  };
+  sendLog: Array<{
+    employeeId: string;
+    sendTime: string;
+    channel: "email" | "chat";
+    status: "success" | "failed";
+    errorMessage?: string;
+  }>;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
   const reminderRules = input.reminderRules || {
     maxReminderCount: 3,
-    reminderIntervalMinutes: 30,
+    reminderIntervalMinutes: 60,
   };
 
-  const previousRemindersInfo =
-    input.previousReminders && input.previousReminders.length > 0
-      ? `\n前回の催促履歴:\n${input.previousReminders
-          .map(
-            (r) =>
-              `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
-          )
-          .join("\n")}`
-      : "";
+  const previousRemindersMap = new Map<string, { count: number; lastTime: string }>();
+  if (input.previousReminders) {
+    input.previousReminders.forEach((reminder) => {
+      previousRemindersMap.set(reminder.employeeId, {
+        count: reminder.reminderCount,
+        lastTime: reminder.lastReminderTime,
+      });
+    });
+  }
 
-  return `あなたは朝会報告管理システムの自動催促エージェントです。
+  const prompt = `
+# Action 04: 報告漏れ特定から催促送信までの自動実行
 
-【タスク】
-確認メール内容から報告漏れ・遅延部員を特定し、催促対象を判定して、メール・チャット送信の準備を行ってください。
+## 目的
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定して、メール・チャットの送信まで完結する。
 
-【入力情報】
-確認メール内容:
+## 入力情報
+
+### 確認メール内容
+\`\`\`
 ${input.confirmationEmailContent}
+\`\`\`
 
-報告期限: ${input.reportingDeadline}
-現在時刻: ${input.currentTimestamp}
-${previousRemindersInfo}
+### 報告期限
+${input.reportingDeadline}
 
-【催促ルール】
-- 最大催促回数: ${reminderRules.maxReminderCount}回
+### 現在時刻
+${input.currentTimestamp}
+
+### 催促ルール設定
+- 最大催促回数: ${reminderRules.maxReminderCount}
 - 催促間隔: ${reminderRules.reminderIntervalMinutes}分
-- 同一部員への複数回催促後も報告がない場合はエスカレーション対象
-- システムエラーでメール・チャット送信に失敗した場合はエスカレーション対象
-- 催促ルールに該当しない特殊ケースはエスカレーション対象
 
-【出力形式】
-以下のJSON形式で結果を返してください:
+### 過去の催促履歴
+${
+  input.previousReminders && input.previousReminders.length > 0
+    ? input.previousReminders
+        .map(
+          (r) =>
+            `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
+        )
+        .join("\n")
+    : "なし"
+}
 
+## 実行ステップ
+
+### ステップ1: 報告漏れ・遅延部員の特定
+確認メール内容を解析し、以下を判定してください:
+1. 報告未提出者を特定
+2. 報告期限超過者を特定
+3. 各部員の遅延日数を計算
+
+### ステップ2: 催促対象部員の判定
+以下のルールに基づいて催促対象を判定してください:
+1. 報告未提出者は必ず催促対象
+2. 報告期限超過者で遅延日数が1日以上の場合は催促対象
+3. 過去の催促回数が最大催促回数(${reminderRules.maxReminderCount})に達している場合は催促対象外
+4. 前回催促から${reminderRules.reminderIntervalMinutes}分以上経過していない場合は催促対象外
+
+### ステップ3: 催促メール・チャットの作成
+各催促対象部員に対して以下の内容を作成してください:
+1. メール本文: 丁寧で催促感を抑えた内容
+2. チャット本文: 簡潔で即座の対応を促す内容
+
+### ステップ4: 送信結果のログ記録
+以下の情報をログに記録してください:
+1. 従業員ID
+2. 送信時刻
+3. 送信チャネル(メール/チャット)
+4. 送信ステータス(成功/失敗)
+5. エラーメッセージ(失敗時のみ)
+
+## 出力形式
+
+JSON形式で以下の構造で返してください:
+
+\`\`\`json
 {
   "identifiedNonReporters": [
     {
       "employeeId": "string",
       "employeeName": "string",
       "reason": "not_submitted" | "delayed",
-      "submissionTime": "string (遅延の場合のみ)"
+      "daysSinceDeadline": number
     }
   ],
   "remindersToSend": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "reminderType": "email" | "chat" | "both",
-      "message": "string",
-      "shouldEscalate": boolean
+      "reminderCount": number,
+      "shouldRemind": boolean,
+      "reason": "string"
     }
   ],
-  "escalationCases": [
+  "reminderMessages": [
     {
       "employeeId": "string",
-      "employeeName": "string",
-      "escalationReason": "string",
-      "recommendedAction": "string"
+      "emailContent": "string",
+      "chatContent": "string"
     }
   ],
-  "executionLog": {
-    "timestamp": "string",
-    "totalIdentified": number,
-    "remindersScheduled": number,
-    "escalationCount": number
-  }
+  "sendLog": [
+    {
+      "employeeId": "string",
+      "sendTime": "string",
+      "channel": "email" | "chat",
+      "status": "success" | "failed",
+      "errorMessage": "string (失敗時のみ)"
+    }
+  ]
 }
+\`\`\`
 
-【注意事項】
-- 報告漏れ判定ルールに基づいて正確に判定してください
-- 送信履歴を参考に、不要な重複催促を避けてください
-- 過度な催促を防ぐため、催促回数の上限を厳守してください
-- 判定根拠を明確にしてください`;
+## 注意事項
+- 誤検知を防ぐため、判定ロジックは厳密に実施してください
+- 催促回数の上限を超えた部員への催促は絶対に行わないでください
+- 送信履歴は後で取り消し・修正できるよう詳細に記録してください
+- 過度な催促でエンジニアの負担が増さないよう配慮してください
+`;
+
+  return prompt;
 }

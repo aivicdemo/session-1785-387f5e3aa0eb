@@ -5,18 +5,21 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
   currentTime: string;
+  nonSubmitters: Array<{
+    employeeId: string;
+    employeeName: string;
+    department: string;
+    lastSubmissionTime?: string;
+  }>;
+  delayedSubmitters: Array<{
+    employeeId: string;
+    employeeName: string;
+    department: string;
+    submissionTime: string;
+    delayMinutes: number;
+  }>;
+  escalationThreshold: number;
 }
 
 interface Action03PromptOutput {
@@ -24,78 +27,68 @@ interface Action03PromptOutput {
   systemPrompt: string;
   userPrompt: string;
   context: {
-    deadline: string;
-    totalMembers: number;
-    submittedCount: number;
-    overdueMembers: string[];
-    nonSubmittedMembers: string[];
+    nonSubmitterCount: number;
+    delayedSubmitterCount: number;
+    totalAffectedCount: number;
+    escalationRequired: boolean;
   };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const currentTimeMs = new Date(input.currentTime).getTime();
-  const deadlineMs = new Date(input.reportingDeadline).getTime();
-  const isOverdue = currentTimeMs > deadlineMs;
+  const nonSubmitterCount = input.nonSubmitters.length;
+  const delayedSubmitterCount = input.delayedSubmitters.length;
+  const totalAffectedCount = nonSubmitterCount + delayedSubmitterCount;
+  const escalationRequired = totalAffectedCount > input.escalationThreshold;
 
-  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
-  const nonSubmittedMembers = input.reportingMembers.filter(
-    m => !submittedMemberIds.has(m.memberId)
-  );
-
-  const overdueMembers = input.submittedReports
-    .filter(report => {
-      const submittedMs = new Date(report.submittedAt).getTime();
-      return submittedMs > deadlineMs;
-    })
-    .map(report => {
-      const member = input.reportingMembers.find(m => m.memberId === report.memberId);
-      return member ? member.memberName : report.memberId;
-    });
-
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitted and overdue daily reports.
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed submitters of daily reports.
 Your task is to:
-1. Identify members who have not submitted their reports
-2. Identify members whose reports were submitted after the deadline
-3. Classify members by submission status
-4. Prepare a summary for the department head
+1. Analyze the list of employees who have not submitted their reports
+2. Analyze the list of employees whose reports were submitted late
+3. Determine which employees require escalation based on the escalation threshold
+4. Generate a structured notification for the department head
 
-Be precise and factual in your analysis. Focus on the data provided without speculation.`;
+You must provide clear, actionable information about reporting status.
+Be precise in identifying patterns and provide recommendations for follow-up actions.`;
 
-  const nonSubmittedList = nonSubmittedMembers
-    .map(m => `- ${m.memberName} (${m.department})`)
+  const nonSubmittersList = input.nonSubmitters
+    .map(
+      (emp) =>
+        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`
+    )
     .join("\n");
 
-  const overdueList = overdueMembers.length > 0
-    ? overdueMembers.map(name => `- ${name}`).join("\n")
-    : "None";
+  const delayedSubmittersList = input.delayedSubmitters
+    .map(
+      (emp) =>
+        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted at: ${emp.submissionTime}, Delay: ${emp.delayMinutes} minutes)`
+    )
+    .join("\n");
 
-  const userPrompt = `Analyze the following daily report submission status as of ${input.currentTime}:
-
+  const userPrompt = `Current Time: ${input.currentTime}
 Reporting Deadline: ${input.reportingDeadline}
-Total Members: ${input.reportingMembers.length}
-Reports Submitted: ${input.submittedReports.length}
+Escalation Threshold: ${input.escalationThreshold} employees
 
-Non-Submitted Members (${nonSubmittedMembers.length}):
-${nonSubmittedList || "None"}
+Non-Submitters (${nonSubmitterCount}):
+${nonSubmittersList || "None"}
 
-Overdue Submissions (${overdueMembers.length}):
-${overdueList}
+Delayed Submitters (${delayedSubmitterCount}):
+${delayedSubmittersList || "None"}
 
-Please provide:
-1. A summary of submission status
-2. List of members requiring follow-up
-3. Recommended actions for the department head`;
+Please analyze this reporting status and provide:
+1. A summary of the current situation
+2. Identification of employees requiring immediate follow-up
+3. Recommended actions for the department head
+4. Any patterns or concerns that should be escalated`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
     context: {
-      deadline: input.reportingDeadline,
-      totalMembers: input.reportingMembers.length,
-      submittedCount: input.submittedReports.length,
-      overdueMembers,
-      nonSubmittedMembers: nonSubmittedMembers.map(m => m.memberName),
+      nonSubmitterCount,
+      delayedSubmitterCount,
+      totalAffectedCount,
+      escalationRequired,
     },
   };
 }

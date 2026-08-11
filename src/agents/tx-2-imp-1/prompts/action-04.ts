@@ -4,95 +4,96 @@
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
+  unreportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    department: string;
+    lastReportTime?: string;
+  }>;
+  delayedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    department: string;
+    submittedAt: string;
+    deadline: string;
+  }>;
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  currentTime: string;
+  escalationThreshold: number;
 }
 
 export interface Action04PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: number;
-    contract: string;
-    purpose: string;
-  };
+  urgencyLevel: "critical" | "high" | "medium" | "low";
+  notificationContent: string;
+  recommendedActions: string[];
+  escalationRequired: boolean;
+  escalationReason?: string;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdHours,
-    escalationRules,
-  } = input;
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const unreportedCount = input.unreportedMembers.length;
+  const delayedCount = input.delayedMembers.length;
+  const totalIssues = unreportedCount + delayedCount;
 
-  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (tx_2_imp_1).
+  const unreportedSection =
+    unreportedCount > 0
+      ? `
+## 未提出者 (${unreportedCount}名)
+${input.unreportedMembers
+  .map(
+    (member) =>
+      `- ${member.memberName} (${member.department}) - ID: ${member.memberId}`
+  )
+  .join("\n")}
+`
+      : "";
 
-Your task is to identify unreported and delayed team members based on the confirmation email content and reporting status.
+  const delayedSection =
+    delayedCount > 0
+      ? `
+## 遅延者 (${delayedCount}名)
+${input.delayedMembers
+  .map(
+    (member) =>
+      `- ${member.memberName} (${member.department}) - 提出: ${member.submittedAt}, 期限: ${member.deadline}`
+  )
+  .join("\n")}
+`
+      : "";
 
-Context:
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdHours} hours
-- Maximum Reminders: ${escalationRules.maxReminders}
-- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
+  const urgencyAssessment =
+    totalIssues >= input.escalationThreshold
+      ? "このレベルの報告漏れ・遅延は重大な状況です。エスカレーションが必要です。"
+      : "通常の対応で対応可能です。";
 
-Instructions:
-1. Analyze the confirmation email content to identify which team members have not submitted their daily reports
-2. Determine which team members have submitted reports but are past the deadline
-3. Classify team members into the following categories:
-   - Not Submitted: Team members with no report submission
-   - Delayed: Team members who submitted but exceeded the deadline
-   - On Time: Team members who submitted within the deadline
-4. For each delayed or non-submitted team member, assess escalation status based on reminder history
-5. Generate a structured list with the following information for each team member:
-   - Name
-   - Status (Not Submitted / Delayed / On Time)
-   - Submission Time (if applicable)
-   - Hours Overdue (if applicable)
-   - Reminder Count
-   - Escalation Level
-6. Identify any patterns or anomalies in reporting behavior
-7. Provide recommendations for escalation actions
+  return `# 日報報告状況の自動判定と通知プロンプト
 
-Output Format:
-Return a JSON object with:
+## 現在の状況
+- 現在時刻: ${input.currentTime}
+- 報告期限: ${input.reportingDeadline}
+- 未提出者数: ${unreportedCount}名
+- 遅延者数: ${delayedCount}名
+- 合計問題件数: ${totalIssues}件
+- エスカレーション閾値: ${input.escalationThreshold}件
+
+${unreportedSection}${delayedSection}
+
+## 判定基準
+${urgencyAssessment}
+
+## 実行タスク
+1. 上記の報告漏れ・遅延状況を分析し、緊急度レベルを判定してください
+2. 部長への通知内容を作成してください
+3. 推奨される対応アクションを列挙してください
+4. エスカレーション判定を実施してください
+
+## 出力形式
+以下の JSON 形式で結果を返してください:
 {
-  "timestamp": "ISO 8601 timestamp",
-  "reportingDeadline": "${reportingDeadline}",
-  "analysisResults": {
-    "totalTeamMembers": number,
-    "submitted": number,
-    "notSubmitted": number,
-    "delayed": number,
-    "teamMembers": [
-      {
-        "name": string,
-        "status": "Not Submitted" | "Delayed" | "On Time",
-        "submissionTime": string | null,
-        "hoursOverdue": number | null,
-        "reminderCount": number,
-        "escalationLevel": "Low" | "Medium" | "High" | "Critical",
-        "requiresAction": boolean
-      }
-    ]
-  },
-  "escalationRecommendations": {
-    "immediateAction": string[],
-    "followUpRequired": string[],
-    "notes": string
-  }
+  "urgencyLevel": "critical" | "high" | "medium" | "low",
+  "notificationContent": "部長への通知メール本文",
+  "recommendedActions": ["アクション1", "アクション2", ...],
+  "escalationRequired": boolean,
+  "escalationReason": "エスカレーション理由（必要な場合のみ）"
 }`;
-
-  return {
-    prompt,
-    version: ACTION_04_PROMPT_VERSION,
-    metadata: {
-      action: 4,
-      contract: "tx_2_imp_1",
-      purpose: "Identify unreported and delayed team members from confirmation email content",
-    },
-  };
 }

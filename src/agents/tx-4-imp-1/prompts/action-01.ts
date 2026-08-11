@@ -3,43 +3,74 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
-  reportDeadline: string;
-  targetDate: string;
-  engineerCount: number;
-  systemName: string;
+export interface Action01PromptInput {
+  reportDate: string;
+  engineerName: string;
+  engineerId: string;
+  previousReportContent?: string;
+  systemContext?: Record<string, unknown>;
 }
 
-export interface Action01PromptResult {
-  systemPrompt: string;
-  userPrompt: string;
-  version: string;
-}
-
-export function buildAction01Prompt(
-  context: Action01PromptContext
-): Action01PromptResult {
-  const systemPrompt = `You are an AI agent responsible for the first action in the morning report management workflow.
-Your role is to generate and distribute the daily report template to all engineers.
-You must ensure the template is clear, consistent, and ready for engineer input.
-Today's date: ${context.targetDate}
-Report deadline: ${context.reportDeadline}
-Total engineers to receive template: ${context.engineerCount}
-System name: ${context.systemName}`;
-
-  const userPrompt = `Generate the daily report template for ${context.targetDate}.
-The template should include sections for:
-1. Yesterday's achievements
-2. Today's planned tasks
-3. Current issues and blockers
-
-Ensure the template is formatted for easy distribution via email.
-Target deadline for submission: ${context.reportDeadline}
-This template will be sent to ${context.engineerCount} engineers.`;
-
-  return {
-    systemPrompt,
-    userPrompt,
-    version: ACTION_01_PROMPT_VERSION,
+export interface Action01PromptOutput {
+  templateContent: string;
+  distributionChannels: string[];
+  scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
+    targetAudience: string;
   };
+}
+
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const {
+    reportDate,
+    engineerName,
+    engineerId,
+    previousReportContent = "",
+    systemContext = {},
+  } = input;
+
+  const basePrompt = `You are an AI agent responsible for generating and distributing daily report templates.
+
+Task: Generate a daily report template for the following engineer and prepare it for distribution.
+
+Engineer Information:
+- Name: ${engineerName}
+- ID: ${engineerId}
+- Report Date: ${reportDate}
+
+${previousReportContent ? `Previous Report Reference:\n${previousReportContent}\n` : ""}
+
+${Object.keys(systemContext).length > 0 ? `System Context:\n${JSON.stringify(systemContext, null, 2)}\n` : ""}
+
+Requirements:
+1. Create a structured daily report template with the following sections:
+   - Yesterday's Achievements (実績)
+   - Today's Plans (予定)
+   - Current Issues/Challenges (課題)
+   - Blockers or Dependencies (阻害要因)
+
+2. Ensure the template is clear, concise, and easy to fill out
+
+3. Determine the appropriate distribution channels (email, chat, web form, etc.)
+
+4. Specify the optimal time for distribution to maximize completion rate
+
+5. Include metadata about the template generation
+
+Output Format:
+Provide a JSON response with the following structure:
+{
+  "templateContent": "string containing the formatted template",
+  "distributionChannels": ["array", "of", "channels"],
+  "scheduledTime": "ISO 8601 timestamp",
+  "metadata": {
+    "version": "${ACTION_01_PROMPT_VERSION}",
+    "generatedAt": "ISO 8601 timestamp",
+    "targetAudience": "engineer name or group"
+  }
+}`;
+
+  return basePrompt;
 }

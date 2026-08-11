@@ -3,82 +3,142 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02PromptInput {
-  reportDate: string;
-  targetEngineers: Array<{
+export interface Tx2Imp1PromptContext {
+  reportingDeadline: string;
+  checkTime: string;
+  departmentMembers: Array<{
     id: string;
     name: string;
     email: string;
   }>;
-  submissionDeadline: string;
-  systemContext: string;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
 }
 
-export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
+export interface Tx2Imp1Action02Input {
+  context: Tx2Imp1PromptContext;
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const engineerList = input.targetEngineers
-    .map((eng) => `- ${eng.name} (${eng.email})`)
-    .join("\n");
-
-  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
-
-Context:
-- Report Date: ${input.reportDate}
-- Submission Deadline: ${input.submissionDeadline}
-- System Context: ${input.systemContext}
-
-Target Engineers:
-${engineerList}
-
-Your Task (Action 02):
-Automatically determine which engineers have NOT submitted their daily reports by the deadline.
-
-Requirements:
-1. Check the submission status of each engineer listed above
-2. Identify engineers who have not submitted reports by the deadline
-3. Identify engineers whose reports are delayed (submitted after deadline)
-4. Create a comprehensive list of non-submitters and delayed submitters
-5. Prepare notification content for the department head
-
-Output Format:
-Return a JSON object with the following structure:
-{
-  "nonSubmitters": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "email": "string",
-      "status": "not_submitted"
-    }
-  ],
-  "delayedSubmitters": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "email": "string",
-      "submittedAt": "ISO8601 timestamp",
-      "delayMinutes": number,
-      "status": "delayed"
-    }
-  ],
-  "summary": {
-    "totalEngineers": number,
-    "submitted": number,
-    "notSubmitted": number,
-    "delayed": number,
-    "onTime": number
-  },
-  "notificationContent": "string"
-}
-
-Ensure accuracy in status determination and provide clear, actionable information for the department head.`;
-
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
+export interface Tx2Imp1Action02Output {
+  nonSubmitters: Array<{
+    memberId: string;
+    name: string;
+    email: string;
+  }>;
+  delayedSubmitters: Array<{
+    memberId: string;
+    name: string;
+    email: string;
+    submittedAt: string;
+  }>;
+  summaryList: {
+    totalMembers: number;
+    submitted: number;
+    nonSubmitted: number;
+    delayed: number;
   };
+}
+
+export function buildAction02Prompt(
+  input: Tx2Imp1Action02Input
+): string {
+  const { context } = input;
+
+  const submittedMemberIds = new Set(
+    context.submittedReports.map((r) => r.memberId)
+  );
+
+  const nonSubmitters = context.departmentMembers.filter(
+    (member) => !submittedMemberIds.has(member.id)
+  );
+
+  const delayedSubmitters = context.submittedReports
+    .map((report) => {
+      const member = context.departmentMembers.find(
+        (m) => m.id === report.memberId
+      );
+      if (!member) return null;
+
+      const submittedTime = new Date(report.submittedAt);
+      const deadlineTime = new Date(context.reportingDeadline);
+
+      if (submittedTime > deadlineTime) {
+        return {
+          memberId: member.id,
+          name: member.name,
+          email: member.email,
+          submittedAt: report.submittedAt,
+        };
+      }
+      return null;
+    })
+    .filter((item) => item !== null) as Array<{
+    memberId: string;
+    name: string;
+    email: string;
+    submittedAt: string;
+  }>;
+
+  const summaryList = {
+    totalMembers: context.departmentMembers.length,
+    submitted: context.submittedReports.length,
+    nonSubmitted: nonSubmitters.length,
+    delayed: delayedSubmitters.length,
+  };
+
+  const prompt = `
+# 日報未提出者・遅延者の自動判定
+
+## 実行時刻
+${context.checkTime}
+
+## 提出期限
+${context.reportingDeadline}
+
+## 部員一覧
+${context.departmentMembers
+  .map((m) => `- ${m.name} (ID: ${m.id}, Email: ${m.email})`)
+  .join("\n")}
+
+## 提出済み日報
+${context.submittedReports
+  .map((r) => {
+    const member = context.departmentMembers.find((m) => m.id === r.memberId);
+    return `- ${member?.name || "Unknown"}: ${r.submittedAt}`;
+  })
+  .join("\n")}
+
+## 判定結果
+
+### 未提出者 (${nonSubmitters.length}名)
+${
+  nonSubmitters.length > 0
+    ? nonSubmitters.map((m) => `- ${m.name} (${m.email})`).join("\n")
+    : "なし"
+}
+
+### 遅延者 (${delayedSubmitters.length}名)
+${
+  delayedSubmitters.length > 0
+    ? delayedSubmitters
+        .map((m) => `- ${m.name} (提出時刻: ${m.submittedAt})`)
+        .join("\n")
+    : "なし"
+}
+
+## 集計
+- 総部員数: ${summaryList.totalMembers}
+- 提出済み: ${summaryList.submitted}
+- 未提出: ${summaryList.nonSubmitted}
+- 遅延: ${summaryList.delayed}
+
+## 指示
+上記の判定結果に基づいて、部長への通知メール内容を作成してください。
+未提出者と遅延者の一覧を明確に記載し、対応が必要な部員を強調してください。
+`;
+
+  return prompt;
 }

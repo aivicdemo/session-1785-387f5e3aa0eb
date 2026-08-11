@@ -7,82 +7,110 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
 export interface Action05ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  normalizedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
 }
 
-export interface Action05RegistrationPayload {
-  engineerId: string;
-  engineerName: string;
-  reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
-  validationStatus: "valid" | "invalid";
+export interface Action05PromptInput {
+  context: Action05Context;
+  validationRules: {
+    minYesterdayLength: number;
+    minTodayLength: number;
+    minIssuesLength: number;
+    maxYesterdayLength: number;
+    maxTodayLength: number;
+    maxIssuesLength: number;
+  };
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const prompt = `You are an AI agent responsible for registering daily reports to the management system.
+export interface Action05PromptOutput {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  expectedResponseFormat: string;
+}
 
-## Task: Register Daily Report to Management System
+export function buildAction05Prompt(input: Action05PromptInput): Action05PromptOutput {
+  const { context, validationRules } = input;
 
-### Input Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-- Today's Plans: ${context.todayPlans}
-- Current Issues: ${context.currentIssues}
-- Submission Timestamp: ${context.submissionTimestamp}
+  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-### Your Responsibilities
-1. Validate that all required fields are present and properly formatted
-2. Check for any data inconsistencies or anomalies
-3. Prepare the registration payload for the management system
-4. Ensure data integrity before registration
-5. Log the registration attempt with timestamp
+Your role in Action 05 is to:
+1. Validate the completeness and appropriateness of engineer daily report input
+2. Check that all required fields are filled with sufficient detail
+3. Identify any missing or incomplete information
+4. Detect anomalies or concerning patterns in the report content
+5. Normalize and structure the validated content for system registration
 
-### Validation Criteria
-- Engineer ID must be non-empty and valid format
-- Report Date must be in YYYY-MM-DD format
-- All text fields must be non-empty and reasonable length (not exceeding 5000 characters)
-- Submission Timestamp must be valid ISO 8601 format
-- Content should not contain suspicious patterns or malformed data
+Validation criteria:
+- Yesterday's accomplishments: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
+- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
+- Issues/concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
+- All sections must contain meaningful, non-repetitive content
+- No placeholder or template text should remain
+- Content should be relevant to the engineer's role and project
 
-### Output Format
-Return a JSON object with the following structure:
+Respond with a JSON object containing:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "registrationPayload": {
-    "engineerId": string,
-    "engineerName": string,
-    "reportDate": string,
-    "yesterdayAccomplishments": string,
-    "todayPlans": string,
-    "currentIssues": string,
-    "submissionTimestamp": string,
-    "validationStatus": "valid" | "invalid"
+  "normalizedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
   }
-}
+}`;
 
-### Decision Logic
-- If any required field is missing or invalid, set isValid to false and list errors
-- If data is present but has minor issues, add to warnings but keep isValid as true if critical fields are valid
-- Proceed with registration only if isValid is true
-- Log all validation results for audit trail
+  const userPrompt = `Validate the following daily report submission:
 
-Analyze the input and provide your response in the specified JSON format.`;
+Engineer: ${context.engineerName} (ID: ${context.engineerId})
+Report Date: ${context.reportDate}
+Submission Deadline: ${context.submissionDeadline}
+System Timestamp: ${context.systemTimestamp}
 
-  return prompt;
+Yesterday's Accomplishments:
+${context.previousReportContent.yesterday}
+
+Today's Plan:
+${context.previousReportContent.today}
+
+Issues/Concerns:
+${context.previousReportContent.issues}
+
+Please validate this report according to the criteria specified in the system prompt. Ensure all required fields meet the length and quality requirements. Identify any issues that should be escalated to human review.`;
+
+  const expectedResponseFormat = `{
+  "isValid": boolean,
+  "errors": ["error message 1", "error message 2"],
+  "warnings": ["warning message 1"],
+  "normalizedContent": {
+    "yesterday": "normalized text",
+    "today": "normalized text",
+    "issues": "normalized text"
+  }
+}`;
+
+  return {
+    version: ACTION_05_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    expectedResponseFormat,
+  };
 }

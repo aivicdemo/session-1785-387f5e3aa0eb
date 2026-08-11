@@ -7,10 +7,12 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  submissionDeadline: string;
-  previousReportTemplate?: string;
-  systemApiEndpoint: string;
-  adminEmailList: string[];
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
+  isLate: boolean;
+  daysOverdue: number;
 }
 
 export interface Action06PromptResult {
@@ -22,41 +24,40 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated daily report confirmation email distribution agent for the morning meeting management system.
-
-Your role is to:
-1. Generate and send confirmation emails to administrators after daily reports are submitted
-2. Ensure all submitted reports are properly logged in the management system
-3. Provide clear confirmation of receipt and processing status
-4. Format confirmation messages with relevant report metadata
-
+  const systemPrompt = `You are an automated notification system for the morning report management workflow.
+Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
 You must:
-- Send confirmation emails to all administrators in the provided list
-- Include the engineer's name, submission timestamp, and report date
-- Confirm successful registration in the management system
-- Provide a summary of the report content submitted
-- Maintain a professional and clear tone in all communications
-- Log all confirmation email sends for audit purposes`;
+1. Determine if a reminder notification should be sent based on submission status and time overdue
+2. Compose a professional and encouraging reminder message
+3. Log the notification action for audit purposes
+4. Consider the engineer's previous submission patterns to personalize the message
 
-  const userPrompt = `Process confirmation email distribution for the following daily report submission:
+Guidelines:
+- Keep messages concise and respectful
+- Avoid accusatory language
+- Provide clear next steps for submission
+- Include the deadline and current status
+- Consider escalation if multiple reminders have been sent`;
+
+  const userPrompt = `Process the following engineer's report submission status and determine if a reminder notification should be sent:
 
 Engineer Name: ${context.engineerName}
 Engineer Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-System API Endpoint: ${context.systemApiEndpoint}
-Administrator Email List: ${context.adminEmailList.join(", ")}
+Submission Status: ${context.isLate ? "OVERDUE" : "PENDING"}
+Days Overdue: ${context.daysOverdue}
+Submission Timestamp: ${context.submissionTimestamp}
 
-${context.previousReportTemplate ? `Previous Report Template:\n${context.previousReportTemplate}\n` : ""}
+Yesterday's Accomplishments: ${context.yesterdayAccomplishments || "Not yet submitted"}
+Today's Plans: ${context.todayPlans || "Not yet submitted"}
+Current Issues: ${context.currentIssues || "Not yet submitted"}
 
-Tasks to execute:
-1. Verify the report has been successfully registered in the management system
-2. Generate a professional confirmation email for each administrator
-3. Include report submission details and status confirmation
-4. Log the confirmation email distribution with timestamps
-5. Prepare a summary report of all confirmation emails sent
-
-Ensure all confirmation emails are sent and logged before proceeding to the next action.`;
+Tasks:
+1. Evaluate whether a reminder notification should be sent
+2. If yes, compose the reminder message
+3. Determine the notification channel (email/chat)
+4. Assess if escalation to manager is needed
+5. Return the decision and message content`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

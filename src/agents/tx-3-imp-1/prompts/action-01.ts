@@ -7,85 +7,75 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  previousEscalationCount?: Record<string, number>;
-}
-
-export interface Action01PromptOutput {
-  unreportedMembers: string[];
-  delayedMembers: string[];
-  analysisTimestamp: string;
-  escalationRecommendations: Array<{
-    memberId: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
+  engineersList: Array<{
+    id: string;
+    name: string;
+    email: string;
   }>;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    confirmationEmailContent,
-    reportDeadline,
-    currentTimestamp,
-    previousEscalationCount = {},
-  } = input;
+export interface Action01PromptOutput {
+  unreportedEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    reason: string;
+  }>;
+  delayedEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    delayMinutes: number;
+  }>;
+  identificationTimestamp: string;
+}
 
-  const escalationContext = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `${memberId}: ${count}回の催促済み`)
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const engineersListStr = input.engineersList
+    .map((e) => `- ${e.name} (${e.id}): ${e.email}`)
     .join("\n");
 
-  return `# 報告漏れ・遅延部員特定プロンプト
+  return `# 報告漏れ・遅延部員の自動特定
 
-## 目的
-確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定する
+## 確認メール内容
+${input.confirmationEmailContent}
 
-## 入力情報
-### 確認メール内容
-\`\`\`
-${confirmationEmailContent}
-\`\`\`
+## 対象エンジニア一覧
+${engineersListStr}
 
-### 報告期限
-${reportDeadline}
+## 提出期限
+${input.reportDeadline}
 
-### 現在時刻
-${currentTimestamp}
+## 現在時刻
+${input.currentTimestamp}
 
-### 過去の催促履歴
-${escalationContext || "なし"}
+## タスク
+以下の手順で報告漏れ・遅延部員を特定してください：
 
-## 実行タスク
-1. 確認メール内容から報告漏れ部員を特定する
-2. 報告期限を超過した遅延部員を特定する
-3. 過去の催促履歴を考慮して催促対象を判定する
-4. 各部員の催促優先度を判定する
+1. 確認メール内容から、実際に日報を提出したエンジニアを抽出する
+2. 対象エンジニア一覧と比較して、未提出者を特定する
+3. 提出期限と現在時刻を比較して、遅延者を特定する
+4. 各未提出者・遅延者について、理由と遅延時間を記録する
 
 ## 出力形式
-JSON形式で以下の構造で返却してください：
-\`\`\`json
+JSON形式で以下の構造で返してください：
 {
-  "unreportedMembers": ["member_id_1", "member_id_2"],
-  "delayedMembers": ["member_id_3"],
-  "analysisTimestamp": "ISO8601形式のタイムスタンプ",
-  "escalationRecommendations": [
+  "unreportedEngineers": [
     {
-      "memberId": "member_id",
-      "reason": "催促理由の説明",
-      "priority": "high|medium|low"
+      "id": "engineer_id",
+      "name": "engineer_name",
+      "email": "engineer_email",
+      "reason": "報告がない理由の推測"
     }
-  ]
-}
-\`\`\`
-
-## 判定ルール
-- 報告漏れ：確認メール内容に記載されていない部員
-- 遅延：報告期限を超過している部員
-- 催促優先度：
-  - high: 初回催促、または重要な部員
-  - medium: 2回目の催促
-  - low: 3回以上の催促済み、または軽微な遅延
-
-## 注意事項
-- 誤検知を避けるため、確認メール内容を厳密に解析する
-- 過度な催促を防ぐため、催促回数の上限を考慮する
-- システムエラーの可能性も考慮する`;
+  ],
+  "delayedEngineers": [
+    {
+      "id": "engineer_id",
+      "name": "engineer_name",
+      "email": "engineer_email",
+      "delayMinutes": 遅延分数
+    }
+  ],
+  "identificationTimestamp": "特定時刻"
+}`;
 }

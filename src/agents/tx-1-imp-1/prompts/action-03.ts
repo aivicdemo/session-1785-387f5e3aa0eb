@@ -7,74 +7,126 @@ export interface Action03Context {
   engineerId: string;
   engineerName: string;
   submittedContent: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
+    yesterdayAccomplishments: string;
+    todayPlans: string;
     issues: string;
   };
   submissionTimestamp: string;
-  deadline: string;
+  systemId: string;
 }
 
 export interface Action03ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  validatedContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    issues: string;
+  };
 }
 
-export function buildAction03Prompt(context: Action03Context): string {
-  const { engineerId, engineerName, submittedContent, submissionTimestamp, deadline } = context;
-
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
-
-**Task: Validate Daily Report Input Content**
-
-**Engineer Information:**
-- Engineer ID: ${engineerId}
-- Engineer Name: ${engineerName}
-- Submission Timestamp: ${submissionTimestamp}
-- Deadline: ${deadline}
-
-**Submitted Content:**
-1. Yesterday's Accomplishment:
-${submittedContent.yesterdayAccomplishment}
-
-2. Today's Plan:
-${submittedContent.todayPlan}
-
-3. Issues/Challenges:
-${submittedContent.issues}
-
-**Validation Criteria:**
-1. Completeness: All three sections must have meaningful content (not empty or placeholder text)
-2. Clarity: Content should be clear and understandable
-3. Relevance: Content should be relevant to daily work activities
-4. Timeliness: Check if submission is within or beyond the deadline
-5. Consistency: Yesterday's accomplishment should logically relate to today's plan
-6. Issue Specificity: Issues should be specific and actionable, not vague
-
-**Output Format:**
-Return a JSON object with the following structure:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "validationDetails": {
-    "completenessCheck": boolean,
-    "clarityCheck": boolean,
-    "relevanceCheck": boolean,
-    "timelinessCheck": boolean,
-    "consistencyCheck": boolean,
-    "issueSpecificityCheck": boolean
-  }
+export interface Action03PromptInput {
+  context: Action03Context;
+  validationRules: {
+    minYesterdayLength: number;
+    minTodayLength: number;
+    minIssuesLength: number;
+    maxYesterdayLength: number;
+    maxTodayLength: number;
+    maxIssuesLength: number;
+    requiredFields: string[];
+  };
+  previousValidationErrors?: string[];
 }
 
-**Instructions:**
-- Identify any missing or incomplete information
-- Flag any content that appears to be placeholder or template text
-- Note any inconsistencies between yesterday's accomplishment and today's plan
-- Check if issues are specific enough for action
-- Determine if submission is on-time or delayed
-- Provide constructive feedback in the errors and warnings arrays`;
+export interface Action03PromptOutput {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  expectedOutputFormat: {
+    type: "json";
+    schema: {
+      isValid: "boolean";
+      errors: "string[]";
+      warnings: "string[]";
+      validatedContent: {
+        yesterdayAccomplishments: "string";
+        todayPlans: "string";
+        issues: "string";
+      };
+      suggestions?: "string[]";
+    };
+  };
+}
 
-  return prompt;
+export function buildAction03Prompt(
+  input: Action03PromptInput
+): Action03PromptOutput {
+  const { context, validationRules, previousValidationErrors } = input;
+
+  const systemPrompt = `You are a validation agent for the morning report management system.
+Your role is to validate engineer daily report submissions for completeness, appropriateness, and quality.
+
+Validation Responsibilities:
+1. Check that all required fields are present and non-empty
+2. Verify content length meets minimum and maximum requirements
+3. Detect incomplete, vague, or inappropriate content
+4. Identify potential issues or concerns in the submission
+5. Provide constructive feedback for improvement
+
+Validation Criteria:
+- Yesterday's Accomplishments: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
+- Today's Plans: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
+- Issues/Concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
+- Required fields: ${validationRules.requiredFields.join(", ")}
+
+Output Format:
+Return a JSON object with:
+- isValid: boolean indicating if submission passes all validations
+- errors: array of critical validation failures
+- warnings: array of non-critical issues or suggestions
+- validatedContent: the cleaned/normalized content
+- suggestions: optional array of improvement suggestions`;
+
+  const previousErrorsContext =
+    previousValidationErrors && previousValidationErrors.length > 0
+      ? `\n\nPrevious validation errors to address:\n${previousValidationErrors.map((e) => `- ${e}`).join("\n")}`
+      : "";
+
+  const userPrompt = `Validate the following daily report submission from engineer ${context.engineerName} (ID: ${context.engineerId}):
+
+Submission Timestamp: ${context.submissionTimestamp}
+System ID: ${context.systemId}
+
+Yesterday's Accomplishments:
+${context.submittedContent.yesterdayAccomplishments || "(empty)"}
+
+Today's Plans:
+${context.submittedContent.todayPlans || "(empty)"}
+
+Issues/Concerns:
+${context.submittedContent.issues || "(empty)"}${previousErrorsContext}
+
+Please validate this submission against the criteria and return a JSON response with validation results.`;
+
+  return {
+    version: ACTION_03_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    expectedOutputFormat: {
+      type: "json",
+      schema: {
+        isValid: "boolean",
+        errors: "string[]",
+        warnings: "string[]",
+        validatedContent: {
+          yesterdayAccomplishments: "string",
+          todayPlans: "string",
+          issues: "string",
+        },
+        suggestions: "string[]",
+      },
+    },
+  };
 }

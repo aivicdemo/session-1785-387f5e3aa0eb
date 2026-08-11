@@ -4,101 +4,64 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02Context {
-  engineerInputData: {
+  engineerInput: {
     yesterdayAccomplishments: string;
     todayPlans: string;
     currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
   };
-  validationRules: {
-    minAccomplishmentsLength: number;
-    minPlansLength: number;
-    minIssuesLength: number;
-    allowedIssueCategories: string[];
-  };
+  engineerId: string;
+  engineerName: string;
+  submissionTimestamp: string;
 }
 
-export interface ValidationResult {
+export interface Action02ValidationResult {
   isValid: boolean;
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
-}
-
-export interface ValidationError {
-  field: string;
-  message: string;
-  severity: "critical" | "high";
-}
-
-export interface ValidationWarning {
-  field: string;
-  message: string;
+  errors: string[];
+  warnings: string[];
 }
 
 export function buildAction02Prompt(context: Action02Context): string {
-  const {
-    engineerInputData,
-    validationRules,
-  } = context;
-
   const prompt = `You are an AI agent responsible for validating daily report input content.
 
-## Task: Validate Engineer Input Content
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Submission Time: ${context.submissionTimestamp}
 
-### Engineer Information
-- Engineer ID: ${engineerInputData.engineerId}
-- Engineer Name: ${engineerInputData.engineerName}
-- Submission Time: ${engineerInputData.submissionTimestamp}
+Input Content to Validate:
+- Yesterday's Accomplishments: ${context.engineerInput.yesterdayAccomplishments}
+- Today's Plans: ${context.engineerInput.todayPlans}
+- Current Issues: ${context.engineerInput.currentIssues}
 
-### Input Content to Validate
-**Yesterday's Accomplishments:**
-${engineerInputData.yesterdayAccomplishments}
+Your task is to validate the input content according to the following criteria:
 
-**Today's Plans:**
-${engineerInputData.todayPlans}
+1. Completeness Check:
+   - All three fields (yesterday's accomplishments, today's plans, current issues) must be filled
+   - Each field must contain at least 10 characters
+   - No field should be empty or contain only whitespace
 
-**Current Issues:**
-${engineerInputData.currentIssues}
+2. Appropriateness Check:
+   - Content should be work-related and relevant to daily reporting
+   - Language should be professional and clear
+   - No offensive, discriminatory, or inappropriate content
 
-### Validation Rules
-- Minimum accomplishments length: ${validationRules.minAccomplishmentsLength} characters
-- Minimum plans length: ${validationRules.minPlansLength} characters
-- Minimum issues length: ${validationRules.minIssuesLength} characters
-- Allowed issue categories: ${validationRules.allowedIssueCategories.join(", ")}
+3. Consistency Check:
+   - Today's plans should logically follow from yesterday's accomplishments
+   - Current issues should be relevant to the work context
+   - No contradictory statements between fields
 
-### Validation Criteria
-1. **Completeness**: All three fields must be filled with sufficient detail
-2. **Appropriateness**: Content must be relevant to daily report requirements
-3. **Clarity**: Content must be clear and understandable
-4. **Format**: Content should follow standard daily report format
-5. **Issue Categorization**: Issues should fall within allowed categories
+4. Format Check:
+   - Content should be properly formatted and readable
+   - No excessive special characters or formatting issues
 
-### Output Format
-Provide validation results in the following JSON structure:
+Provide validation result in the following JSON format:
 {
   "isValid": boolean,
-  "errors": [
-    {
-      "field": "field_name",
-      "message": "error_message",
-      "severity": "critical" | "high"
-    }
-  ],
-  "warnings": [
-    {
-      "field": "field_name",
-      "message": "warning_message"
-    }
-  ]
+  "errors": string[],
+  "warnings": string[]
 }
 
-### Instructions
-- If any critical errors exist, mark isValid as false
-- Provide specific, actionable error messages
-- Include warnings for content that could be improved but is acceptable
-- Ensure the engineer can understand what needs to be corrected`;
+Return ONLY the JSON object, no additional text.`;
 
   return prompt;
 }

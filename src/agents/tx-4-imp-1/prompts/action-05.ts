@@ -30,195 +30,159 @@ export interface TeamMember {
 }
 
 export interface IssueExtractionResult {
-  issues: ExtractedIssue[];
-  summary: string;
-  totalIssuesFound: number;
-  criticalIssuesCount: number;
-  analysisTimestamp: string;
+  extractedIssues: ExtractedIssue[];
+  priorityClassification: PriorityClassification;
+  summaryReport: string;
+  analysisMetadata: AnalysisMetadata;
 }
 
 export interface PriorityClassification {
-  issueId: string;
-  priority: number;
-  reasoning: string;
-  recommendedAction: string;
-  assignedTo?: string;
-  targetResolutionDate?: string;
+  critical: ExtractedIssue[];
+  high: ExtractedIssue[];
+  medium: ExtractedIssue[];
+  low: ExtractedIssue[];
+  unclassified: ExtractedIssue[];
 }
 
-export interface Action05Output {
-  extractedIssues: ExtractedIssue[];
-  priorityClassifications: PriorityClassification[];
-  reportSummary: string;
-  escalationFlags: EscalationFlag[];
-  generatedAt: string;
-}
-
-export interface EscalationFlag {
-  type: "missing_report" | "critical_issue" | "repeated_issue" | "system_error" | "unusual_pattern";
-  severity: "high" | "medium" | "low";
-  description: string;
-  affectedMembers?: string[];
-  recommendedAction: string;
+export interface AnalysisMetadata {
+  totalIssuesExtracted: number;
+  analysisTimestamp: string;
+  confidenceScore: number;
+  processingDurationMs: number;
+  dataSourcesUsed: string[];
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const {
-    confirmationEmailContent,
-    reportSubmissionDeadline,
-    currentTimestamp,
-    previousExtractedIssues = [],
-    teamMembers,
-  } = context;
+  const timestamp = new Date().toISOString();
+  
+  const teamMembersList = context.teamMembers
+    .map(member => `- ${member.name} (${member.department}/${member.role}): ${member.email}`)
+    .join("\n");
 
-  const previousIssuesSection =
-    previousExtractedIssues.length > 0
-      ? `
-## 前回抽出された課題（参考情報）
-${previousExtractedIssues
-  .map(
-    (issue) => `
-- **${issue.title}** (ID: ${issue.id})
-  - 報告者: ${issue.reportedBy}
-  - 重要度: ${issue.severity}
-  - カテゴリ: ${issue.category}
-  - 説明: ${issue.description}
-`
-  )
-  .join("")}
-`
-      : "";
+  const previousIssuesContext = context.previousExtractedIssues && context.previousExtractedIssues.length > 0
+    ? `\n\n## 前回抽出された課題（参考）:\n${context.previousExtractedIssues
+        .map(issue => `- [${issue.severity.toUpperCase()}] ${issue.title}: ${issue.description}`)
+        .join("\n")}`
+    : "";
 
-  const teamMembersSection =
-    teamMembers.length > 0
-      ? `
-## チームメンバー一覧
-${teamMembers
-  .map(
-    (member) => `
-- ${member.name} (${member.id})
-  - 部門: ${member.department}
-  - 役職: ${member.role}
-  - メール: ${member.email}
-`
-  )
-  .join("")}
-`
-      : "";
+  const prompt = `# 日報からの課題抽出・優先度判定プロンプト
 
-  return `# Action 05: 日報から課題抽出・優先度判定
+## 実行時刻
+${timestamp}
 
 ## 目的
-確認メール内容から日報を読み込み、課題・ボトルネックを自動抽出し、優先度を判定・分類する。
+確認メール内容から日報の課題・ボトルネックを自動抽出し、優先度を判定・分類する。
 
 ## 入力情報
 
 ### 確認メール内容
 \`\`\`
-${confirmationEmailContent}
+${context.confirmationEmailContent}
 \`\`\`
 
-### 提出期限
-${reportSubmissionDeadline}
+### 報告期限
+${context.reportSubmissionDeadline}
 
 ### 現在時刻
-${currentTimestamp}
+${context.currentTimestamp}
 
-${previousIssuesSection}
+### チームメンバー一覧
+${teamMembersList}
 
-${teamMembersSection}
+${previousIssuesContext}
 
 ## 実行タスク
 
-### 1. 日報内容の自動読み込み
-- 確認メールから日報の提出状況を確認
-- 各チームメンバーの報告内容を抽出
-- 進捗状況、課題、リスクを分類
+### タスク1: 課題の自動抽出
+確認メール内容から以下の情報を抽出してください:
+- 課題のタイトル
+- 詳細な説明
+- 報告者
+- 課題のカテゴリ（技術的課題、プロセス課題、リソース課題、その他）
+- 関連するタスク・プロジェクト
 
-### 2. 課題・ボトルネックの自動抽出
-- 報告内容から明示的な課題を抽出
-- 進捗遅延の原因となるボトルネックを特定
-- 複数メンバーから報告された共通課題を統合
-- 前回抽出された課題との関連性を確認
+### タスク2: 優先度の自動判定
+抽出された各課題に対して以下の基準で優先度を判定してください:
 
-### 3. 課題の優先度判定・分類
-- 各課題の影響範囲を評価
-- 解決の緊急度を判定
-- 依存関係を分析
-- 優先度スコア（1-10）を付与
+**Critical（緊急）**:
+- システム停止・重大障害
+- セキュリティ脅威
+- 本日中の対応が必須
+- 複数チームに影響
 
-### 4. エスカレーション条件の判定
-- 期限超過の報告漏れを検出
-- 重大なリスク課題を特定
-- 通常と異なる事象パターンを検知
-- システムエラーの兆候を確認
+**High（高）**:
+- 機能障害・パフォーマンス低下
+- 本週中の対応が必須
+- 1チーム以上に影響
+- 顧客対応に関連
+
+**Medium（中）**:
+- 改善提案・最適化
+- 本月中の対応が望ましい
+- 限定的な影響
+
+**Low（低）**:
+- 軽微な問題・提案
+- 対応時期に余裕あり
+- 影響が限定的
+
+### タスク3: 課題の分類
+優先度ごとに課題を分類し、以下の構造で整理してください:
+- Critical: 最優先対応が必要な課題
+- High: 今週中に対応すべき課題
+- Medium: 今月中に対応すべき課題
+- Low: 余裕があれば対応する課題
+
+### タスク4: サマリーレポート生成
+以下を含むサマリーレポートを生成してください:
+- 抽出された課題の総数
+- 優先度別の課題数
+- 最も重要な3つの課題
+- 推奨される対応順序
+- リスク評価
 
 ## 出力形式
 
-以下の JSON 形式で結果を返却してください：
+JSON形式で以下の構造で返してください:
 
 \`\`\`json
 {
   "extractedIssues": [
     {
       "id": "ISSUE-001",
-      "title": "課題タイトル",
-      "description": "詳細説明",
-      "reportedBy": "報告者ID",
+      "title": "課題のタイトル",
+      "description": "詳細な説明",
+      "reportedBy": "報告者名",
       "severity": "critical|high|medium|low",
-      "category": "技術|プロセス|リソース|その他",
-      "relatedTasks": ["TASK-001", "TASK-002"]
+      "category": "技術的課題|プロセス課題|リソース課題|その他",
+      "relatedTasks": ["タスク1", "タスク2"]
     }
   ],
-  "priorityClassifications": [
-    {
-      "issueId": "ISSUE-001",
-      "priority": 9,
-      "reasoning": "優先度判定の理由",
-      "recommendedAction": "推奨アクション",
-      "assignedTo": "担当者ID",
-      "targetResolutionDate": "2024-01-15"
-    }
-  ],
-  "reportSummary": "全体進捗の要約",
-  "escalationFlags": [
-    {
-      "type": "critical_issue|missing_report|repeated_issue|system_error|unusual_pattern",
-      "severity": "high|medium|low",
-      "description": "エスカレーション内容",
-      "affectedMembers": ["MEMBER-001"],
-      "recommendedAction": "推奨対応"
-    }
-  ],
-  "generatedAt": "2024-01-10T09:30:00Z"
+  "priorityClassification": {
+    "critical": [/* Critical課題の配列 */],
+    "high": [/* High課題の配列 */],
+    "medium": [/* Medium課題の配列 */],
+    "low": [/* Low課題の配列 */],
+    "unclassified": [/* 分類不可の課題 */]
+  },
+  "summaryReport": "サマリーレポートのテキスト",
+  "analysisMetadata": {
+    "totalIssuesExtracted": 0,
+    "analysisTimestamp": "ISO8601形式のタイムスタンプ",
+    "confidenceScore": 0.85,
+    "processingDurationMs": 0,
+    "dataSourcesUsed": ["confirmationEmail", "previousIssues"]
+  }
 }
 \`\`\`
 
-## 判定基準
-
-### 優先度スコア（1-10）
-- 9-10: 即座の対応が必要（本日中に解決）
-- 7-8: 高優先度（本週中に解決）
-- 5-6: 中優先度（来週までに解決）
-- 3-4: 低優先度（計画的に対応）
-- 1-2: 参考情報（対応不要または将来検討）
-
-### 重要度レベル
-- critical: プロジェクト全体に影響、即座の対応必須
-- high: 複数チームに影響、早急な対応が必要
-- medium: 特定チームに影響、計画的な対応が必要
-- low: 限定的な影響、対応は柔軟に判断
-
-### エスカレーション判定
-- 重大なリスク課題（critical）が検出された場合
-- 同一課題が複数回報告された場合
-- 期限超過の報告漏れが発生した場合
-- 通常と異なるパターンが検知された場合
-
 ## 注意事項
-- 前回抽出された課題との重複を避け、新規課題のみを抽出
-- 優先度判定は客観的な基準に基づく
-- 判定理由は明確かつ簡潔に記述
-- 不確実な情報は「要確認」と明記
+- 重複する課題は統合してください
+- 前回抽出された課題との関連性を考慮してください
+- 優先度判定は客観的な基準に基づいてください
+- 不明確な課題は"unclassified"に分類してください
+- 信頼度スコア（0-1）を含めてください
 `;
+
+  return prompt;
 }
