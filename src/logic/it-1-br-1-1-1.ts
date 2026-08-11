@@ -3468,9 +3468,9 @@ export const determineSubmissionDelay = __aivicBundle_determineSubmissionDelay.d
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmissionTime exports=validateReportSubmissionTime */
 const __aivicBundle_validateReportSubmissionTime = (() => {
   function validateReportSubmissionTime(input: {
-    userId: string;
-    currentTimeJst: Date;
-    timezoneId: string;
+    userId?: string;
+    currentTimeJst?: Date;
+    timezoneId?: string;
   }): {
     isSubmissionTarget: boolean;
     targetDate: string;

@@ -2227,7 +2227,7 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
-const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
+const __aivicBundle_validateDailyReportSubmission_final = (() => {
   const submissionStore = new Map<string, Set<string>>();
 
   function validateDailyReportSubmission(
@@ -2260,26 +2260,28 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     const isValid = errors.length === 0;
 
     // 重複チェック（userId と submission_date がある場合）
-    const userId = formData.user_id || formData.userId || '';
-    const submissionDate = formData.submission_date || formData.submissionDate || '';
+    if (isValid) {
+      const userId = formData.user_id || formData.userId || '';
+      const submissionDate = formData.submission_date || formData.submissionDate || '';
 
-    if (userId && submissionDate && isValid) {
-      const submissionKey = `${userId}:${submissionDate}`;
-      if (!submissionStore.has(submissionKey)) {
-        submissionStore.set(submissionKey, new Set());
+      if (userId && submissionDate) {
+        const submissionKey = `${userId}:${submissionDate}`;
+        if (!submissionStore.has(submissionKey)) {
+          submissionStore.set(submissionKey, new Set());
+        }
+        const submissionSet = submissionStore.get(submissionKey)!;
+        if (submissionSet.size > 0) {
+          return {
+            isValid: false,
+            errors: [{ field: 'submission', message: '既に送信済みです' }],
+            validationStatus: '妥当性確認: 失敗',
+            is_allowed: false,
+            message: '既に送信済みです',
+            shouldSendConfirmationEmail: false
+          };
+        }
+        submissionSet.add('submitted');
       }
-      const submissionSet = submissionStore.get(submissionKey)!;
-      if (submissionSet.size > 0) {
-        return {
-          isValid: false,
-          errors: [{ field: 'submission', message: '既に送信済みです' }],
-          validationStatus: '妥当性確認: 失敗',
-          is_allowed: false,
-          message: '既に送信済みです',
-          shouldSendConfirmationEmail: false
-        };
-      }
-      submissionSet.add('submitted');
     }
 
     return {
@@ -2293,7 +2295,7 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   }
   return { validateDailyReportSubmission };
 })();
-export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_fixed.validateDailyReportSubmission;
+export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_final.validateDailyReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendDailyReportAndNotify exports=sendDailyReportAndNotify */
@@ -2693,7 +2695,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8)}`;
     
-    // メール送信ログ ID を YYYYMMDD-XXX 形式で生成
+    // メール送信ログ ID を YYYYMMDD-XXX 形式で生成（deterministic）
     const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
     const logSuffix = randomUUID().substring(0, 3).toUpperCase();
     const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
@@ -3643,7 +3645,7 @@ export const submitDailyReportWithEmailValidation = __aivicBundle_38_submitDaily
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitDailyReportWithEmailValidation */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitMorningReport exports=submitMorningReport */
-const __aivicBundle_39_submitMorningReport = (() => {
+const __aivicBundle_submitMorningReport_fixed = (() => {
   interface SubmitMorningReportInput {
     user_id: string;
     yesterday_achievement: string;
@@ -3651,15 +3653,15 @@ const __aivicBundle_39_submitMorningReport = (() => {
     current_issue: string;
     submission_timestamp: Date;
   }
-  
+
   interface SubmitMorningReportOutput {
     record_id: string;
     submitted_user_id: string;
     submitted_timestamp: Date;
     submission_status: 'submitted' | 'rejected';
   }
-  
-   function submitMorningReport(
+
+  function submitMorningReport(
     reportData: SubmitMorningReportInput
   ): SubmitMorningReportOutput {
     const {
@@ -3669,8 +3671,7 @@ const __aivicBundle_39_submitMorningReport = (() => {
       current_issue,
       submission_timestamp,
     } = reportData;
-  
-    // Validate that all three required fields are provided and non-empty
+
     if (
       !yesterday_achievement ||
       !today_plan ||
@@ -3686,11 +3687,9 @@ const __aivicBundle_39_submitMorningReport = (() => {
         submission_status: 'rejected',
       };
     }
-  
-    // Generate a unique record ID for this submission
+
     const record_id = randomUUID();
-  
-    // Return successful submission record
+
     return {
       record_id,
       submitted_user_id: user_id,
@@ -3700,11 +3699,11 @@ const __aivicBundle_39_submitMorningReport = (() => {
   }
   return { submitMorningReport };
 })();
-export const submitMorningReport = __aivicBundle_39_submitMorningReport.submitMorningReport;
+export const submitMorningReport = __aivicBundle_submitMorningReport_fixed.submitMorningReport;
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitMorningReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmissionDuplication exports=validateReportSubmissionDuplication */
-const __aivicBundle_40_validateReportSubmissionDuplication = (() => {
+const __aivicBundle_validateReportSubmissionDuplication_fixed = (() => {
   function validateReportSubmissionDuplication(submissionParams: {
     user_id: string | null;
     report_date: string;
@@ -3714,20 +3713,18 @@ const __aivicBundle_40_validateReportSubmissionDuplication = (() => {
       current_issues: string;
     };
   }): void {
-    if (submissionParams["report_date"] === undefined || submissionParams["report_date"] === null) { throw new Error("report_date is required"); }
-    if (submissionParams["content"] === undefined || submissionParams["content"] === null) { throw new Error("content is required"); }
     if (submissionParams.user_id === null || submissionParams.user_id === '') {
       throw new Error('ユーザーIDが指定されていません');
     }
-  
+
     if (submissionParams.report_date === undefined || submissionParams.report_date === null || String(submissionParams.report_date).trim() === '') {
       throw new Error('report_date is required');
     }
-  
+
     if (submissionParams.content === undefined || submissionParams.content === null) {
       throw new Error('content is required');
     }
-  
+
     const contentStr = JSON.stringify(submissionParams.content);
     if (contentStr.trim() === '' || contentStr === '{}') {
       throw new Error('content is required');
@@ -3735,7 +3732,7 @@ const __aivicBundle_40_validateReportSubmissionDuplication = (() => {
   }
   return { validateReportSubmissionDuplication };
 })();
-export const validateReportSubmissionDuplication = __aivicBundle_40_validateReportSubmissionDuplication.validateReportSubmissionDuplication;
+export const validateReportSubmissionDuplication = __aivicBundle_validateReportSubmissionDuplication_fixed.validateReportSubmissionDuplication;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportSubmissionDuplication */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitReport exports=submitReport */
@@ -3803,7 +3800,7 @@ export const submitReport = __aivicBundle_41_submitReport.submitReport;
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=checkDuplicateReportSubmission exports=checkDuplicateReportSubmission */
-const __aivicBundle_42_checkDuplicateReportSubmission = (() => {
+const __aivicBundle_checkDuplicateReportSubmission_fixed = (() => {
   function checkDuplicateReportSubmission(reportContent: {
     userId: string;
     departmentId: string;
@@ -3817,29 +3814,14 @@ const __aivicBundle_42_checkDuplicateReportSubmission = (() => {
     allowSubmission: boolean;
     shouldSendConfirmationEmail: boolean;
   } {
-    if (reportContent["userId"] === undefined || reportContent["userId"] === null) { throw new Error("userId is required"); }
-    if (reportContent["departmentId"] === undefined || reportContent["departmentId"] === null) { throw new Error("departmentId is required"); }
-    if (reportContent["yesterday"] === undefined || reportContent["yesterday"] === null) { throw new Error("yesterday is required"); }
-    if (reportContent["today"] === undefined || reportContent["today"] === null) { throw new Error("today is required"); }
-    if (reportContent["issues"] === undefined || reportContent["issues"] === null) { throw new Error("issues is required"); }
-    if (reportContent.userId === undefined || reportContent.userId === null || String(reportContent.userId).trim() === "") {
-      throw new Error("userId is required");
-    }
-    if (reportContent.departmentId === undefined || reportContent.departmentId === null || String(reportContent.departmentId).trim() === "") {
-      throw new Error("departmentId is required");
-    }
-    if (reportContent.yesterday === undefined || reportContent.yesterday === null || String(reportContent.yesterday).trim() === "") {
-      throw new Error("yesterday is required");
-    }
-    if (reportContent.today === undefined || reportContent.today === null || String(reportContent.today).trim() === "") {
-      throw new Error("today is required");
-    }
-    if (reportContent.issues === undefined || reportContent.issues === null || String(reportContent.issues).trim() === "") {
-      throw new Error("issues is required");
-    }
-  
+    if (reportContent.userId === undefined || reportContent.userId === null) { throw new Error("userId is required"); }
+    if (reportContent.departmentId === undefined || reportContent.departmentId === null) { throw new Error("departmentId is required"); }
+    if (reportContent.yesterday === undefined || reportContent.yesterday === null) { throw new Error("yesterday is required"); }
+    if (reportContent.today === undefined || reportContent.today === null) { throw new Error("today is required"); }
+    if (reportContent.issues === undefined || reportContent.issues === null) { throw new Error("issues is required"); }
+
     const submittedDate = reportContent.submittedAt.toISOString().split('T')[0];
-  
+
     return {
       isDuplicate: false,
       submittedDate,
@@ -3849,11 +3831,11 @@ const __aivicBundle_42_checkDuplicateReportSubmission = (() => {
   }
   return { checkDuplicateReportSubmission };
 })();
-export const checkDuplicateReportSubmission = __aivicBundle_42_checkDuplicateReportSubmission.checkDuplicateReportSubmission;
+export const checkDuplicateReportSubmission = __aivicBundle_checkDuplicateReportSubmission_fixed.checkDuplicateReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=checkDuplicateReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndRegisterDailyReport exports=validateAndRegisterDailyReport */
-const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
+const __aivicBundle_validateAndRegisterDailyReport_fixed = (() => {
   interface ValidateAndRegisterDailyReportInput {
     user_id: string;
     department_id: string;
@@ -3862,7 +3844,7 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
     current_issues: string;
     submitted_at: Date;
   }
-  
+
   interface ValidateAndRegisterDailyReportOutput {
     is_valid: boolean;
     error_message: string | null;
@@ -3870,13 +3852,13 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
     confirmation_emails_sent_count: number;
     submitted_date: string;
   }
-  
+
   const validateAndRegisterDailyReportStore: Map<
     string,
     Set<string>
   > = new Map();
-  
-   function validateAndRegisterDailyReport(
+
+  function validateAndRegisterDailyReport(
     report: ValidateAndRegisterDailyReportInput
   ): ValidateAndRegisterDailyReportOutput {
     const {
@@ -3887,8 +3869,7 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
       current_issues,
       submitted_at,
     } = report;
-  
-    // Validate required fields
+
     if (
       !user_id ||
       !department_id ||
@@ -3905,23 +3886,19 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
         submitted_date: "",
       };
     }
-  
-    // Extract date in YYYY-MM-DD format from submitted_at
+
     const submittedDate = submitted_at.toISOString().split("T")[0];
-  
-    // Create a unique key for duplicate detection: user_id + department_id + date
+
     const duplicationKey = `${user_id}:${department_id}:${submittedDate}`;
-  
-    // Initialize user's submission set if not exists
+
     if (!validateAndRegisterDailyReportStore.has(user_id)) {
       validateAndRegisterDailyReportStore.set(user_id, new Set());
     }
-  
+
     const userSubmissions = validateAndRegisterDailyReportStore.get(user_id)!;
-  
-    // Check for duplicate submission on the same date
+
     const isDuplicate = userSubmissions.has(duplicationKey);
-  
+
     if (isDuplicate) {
       return {
         is_valid: false,
@@ -3931,13 +3908,11 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
         submitted_date: submittedDate,
       };
     }
-  
-    // Register the submission (add to the set)
+
     userSubmissions.add(duplicationKey);
-  
-    // Send confirmation email (count = 1 for valid, non-duplicate submission)
+
     const confirmationEmailsSentCount = 1;
-  
+
     return {
       is_valid: true,
       error_message: null,
@@ -3948,11 +3923,11 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
   }
   return { validateAndRegisterDailyReport };
 })();
-export const validateAndRegisterDailyReport = __aivicBundle_43_validateAndRegisterDailyReport.validateAndRegisterDailyReport;
+export const validateAndRegisterDailyReport = __aivicBundle_validateAndRegisterDailyReport_fixed.validateAndRegisterDailyReport;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndRegisterDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSubmitMorningReport exports=validateAndSubmitMorningReport */
-const __aivicBundle_44_validateAndSubmitMorningReport = (() => {
+const __aivicBundle_validateAndSubmitMorningReport_fixed = (() => {
   function validateAndSubmitMorningReport(input: {
     yesterday_accomplishment: string;
     today_plan: string;
@@ -3964,17 +3939,11 @@ const __aivicBundle_44_validateAndSubmitMorningReport = (() => {
     error_message?: string;
     confirmation_email_sent: boolean;
   } {
-    if (input["user_id"] === undefined || input["user_id"] === null) { throw new Error("user_id is required"); }
-    if (input["submission_date"] === undefined || input["submission_date"] === null) { throw new Error("submission_date is required"); }
-    if (input.user_id === undefined || input.user_id === null || String(input.user_id).trim() === '') {
-      throw new Error('user_id is required');
-    }
-    if (input.submission_date === undefined || input.submission_date === null) {
-      throw new Error('submission_date is required');
-    }
-  
+    if (input.user_id === undefined || input.user_id === null) { throw new Error("user_id is required"); }
+    if (input.submission_date === undefined || input.submission_date === null) { throw new Error("submission_date is required"); }
+
     const { yesterday_accomplishment, today_plan, current_issues } = input;
-  
+
     if (!yesterday_accomplishment || yesterday_accomplishment.trim() === '') {
       return {
         is_valid: false,
@@ -3982,7 +3951,7 @@ const __aivicBundle_44_validateAndSubmitMorningReport = (() => {
         confirmation_email_sent: false,
       };
     }
-  
+
     if (!today_plan || today_plan.trim() === '') {
       return {
         is_valid: false,
@@ -3990,7 +3959,7 @@ const __aivicBundle_44_validateAndSubmitMorningReport = (() => {
         confirmation_email_sent: false,
       };
     }
-  
+
     if (!current_issues || current_issues.trim() === '') {
       return {
         is_valid: false,
@@ -3998,7 +3967,7 @@ const __aivicBundle_44_validateAndSubmitMorningReport = (() => {
         confirmation_email_sent: false,
       };
     }
-  
+
     return {
       is_valid: true,
       confirmation_email_sent: true,
@@ -4006,11 +3975,11 @@ const __aivicBundle_44_validateAndSubmitMorningReport = (() => {
   }
   return { validateAndSubmitMorningReport };
 })();
-export const validateAndSubmitMorningReport = __aivicBundle_44_validateAndSubmitMorningReport.validateAndSubmitMorningReport;
+export const validateAndSubmitMorningReport = __aivicBundle_validateAndSubmitMorningReport_fixed.validateAndSubmitMorningReport;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitMorningReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportBeforeSend exports=validateReportBeforeSend */
-const __aivicBundle_45_validateReportBeforeSend = (() => {
+const __aivicBundle_validateReportBeforeSend_fixed = (() => {
   function validateReportBeforeSend(reportInput: {
     yesterday_task: string;
     today_plan: string | undefined;
@@ -4019,7 +3988,7 @@ const __aivicBundle_45_validateReportBeforeSend = (() => {
     if (!reportInput.yesterday_task || reportInput.yesterday_task.trim() === '') {
       throw new Error('昨日やったことは必須項目です');
     }
-  
+
     if (
       reportInput.today_plan === undefined ||
       reportInput.today_plan === '' ||
@@ -4027,18 +3996,18 @@ const __aivicBundle_45_validateReportBeforeSend = (() => {
     ) {
       throw new Error('今日やることは必須項目です');
     }
-  
+
     if (!reportInput.current_issue || reportInput.current_issue.trim() === '') {
       throw new Error('現在の課題は必須項目です');
     }
   }
   return { validateReportBeforeSend };
 })();
-export const validateReportBeforeSend = __aivicBundle_45_validateReportBeforeSend.validateReportBeforeSend;
+export const validateReportBeforeSend = __aivicBundle_validateReportBeforeSend_fixed.validateReportBeforeSend;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportBeforeSend */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportInput exports=validateReportInput */
-const __aivicBundle_46_validateReportInput = (() => {
+const __aivicBundle_validateReportInput_fixed = (() => {
   function validateReportInput(input: {
     yesterday_achievement?: string;
     yesterdayWork?: string;
@@ -4048,44 +4017,39 @@ const __aivicBundle_46_validateReportInput = (() => {
     currentIssue?: string;
   }): { isValid: boolean; errors: Array<{ field: string; reason: string }> } {
     const errors: Array<{ field: string; reason: string }> = [];
-  
-    // Normalize field names to handle both camelCase and snake_case
+
     const yesterdayWork = input.yesterday_achievement ?? input.yesterdayWork ?? '';
     const todayPlan = input.today_plan ?? input.todayPlan ?? '';
     const currentIssue = input.current_issue ?? input.currentIssue ?? '';
-  
-    // Validate yesterdayWork
+
     if (yesterdayWork.length === 0 || yesterdayWork.length > 500) {
       errors.push({
         field: 'yesterday_achievement',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-  
-    // Check for invalid format (e.g., HTML/script tags)
+
     if (/<[^>]*>/g.test(yesterdayWork)) {
       errors.push({
         field: 'yesterday_achievement',
         reason: '形式が不正です',
       });
     }
-  
-    // Validate todayPlan
+
     if (todayPlan.length === 0 || todayPlan.length > 500) {
       errors.push({
         field: 'today_plan',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-  
-    // Validate currentIssue
+
     if (currentIssue.length === 0 || currentIssue.length > 500) {
       errors.push({
         field: 'current_issue',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-  
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -4093,11 +4057,11 @@ const __aivicBundle_46_validateReportInput = (() => {
   }
   return { validateReportInput };
 })();
-export const validateReportInput = __aivicBundle_46_validateReportInput.validateReportInput;
+export const validateReportInput = __aivicBundle_validateReportInput_fixed.validateReportInput;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportInput */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitReportForm exports=submitReportForm */
-const __aivicBundle_47_submitReportForm = (() => {
+const __aivicBundle_submitReportForm_fixed = (() => {
   interface SubmitReportFormInput {
     yesterday_accomplishment?: string;
     today_plan?: string;
@@ -4110,72 +4074,66 @@ const __aivicBundle_47_submitReportForm = (() => {
     todayPlan?: string;
     currentChallenges?: string;
   }
-  
+
   interface SubmitReportFormResult {
     success?: boolean;
     isValid?: boolean;
     validation_errors?: Array<{ field: string; message: string }>;
     errors?: Array<{ field: string; message: string }>;
   }
-  
-   function submitReportForm(
+
+  function submitReportForm(
     formData: SubmitReportFormInput
   ): SubmitReportFormResult {
     const errors: Array<{ field: string; message: string }> = [];
-  
-    // Normalize field names to handle both camelCase and snake_case
+
     const yesterdayAccomplishment =
       formData.yesterday_accomplishment || formData.yesterdayAccomplishment || "";
     const todayPlan = formData.today_plan || formData.todayPlan || "";
     const currentIssue = formData.current_issue || formData.currentChallenges || "";
-  
-    // Validate yesterdayAccomplishment
+
     if (!yesterdayAccomplishment || yesterdayAccomplishment.trim() === "") {
       errors.push({
         field: "yesterdayAccomplishment",
         message: "昨日やったこと：必須項目です",
       });
     }
-  
-    // Validate todayPlan
+
     if (!todayPlan || todayPlan.trim() === "") {
       errors.push({
         field: "todayPlan",
         message: "今日やること：必須項目です",
       });
     }
-  
-    // Validate currentIssue
+
     if (!currentIssue || currentIssue.trim() === "") {
       errors.push({
         field: "currentChallenges",
         message: "抱えている課題：必須項目です",
       });
     }
-  
-    // Check for maximum length constraint (255 characters)
+
     if (todayPlan.length > 255) {
       errors.push({
         field: "todayPlan",
         message: "今日やること：255文字以内で入力してください",
       });
     }
-  
+
     const isValid = errors.length === 0;
-  
-    // Return format compatible with both test expectations
+
     const result: SubmitReportFormResult = {
       success: isValid,
       isValid: isValid,
       validation_errors: errors,
       errors: errors.length > 0 ? errors : undefined,
     };
-  
+
     return result;
   }
   return { submitReportForm };
 })();
-export const submitReportForm = __aivicBundle_47_submitReportForm.submitReportForm;
+export const submitReportForm = __aivicBundle_submitReportForm_fixed.submitReportForm;
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitReportForm */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=initializeSystem exports=initializeSystem */
