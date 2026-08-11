@@ -75,7 +75,7 @@ describe('未報告部員催促通知機能 - 朝会開始15分前未満での�
 
     const department_head_user_id = 'user_dept_head_001';
 
-    const mock_send_email = jest.fn().mockResolvedValue({
+    const mock_send_email = jest.fn<(...args: any[]) => any>().mockResolvedValue({
       email_send_log_id: 'log_mock_001',
       recipient_email: 'head@company.com',
       sent_at: current_time_before_cutoff,

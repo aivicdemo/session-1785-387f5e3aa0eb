@@ -1323,10 +1323,10 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
     if (submissionHistory && submissionHistory.length > 0) {
       const isDuplicate = submissionHistory.some((record: any) => {
         const recordDate = record.submission_date || record.submissionDate || "";
-        return recordDate === submissionDate;
+        return recordDate === submissionDate && userId;
       });
 
-      if (isDuplicate) {
+      if (isDuplicate && userId && submissionDate) {
         return {
           success: false,
           error: "本日の朝会報告は既に送信済みです。重複送信はできません",
@@ -4450,17 +4450,9 @@ export const checkMorningReportSubmissionStatus = __aivicBundle_53_checkMorningR
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=judgeReportSubmissionStatus exports=judgeReportSubmissionStatus */
 const __aivicBundle_54_judgeReportSubmissionStatus = (() => {
-  interface JudgeReportSubmissionStatusInput {
-    [key: string]: any;
-  }
-  
-  interface JudgeReportSubmissionStatusOutput {
-    [key: string]: any;
-  }
-  
-   function judgeReportSubmissionStatus(
-    input: JudgeReportSubmissionStatusInput
-  ): JudgeReportSubmissionStatusOutput {
+  function judgeReportSubmissionStatus(
+    input: any
+  ): any {
     // SCEN-196: totalMembers and submittedMembers
     if (
       typeof input.totalMembers === "number" &&
@@ -4596,7 +4588,7 @@ const __aivicBundle_54_judgeReportSubmissionStatus = (() => {
   }
   return { judgeReportSubmissionStatus };
 })();
-export const judgeReportSubmissionStatus: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_54_judgeReportSubmissionStatus.judgeReportSubmissionStatus as (...args: any[]) => any)(...args);
+export const judgeReportSubmissionStatus = __aivicBundle_54_judgeReportSubmissionStatus.judgeReportSubmissionStatus;
 /* AIVIC_FUNCTION_BUNDLE_END owner=judgeReportSubmissionStatus */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=determineReportSubmissionStatus exports=determineReportSubmissionStatus */
@@ -4680,7 +4672,7 @@ const __aivicBundle_56_evaluateDailyReportSubmissionStatus = (() => {
     }>;
   }
   
-   function evaluateDailyReportSubmissionStatus(
+  function evaluateDailyReportSubmissionStatus(
     input: EvaluateDailyReportSubmissionStatusInput
   ): EvaluateDailyReportSubmissionStatusOutput {
     if (
@@ -4753,7 +4745,7 @@ const __aivicBundle_57_getUnreportedUsers = (() => {
     departmentId: string;
   }
   
-   function getUnreportedUsers(
+  function getUnreportedUsers(
     payload: GetUnreportedUsersInput
   ): Array<UnreportedUser> {
     const { allUsers, submittedUserIds, departmentId } = payload;
@@ -5246,7 +5238,7 @@ const __aivicBundle_64_formatUnifiedReportList = (() => {
     };
   }
   
-   function formatUnifiedReportList(
+  function formatUnifiedReportList(
     input: Array<FormatUnifiedReportListInput>
   ): FormatUnifiedReportListOutput {
     const header = {
@@ -5312,7 +5304,7 @@ const __aivicBundle_65_getReportStatusList = (() => {
     statuses: GetReportStatusListStatus[];
   }
   
-   function getReportStatusList(
+  function getReportStatusList(
     input: GetReportStatusListInput
   ): GetReportStatusListResult {
     const submittedMap = new Map<
@@ -5430,7 +5422,7 @@ const __aivicBundle_67_aggregateDailyReportsBySubmitter = (() => {
     }>;
   }
   
-   function aggregateDailyReportsBySubmitter(
+  function aggregateDailyReportsBySubmitter(
     input: Array<{
       submitter_id: string;
       submitter_name: string;
@@ -6425,7 +6417,7 @@ const __aivicBundle_80_describePriorityMissingReports = (() => {
     urgencyGroups: UrgencyGroup[];
   }
   
-   function describePriorityMissingReports(
+  function describePriorityMissingReports(
     input: DescribePriorityMissingReportsInput
   ): DescribePriorityMissingReportsOutput {
     const { members } = input;
