@@ -551,7 +551,7 @@ const __aivicBundle_10_sendConfirmationEmailsForDailyReport = (() => {
       saveDailyReport?: (data: any) => Promise<any>;
     }
   ): Promise<void> {
-    const { sendEmail, logError } = services;
+    const { sendEmail, logError, saveDailyReport } = services;
   
     if (!sendEmail) {
       throw new Error('sendEmail service is required');
@@ -591,6 +591,10 @@ const __aivicBundle_10_sendConfirmationEmailsForDailyReport = (() => {
         logError('部長へのメール送信失敗', { email: managerEmail, error });
       }
       throw new Error('部長へのメール送信失敗');
+    }
+
+    if (saveDailyReport) {
+      await saveDailyReport(dailyReportData);
     }
   }
   return { sendConfirmationEmailsForDailyReport };

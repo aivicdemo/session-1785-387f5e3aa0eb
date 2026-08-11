@@ -2227,7 +2227,7 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
-const __aivicBundle_validateDailyReportSubmission = (() => {
+const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   const submissionStore = new Map<string, Set<string>>();
 
   function validateDailyReportSubmission(
@@ -2293,7 +2293,7 @@ const __aivicBundle_validateDailyReportSubmission = (() => {
   }
   return { validateDailyReportSubmission };
 })();
-export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission.validateDailyReportSubmission;
+export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_fixed.validateDailyReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendDailyReportAndNotify exports=sendDailyReportAndNotify */
@@ -7952,63 +7952,28 @@ export const getReportArrivalStatus = __aivicBundle_101_getReportArrivalStatus.g
 /* AIVIC_FUNCTION_BUNDLE_END owner=getReportArrivalStatus */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=identifyMissingReports exports=identifyMissingReports */
-const __aivicBundle_identifyMissingReports = (() => {
-  function identifyMissingReports(input: any = {}): any {
-    const allMembers = input.all_members || [];
-    const submittedReports = input.submitted_reports || [];
-    const deadlineTime = input.deadline_time;
-
-    if (!allMembers || allMembers.length === 0) {
-      return {
-        submitted_count: 0,
-        missing_count: 0,
-        total_count: 0,
-        missing_members: [],
-        submitted_member_ids: [],
-        missing_member_ids: [],
-        all_on_time: true,
-      };
-    }
-
-    const submittedMemberIds = new Set(
-      submittedReports.map((report: any) => report.member_id)
-    );
-
-    const missingMembers = allMembers.filter(
-      (member: any) => !submittedMemberIds.has(member.member_id)
-    );
-
-    const submittedCount = submittedReports.length;
-    const totalCount = allMembers.length;
-    const missingCount = missingMembers.length;
-
-    const submittedMemberIds_array = Array.from(submittedMemberIds);
-    const missingMemberIds_array = missingMembers.map(
-      (member: any) => member.member_id
-    );
-
-    let allOnTime = true;
-    if (deadlineTime) {
-      allOnTime = submittedReports.every((report: any) => {
-        const submittedAt = new Date(report.submitted_at);
-        return submittedAt <= deadlineTime;
-      });
-    }
-
-    return {
-      submitted_count: submittedCount,
-      missing_count: missingCount,
-      total_count: totalCount,
-      missing_members: missingMembers,
-      submitted_member_ids: submittedMemberIds_array,
-      missing_member_ids: missingMemberIds_array,
-      all_on_time: allOnTime,
-    };
+const __aivicBundle_identifyMissingReports_fixed = (() => {
+  function identifyMissingReports(
+    registeredMembers: Array<{ memberId: string; memberName: string }>,
+    submittedReports: Array<{ memberId: string; submittedAt: Date }>,
+    reportDeadline: Date
+  ): {
+    missingMembers: Array<{ memberId: string; memberName: string; status: 'not_submitted' | 'late' }>;
+    totalMissing: number;
+  } {
+    const submittedMemberIds = submittedReports.map(r => r.memberId);
+    const lateMembers = submittedReports.filter(r => r.submittedAt > reportDeadline).map(r => r.memberId);
+    const notSubmitted = registeredMembers.filter(m => !submittedMemberIds.includes(m.memberId));
+    const late = registeredMembers.filter(m => lateMembers.includes(m.memberId));
+    const missingMembers = [
+      ...notSubmitted.map(m => ({ ...m, status: 'not_submitted' as const })),
+      ...late.map(m => ({ ...m, status: 'late' as const }))
+    ];
+    return { missingMembers, totalMissing: missingMembers.length };
   }
-
   return { identifyMissingReports };
 })();
-export const identifyMissingReports: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_identifyMissingReports.identifyMissingReports as (...args: any[]) => any)(...args);
+export const identifyMissingReports: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_identifyMissingReports_fixed.identifyMissingReports as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=identifyMissingReports */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=countDelayedReports exports=countDelayedReports */
@@ -9059,7 +9024,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     // Scenario 4: Execution with escalation rules and services (SCEN-558)
     if (hasConfirmationEmail && hasExecutionTimestamp && aiClient && hasMailSystem && hasChatSystem && !hasOrchestrationId) {
       const emailContent = input.confirmation_email;
-      
       
       // Identify non-reporting employees
       const nonReportingEmployees = extractNonReportingEmployees(emailContent);
