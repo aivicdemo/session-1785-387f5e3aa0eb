@@ -29,10 +29,12 @@ jobs:
         # --passWithNoTests: tests/unit/ が空のワークショップでは Jest 単体テストが
         # 一切無いことが正常状態（業務ロジック非依存の UI のみのアプリ等）。0 件で
         # exit 1 を返すのは「正常状態を異常扱い」する誤った挙動なのでフラグで修正する。
+        # 出力先は test-results-jest に分離する。Playwright が実行時に test-results を
+        # 初期化するため、同じ場所に書くと単体テストの集計 XML が消える。
         if: ${{ matrix.shard == 1 }}
         run: npx jest --ci --passWithNoTests --reporters=default --reporters=jest-junit
         env:
-          JEST_JUNIT_OUTPUT_DIR: ./test-results
+          JEST_JUNIT_OUTPUT_DIR: ./test-results-jest
           JEST_JUNIT_OUTPUT_NAME: jest-junit.xml
         continue-on-error: true
       - name: Run Playwright E2E tests (shard ${{ matrix.shard }}/4)
@@ -53,7 +55,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-shard-${{ matrix.shard }}
-          path: test-results/
+          path: |
+            test-results/
+            test-results-jest/
           retention-days: 7
       - name: Determine overall status
         if: always()
