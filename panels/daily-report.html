@@ -23,39 +23,38 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
         }
-        h1 {
-            color: #333;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+        }
+        .header h1 {
             font-size: 24px;
+            color: #333;
+        }
+        .user-info {
+            font-size: 14px;
+            color: #666;
         }
         .form-section {
             margin-bottom: 25px;
         }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        .form-group {
             margin-bottom: 20px;
         }
-        .form-row.full {
-            grid-template-columns: 1fr;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
         label {
+            display: block;
+            margin-bottom: 8px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
             font-size: 14px;
-        }
-        .required {
-            color: #e74c3c;
-            margin-left: 4px;
         }
         input[type="date"],
         select {
+            width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -65,11 +64,12 @@
         input[type="date"]:focus,
         select:focus {
             outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
         }
         textarea {
-            padding: 10px;
+            width: 100%;
+            padding: 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
@@ -79,8 +79,8 @@
         }
         textarea:focus {
             outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
         }
         textarea:disabled {
             background-color: #f9f9f9;
@@ -91,7 +91,7 @@
             display: flex;
             gap: 10px;
             margin-top: 30px;
-            flex-wrap: wrap;
+            justify-content: center;
         }
         button {
             padding: 12px 24px;
@@ -103,28 +103,28 @@
             transition: all 0.3s ease;
         }
         .btn-primary {
-            background-color: #3498db;
+            background-color: #007bff;
             color: white;
         }
         .btn-primary:hover {
-            background-color: #2980b9;
+            background-color: #0056b3;
         }
         .btn-secondary {
-            background-color: #95a5a6;
+            background-color: #6c757d;
             color: white;
         }
         .btn-secondary:hover {
-            background-color: #7f8c8d;
+            background-color: #545b62;
         }
         .btn-success {
-            background-color: #27ae60;
+            background-color: #28a745;
             color: white;
         }
         .btn-success:hover {
-            background-color: #229954;
+            background-color: #218838;
         }
         .error-message {
-            color: #e74c3c;
+            color: #dc3545;
             font-size: 14px;
             margin-top: 5px;
             display: none;
@@ -150,7 +150,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0,0,0,0.5);
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -164,11 +164,11 @@
             padding: 30px;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         .modal h2 {
-            color: #333;
             margin-bottom: 20px;
+            color: #333;
             font-size: 18px;
         }
         .modal-content {
@@ -176,10 +176,17 @@
             color: #666;
             line-height: 1.6;
         }
-        .modal-content p {
-            margin-bottom: 10px;
+        .modal-summary {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
         }
-        .modal-content strong {
+        .modal-summary p {
+            margin-bottom: 8px;
+        }
+        .modal-summary strong {
             color: #333;
         }
         .modal-buttons {
@@ -194,50 +201,44 @@
         .history-section {
             margin-top: 40px;
             padding-top: 30px;
-            border-top: 2px solid #ecf0f1;
+            border-top: 2px solid #e9ecef;
         }
         .history-section h2 {
-            color: #333;
-            margin-bottom: 20px;
             font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
         }
         .history-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            list-style: none;
         }
         .history-item {
             background-color: #f9f9f9;
-            border: 1px solid #ecf0f1;
-            border-radius: 4px;
             padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border-left: 4px solid #007bff;
         }
         .history-item-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             margin-bottom: 10px;
+            font-size: 13px;
         }
         .history-item-date {
             font-weight: 600;
             color: #333;
-            font-size: 14px;
         }
         .history-item-status {
-            background-color: #27ae60;
+            background-color: #28a745;
             color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
+            padding: 2px 8px;
+            border-radius: 3px;
             font-size: 12px;
-            font-weight: 600;
         }
         .history-item-content {
-            color: #666;
             font-size: 13px;
+            color: #666;
             line-height: 1.5;
-        }
-        .history-item-content p {
-            margin-bottom: 8px;
         }
         .history-empty {
             text-align: center;
@@ -245,357 +246,432 @@
             padding: 30px;
             font-size: 14px;
         }
-        .edit-button-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+        .edit-mode-indicator {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+        .edit-mode-indicator.show {
+            display: block;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>日報入力・送信</h1>
-        
-        <div class="success-message" id="successMessage">送信完了しました</div>
-        
-        <form id="reportForm">
-            <div class="form-section">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="reportDate">報告日付 <span class="required">*</span></label>
-                        <input type="date" id="reportDate" name="reportDate" required>
-                        <div class="error-message" id="dateError">報告日付を選択してください</div>
-                    </div>
-                    <div class="form-group">
-                        <label for="department">部門 <span class="required">*</span></label>
-                        <select id="department" name="department" required>
-                            <option value="">-- 選択してください --</option>
-                            <option value="営業部">営業部</option>
-                            <option value="企画部">企画部</option>
-                            <option value="技術部">技術部</option>
-                            <option value="管理部">管理部</option>
-                        </select>
-                        <div class="error-message" id="departmentError">部門を選択してください</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <div class="edit-button-group" id="editButtonGroup" style="display: none;">
-                    <button type="button" class="btn-secondary" id="editButton">報告内容編集</button>
-                </div>
-                
-                <div class="form-row full">
-                    <div class="form-group">
-                        <label for="yesterday">昨日やったこと <span class="required">*</span></label>
-                        <textarea id="yesterday" name="yesterday" placeholder="昨日実施した業務内容を入力してください" disabled></textarea>
-                        <div class="error-message" id="yesterdayError">昨日やったことを入力してください</div>
-                    </div>
-                </div>
-                
-                <div class="form-row full">
-                    <div class="form-group">
-                        <label for="today">今日やること <span class="required">*</span></label>
-                        <textarea id="today" name="today" placeholder="今日実施予定の業務内容を入力してください" disabled></textarea>
-                        <div class="error-message" id="todayError">今日やることを入力してください</div>
-                    </div>
-                </div>
-                
-                <div class="form-row full">
-                    <div class="form-group">
-                        <label for="issues">抱えている課題 <span class="required">*</span></label>
-                        <textarea id="issues" name="issues" placeholder="現在抱えている課題や懸念事項を入力してください" disabled></textarea>
-                        <div class="error-message" id="issuesError">抱えている課題を入力してください</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="button-group">
-                <button type="button" class="btn-secondary" id="draftButton">下書き保存</button>
-                <button type="submit" class="btn-primary" id="submitButton">送信</button>
-            </div>
-        </form>
-        
-        <div class="history-section">
-            <h2>送信履歴</h2>
-            <div class="history-list" id="historyList">
-                <div class="history-empty">送信履歴はありません</div>
+        <div class="header">
+            <h1>日報入力・送信</h1>
+            <div class="user-info">
+                <span id="userEmail">ユーザー</span>
             </div>
         </div>
+
+        <div class="success-message" id="successMessage"></div>
+
+        <form id="reportForm">
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="reportDate">報告日付 <span style="color: red;">*</span></label>
+                    <input type="date" id="reportDate" name="reportDate" required>
+                    <div class="error-message" id="dateError">報告日付を選択してください</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="department">部門 <span style="color: red;">*</span></label>
+                    <select id="department" name="department" required>
+                        <option value="">-- 選択してください --</option>
+                        <option value="営業部">営業部</option>
+                        <option value="企画部">企画部</option>
+                        <option value="技術部">技術部</option>
+                        <option value="管理部">管理部</option>
+                    </select>
+                    <div class="error-message" id="departmentError">部門を選択してください</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="edit-mode-indicator" id="editModeIndicator">
+                    編集モード: フォームが編集可能になりました
+                </div>
+
+                <div class="form-group">
+                    <label for="yesterday">昨日やったこと <span style="color: red;">*</span></label>
+                    <textarea id="yesterday" name="yesterday" placeholder="昨日実施した業務内容を入力してください" disabled></textarea>
+                    <div class="error-message" id="yesterdayError">昨日やったことを入力してください</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="today">今日やること <span style="color: red;">*</span></label>
+                    <textarea id="today" name="today" placeholder="本日予定している業務内容を入力してください" disabled></textarea>
+                    <div class="error-message" id="todayError">今日やることを入力してください</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="issues">抱えている課題 <span style="color: red;">*</span></label>
+                    <textarea id="issues" name="issues" placeholder="現在抱えている課題や懸念事項を入力してください" disabled></textarea>
+                    <div class="error-message" id="issuesError">抱えている課題を入力してください</div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn-secondary" id="editBtn">報告内容編集</button>
+                <button type="button" class="btn-success" id="draftBtn">下書き保存</button>
+                <button type="submit" class="btn-primary" id="submitBtn">送信</button>
+            </div>
+        </form>
+
+        <div class="history-section">
+            <h2>送信履歴</h2>
+            <ul class="history-list" id="historyList">
+                <li class="history-empty">送信履歴はありません</li>
+            </ul>
+        </div>
     </div>
-    
+
     <div class="modal-overlay" id="confirmModal">
         <div class="modal">
             <h2>送信確認</h2>
             <div class="modal-content">
-                <p><strong>昨日やったこと:</strong></p>
-                <p id="confirmYesterday" style="margin-left: 10px; color: #666;"></p>
-                <p style="margin-top: 15px;"><strong>今日やること:</strong></p>
-                <p id="confirmToday" style="margin-left: 10px; color: #666;"></p>
-                <p style="margin-top: 15px;"><strong>抱えている課題:</strong></p>
-                <p id="confirmIssues" style="margin-left: 10px; color: #666;"></p>
-                <p style="margin-top: 15px;"><strong>送信者:</strong></p>
-                <p id="confirmSender" style="margin-left: 10px; color: #666;"></p>
-                <p style="margin-top: 15px;"><strong>部長:</strong></p>
-                <p id="confirmManager" style="margin-left: 10px; color: #666;"></p>
+                <p>以下の内容で日報を送信します。よろしいですか？</p>
+                <div class="modal-summary">
+                    <p><strong>昨日やったこと:</strong> <span id="summaryYesterday"></span></p>
+                    <p><strong>今日やること:</strong> <span id="summaryToday"></span></p>
+                    <p><strong>抱えている課題:</strong> <span id="summaryIssues"></span></p>
+                    <p style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+                        <strong>送信者:</strong> <span id="summaryUser"></span>
+                    </p>
+                    <p>
+                        <strong>部長:</strong> <span id="summaryChief"></span>
+                    </p>
+                </div>
             </div>
             <div class="modal-buttons">
-                <button type="button" class="btn-secondary" id="cancelButton">キャンセル</button>
-                <button type="button" class="btn-success" id="confirmButton">確認</button>
+                <button type="button" class="btn-secondary" id="cancelBtn">キャンセル</button>
+                <button type="button" class="btn-primary" id="confirmBtn">確認</button>
             </div>
         </div>
     </div>
-    
+
     <script>
-        // ユーザー情報（セッションから取得）
-        let currentUser = {
-            id: 'testuser',
-            email: 'testuser@example.com',
-            name: 'テストユーザー',
-            manager: '部長太郎',
-            managerEmail: 'bucho@example.com'
-        };
-        
-        // 初期化
-        function initPage() {
-            loadDraft();
+        let isEditMode = false;
+        let pendingSubmitData = null;
+
+        // ページロード時の初期化
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserInfo();
+            loadFormData();
             loadHistory();
             setupEventListeners();
+        });
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/user');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userEmail').textContent = user.email || 'ユーザー';
+                } else {
+                    document.getElementById('userEmail').textContent = 'testuser@example.com';
+                }
+            } catch (e) {
+                document.getElementById('userEmail').textContent = 'testuser@example.com';
+            }
         }
-        
-        // イベントリスナー設定
+
+        function loadFormData() {
+            const saved = sessionStorage.getItem('reportFormData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.reportDate) {
+                    document.getElementById('reportDate').value = data.reportDate;
+                }
+                if (data.department) {
+                    document.getElementById('department').value = data.department;
+                }
+                if (data.yesterday) {
+                    document.getElementById('yesterday').value = data.yesterday;
+                }
+                if (data.today) {
+                    document.getElementById('today').value = data.today;
+                }
+                if (data.issues) {
+                    document.getElementById('issues').value = data.issues;
+                }
+            }
+        }
+
+        function saveFormData() {
+            const data = {
+                reportDate: document.getElementById('reportDate').value,
+                department: document.getElementById('department').value,
+                yesterday: document.getElementById('yesterday').value,
+                today: document.getElementById('today').value,
+                issues: document.getElementById('issues').value
+            };
+            sessionStorage.setItem('reportFormData', JSON.stringify(data));
+        }
+
         function setupEventListeners() {
             const form = document.getElementById('reportForm');
-            const draftButton = document.getElementById('draftButton');
-            const editButton = document.getElementById('editButton');
-            const submitButton = document.getElementById('submitButton');
-            const confirmButton = document.getElementById('confirmButton');
-            const cancelButton = document.getElementById('cancelButton');
-            const reportDate = document.getElementById('reportDate');
-            const department = document.getElementById('department');
-            
-            form.addEventListener('submit', handleSubmit);
-            draftButton.addEventListener('click', handleDraft);
-            editButton.addEventListener('click', handleEdit);
-            confirmButton.addEventListener('click', handleConfirm);
-            cancelButton.addEventListener('click', handleCancel);
-            
-            // 日付と部門の選択値を保持
-            reportDate.addEventListener('change', () => {
-                sessionStorage.setItem('reportDate', reportDate.value);
+            const editBtn = document.getElementById('editBtn');
+            const draftBtn = document.getElementById('draftBtn');
+            const submitBtn = document.getElementById('submitBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const confirmBtn = document.getElementById('confirmBtn');
+
+            editBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                enableEditMode();
             });
-            
-            department.addEventListener('change', () => {
-                sessionStorage.setItem('department', department.value);
+
+            draftBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                saveDraft();
             });
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                handleSubmit();
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                closeConfirmModal();
+            });
+
+            confirmBtn.addEventListener('click', () => {
+                confirmSubmit();
+            });
+
+            // フォーム入力時にセッションストレージに保存
+            form.addEventListener('change', saveFormData);
+            form.addEventListener('input', saveFormData);
         }
-        
-        // 下書き保存
-        function handleDraft(e) {
-            e.preventDefault();
-            const yesterday = document.getElementById('yesterday').value;
-            const today = document.getElementById('today').value;
-            const issues = document.getElementById('issues').value;
-            
-            const draft = {
-                yesterday,
-                today,
-                issues,
-                timestamp: new Date().toISOString()
+
+        function enableEditMode() {
+            isEditMode = true;
+            document.getElementById('yesterday').disabled = false;
+            document.getElementById('today').disabled = false;
+            document.getElementById('issues').disabled = false;
+            document.getElementById('editModeIndicator').classList.add('show');
+            document.getElementById('editBtn').style.display = 'none';
+        }
+
+        function saveDraft() {
+            const data = {
+                reportDate: document.getElementById('reportDate').value,
+                department: document.getElementById('department').value,
+                yesterday: document.getElementById('yesterday').value,
+                today: document.getElementById('today').value,
+                issues: document.getElementById('issues').value,
+                isDraft: true,
+                savedAt: new Date().toISOString()
             };
-            
-            localStorage.setItem('reportDraft', JSON.stringify(draft));
+            localStorage.setItem('reportDraft', JSON.stringify(data));
             alert('下書きを保存しました');
         }
-        
-        // 下書き読み込み
+
         function loadDraft() {
             const draft = localStorage.getItem('reportDraft');
             if (draft) {
                 const data = JSON.parse(draft);
+                document.getElementById('reportDate').value = data.reportDate || '';
+                document.getElementById('department').value = data.department || '';
                 document.getElementById('yesterday').value = data.yesterday || '';
                 document.getElementById('today').value = data.today || '';
                 document.getElementById('issues').value = data.issues || '';
             }
-            
-            // 日付と部門の保持値を復元
-            const savedDate = sessionStorage.getItem('reportDate');
-            if (savedDate) {
-                document.getElementById('reportDate').value = savedDate;
-            }
-            
-            const savedDept = sessionStorage.getItem('department');
-            if (savedDept) {
-                document.getElementById('department').value = savedDept;
-            }
-            
-            // 初期状態では編集ボタンを表示
-            if (draft) {
-                document.getElementById('editButtonGroup').style.display = 'flex';
-            }
         }
-        
-        // 編集ボタン
-        function handleEdit(e) {
-            e.preventDefault();
-            document.getElementById('yesterday').disabled = false;
-            document.getElementById('today').disabled = false;
-            document.getElementById('issues').disabled = false;
-            document.getElementById('editButtonGroup').style.display = 'none';
-        }
-        
-        // フォーム送信
-        function handleSubmit(e) {
-            e.preventDefault();
-            
-            // バリデーション
+
+        function validateForm() {
+            let isValid = true;
+            const dateError = document.getElementById('dateError');
+            const departmentError = document.getElementById('departmentError');
+            const yesterdayError = document.getElementById('yesterdayError');
+            const todayError = document.getElementById('todayError');
+            const issuesError = document.getElementById('issuesError');
+
+            dateError.classList.remove('show');
+            departmentError.classList.remove('show');
+            yesterdayError.classList.remove('show');
+            todayError.classList.remove('show');
+            issuesError.classList.remove('show');
+
             const reportDate = document.getElementById('reportDate').value;
-            const department = document.getElementById('department').value;
-            const yesterday = document.getElementById('yesterday').value.trim();
-            const today = document.getElementById('today').value.trim();
-            const issues = document.getElementById('issues').value.trim();
-            
-            let hasError = false;
-            
-            // エラーメッセージをクリア
-            document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
-            
             if (!reportDate) {
-                document.getElementById('dateError').classList.add('show');
-                hasError = true;
+                dateError.classList.add('show');
+                isValid = false;
             }
-            
+
+            const department = document.getElementById('department').value;
             if (!department) {
-                document.getElementById('departmentError').classList.add('show');
-                hasError = true;
+                departmentError.classList.add('show');
+                isValid = false;
             }
-            
+
+            const yesterday = document.getElementById('yesterday').value.trim();
             if (!yesterday) {
-                document.getElementById('yesterdayError').classList.add('show');
-                hasError = true;
+                yesterdayError.classList.add('show');
+                isValid = false;
             }
-            
+
+            const today = document.getElementById('today').value.trim();
             if (!today) {
-                document.getElementById('todayError').classList.add('show');
-                hasError = true;
+                todayError.classList.add('show');
+                isValid = false;
             }
-            
+
+            const issues = document.getElementById('issues').value.trim();
             if (!issues) {
-                document.getElementById('issuesError').classList.add('show');
-                hasError = true;
+                issuesError.classList.add('show');
+                isValid = false;
             }
-            
-            if (hasError) {
+
+            return isValid;
+        }
+
+        function handleSubmit() {
+            if (!validateForm()) {
                 return;
             }
-            
-            // 確認ダイアログを表示
-            showConfirmDialog({
-                yesterday,
-                today,
-                issues,
-                reportDate,
-                department
-            });
+
+            pendingSubmitData = {
+                reportDate: document.getElementById('reportDate').value,
+                department: document.getElementById('department').value,
+                yesterday: document.getElementById('yesterday').value.trim(),
+                today: document.getElementById('today').value.trim(),
+                issues: document.getElementById('issues').value.trim()
+            };
+
+            showConfirmModal();
         }
-        
-        // 確認ダイアログ表示
-        function showConfirmDialog(data) {
-            document.getElementById('confirmYesterday').textContent = data.yesterday.substring(0, 50) + (data.yesterday.length > 50 ? '...' : '');
-            document.getElementById('confirmToday').textContent = data.today.substring(0, 50) + (data.today.length > 50 ? '...' : '');
-            document.getElementById('confirmIssues').textContent = data.issues.substring(0, 50) + (data.issues.length > 50 ? '...' : '');
-            document.getElementById('confirmSender').textContent = currentUser.email;
-            document.getElementById('confirmManager').textContent = `${currentUser.manager} <${currentUser.managerEmail}>`;
-            
-            // データを一時保存
-            sessionStorage.setItem('pendingReport', JSON.stringify(data));
-            
+
+        function showConfirmModal() {
+            const yesterday = pendingSubmitData.yesterday;
+            const today = pendingSubmitData.today;
+            const issues = pendingSubmitData.issues;
+
+            document.getElementById('summaryYesterday').textContent = yesterday.substring(0, 50) + (yesterday.length > 50 ? '...' : '');
+            document.getElementById('summaryToday').textContent = today.substring(0, 50) + (today.length > 50 ? '...' : '');
+            document.getElementById('summaryIssues').textContent = issues.substring(0, 50) + (issues.length > 50 ? '...' : '');
+            document.getElementById('summaryUser').textContent = document.getElementById('userEmail').textContent;
+            document.getElementById('summaryChief').textContent = '部長 <bucho@example.com>';
+
             document.getElementById('confirmModal').classList.add('show');
         }
-        
-        // 確認ボタン
-        function handleConfirm(e) {
-            e.preventDefault();
-            const data = JSON.parse(sessionStorage.getItem('pendingReport'));
-            
-            // 履歴に追加
-            const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
-            const newRecord = {
-                id: Date.now(),
-                timestamp: new Date().toLocaleString('ja-JP'),
-                sender: currentUser.id,
-                status: '送信済',
-                yesterday: data.yesterday,
-                today: data.today,
-                issues: data.issues,
-                reportDate: data.reportDate,
-                department: data.department
-            };
-            
-            history.unshift(newRecord);
-            localStorage.setItem('reportHistory', JSON.stringify(history));
-            
-            // フォームをクリア
-            document.getElementById('reportForm').reset();
-            document.getElementById('yesterday').disabled = true;
-            document.getElementById('today').disabled = true;
-            document.getElementById('issues').disabled = true;
-            document.getElementById('editButtonGroup').style.display = 'none';
-            
-            // 下書きを削除
-            localStorage.removeItem('reportDraft');
-            
-            // ダイアログを閉じる
+
+        function closeConfirmModal() {
             document.getElementById('confirmModal').classList.remove('show');
-            
-            // 成功メッセージを表示
+        }
+
+        async function confirmSubmit() {
+            try {
+                const response = await fetch('/api/reports', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ...pendingSubmitData,
+                        submittedAt: new Date().toISOString(),
+                        status: 'submitted'
+                    })
+                });
+
+                if (response.ok) {
+                    closeConfirmModal();
+                    showSuccessMessage('送信完了しました');
+                    clearForm();
+                    sessionStorage.removeItem('reportFormData');
+                    localStorage.removeItem('reportDraft');
+                    loadHistory();
+                    pendingSubmitData = null;
+                } else {
+                    alert('送信に失敗しました');
+                }
+            } catch (e) {
+                console.error('Submit error:', e);
+                alert('送信に失敗しました');
+            }
+        }
+
+        function showSuccessMessage(message) {
             const successMsg = document.getElementById('successMessage');
+            successMsg.textContent = message;
             successMsg.classList.add('show');
             setTimeout(() => {
                 successMsg.classList.remove('show');
-            }, 3000);
-            
-            // 履歴を再読み込み
-            loadHistory();
-            
-            // セッションストレージをクリア
-            sessionStorage.removeItem('pendingReport');
+            }, 5000);
         }
-        
-        // キャンセルボタン
-        function handleCancel(e) {
-            e.preventDefault();
-            document.getElementById('confirmModal').classList.remove('show');
-            sessionStorage.removeItem('pendingReport');
+
+        function clearForm() {
+            document.getElementById('yesterday').value = '';
+            document.getElementById('today').value = '';
+            document.getElementById('issues').value = '';
+            document.getElementById('yesterday').disabled = true;
+            document.getElementById('today').disabled = true;
+            document.getElementById('issues').disabled = true;
+            document.getElementById('editModeIndicator').classList.remove('show');
+            document.getElementById('editBtn').style.display = 'inline-block';
+            isEditMode = false;
         }
-        
-        // 履歴読み込み
-        function loadHistory() {
-            const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/reports');
+                if (response.ok) {
+                    const reports = await response.json();
+                    displayHistory(reports);
+                } else {
+                    displayEmptyHistory();
+                }
+            } catch (e) {
+                console.error('Load history error:', e);
+                displayEmptyHistory();
+            }
+        }
+
+        function displayHistory(reports) {
             const historyList = document.getElementById('historyList');
-            
-            if (history.length === 0) {
-                historyList.innerHTML = '<div class="history-empty">送信履歴はありません</div>';
+            if (!reports || reports.length === 0) {
+                displayEmptyHistory();
                 return;
             }
-            
-            historyList.innerHTML = history.map(record => `
-                <div class="history-item">
+
+            historyList.innerHTML = '';
+            reports.forEach(report => {
+                const item = document.createElement('li');
+                item.className = 'history-item';
+                const date = new Date(report.submittedAt);
+                const formattedDate = date.toLocaleString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                item.innerHTML = `
                     <div class="history-item-header">
-                        <div class="history-item-date">${record.timestamp}</div>
-                        <div class="history-item-status">${record.status}</div>
+                        <span class="history-item-date">${formattedDate}</span>
+                        <span class="history-item-status">送信済</span>
                     </div>
                     <div class="history-item-content">
-                        <p><strong>昨日やったこと:</strong> ${record.yesterday}</p>
-                        <p><strong>今日やること:</strong> ${record.today}</p>
-                        <p><strong>抱えている課題:</strong> ${record.issues}</p>
+                        <p><strong>昨日やったこと:</strong> ${report.yesterday}</p>
+                        <p><strong>今日やること:</strong> ${report.today}</p>
+                        <p><strong>抱えている課題:</strong> ${report.issues}</p>
                     </div>
-                </div>
-            `).join('');
+                `;
+                historyList.appendChild(item);
+            });
         }
-        
-        // ページ読み込み時に初期化
-        window.addEventListener('DOMContentLoaded', initPage);
+
+        function displayEmptyHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '<li class="history-empty">送信履歴はありません</li>';
+        }
     </script>
 </body>
 </html>
