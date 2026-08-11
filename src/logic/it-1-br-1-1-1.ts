@@ -2167,7 +2167,7 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
       }
 
       if (emp.submission_date && emp.submission_date <= prev_year_final_day) {
-        return true;
+        return false;
       }
 
       return true;
@@ -4427,7 +4427,7 @@ const __aivicBundle_61_aggregateDailyReportsWithTimestampSort = (() => {
     issue: string;
   }
   
-   function aggregateDailyReportsWithTimestampSort(
+  function aggregateDailyReportsWithTimestampSort(
     reports: AggregatedReportWithTimestampSortInput[],
   ): AggregatedReportWithTimestampSortOutput[] {
     if (!reports || reports.length === 0) {
@@ -4504,7 +4504,7 @@ const __aivicBundle_62_sendConfirmationEmailWithReportAggregation = (() => {
     sender_confirmation_email_payload: SenderConfirmationEmailPayload;
   }
   
-   function sendConfirmationEmailWithReportAggregation(
+  function sendConfirmationEmailWithReportAggregation(
     report_data: SendConfirmationEmailWithReportAggregationInput,
     department_head_info: DepartmentHeadInfo
   ): SendConfirmationEmailWithReportAggregationResult {
@@ -4641,10 +4641,6 @@ const __aivicBundle_64_prioritizePromptionTargets = (() => {
   
     if (unsentList.length === 0 && delayedList.length === 0) {
       throw new Error('入力リストが両方とも空です');
-    }
-  
-    if (unsentList.length === 0 && delayedList.length === 0) {
-      return [];
     }
   
     const currentTime = new Date();
@@ -5715,7 +5711,7 @@ const __aivicBundle_79_determinePromptionTargets = (() => {
     total_count: number;
   }
   
-   function determinePromptionTargets(
+  function determinePromptionTargets(
     input: DeterminePromptionTargetsInput
   ): DeterminePromptionTargetsOutput {
     const submittedUserIds = new Set(
@@ -12802,7 +12798,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
   ): Promise<any> {
     const sentAt = new Date();
 
-    // 重複を除外して一意な部員を抽出
     const uniqueMembersMap = new Map<string, { user_id: string; member_name: string; email: string }>();
     for (const member of non_reported_members) {
       if (!uniqueMembersMap.has(member.user_id)) {
@@ -12815,14 +12810,24 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     }
     const uniqueMembers = Array.from(uniqueMembersMap.values());
 
-    // 部員名リストを作成（「、」で区切る）
     const memberNameList = uniqueMembers.map((m) => m.member_name).join('、');
 
-    // メール本文を構築
-    const subject = `【朝会報告】未報告部員のお知らせ`;
-    const body = `部長殿\n\n以下の部員から朝会報告がまだ提出されていません。\n\n未報告部員: ${memberNameList}\n\nお手数ですが、ご確認ください。`;
+    let body = `部長殿\n\n`;
+    if (managerName) {
+      body += `${managerName}様\n\n`;
+    }
+    body += `以下の部員から朝会報告がまだ提出されていません。\n\n`;
+    body += `未報告部員: ${memberNameList}\n`;
+    if (reportDate) {
+      body += `報告日: ${reportDate}\n`;
+    }
+    if (reportDeadline) {
+      body += `期限: ${reportDeadline.toISOString()}\n`;
+    }
+    body += `\nお手数ですが、ご確認ください。`;
 
-    // emailService が提供されている場合はそれを使用、そうでなければ fetch を使用
+    const subject = `【朝会報告】未報告部員のお知らせ`;
+
     let result: { success: boolean; message?: string };
 
     if (emailService && emailService.send) {
@@ -12839,7 +12844,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
         };
       }
     } else {
-      // fetch を使用してメール送信
       try {
         const response = await fetch('/api/send-email', {
           method: 'POST',
@@ -12860,7 +12864,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
       }
     }
 
-    // 通知継続判定
     let shouldContinueNotifying = true;
     let successCount = 0;
     let failureCount = 0;
@@ -12868,7 +12871,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
 
     if (result.success) {
       successCount = uniqueMembers.length;
-      // maxNotificationAttempts が指定されている場合、通知回数をチェック
       if (maxNotificationAttempts !== undefined && maxNotificationAttempts > 0) {
         const currentNotificationCount = non_reported_members[0]?.notificationCount ?? 0;
         shouldContinueNotifying = currentNotificationCount < maxNotificationAttempts;
@@ -12881,17 +12883,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
           reason: 'Email send failed',
         });
       }
-    }
-
-    // managerName, reportDate, reportDeadline を検証・使用
-    if (managerName !== undefined && managerName !== null) {
-      // マネージャー名は通知コンテキストとして使用
-    }
-    if (reportDate !== undefined && reportDate !== null) {
-      // レポート日付は通知コンテキストとして使用
-    }
-    if (reportDeadline !== undefined && reportDeadline !== null) {
-      // レポート期限は通知コンテキストとして使用
     }
 
     return {

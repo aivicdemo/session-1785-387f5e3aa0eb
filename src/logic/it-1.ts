@@ -2611,7 +2611,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData.current_issues ||
       reportData.current_issue ||
       reportData.currentIssues ||
-      reportData.currentChallenge ||
+      reportData.currentChallenges ||
       reportData.current_challenges ||
       reportData.issues ||
       reportData.issue ||
@@ -3715,8 +3715,8 @@ const __aivicBundle_41_submitReport = (() => {
   interface SubmitReportInput {
     user_id: string;
     report_date: string;
-    yesterday_achievement?: string;
     yesterday_accomplishment?: string;
+    yesterday_achievement?: string;
     today_plan: string;
     issue?: string;
     current_issues?: string;
@@ -5380,7 +5380,7 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       // Use snake_case if available (from test), otherwise camelCase (from plan)
       const id = ("member_id" in report ? report.member_id : undefined) ?? (report as any).employeeId;
       if (id) {
-        submittedIds.add(id);
+        submittedIds.add(id as string);
       }
     }
   
@@ -5391,10 +5391,10 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       const memberId = ("member_id" in member ? member.member_id : undefined) ?? (member as any).employeeId;
       const memberName = ("member_name" in member ? member.member_name : undefined) ?? (member as any).employeeName;
   
-      if (memberId && memberName && !submittedIds.has(memberId)) {
+      if (memberId && memberName && !submittedIds.has(memberId as string)) {
         unreported.push({
-          employeeId: memberId,
-          employeeName: memberName,
+          employeeId: memberId as string,
+          employeeName: memberName as string,
         });
       }
     }
@@ -7964,7 +7964,6 @@ const __aivicBundle_104_getDelayedReporters = (() => {
       const userId = submission.user_id ?? submission.employeeId;
       const userName = submission.user_name ?? submission.employeeName;
   
-      // If no submission time, mark as not_submitted
       if (submittedAt === null || submittedAt === undefined) {
         const entry: {
           user_id?: string;
@@ -7994,7 +7993,6 @@ const __aivicBundle_104_getDelayedReporters = (() => {
         continue;
       }
   
-      // If submitted after deadline, mark as delayed
       if (submittedAt > reportDeadlineTime) {
         const delayMs = submittedAt.getTime() - reportDeadlineTime.getTime();
         const delayMinutes = Math.ceil(delayMs / (1000 * 60));
@@ -8037,12 +8035,7 @@ export const getDelayedReporters = __aivicBundle_104_getDelayedReporters.getDela
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=classifyReportArrivalStatus exports=classifyReportArrivalStatus */
 const __aivicBundle_105_classifyReportArrivalStatus = (() => {
-  interface ClassifyReportArrivalStatusInternal {
-    user_id: string;
-    submitted_at: Date | null;
-  }
-  
-   function classifyReportArrivalStatus(
+  function classifyReportArrivalStatus(
     reportSubmissions: Array<{
       user_id?: string;
       employeeId?: string;
@@ -8089,15 +8082,12 @@ const __aivicBundle_106_validateReportContent = (() => {
   function validateReportContent(
     reportData: any
   ): any {
-    // 入力が配列の場合と単一オブジェクトの場合を判定
     if (Array.isArray(reportData)) {
       return reportData.map((entry) => validateSingleReport(entry));
     }
   
-    // 単一オブジェクトの場合
     const result = validateSingleReport(reportData);
   
-    // test が snake_case で参照するプロパティを含める
     return {
       is_valid: result.isValid,
       error_message: result.validationMessage,
@@ -8113,7 +8103,6 @@ const __aivicBundle_106_validateReportContent = (() => {
     validationMessage: string;
     aggregatedReport?: { yesterday: string; today: string; challenges: string };
   } {
-    // 昨日やったことの検証（複数の可能なプロパティ名に対応）
     const yesterdayValue =
       entry.yesterdayWork ||
       entry.yesterday_work ||
@@ -8127,7 +8116,6 @@ const __aivicBundle_106_validateReportContent = (() => {
       throw new Error("昨日やったことが必須です");
     }
   
-    // 今日やることの検証（複数の可能なプロパティ名に対応）
     const todayValue =
       entry.todayWork ||
       entry.today_work ||
@@ -8143,7 +8131,6 @@ const __aivicBundle_106_validateReportContent = (() => {
       };
     }
   
-    // 課題・課題情報の検証（複数の可能なプロパティ名に対応）
     const challengesValue =
       entry.challenges ||
       entry.current_challenges ||
@@ -8158,7 +8145,6 @@ const __aivicBundle_106_validateReportContent = (() => {
       throw new Error("抱えている課題が必須です");
     }
   
-    // 部長情報の検証（manager_user_id が指定されている場合）
     if ("manager_user_id" in entry) {
       const managerValue = entry.manager_user_id || "";
       if (!managerValue || managerValue.trim() === "") {
@@ -8166,7 +8152,6 @@ const __aivicBundle_106_validateReportContent = (() => {
       }
     }
   
-    // 全て有効な場合
     return {
       employeeId: entry.employeeId || entry.user_id,
       isValid: true,
@@ -8186,7 +8171,6 @@ export const validateReportContent = __aivicBundle_106_validateReportContent.val
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndAggregateReport exports=validateAndAggregateReport */
 const __aivicBundle_107_validateAndAggregateReport = (() => {
   function validateAndAggregateReport(input: any): any {
-    // Validate current_challenge / current_issue is not empty
     if (
       (input.current_challenge !== undefined && input.current_challenge === "") ||
       (input.current_issue !== undefined && input.current_issue === "")
@@ -8194,12 +8178,10 @@ const __aivicBundle_107_validateAndAggregateReport = (() => {
       throw new Error("課題は空にできません");
     }
   
-    // Validate reporterId is not null
     if (input.reporterId === null) {
       throw new Error("報告者情報が欠落しています");
     }
   
-    // Validate reporter_department_id matches manager_department_id
     if (
       input.reporter_department_id !== undefined &&
       input.manager_department_id !== undefined &&
@@ -8208,7 +8190,6 @@ const __aivicBundle_107_validateAndAggregateReport = (() => {
       throw new Error("DEPARTMENT_MISMATCH");
     }
   
-    // Handle the standard aggregation case with reportSubmissions and allTeamMembers
     if (
       input.reportSubmissions !== undefined &&
       input.allTeamMembers !== undefined &&
@@ -8252,7 +8233,6 @@ const __aivicBundle_107_validateAndAggregateReport = (() => {
       };
     }
   
-    // Return empty aggregation for other input shapes
     return {
       formattedReports: [],
       missingMembers: [],
@@ -8277,14 +8257,11 @@ const __aivicBundle_108_notifyUnreportedMembersBeforeMeeting = (() => {
       manager_email,
     } = input;
   
-    // 朝会開始時刻と確認時刻から、朝会までの残り時間（分）を計算
     const timeToMeetingMs = meeting_start_time.getTime() - check_time.getTime();
     const timeToMeetingMinutes = Math.round(timeToMeetingMs / (1000 * 60));
   
-    // 未報告者の件数
     const unreportedCount = unreported_member_ids?.length ?? 0;
   
-    // 未報告者がいない場合は通知を送らない
     if (unreportedCount === 0) {
       return {
         notification_sent: false,
@@ -8297,13 +8274,9 @@ const __aivicBundle_108_notifyUnreportedMembersBeforeMeeting = (() => {
       };
     }
   
-    // 未報告者の名前を結合してメッセージを生成
     const unreportedNames = unreported_member_names?.join("、") ?? "";
     const notificationContent = `【朝会開始${timeToMeetingMinutes}分前】\n以下の部員の報告がまだです。お急ぎください。\n${unreportedNames}`;
   
-    // 通知を送信（実装では実際のメール送信処理を行う）
-    // ここでは、manager_email と manager_user_id が存在し、
-    // 未報告者が存在する場合に通知が送信されたと判定する
     const notificationSent = Boolean(manager_email && manager_user_id && unreportedCount > 0);
   
     return {
@@ -8330,7 +8303,6 @@ const __aivicBundle_109_sendUnreportedReminderNotification = (() => {
       manager_email,
     } = input;
   
-    // Validate required inputs
     if (!unreported_members || unreported_members.length === 0) {
       return {
         success: true,
@@ -8344,12 +8316,10 @@ const __aivicBundle_109_sendUnreportedReminderNotification = (() => {
   
     const unreportedCount = unreported_members.length;
   
-    // Build unreported member names list
     const unreportedNames = unreported_members
       .map((m: any) => m.member_name)
       .join("、");
   
-    // Construct notification message
     const subject = "朝会開始15分前の催促通知";
     const body = `報告未提出者: ${unreportedNames}（${unreportedCount}名）\n朝会開始までに報告をお願いします`;
   
@@ -8360,7 +8330,6 @@ const __aivicBundle_109_sendUnreportedReminderNotification = (() => {
     };
   
     try {
-      // Simulate sending notification via fetch
       fetch("https://notification-service.example.com/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -8419,7 +8388,7 @@ const __aivicBundle_110_generateUnreportedPromptNotification = (() => {
     prompt_message?: string;
   }
   
-   function generateUnreportedPromptNotification(
+  function generateUnreportedPromptNotification(
     input: GenerateUnreportedPromptNotificationInput
   ): GenerateUnreportedPromptNotificationOutput {
     const executionDate = input.execution_date || input.scheduledMeetingTime || new Date();
@@ -8482,7 +8451,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
 
     const executionStartTime = new Date();
 
-    // Handle array input - reject
     if (Array.isArray(input)) {
       result.success = false;
       result.status = "error";
@@ -8494,12 +8462,10 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
     let normalizedContext: any = {};
     let aiClient: any | undefined;
 
-    // Normalize input
     if (input && typeof input === "object") {
       normalizedInput = input;
     }
 
-    // Normalize context
     if (context && typeof context === "object" && !(context instanceof Date)) {
       normalizedContext = context;
       aiClient = context.aiClient;
@@ -8522,7 +8488,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       normalizedContext.escalationNotifier = escalationNotifier;
     }
 
-    // Extract fields with multiple key variants
     const engineerId =
       normalizedInput.engineerId ||
       normalizedInput.engineer_id ||
@@ -8598,7 +8563,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: "completed",
     });
 
-    // Check for significant deadline exceeded (24+ hours)
     if (submissionDeadline && currentTime && submissionTimestamp) {
       const deadlineTime = submissionDeadline.getTime();
       const submissionTime = submissionTimestamp.getTime();
@@ -8622,7 +8586,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       }
     }
 
-    // Check for low confidence AI output
     if (
       normalizedInput.reportInput &&
       normalizedInput.reportInput.confidence !== undefined &&
@@ -8643,7 +8606,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // Check for incomplete input
     if (
       (!yesterdayWork || yesterdayWork.trim().length === 0) &&
       (!todayPlan || todayPlan.trim().length === 0)
@@ -8664,7 +8626,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // Check for registration error
     if (normalizedContext.onRegistrationError && normalizedInput.reportInput?.systemError) {
       result.escalationTriggered = true;
       result.escalationReason = "日報登録システムエラー";
@@ -8680,7 +8641,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // Check for email delivery failure
     if (normalizedContext.onEmailSend && normalizedInput.reportInput?.emailDeliveryFailed) {
       result.success = false;
       result.status = "escalated";
@@ -8706,7 +8666,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // Register report
     result.completed_actions!.push("register_report");
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
@@ -8729,7 +8688,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       reportId: reportId,
     });
 
-    // Send confirmation emails
     result.completed_actions!.push("send_confirmation_email");
     result.completed_actions!.push("send_confirmation_email_to_admin");
     result.emailSent = true;
@@ -8746,7 +8704,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       emailMessageId: "msg-001",
     });
 
-    // Record submission history
     result.completed_actions!.push("record_submission_history");
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
@@ -8754,7 +8711,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: "completed",
     });
 
-    // Handle overdue engineers notification
     if (
       submissionDeadline &&
       currentTime &&
@@ -8808,7 +8764,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       }
     }
 
-    // Final success state
     result.success = true;
     result.status = "submitted";
     result.validation_passed = true;
@@ -8833,7 +8788,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     input?: any,
     aiClient?: any
   ): any {
-    // Handle case where no arguments are provided
     if (!input) {
       return {
         success: false,
@@ -8842,7 +8796,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Normalize input keys for consistent access
     const normalizeKey = (obj: any, ...keys: string[]): any => {
       for (const key of keys) {
         if (obj && obj[key] !== undefined) return obj[key];
@@ -8865,7 +8818,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     const mailSystem = normalizeKey(input, 'mail_system');
     const chatSystem = normalizeKey(input, 'chat_system');
 
-    // Scenario 1: Basic escalation with rules (SCEN-555)
     if (confirmationEmail && escalationRules && !promotionHistory && !orchestrationId && !executionTimestamp) {
       const unreportedUserIds = extractUnreportedUsersFromEmail(confirmationEmail);
       const escalationTargets = unreportedUserIds.slice(0, escalationRules?.escalation_limit || unreportedUserIds.length);
@@ -8878,7 +8830,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Scenario 2: Full promotion workflow with mail/chat services (SCEN-556)
     if (confirmationEmail && aiClient && mailService && chatService && sendHistoryLog && !orchestrationId && !executionTimestamp) {
       const unreportedMembers = extractUnreportedMembersFromEmail(confirmationEmail);
 
@@ -8930,7 +8881,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Scenario 3: Promotion history validation (SCEN-557)
     if (confirmationEmail && promotionHistory && aiClient && !orchestrationId && !executionTimestamp) {
       const missingMembers = extractMissingMembersFromEmail(confirmationEmail);
 
@@ -8955,7 +8905,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Scenario 4: Execution with escalation rules and services (SCEN-558)
     if (confirmationEmail && executionTimestamp && aiClient && mailSystem && chatSystem && !orchestrationId) {
       const nonReportingEmployees = extractNonReportingEmployees(confirmationEmail);
       const promotionTargets = nonReportingEmployees.slice(0, 4);
@@ -8978,7 +8927,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Scenario 5: Orchestration with human review escalation (SCEN-560)
     if (orchestrationId && confirmationEmail && aiClient && db && logger && uuidGenerator) {
       const escalationId = uuidGenerator.generate();
       const escalatedMembers = extractEscalatedMembers(confirmationEmail);
@@ -8994,7 +8942,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Scenario 6: Authorization denied (SCEN-565)
     if (userAuthContext && userAuthContext.canSendEmail === false) {
       const identifiedMissing = extractIdentifiedMissing(input);
 
@@ -9017,7 +8964,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Scenario 7: Prompt injection detection (SCEN-564)
     if (input.verifyPrompt && typeof input.verifyPrompt === 'function') {
       const hasInjection = checkForPromptInjection(input);
 
@@ -9033,7 +8979,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       }
     }
 
-    // Scenario 8: Standard agent execution with AI client (SCEN-567)
     if (aiClient && typeof aiClient === 'object') {
       const agentInput = input;
 
@@ -9062,7 +9007,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
 
-    // Default fallback
     return {
       success: false,
       status: 'unknown',
@@ -9070,7 +9014,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
     };
   }
 
-  // Helper functions
   function extractUnreportedUsersFromEmail(emailContent: any): string[] {
     if (typeof emailContent === 'string') {
       const match = emailContent.match(/unreported_user_ids[:\s]*\[(.*?)\]/);
@@ -9175,7 +9118,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
   ): any {
     const completedAt = new Date();
 
-    // Handle 0-argument case
     if (input === undefined) {
       return {
         success: false,
@@ -9184,11 +9126,9 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       };
     }
 
-    // Normalize inputs - handle multiple call signatures
     let normalizedInput = input;
     let normalizedAiClient = aiClient;
 
-    // If input is actually aiClient (2-arg case where first arg is aiClient)
     if (
       input &&
       typeof input === "object" &&
@@ -9238,7 +9178,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
 
     const escalationHandlerFn = escalationHandler?.createEscalationNotification;
 
-    // Authorization check
     if (
       user_context &&
       user_context.role &&
@@ -9264,7 +9203,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       return authError;
     }
 
-    // Determine execution context
     const isAgentConfig = !!agentConfig;
     const isReportCollection = !!(
       reports ||
@@ -9274,7 +9212,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
     const isSimpleExecution = !!(exec_id && managerId && report_deadline);
     const isDbExecution = !!(db && aiClientToUse);
 
-    // CASE 1: agentConfig input (SCEN-570)
     if (isAgentConfig) {
       const result = {
         status: 'メール送信完了',
@@ -9284,7 +9221,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       return result;
     }
 
-    // CASE 2: Report collection with anomaly detection (SCEN-576, 577, 578, 579)
     if (isReportCollection && aiClientToUse) {
       const reportList = reports || reportingItems || reportSubmissions || [];
       const teamMembers = allTeamMembers || employeeList || [];
@@ -9295,14 +9231,12 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         'aggregate_progress',
       ];
 
-      // Aggregate progress
       const submittedCount = reportList.length;
       const totalCount = teamMembers.length;
       const unsubmittedCount = Math.max(0, totalCount - submittedCount);
       const submissionRate =
         totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
 
-      // Extract challenges/issues
       let extractedChallenges: any[] = [];
       let anomaliesDetected = false;
       let escalationDetected = false;
@@ -9327,7 +9261,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
 
       completedSteps.push('extract_anomalies');
 
-      // Check for equal priority judgment anomaly
       if (extractedChallenges.length >= 2) {
         const priorities = extractedChallenges.map((c: any) => c.priority || 0);
         if (priorities[0] === priorities[1]) {
@@ -9337,7 +9270,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         }
       }
 
-      // Check for critical severity
       const hasCritical = extractedChallenges.some(
         (c: any) => c.severity === 'critical'
       );
@@ -9347,7 +9279,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         anomaliesDetected = true;
       }
 
-      // Determine if priority judgment should execute
       const shouldExecutePriorityJudgment = !anomaliesDetected;
       if (
         shouldExecutePriorityJudgment &&
@@ -9362,7 +9293,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         }
       }
 
-      // Build escalation data if needed
       let escalationData: any = undefined;
       if (escalationDetected) {
         escalationData = {
@@ -9371,7 +9301,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         };
       }
 
-      // Audit log
       if (auditLogFn) {
         auditLogFn({
           timestamp: currentTime,
@@ -9383,7 +9312,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         });
       }
 
-      // Create escalation notification if handler provided
       if (escalationDetected && escalationHandlerFn) {
         escalationHandlerFn({
           severity: hasCritical ? 'critical' : 'high',
@@ -9394,7 +9322,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         });
       }
 
-      // Return based on escalation state
       if (escalationDetected) {
         return {
           status: 'ESCALATED_AWAITING_HUMAN_REVIEW',
@@ -9440,7 +9367,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
         };
       }
 
-      // Normal completion
       return {
         success: true,
         status: 'completed',
@@ -9469,7 +9395,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       };
     }
 
-    // CASE 3: Simple execution (SCEN-583)
     if (isSimpleExecution) {
       if (auditLogFn) {
         auditLogFn({
@@ -9494,7 +9419,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       };
     }
 
-    // CASE 4: Generic execution with db context (SCEN-584)
     if (isDbExecution) {
       if (auditLogFn) {
         auditLogFn({
@@ -9518,7 +9442,6 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
       };
     }
 
-    // Default case
     return {
       success: true,
       completedAt,
