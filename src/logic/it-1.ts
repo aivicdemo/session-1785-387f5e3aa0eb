@@ -2233,7 +2233,7 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
     const errors: Array<{ field: string; message: string }> = [];
 
-    // reportDate は任意フィールドとして扱う（test が渡さない場合がある）
+    // reportDate は任意フィールド（test が渡さない場合がある）
     const reportDate = formData?.reportDate || formData?.report_date || '';
     const department = formData?.department || formData?.department_id || '';
     const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
@@ -2668,6 +2668,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       }
     }
 
+    const { randomUUID } = require("crypto");
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8)}`;
     

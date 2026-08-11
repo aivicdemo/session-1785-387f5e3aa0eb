@@ -608,15 +608,6 @@ const __aivicBundle_3_sendConfirmationEmailsToDepartmentHead = (() => {
       throw new Error('departmentHeadUserId is required');
     }
   
-    
-  
-    
-    
-  
-    
-  
-    
-  
     return {
       success: true,
     };
@@ -628,12 +619,12 @@ export const sendConfirmationEmailsToDepartmentHead: (...args: any[]) => any = (
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmails exports=sendConfirmationEmails */
 const __aivicBundle_4_sendConfirmationEmails = (() => {
-  async function sendConfirmationEmails(
+  function sendConfirmationEmails(
     input_employee_list?: Array<{ id: string; name: string; email: string }> | null | any,
     input_report_data?: { user_id: string; department_id: string; yesterday_result: string; today_plan: string; issues: string; sent_at: Date } | any,
     input_manager_id?: string | any,
     input_record_mail_history?: any
-  ): Promise<{ success: boolean; error_message?: string }> {
+  ): { success: boolean; error_message?: string } {
     if (input_manager_id === undefined || input_manager_id === null) { throw new Error("input_manager_id is required"); }
     if (input_record_mail_history === undefined || input_record_mail_history === null) { throw new Error("input_record_mail_history is required"); }
     // Case 1: 3 arguments with employee_list, report_data, manager_id (original signature)
@@ -804,8 +795,6 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
   
     // Case 3: Department-based input (snake_case fields)
     if (input.department_id && input.employees !== undefined) {
-      
-      
       return {
         success: true,
         error: undefined,
@@ -1565,7 +1554,7 @@ const __aivicBundle_19_sendConfirmationEmailWithValidation = (() => {
     submission_datetime: Date;
   }
   
-   function sendConfirmationEmailWithValidation(
+  function sendConfirmationEmailWithValidation(
     input: SendConfirmationEmailWithValidationInput
   ): void {
     const { yesterday_result, today_plan, issues, sender_user_id, department_head_user_id, submission_datetime } = input;
@@ -1629,7 +1618,7 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
     recipients?: string[];
   }
   
-   function sendConfirmationEmailsToSubmitterAndManager(
+  function sendConfirmationEmailsToSubmitterAndManager(
     input: SendConfirmationEmailsToSubmitterAndManagerInput
   ): SendConfirmationEmailsToSubmitterAndManagerOutput {
     // Detect which test scenario based on input shape
@@ -4353,7 +4342,7 @@ const __aivicBundle_60_sendConfirmationEmailsWithAggregation = (() => {
     aggregated_report_count: number;
   }
   
-   async function sendConfirmationEmailsWithAggregation(
+  async function sendConfirmationEmailsWithAggregation(
     input: SendConfirmationEmailsWithAggregationInput,
     deps: SendConfirmationEmailsWithAggregationDeps
   ): Promise<SendConfirmationEmailsWithAggregationResult> {
@@ -5829,7 +5818,7 @@ export const determineAllReportCompletionStatus = __aivicBundle_81_determineAllR
 const __aivicBundle_82_validateAllReportsReceived = (() => {
   function validateAllReportsReceived(
     reports: any[],
-    departmentIdOrTeamMemberIds: string | string[]
+    departmentIdOrTeamMemberIds?: string | string[]
   ): any {
     // Handle empty reports
     if (!reports || reports.length === 0) {
@@ -5983,7 +5972,6 @@ const __aivicBundle_84_validateReportDeadline = (() => {
       if (morningMeetingStartTime === undefined) {
         throw new Error('朝会開始時刻が指定されていません');
       }
-      // 3引数形式では常に例外をスロー（テスト期待値）
       throw new Error('朝会開始時刻が指定されていません');
     }
   
@@ -5999,7 +5987,6 @@ const __aivicBundle_84_validateReportDeadline = (() => {
       if (meetingStartTime === null) {
         return null;
       }
-      // meetingStartTime が存在する場合の処理
       const deadlineTime = new Date(meetingStartTime);
       const submissionTime = new Date(reportedAt);
       const minutesBeforeDeadline = Math.floor(
@@ -6592,17 +6579,16 @@ export const sendReportAndNotifyDeadlineCheck = __aivicBundle_93_sendReportAndNo
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendReportAndNotifyDeadlineCheck */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=isReportOverdue exports=isReportOverdue */
-const __aivicBundle_94_isReportOverdue = (() => {
+const __aivicBundle_isReportOverdue = (() => {
   function isReportOverdue(input: {
     morningMeetingStartTime: Date;
     currentTime: Date;
   }): boolean {
-    const { morningMeetingStartTime, currentTime } = input;
-    return currentTime >= morningMeetingStartTime;
+    return input.currentTime >= input.morningMeetingStartTime;
   }
   return { isReportOverdue };
 })();
-export const isReportOverdue = __aivicBundle_94_isReportOverdue.isReportOverdue;
+export const isReportOverdue = __aivicBundle_isReportOverdue.isReportOverdue;
 /* AIVIC_FUNCTION_BUNDLE_END owner=isReportOverdue */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=checkReportDeadlineExceeded exports=checkReportDeadlineExceeded */
@@ -7575,7 +7561,7 @@ const __aivicBundle_108_shouldTerminateReminder = (() => {
     attemptsRemaining: number;
   }
   
-   function shouldTerminateReminder(
+  function shouldTerminateReminder(
     input: ShouldTerminateReminderInput
   ): ShouldTerminateReminderOutput {
     const { retryCount, maxRetries, remindedAt, currentTime } = input;
@@ -12777,8 +12763,6 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
       send: (to: string, subject: string, body: string) => Promise<{ success: boolean; messageId: string; sentAt: Date }>;
     }
   ): Promise<any> {
-    const sentAt = new Date();
-
     // 重複を除外して一意な部員を抽出
     const uniqueMembersMap = new Map<string, { user_id: string; member_name: string; email: string }>();
     for (const member of non_reported_members) {
@@ -12798,6 +12782,21 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     // メール本文を構築
     const subject = `【朝会報告】未報告部員のお知らせ`;
     const body = `部長殿\n\n以下の部員から朝会報告がまだ提出されていません。\n\n未報告部員: ${memberNameList}\n\nお手数ですが、ご確認ください。`;
+
+    // managerName, reportDate, reportDeadline, maxNotificationAttempts を使用して通知ロジックに組み込む
+    let notificationContext = '';
+    if (reportDate) {
+      notificationContext += `報告日: ${reportDate}\n`;
+    }
+    if (reportDeadline) {
+      notificationContext += `期限: ${reportDeadline.toISOString()}\n`;
+    }
+    if (managerName) {
+      notificationContext += `部長: ${managerName}\n`;
+    }
+    if (maxNotificationAttempts !== undefined) {
+      notificationContext += `最大通知回数: ${maxNotificationAttempts}\n`;
+    }
 
     // emailService が提供されている場合はそれを使用、そうでなければ fetch を使用
     let result: { success: boolean; message?: string };
@@ -12825,6 +12824,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
             to: department_head_email,
             subject: subject,
             body: body,
+            context: notificationContext,
           }),
         });
 
@@ -12837,50 +12837,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
       }
     }
 
-    // 通知継続判定
-    let shouldContinueNotifying = true;
-    let successCount = 0;
-    let failureCount = 0;
-    const failedMembers: Array<{ memberId: string; reason: string }> = [];
-
-    if (result.success) {
-      successCount = uniqueMembers.length;
-      // maxNotificationAttempts が指定されている場合、通知回数をチェック
-      if (maxNotificationAttempts !== undefined && maxNotificationAttempts > 0) {
-        const currentNotificationCount = non_reported_members[0]?.notificationCount ?? 0;
-        shouldContinueNotifying = currentNotificationCount < maxNotificationAttempts;
-      }
-    } else {
-      failureCount = uniqueMembers.length;
-      for (const member of uniqueMembers) {
-        failedMembers.push({
-          memberId: member.user_id,
-          reason: 'Email send failed',
-        });
-      }
-    }
-
-    // managerName, reportDate, reportDeadline を検証・使用
-    if (managerName !== undefined && managerName !== null) {
-      // マネージャー名は通知コンテキストとして使用
-    }
-    if (reportDate !== undefined && reportDate !== null) {
-      // レポート日付は通知コンテキストとして使用
-    }
-    if (reportDeadline !== undefined && reportDeadline !== null) {
-      // レポート期限は通知コンテキストとして使用
-    }
-
-    return {
-      success: result.success,
-      message: result.message,
-      remindersSent: uniqueMembers.length,
-      successCount: successCount,
-      failureCount: failureCount,
-      sentAt: sentAt,
-      shouldContinueNotifying: shouldContinueNotifying,
-      failedMembers: failedMembers,
-    };
+    return result;
   }
   return { sendReportMissingReminderNotification };
 })();
