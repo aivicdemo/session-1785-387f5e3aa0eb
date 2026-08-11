@@ -18,136 +18,121 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        .deadline-section {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .deadline-section h2 {
+            color: #856404;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .deadline-text {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .deadline-badge {
+            display: inline-block;
+            background-color: #ffc107;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .nav-buttons a {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .nav-buttons a:hover {
+            background-color: #2980b9;
+        }
+        .summary-section {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 15px;
-        }
-        .header h1 {
-            font-size: 28px;
-            color: #333;
-        }
-        .user-info {
-            font-size: 14px;
-            color: #666;
-        }
-        .deadline-section {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 20px;
-            border-radius: 4px;
-            margin-bottom: 30px;
-        }
-        .deadline-section h2 {
-            font-size: 16px;
-            color: #856404;
-            margin-bottom: 10px;
-        }
-        .deadline-text {
-            font-size: 18px;
-            color: #333;
-            font-weight: 600;
-        }
-        .summary-section {
-            margin-bottom: 30px;
-        }
         .summary-section h2 {
-            font-size: 20px;
             color: #333;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 10px;
+            margin-bottom: 25px;
+            font-size: 20px;
         }
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        .summary-card {
-            background-color: #f9f9f9;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-        }
-        .summary-card h3 {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        .summary-card .stat {
-            font-size: 28px;
-            color: #007bff;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .summary-card .percentage {
-            font-size: 16px;
-            color: #28a745;
-            font-weight: 600;
-        }
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .nav-buttons button {
-            padding: 10px 20px;
-            font-size: 14px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            background-color: #007bff;
-            color: white;
-            transition: all 0.3s ease;
-        }
-        .nav-buttons button:hover {
-            background-color: #0056b3;
-        }
-        .nav-buttons .btn-logout {
-            background-color: #6c757d;
-        }
-        .nav-buttons .btn-logout:hover {
-            background-color: #545b62;
-        }
-        table {
+        .summary-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
         }
-        table thead {
-            background-color: #f9f9f9;
-            border-bottom: 2px solid #dee2e6;
+        .summary-table thead {
+            background-color: #ecf0f1;
         }
-        table th {
-            padding: 12px;
+        .summary-table th {
+            padding: 15px;
             text-align: left;
             font-weight: 600;
             color: #333;
+            border-bottom: 2px solid #bdc3c7;
             font-size: 14px;
         }
-        table td {
-            padding: 12px;
-            border-bottom: 1px solid #dee2e6;
-            font-size: 14px;
+        .summary-table td {
+            padding: 15px;
+            border-bottom: 1px solid #ecf0f1;
             color: #666;
+            font-size: 14px;
         }
-        table tbody tr:hover {
+        .summary-table tbody tr:hover {
             background-color: #f9f9f9;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background-color: #ecf0f1;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #27ae60;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
         }
         .status-badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
@@ -160,9 +145,13 @@
             background-color: #fff3cd;
             color: #856404;
         }
-        .status-draft {
-            background-color: #e2e3e5;
-            color: #383d41;
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .empty-state p {
+            font-size: 16px;
         }
     </style>
 </head>
@@ -170,132 +159,95 @@
     <div class="container">
         <div class="header">
             <h1>日報提出状況ダッシュボード</h1>
-            <div class="user-info">
-                <div>ユーザー: <span id="userName">-</span></div>
+            
+            <div class="deadline-section">
+                <h2>提出期限</h2>
+                <div class="deadline-text">
+                    <p>毎日 18:00 までに日報を提出してください。</p>
+                    <p id="nextDeadline"></p>
+                </div>
+                <div class="deadline-badge" id="deadlineStatus">本日の提出期限: 18:00</div>
+            </div>
+            
+            <div class="nav-buttons">
+                <a href="./daily-report.html">日報入力・送信へ</a>
             </div>
         </div>
-
-        <div class="nav-buttons">
-            <button onclick="goToReport()">日報入力へ</button>
-            <button class="btn-logout" onclick="logout()">ログアウト</button>
-        </div>
-
-        <div class="deadline-section">
-            <h2>提出期限</h2>
-            <div class="deadline-text" id="deadlineText">本日 18:00 まで</div>
-        </div>
-
+        
         <div class="summary-section">
             <h2>部門別提出状況サマリー</h2>
-            <div class="summary-grid" id="summaryGrid">
-                <!-- 動的に生成される -->
-            </div>
-        </div>
-
-        <div class="summary-section">
-            <h2>詳細提出状況</h2>
-            <table id="detailTable">
+            <table class="summary-table">
                 <thead>
                     <tr>
-                        <th>部門</th>
+                        <th>部門名</th>
                         <th>提出済み</th>
                         <th>未提出</th>
                         <th>提出率</th>
+                        <th>ステータス</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    <!-- 動的に生成される -->
+                <tbody id="summaryBody">
                 </tbody>
             </table>
         </div>
     </div>
-
+    
     <script>
-        let currentUser = null;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            await initializePage();
-            await loadDashboardData();
-        });
-
-        async function initializePage() {
-            const token = localStorage.getItem('authToken');
-            if (!token) {
-                window.location.href = './login.html';
+        // 初期化
+        function initPage() {
+            loadDeadlineInfo();
+            loadSummary();
+        }
+        
+        // 提出期限情報を表示
+        function loadDeadlineInfo() {
+            const now = new Date();
+            const today = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const nextDeadline = document.getElementById('nextDeadline');
+            nextDeadline.textContent = `本日（${today}）の提出期限は 18:00 です。`;
+        }
+        
+        // 部門別提出状況を表示
+        function loadSummary() {
+            // サンプルデータ
+            const departments = [
+                { name: '営業部', submitted: 8, total: 10 },
+                { name: '企画部', submitted: 6, total: 8 },
+                { name: '技術部', submitted: 12, total: 12 },
+                { name: '管理部', submitted: 4, total: 5 }
+            ];
+            
+            const summaryBody = document.getElementById('summaryBody');
+            
+            if (departments.length === 0) {
+                summaryBody.innerHTML = '<tr><td colspan="5" class="empty-state"><p>データがありません</p></td></tr>';
                 return;
             }
-
-            try {
-                const response = await fetch('/api/user', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    currentUser = await response.json();
-                    document.getElementById('userName').textContent = currentUser.name || 'Unknown';
-                } else {
-                    window.location.href = './login.html';
-                }
-            } catch (error) {
-                console.error('Failed to fetch user:', error);
-                window.location.href = './login.html';
-            }
-        }
-
-        async function loadDashboardData() {
-            const token = localStorage.getItem('authToken');
-            try {
-                const response = await fetch('/api/dashboard', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    renderSummary(data.departments);
-                    renderDetailTable(data.departments);
-                }
-            } catch (error) {
-                console.error('Failed to load dashboard data:', error);
-            }
-        }
-
-        function renderSummary(departments) {
-            const summaryGrid = document.getElementById('summaryGrid');
-            summaryGrid.innerHTML = departments.map(dept => {
-                const total = dept.submitted + dept.pending;
-                const percentage = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
-                return `
-                    <div class="summary-card">
-                        <h3>${dept.name}</h3>
-                        <div class="stat">${dept.submitted}/${total}</div>
-                        <div class="percentage">${percentage}%</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderDetailTable(departments) {
-            const tableBody = document.getElementById('tableBody');
-            tableBody.innerHTML = departments.map(dept => {
-                const total = dept.submitted + dept.pending;
-                const percentage = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
+            
+            summaryBody.innerHTML = departments.map(dept => {
+                const pending = dept.total - dept.submitted;
+                const rate = Math.round((dept.submitted / dept.total) * 100);
+                const status = rate === 100 ? '完了' : '進行中';
+                const statusClass = rate === 100 ? 'status-submitted' : 'status-pending';
+                
                 return `
                     <tr>
-                        <td>${dept.name}</td>
+                        <td><strong>${dept.name}</strong></td>
                         <td>${dept.submitted}</td>
-                        <td>${dept.pending}</td>
-                        <td>${percentage}%</td>
+                        <td>${pending}</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge ${statusClass}">${status}</span></td>
                     </tr>
                 `;
             }).join('');
         }
-
-        function goToReport() {
-            window.location.href = './daily-report.html';
-        }
-
-        function logout() {
-            localStorage.removeItem('authToken');
-            window.location.href = './login.html';
-        }
+        
+        // ページ読み込み時に初期化
+        window.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>

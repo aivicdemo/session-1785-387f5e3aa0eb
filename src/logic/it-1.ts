@@ -2228,18 +2228,16 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
 const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
-  const submissionStore = new Map<string, Set<string>>();
-
   function validateDailyReportSubmission(
     formData: any
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
     const errors: Array<{ field: string; message: string }> = [];
 
-    const reportDate = formData.reportDate || formData.report_date || '';
-    const department = formData.department || formData.department_id || '';
-    const yesterday = formData.yesterday || formData.yesterdayAccomplishment || formData.yesterday_achievement || formData.yesterday_work || '';
-    const today = formData.today || formData.todayPlan || formData.today_plan || '';
-    const challenge = formData.challenge || formData.currentChallenge || formData.current_issue || formData.challenges || '';
+    const reportDate = formData?.reportDate || formData?.report_date || '';
+    const department = formData?.department || formData?.department_id || '';
+    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
+    const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
+    const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
     if (!reportDate || reportDate.trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
@@ -2258,29 +2256,6 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     }
 
     const isValid = errors.length === 0;
-
-    // 重複チェック（userId と submission_date がある場合）
-    const userId = formData.user_id || formData.userId || '';
-    const submissionDate = formData.submission_date || formData.submissionDate || '';
-
-    if (userId && submissionDate && isValid) {
-      const submissionKey = `${userId}:${submissionDate}`;
-      if (!submissionStore.has(submissionKey)) {
-        submissionStore.set(submissionKey, new Set());
-      }
-      const submissionSet = submissionStore.get(submissionKey)!;
-      if (submissionSet.size > 0) {
-        return {
-          isValid: false,
-          errors: [{ field: 'submission', message: '既に送信済みです' }],
-          validationStatus: '妥当性確認: 失敗',
-          is_allowed: false,
-          message: '既に送信済みです',
-          shouldSendConfirmationEmail: false
-        };
-      }
-      submissionSet.add('submitted');
-    }
 
     return {
       isValid,
@@ -2581,58 +2556,58 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     mockDuplicateCheckFn?: Function
   ): Promise<any> {
     const userId =
-      reportData.user_id ||
-      reportData.userId ||
-      reportData.staff_id ||
+      reportData?.user_id ||
+      reportData?.userId ||
+      reportData?.staff_id ||
       "";
     const yesterdayWork =
-      reportData.yesterday_achievement ||
-      reportData.yesterday_accomplished ||
-      reportData.yesterday ||
-      reportData.yesterdayAccomplishment ||
+      reportData?.yesterday_achievement ||
+      reportData?.yesterday_accomplished ||
+      reportData?.yesterday ||
+      reportData?.yesterdayAccomplishment ||
       "";
     const todayPlan =
-      reportData.today_plan ||
-      reportData.today ||
-      reportData.todayPlan ||
+      reportData?.today_plan ||
+      reportData?.today ||
+      reportData?.todayPlan ||
       "";
     const currentIssues =
-      reportData.current_issues ||
-      reportData.current_issue ||
-      reportData.currentIssues ||
-      reportData.currentChallenge ||
-      reportData.current_challenges ||
-      reportData.issues ||
-      reportData.issue ||
-      reportData.issue_held ||
-      reportData.openIssues ||
+      reportData?.current_issues ||
+      reportData?.current_issue ||
+      reportData?.currentIssues ||
+      reportData?.currentChallenge ||
+      reportData?.current_challenges ||
+      reportData?.issues ||
+      reportData?.issue ||
+      reportData?.issue_held ||
+      reportData?.openIssues ||
       "";
 
     let submittedAt: Date | null = null;
-    if (reportData.submitted_at) {
+    if (reportData?.submitted_at) {
       submittedAt = reportData.submitted_at instanceof Date ? reportData.submitted_at : new Date(reportData.submitted_at);
-    } else if (reportData.submittedAt) {
+    } else if (reportData?.submittedAt) {
       submittedAt = reportData.submittedAt instanceof Date ? reportData.submittedAt : new Date(reportData.submittedAt);
-    } else if (reportData.submit_timestamp) {
+    } else if (reportData?.submit_timestamp) {
       submittedAt = new Date(reportData.submit_timestamp);
-    } else if (reportData.submission_timestamp) {
+    } else if (reportData?.submission_timestamp) {
       submittedAt = new Date(reportData.submission_timestamp);
-    } else if (reportData.submissionTimestamp) {
+    } else if (reportData?.submissionTimestamp) {
       submittedAt = new Date(reportData.submissionTimestamp);
-    } else if (reportData.send_timestamp) {
+    } else if (reportData?.send_timestamp) {
       submittedAt = new Date(reportData.send_timestamp);
-    } else if (reportData.send_date) {
+    } else if (reportData?.send_date) {
       submittedAt = new Date(reportData.send_date);
-    } else if (reportData.send_date_time) {
+    } else if (reportData?.send_date_time) {
       submittedAt = reportData.send_date_time;
     } else {
       submittedAt = new Date();
     }
 
     const reportDate =
-      reportData.report_date ||
-      reportData.reportDate ||
-      reportData.submission_date ||
+      reportData?.report_date ||
+      reportData?.reportDate ||
+      reportData?.submission_date ||
       (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {
@@ -2697,9 +2672,9 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     const logSuffix = randomUUID().substring(0, 3).toUpperCase();
     const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
 
-    const userEmail = reportData.user_email || reportData.userEmail || "";
-    const managerEmail = reportData.manager_email || "";
-    const staffName = reportData.staff_name || "";
+    const userEmail = reportData?.user_email || reportData?.userEmail || "";
+    const managerEmail = reportData?.manager_email || "";
+    const staffName = reportData?.staff_name || "";
 
     const emailBody = `
 朝会報告

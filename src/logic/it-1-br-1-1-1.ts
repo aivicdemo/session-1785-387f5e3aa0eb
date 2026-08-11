@@ -2135,11 +2135,15 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
         return true;
       }
 
-      if (emp.submission_date && emp.submission_date >= new_year_first_day) {
+      if (emp.submission_date === null) {
+        return true;
+      }
+
+      if (emp.submission_date >= new_year_first_day) {
         return false;
       }
 
-      if (emp.submission_date && emp.submission_date <= prev_year_final_day) {
+      if (emp.submission_date <= prev_year_final_day) {
         return true;
       }
 
