@@ -2134,8 +2134,7 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
         return false;
       }
 
-      // 前年度最終日以前の提出は新年度初日の対象外
-      // prev_year_final_day を使用して年度境界判定に組み込む
+      // 前年度最終日以前の提出は新年度初日の対象外（報告漏れとして扱う）
       if (emp.submission_date && emp.submission_date <= prev_year_final_day) {
         return true;
       }
@@ -9494,7 +9493,7 @@ const __aivicBundle_136_getReportArrivalStatus = (() => {
     excludedSubmissionCount?: number;
   }
   
-   function getReportArrivalStatus(
+  function getReportArrivalStatus(
     arg1?: string | GetReportArrivalStatusInput | GetReportArrivalStatusArrayInput[],
     arg2?: Date | string,
     arg3?: string

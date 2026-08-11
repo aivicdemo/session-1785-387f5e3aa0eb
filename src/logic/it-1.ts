@@ -1256,6 +1256,8 @@ const __aivicBundle_12_validateAndSubmitReport = (() => {
     issues?: string;
   }
   
+  const submissionStore = new Map<string, Set<string>>();
+  
   function validateAndSubmitReport(input: ValidateAndSubmitReportInput): any {
     const yesterday =
       input.yesterday_work ||
@@ -2708,13 +2710,13 @@ const __aivicBundle_25_submitDailyReport = (() => {
   
     let submittedAt: Date | null = null;
     if (reportData.submitted_at) {
-      submittedAt = reportData.submitted_at;
+      submittedAt = reportData.submitted_at instanceof Date ? reportData.submitted_at : new Date(reportData.submitted_at);
     } else if (reportData.submittedAt) {
-      submittedAt = reportData.submittedAt;
+      submittedAt = reportData.submittedAt instanceof Date ? reportData.submittedAt : new Date(reportData.submittedAt);
     } else if (reportData.submit_timestamp) {
-      submittedAt = reportData.submit_timestamp;
+      submittedAt = new Date(reportData.submit_timestamp);
     } else if (reportData.submission_timestamp) {
-      submittedAt = reportData.submission_timestamp;
+      submittedAt = new Date(reportData.submission_timestamp);
     } else if (reportData.submissionTimestamp) {
       submittedAt = new Date(reportData.submissionTimestamp);
     } else if (reportData.send_timestamp) {
