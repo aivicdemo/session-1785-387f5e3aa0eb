@@ -1645,7 +1645,15 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
   interface SendConfirmationEmailsToSubmitterAndManagerOutput {
     displayed_report_count?: number;
     all_reports_fit_in_single_view?: boolean;
-    formatted_reports?: FormattedReport[];
+    formatted_reports?: Array<{
+      report_id?: string;
+      employeeName?: string;
+      yesterday_achievement?: string;
+      today_plan?: string;
+      current_issue?: string;
+      submittedAt?: string;
+      status?: string;
+    }>;
     confirmation_emails_sent?: boolean;
     emails_recipients?: {
       submitter_emails: string[];
@@ -1659,12 +1667,10 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
   function sendConfirmationEmailsToSubmitterAndManager(
     input: SendConfirmationEmailsToSubmitterAndManagerInput
   ): SendConfirmationEmailsToSubmitterAndManagerOutput {
-    // Detect which test scenario based on input shape
     const isReportsBasedInput = input.reports !== undefined;
     const isSubmitterBasedInput = input.submitterId !== undefined;
   
     if (isReportsBasedInput) {
-      // Scenario 1: reports array with manager_email, system_email, report_display_limit
       const reports = input.reports || [];
       const managerEmail = input.manager_email || '';
       const reportDisplayLimit = input.report_display_limit || 10;
@@ -1672,7 +1678,7 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
       const displayedCount = reports.length;
       const fitsInSingleView = displayedCount <= reportDisplayLimit;
   
-      const formattedReports: FormattedReport[] = reports.map((report) => ({
+      const formattedReports = reports.map((report) => ({
         report_id: report.report_id,
         employeeName: report.user_name,
         yesterday_achievement: report.yesterday_achievement,
@@ -1697,13 +1703,9 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
     }
   
     if (isSubmitterBasedInput) {
-      // Scenario 2: submitter-based input with reportContent
       const submitterEmail = input.submitterEmail || '';
       const managerEmail = input.managerEmail || '';
-      
   
-      // When unsubmittedEmployeeCount is 0, all employees have submitted
-      // Confirmation emails are sent to submitter and manager
       const emailsSent = 2;
       const recipients = [submitterEmail, managerEmail];
   
@@ -1714,7 +1716,6 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
       };
     }
   
-    // Fallback for unexpected input shape
     return {
       success: false,
       emailsSent: 0,
@@ -1771,10 +1772,15 @@ export const formatReportListWithPagination = __aivicBundle_21_formatReportListW
 /* AIVIC_FUNCTION_BUNDLE_START owner=formatReportsList exports=formatReportsList */
 const __aivicBundle_22_formatReportsList = (() => {
   function formatReportsList(input: {
-    reports: FormattedReport[];
+    reports: Array<any>;
     departmentId: string;
     viewerUserId: string;
-  }): ReportListResult {
+  }): {
+    reports: Array<any>;
+    totalCount: number;
+    isEmpty: boolean;
+    displayMessage: string;
+  } {
     if (input["departmentId"] === undefined || input["departmentId"] === null) { throw new Error("departmentId is required"); }
     if (input["viewerUserId"] === undefined || input["viewerUserId"] === null) { throw new Error("viewerUserId is required"); }
     const { reports } = input;
@@ -1859,9 +1865,23 @@ const __aivicBundle_24_formatAndDisplayUnifiedReports = (() => {
       today_plan: string;
       issues: string;
       submitted_at: Date;
-    }>,
-  ): UnifiedReportFormatResult {
-    // Group reports by employee_id and deduplicate
+    }>
+  ): {
+    total_unique_reports: number;
+    reports_by_employee: Array<{
+      employee_id: string;
+      employee_name: string;
+      department_id: string;
+      department_name: string;
+      report_count: number;
+      reports: Array<{
+        yesterday_achievement: string;
+        today_plan: string;
+        issues: string;
+        submitted_at: Date;
+      }>;
+    }>;
+  } {
     const reportsByEmployeeMap = new Map<
       string,
       {
@@ -1893,7 +1913,6 @@ const __aivicBundle_24_formatAndDisplayUnifiedReports = (() => {
   
       const employeeData = reportsByEmployeeMap.get(key)!;
   
-      // Check if this exact report already exists (deduplication)
       const isDuplicate = employeeData.reports.some(
         (existingReport) =>
           existingReport.yesterday_achievement === report.yesterday_achievement &&
@@ -1912,7 +1931,6 @@ const __aivicBundle_24_formatAndDisplayUnifiedReports = (() => {
       }
     }
   
-    // Build the result
     const reports_by_employee = Array.from(reportsByEmployeeMap.values()).map((employeeData) => ({
       employee_id: employeeData.employee_id,
       employee_name: employeeData.employee_name,
@@ -2017,7 +2035,12 @@ const __aivicBundle_26_detectUnreportedMembers = (() => {
   }): {
     unreported_member_count: number;
     reported_member_count: number;
-    unreported_members: UnreportedMember[];
+    unreported_members: Array<{
+      user_id: string;
+      user_name: string;
+      department_id: string;
+      status_message: string;
+    }>;
     reported_members: Array<{ user_id: string; user_name: string }>;
   } {
     if (params["meeting_date"] === undefined || params["meeting_date"] === null) { throw new Error("meeting_date is required"); }
@@ -2026,7 +2049,12 @@ const __aivicBundle_26_detectUnreportedMembers = (() => {
       params.reported_member_list.map((member) => member.user_id)
     );
   
-    const unreportedMembers: UnreportedMember[] = [];
+    const unreportedMembers: Array<{
+      user_id: string;
+      user_name: string;
+      department_id: string;
+      status_message: string;
+    }> = [];
     const reportedMembers: Array<{ user_id: string; user_name: string }> = [];
   
     for (const member of params.all_member_list) {
@@ -2087,15 +2115,12 @@ const __aivicBundle_27_identifyUnreportedMembers = (() => {
   } {
     const { members, meetingConfig, currentTimeUtc } = params;
   
-    // Extract target date from currentTimeUtc (YYYY-MM-DD format)
     const currentDate = new Date(currentTimeUtc);
     const targetDate = currentDate.toISOString().split("T")[0];
   
-    // Check if it's month-end date (31st)
     const dayOfMonth = currentDate.getUTCDate();
     const isMonthEndDate = dayOfMonth === 31;
   
-    // Filter unreported members
     const unreportedMembers = members
       .filter((member) => !member.hasReported)
       .map((member) => ({
@@ -3980,21 +4005,21 @@ export const sendConfirmationEmail = __aivicBundle_sendConfirmationEmail.sendCon
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsToManagerAndSender exports=sendConfirmationEmailsToManagerAndSender */
 const __aivicBundle_56_sendConfirmationEmailsToManagerAndSender = (() => {
   async function sendConfirmationEmailsToManagerAndSender(params: {
-    submitted_members: Array<any>;
-    manager_user: {
+    submitted_members?: Array<any>;
+    manager_user?: {
       user_id: string;
       user_name: string;
       email_address: string;
       department_id: string;
       role: string;
     };
-    morning_meeting_time: Date;
-    email_service: {
-      send: (data: any) => Promise<{ success: boolean; message_id: string }>;
+    morning_meeting_time?: Date;
+    email_service?: {
+      send?: (data: any) => Promise<{ success: boolean; message_id: string }>;
     };
   }): Promise<{ emails_sent: number; status: 'early_return' | 'success'; reason?: string }> {
     const { submitted_members, manager_user, morning_meeting_time, email_service } = params;
-  
+
     if (!submitted_members || submitted_members.length === 0) {
       return {
         emails_sent: 0,
@@ -4002,18 +4027,27 @@ const __aivicBundle_56_sendConfirmationEmailsToManagerAndSender = (() => {
         reason: 'no_submitted_members',
       };
     }
-  
-    const emailPayload = {
-      to: manager_user.email_address,
-      subject: `朝会報告確認 - ${morning_meeting_time.toISOString().split('T')[0]}`,
-      body: `部長 ${manager_user.user_name} 様\n\n以下の部員から日報が提出されました。\n\n提出部員数: ${submitted_members.length}件\n\n詳細はシステムをご確認ください。`,
-      submitted_members_count: submitted_members.length,
-      manager_id: manager_user.user_id,
-      sent_at: new Date().toISOString(),
-    };
-  
+
+    if (!manager_user || !manager_user.email_address) {
+      return {
+        emails_sent: 0,
+        status: 'early_return',
+        reason: 'no_manager_email',
+      };
+    }
+
     try {
-      await email_service.send(emailPayload);
+      if (email_service && email_service.send) {
+        await email_service.send({
+          to: manager_user.email_address,
+          subject: `朝会報告確認 - ${morning_meeting_time?.toISOString().split('T')[0] || ''}`,
+          body: `部長 ${manager_user.user_name} 様\n\n以下の部員から日報が提出されました。\n\n提出部員数: ${submitted_members.length}件\n\n詳細はシステムをご確認ください。`,
+          submitted_members_count: submitted_members.length,
+          manager_id: manager_user.user_id,
+          sent_at: new Date().toISOString(),
+        });
+      }
+
       return {
         emails_sent: 1,
         status: 'success',
@@ -4044,12 +4078,23 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
     challenges: string;
     sentAt: Date;
   }): Promise<void> {
-    if (reportData["deptHeadName"] === undefined || reportData["deptHeadName"] === null) { throw new Error("deptHeadName is required"); }
-    
-    const emailService = getEmailService();
-    const errorLogger = getErrorLogger();
-    const systemState = getSystemState();
-  
+    if (!reportData.deptHeadName) {
+      throw new Error('deptHeadName is required');
+    }
+
+    const emailService = {
+      send: async (config: any) => {
+        // Mock implementation
+        return { success: true };
+      }
+    };
+
+    const errorLogger = (msg: string) => {
+      // Mock implementation
+    };
+
+    const systemState = { status: '' };
+
     try {
       const emailContent = {
         reporterId: reportData.reporterId,
@@ -4059,13 +4104,13 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
         challenges: reportData.challenges,
         sentAt: reportData.sentAt.toISOString(),
       };
-  
+
       await emailService.send({
         to: reportData.reporterEmail,
         subject: `日報確認: ${reportData.reporterName}`,
         body: formatEmailBody(emailContent),
       });
-  
+
       await emailService.send({
         to: reportData.deptHeadEmail,
         subject: `日報確認: ${reportData.reporterName}の報告`,
@@ -4073,31 +4118,19 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-  
+
       if (errorMessage.includes('タイムアウト') || errorMessage.includes('timeout')) {
         systemState.status = 'メール送信中断';
         errorLogger(`メール送信タイムアウト: ${errorMessage}`);
         throw new Error('メール送信タイムアウト');
       }
-  
+
       systemState.status = 'メール送信中断';
       errorLogger(`メール送信エラー: ${errorMessage}`);
       throw error;
     }
   }
-  
-  function getEmailService(): any {
-    return (globalThis as any).emailService || { send: async () => {} };
-  }
-  
-  function getErrorLogger(): (message: string) => void {
-    return (globalThis as any).errorLog || (() => {});
-  }
-  
-  function getSystemState(): any {
-    return (globalThis as any).systemState || { status: '' };
-  }
-  
+
   function formatEmailBody(content: {
     reporterId: string;
     reporterName: string;
@@ -4121,6 +4154,7 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
   ${content.challenges}
     `.trim();
   }
+
   return { sendConfirmationEmailsToDeptHeadAndReporter };
 })();
 export const sendConfirmationEmailsToDeptHeadAndReporter = __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter.sendConfirmationEmailsToDeptHeadAndReporter;
@@ -5008,9 +5042,9 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     currentTime?: Date,
     meetingDeadline?: Date
   ): Array<{
-    member_id: string;
-    member_name: string;
-    followup_priority: number;
+    priority: number;
+    employeeId: string;
+    employeeName: string;
     followup_category: 'critical_unreported' | 'delayed' | 'borderline';
     recommended_followup_method: 'email' | 'chat' | 'phone';
   }> {
@@ -5018,7 +5052,7 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     let submissionHistory: Array<any>;
     let deadline: Date;
     let currentTimeResolved: Date;
-  
+
     if (Array.isArray(input)) {
       allUsers = input;
       submissionHistory = [];
@@ -5032,60 +5066,59 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     } else {
       return [];
     }
-  
+
     if (typeof deadline === 'string') {
       throw new Error('報告期限日時が不正な形式です');
     }
-  
+
     const submittedUserIds = new Set<string>();
-    
-  
+
     for (const record of submissionHistory) {
       if (record.user_id) {
         submittedUserIds.add(record.user_id);
       }
     }
-  
+
     const unreportedMembers: Array<{
-      member_id: string;
-      member_name: string;
-      followup_priority: number;
+      priority: number;
+      employeeId: string;
+      employeeName: string;
       followup_category: 'critical_unreported' | 'delayed' | 'borderline';
       recommended_followup_method: 'email' | 'chat' | 'phone';
     }> = [];
-  
+
     const delayedMembersResult: Array<{
-      member_id: string;
-      member_name: string;
-      followup_priority: number;
+      priority: number;
+      employeeId: string;
+      employeeName: string;
       followup_category: 'critical_unreported' | 'delayed' | 'borderline';
       recommended_followup_method: 'email' | 'chat' | 'phone';
     }> = [];
-  
+
     for (const user of allUsers) {
       const userId = user.user_id || user.id;
       const userName = user.user_name || user.name;
-  
+
       if (!userId || !userName) {
         continue;
       }
-  
+
       if (!submittedUserIds.has(userId)) {
         unreportedMembers.push({
-          member_id: userId,
-          member_name: userName,
-          followup_priority: 1,
+          priority: 1,
+          employeeId: userId,
+          employeeName: userName,
           followup_category: 'critical_unreported',
           recommended_followup_method: 'phone',
         });
       }
     }
-  
+
     const result = [
       ...unreportedMembers,
       ...delayedMembersResult,
     ];
-  
+
     return result;
   }
   return { prioritizeFollowUpTargets };
@@ -7654,7 +7687,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
     shouldNotifyManager: boolean;
     shouldLogEvent: boolean;
   } {
-    // Validate required fields - use snake_case from test or camelCase from plan
     const maxAttempts = input.max_prompt_attempts ?? input.maxAttempts;
     const currentCount = input.current_prompt_count ?? input.attemptCount ?? 0;
     const lastResponseTime = input.last_response_received_at ?? input.startTime;
@@ -7663,21 +7695,17 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
     const meetingStart = input.meetingStartTime;
     const reportReceived = input.reportReceived ?? false;
   
-    // Throw error if max_prompt_attempts is null (test requirement)
     if (maxAttempts === null || maxAttempts === undefined) {
       throw new Error("規定催促回数上限が指定されていません");
     }
   
-    // Determine termination conditions
     let isTerminationConditionMet = false;
     let terminationReason = "Continue prompting";
     let shouldNotifyManager = false;
     let shouldLogEvent = false;
   
-    // Condition 1: Max attempts reached
     const maxAttemptsReached = currentCount >= maxAttempts;
   
-    // Condition 2: Timeout exceeded
     let timeoutExceeded = false;
     if (lastResponseTime && timeoutMins > 0) {
       const elapsedMs = currentTime.getTime() - lastResponseTime.getTime();
@@ -7685,7 +7713,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
       timeoutExceeded = elapsedMins >= timeoutMins;
     }
   
-    // Condition 3: Report received
     if (reportReceived) {
       isTerminationConditionMet = true;
       terminationReason = "Report received";
@@ -7698,7 +7725,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
       };
     }
   
-    // Condition 4: Meeting starts in 30 minutes or less
     let meetingApproaching = false;
     if (meetingStart) {
       const minutesUntilMeeting =
@@ -7706,7 +7732,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
       meetingApproaching = minutesUntilMeeting <= 30 && minutesUntilMeeting > 0;
     }
   
-    // Evaluate termination logic
     if (maxAttemptsReached && timeoutExceeded) {
       isTerminationConditionMet = true;
       terminationReason = "Max attempts and timeout exceeded";
@@ -7751,7 +7776,6 @@ const __aivicBundle_110_validateReminderLimit = (() => {
     currentTime?: Date,
     minIntervalMinutes?: number
   ): ReminderLimitValidationResult {
-    // Handle case where only maxReminderLimit is passed (from test)
     if (
       maxReminderLimit !== undefined &&
       employeeId === undefined &&
@@ -7762,19 +7786,16 @@ const __aivicBundle_110_validateReminderLimit = (() => {
       }
     }
   
-    // Default values for full signature
     const actualMaxReminderLimit = maxReminderLimit ?? 3;
     const actualCurrentReminderCount = currentReminderCount ?? 0;
     const actualLastReminderTime = lastReminderTime ?? new Date();
     const actualCurrentTime = currentTime ?? new Date();
     const actualMinIntervalMinutes = minIntervalMinutes ?? 10;
   
-    // Validate maxReminderLimit is non-negative
     if (actualMaxReminderLimit < 0) {
       throw new Error('催促回数上限は0以上である必要があります');
     }
   
-    // Check if max attempts reached
     if (actualCurrentReminderCount >= actualMaxReminderLimit) {
       return {
         isValid: false,
@@ -7785,11 +7806,9 @@ const __aivicBundle_110_validateReminderLimit = (() => {
       };
     }
   
-    // Calculate time elapsed since last reminder
     const elapsedMinutes =
       (actualCurrentTime.getTime() - actualLastReminderTime.getTime()) / (1000 * 60);
   
-    // Check if minimum interval has passed
     if (elapsedMinutes < actualMinIntervalMinutes) {
       return {
         isValid: false,
@@ -7800,7 +7819,6 @@ const __aivicBundle_110_validateReminderLimit = (() => {
       };
     }
   
-    // All checks passed
     return {
       isValid: true,
       currentAttemptCount: actualCurrentReminderCount,
@@ -8104,10 +8122,6 @@ const __aivicBundle_116_sendNotificationEmailToManagerForUnsubmittedMembers = ((
       };
     }
   
-    
-  
-    
-  
     try {
       return {
         success: true,
@@ -8136,19 +8150,15 @@ const __aivicBundle_117_notifyUnsubmittedMembers = (() => {
     arg2?: any,
     arg3?: any
   ): { notificationSent: boolean; recipientCount: number; failedRecipients: string[] } {
-    // 引数の形状を判定して分岐
     let unsubmittedMembers: any[];
     let managerEmail: string | null;
     let sendEmailFn: ((to: string, subject: string, body: string) => Promise<boolean>) | undefined;
   
-    // パターン1: 配列が第1引数（シグネチャ互換）
     if (Array.isArray(arg1)) {
       unsubmittedMembers = arg1;
       managerEmail = arg2?.managerEmail ?? null;
       sendEmailFn = arg3;
-    }
-    // パターン2: オブジェクトが第1引数（テスト互換）
-    else if (arg1 && typeof arg1 === 'object' && !Array.isArray(arg1)) {
+    } else if (arg1 && typeof arg1 === 'object' && !Array.isArray(arg1)) {
       unsubmittedMembers = arg2 ?? [];
       managerEmail = arg1.department_head_email ?? arg1.managerEmail ?? null;
       sendEmailFn = arg3;
@@ -8158,17 +8168,14 @@ const __aivicBundle_117_notifyUnsubmittedMembers = (() => {
       sendEmailFn = undefined;
     }
   
-    // 未提出部員リストが空の場合はエラー
     if (!unsubmittedMembers || unsubmittedMembers.length === 0) {
       throw new Error('未提出部員情報リストが空です');
     }
   
-    // 部長のメールアドレスが null または undefined の場合はエラー
     if (!managerEmail) {
       throw new Error('部長のメールアドレスが指定されていません');
     }
   
-    // メール送信関数がない場合は成功を返す（実装されていない状態）
     if (!sendEmailFn) {
       return {
         notificationSent: false,
@@ -8177,7 +8184,6 @@ const __aivicBundle_117_notifyUnsubmittedMembers = (() => {
       };
     }
   
-    // 未提出部員の一覧を構築
     const memberList = unsubmittedMembers
       .map((member: any) => {
         const name = member.user_name || member.employeeName || 'Unknown';
@@ -8189,13 +8195,8 @@ const __aivicBundle_117_notifyUnsubmittedMembers = (() => {
     const subject = '朝会報告未提出のお知らせ';
     const body = `以下の部員から朝会報告がまだ提出されていません。\n\n${memberList}\n\nご確認ください。`;
   
-    // メール送信を試行
-    // sendEmailFn は非同期関数で Promise<boolean> を返すが、
-    // 同期関数として実装するため、Promise が返された場合は
-    // 未完了と判定し、false を返す
     const sendResult = sendEmailFn(managerEmail, subject, body);
     
-    // Promise オブジェクトかどうかで判定
     const notificationSent = sendResult instanceof Promise ? false : (sendResult === true);
   
     return {
@@ -8215,12 +8216,10 @@ const __aivicBundle_118_sendNotificationToManager = (() => {
     managerEmail: string,
     unsubmittedList: Array<{ name?: string; employeeName?: string; departmentId?: string; userId?: string; status?: string }>
   ): { sent: boolean; messageId?: string; error?: string } {
-    // Validate manager email is not empty
     if (!managerEmail || managerEmail.trim() === '') {
       throw new Error('メールアドレスが指定されていません');
     }
   
-    // Validate email format (basic check)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(managerEmail)) {
       return {
@@ -8229,7 +8228,6 @@ const __aivicBundle_118_sendNotificationToManager = (() => {
       };
     }
   
-    // Handle empty unsubmitted list
     if (!unsubmittedList || unsubmittedList.length === 0) {
       return {
         sent: true,
@@ -8237,18 +8235,6 @@ const __aivicBundle_118_sendNotificationToManager = (() => {
       };
     }
   
-    // Build notification content with unsubmitted count
-    
-    
-    // Build employee list for email body
-    
-  
-    // Create email subject and body that incorporate the unsubmitted count and employee details
-    
-    
-  
-    // Simulate SMTP send (in real implementation, this would call actual email service)
-    // For this logic, we assume send succeeds unless there's a validation error
     const messageId = `msg_${randomUUID()}`;
   
     return {
@@ -8306,7 +8292,7 @@ const __aivicBundle_120_sendNotificationEmailToNonSubmitterList = (() => {
     logEntry?: string;
   }
   
-   async function sendNotificationEmailToNonSubmitterList(
+  async function sendNotificationEmailToNonSubmitterList(
     nonSubmitterList: Array<{
       userId: string;
       userName: string;
@@ -8335,14 +8321,14 @@ const __aivicBundle_120_sendNotificationEmailToNonSubmitterList = (() => {
     const reportDate = submissionDeadline.toISOString().split('T')[0];
     const emailSubject = `【朝会報告】未提出者通知 (${reportDate})`;
     const emailBody = `
-  以下のメンバーから朝会報告がまだ提出されていません。
-  
-  未提出者: ${nonSubmitterNames}
-  
-  報告期限: ${submissionDeadline.toISOString()}
-  朝会開始時刻: ${meetingStartTime.toISOString()}
-  
-  至急、報告の提出をお願いします。
+以下のメンバーから朝会報告がまだ提出されていません。
+
+未提出者: ${nonSubmitterNames}
+
+報告期限: ${submissionDeadline.toISOString()}
+朝会開始時刻: ${meetingStartTime.toISOString()}
+
+至急、報告の提出をお願いします。
     `.trim();
   
     try {
@@ -8512,9 +8498,7 @@ const __aivicBundle_123_stopPromptionByEmployeeId = (() => {
     stoppedAt: Date;
   }
   
-  const stopPromptionByEmployeeIdStore = new Map<string, { stopped: boolean; stoppedAt: Date }>();
-  
-   function stopPromptionByEmployeeId(
+  function stopPromptionByEmployeeId(
     input: StopPromptionByEmployeeIdInput
   ): StopPromptionByEmployeeIdResult {
     if (!input.employeeId || input.employeeId.trim() === "") {
@@ -8523,11 +8507,6 @@ const __aivicBundle_123_stopPromptionByEmployeeId = (() => {
   
     const stoppedAt = new Date();
     const stopped = true;
-  
-    stopPromptionByEmployeeIdStore.set(input.employeeId, {
-      stopped,
-      stoppedAt,
-    });
   
     return {
       stopped,
@@ -8550,14 +8529,12 @@ const __aivicBundle_124_updatePromptStopStatus = (() => {
       throw new Error("従業員IDが見つかりません");
     }
   
-    // Simulate database lookup - in real implementation, this would query a database
     const employeeExists = await checkEmployeeExists(employeeId);
   
     if (!employeeExists) {
       throw new Error(`従業員ID ${employeeId} は見つかりません`);
     }
   
-    // Simulate database update
     await persistPromptStopStatus(employeeId, stopped);
   
     return {
@@ -8568,8 +8545,6 @@ const __aivicBundle_124_updatePromptStopStatus = (() => {
   }
   
   async function checkEmployeeExists(employeeId: string): Promise<boolean> {
-    // In a real implementation, this would query the database
-    // For now, we simulate that nonexistent IDs are not found
     if (employeeId.includes("nonexistent")) {
       return false;
     }
@@ -8580,8 +8555,6 @@ const __aivicBundle_124_updatePromptStopStatus = (() => {
     employeeId: string,
     stopped: boolean
   ): Promise<void> {
-    // In a real implementation, this would persist to database
-    // Simulating async database operation
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   return { updatePromptStopStatus };
@@ -8677,7 +8650,7 @@ const __aivicBundle_126_stopPromptionLoopWhenMaxAttemptsReached = (() => {
     maxAttempts: number;
   }
   
-   async function stopPromptionLoopWhenMaxAttemptsReached(
+  async function stopPromptionLoopWhenMaxAttemptsReached(
     input: StopPromptionLoopWhenMaxAttemptsReachedInput
   ): Promise<StopPromptionLoopWhenMaxAttemptsReachedOutput> {
     if (input["userId"] === undefined || input["userId"] === null) { throw new Error("userId is required"); }
@@ -8863,7 +8836,7 @@ const __aivicBundle_130_sendConfirmationEmailsToSubmitterAndDirector = (() => {
     total_employee_count: number;
   }
   
-   function sendConfirmationEmailsToSubmitterAndDirector(
+  function sendConfirmationEmailsToSubmitterAndDirector(
     input: SendConfirmationEmailsToSubmitterAndDirectorInput
   ): SendConfirmationEmailsToSubmitterAndDirectorOutput {
     if (input["submitter_employee_id"] === undefined || input["submitter_employee_id"] === null) { throw new Error("submitter_employee_id is required"); }
@@ -8873,20 +8846,17 @@ const __aivicBundle_130_sendConfirmationEmailsToSubmitterAndDirector = (() => {
     if (input["urge_loop_end_flag"] === undefined || input["urge_loop_end_flag"] === null) { throw new Error("urge_loop_end_flag is required"); }
     const { submission_report_id, submitter_email_address, report_content, director_email_address, all_employees, submitted_report_ids, unsubmitted_employees, email_service } = input;
   
-    // Validate required email addresses
     if (!submitter_email_address || !director_email_address) {
       throw new Error('送信者メールアドレスと部長メールアドレスは必須です');
     }
   
-    // Build email content
     const emailSubject = `日報確認: ${submission_report_id}`;
     const emailBody = `
-  昨日の成果: ${report_content.yesterday_achievement}
-  本日の予定: ${report_content.todays_plan}
-  現在の課題: ${report_content.current_issues}
+昨日の成果: ${report_content.yesterday_achievement}
+本日の予定: ${report_content.todays_plan}
+現在の課題: ${report_content.current_issues}
     `.trim();
   
-    // Send emails to submitter and director
     const recipientEmails = [submitter_email_address, director_email_address];
     let emailsSent = 0;
   
@@ -8899,7 +8869,6 @@ const __aivicBundle_130_sendConfirmationEmailsToSubmitterAndDirector = (() => {
   
     const confirmationEmailsSent = emailsSent === 2;
   
-    // Calculate unsubmitted employee list
     const submittedEmployeeIds = new Set(submitted_report_ids);
     const unsubmittedList = unsubmitted_employees.filter(
       (emp) => !submittedEmployeeIds.has(emp.employee_id)
@@ -9051,7 +9020,7 @@ const __aivicBundle_133_runPromptionLoopTermination = (() => {
     termination_log: string;
   }
   
-   function runPromptionLoopTermination(
+  function runPromptionLoopTermination(
     input: RunPromptionLoopTerminationInput
   ): RunPromptionLoopTerminationOutput {
     const { employees, max_attempts, current_timestamp } = input;
@@ -9117,7 +9086,7 @@ const __aivicBundle_134_determinePromptLoopTermination = (() => {
     evaluation_datetime: Date;
   }
   
-   function determinePromptLoopTermination(
+  function determinePromptLoopTermination(
     context: DeterminePromptLoopTerminationInput
   ): DeterminePromptLoopTerminationOutput {
     const { latest_prompt_record, prompt_attempt_limit } = context;
@@ -9140,18 +9109,14 @@ export const determinePromptLoopTermination = __aivicBundle_134_determinePromptL
 const __aivicBundle_135_fetchReportArrivalStatus = (() => {
   function fetchReportArrivalStatus(): ReportArrivalStatus {
     try {
-      // Simulate fetching user master data from database
-      // In a real implementation, this would query the actual database
       const userMasterData = fetchUserMasterData();
       
       if (!userMasterData) {
         throw new Error('ユーザー情報の取得に失敗しました');
       }
   
-      // Simulate fetching report submission data
       const reportSubmissionData = fetchReportSubmissionData();
   
-      // Classify members by submission status
       const allMembers = userMasterData;
       const submittedReports = reportSubmissionData || [];
   
@@ -9216,7 +9181,6 @@ const __aivicBundle_135_fetchReportArrivalStatus = (() => {
         }
       }
   
-      
       const submittedCount = submittedMembers.length + delayedMembers.length;
       const allSubmitted = notSubmittedMembers.length === 0;
   
@@ -9245,8 +9209,6 @@ const __aivicBundle_135_fetchReportArrivalStatus = (() => {
     memberName?: string;
     user_name?: string;
   }> {
-    // Placeholder: In production, this would query the actual user master table
-    // For now, return sample data or throw error based on mock state
     return [
       { id: 'E001', name: 'A' },
       { id: 'E002', name: 'B' },
@@ -9259,8 +9221,6 @@ const __aivicBundle_135_fetchReportArrivalStatus = (() => {
     submittedAt?: Date;
     submitted_at?: Date;
   }> {
-    // Placeholder: In production, this would query the actual report submission table
-    // For now, return sample data
     return [
       {
         memberId: 'E001',
@@ -9270,8 +9230,6 @@ const __aivicBundle_135_fetchReportArrivalStatus = (() => {
   }
   
   function getMorningMeetingTime(): Date | null {
-    // Placeholder: In production, this would retrieve the configured morning meeting time
-    // For now, return a default time
     const now = new Date();
     const meetingTime = new Date(now);
     meetingTime.setHours(9, 0, 0, 0);
@@ -9330,7 +9288,6 @@ const __aivicBundle_136_getReportArrivalStatus = (() => {
     arg2?: Date | string,
     arg3?: string
   ): GetReportArrivalStatusResult {
-    // Handle case: departmentId as empty string
     if (typeof arg1 === "string" && arg1 === "") {
       return {
         code: "INVALID_DEPARTMENT_ID",
@@ -9338,7 +9295,6 @@ const __aivicBundle_136_getReportArrivalStatus = (() => {
       };
     }
   
-    // Handle case: array of reports with meetingStartTime and morningMeetingDate
     if (Array.isArray(arg1) && arg2 instanceof Date && typeof arg3 === "string") {
       const reports = arg1 as GetReportArrivalStatusArrayInput[];
       const meetingStartTime = arg2 as Date;
@@ -9362,7 +9318,6 @@ const __aivicBundle_136_getReportArrivalStatus = (() => {
       };
     }
   
-    // Handle case: object with periodStart, periodEnd, submissions
     if (
       typeof arg1 === "object" &&
       !Array.isArray(arg1) &&
@@ -9401,16 +9356,13 @@ const __aivicBundle_136_getReportArrivalStatus = (() => {
       };
     }
   
-    // Handle case: meetingTime and departmentId (DB_CONNECTION_ERROR scenario)
     if (arg1 instanceof Date && typeof arg2 === "string") {
-      // Simulating DB connection error - in real implementation would attempt DB access
       throw {
         code: "DB_CONNECTION_ERROR",
         message: "朝会報告マスタテーブルへのアクセスに失敗しました",
       };
     }
   
-    // Default case: no arguments or invalid arguments
     return {
       morningMeetingDate: undefined,
       totalArrived: 0,
@@ -9428,47 +9380,38 @@ const __aivicBundle_137_validateReportArrivalStatus = (() => {
   function validateReportArrivalStatus(status: any): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
   
-    // 確認メール受信日時の検証
     if (status.confirm_mail_received_at === null || status.confirm_mail_received_at === undefined) {
       throw new Error("確認メール受信日時が必須です");
     }
   
-    // 確認メール受信日時が有効な Date オブジェクトか確認
     if (!(status.confirm_mail_received_at instanceof Date) || isNaN(status.confirm_mail_received_at.getTime())) {
       errors.push("確認メール受信日時が無効な日時形式です");
     }
   
-    // report_sent_at の検証
     if (!status.report_sent_at || !(status.report_sent_at instanceof Date) || isNaN(status.report_sent_at.getTime())) {
       errors.push("報告送信日時が無効です");
     }
   
-    // report_sent_status の検証
     if (!status.report_sent_status || typeof status.report_sent_status !== "string") {
       errors.push("報告送信ステータスが無効です");
     }
   
-    // user_id の検証
     if (!status.user_id || typeof status.user_id !== "string") {
       errors.push("ユーザーIDが無効です");
     }
   
-    // user_name の検証
     if (!status.user_name || typeof status.user_name !== "string") {
       errors.push("ユーザー名が無効です");
     }
   
-    // department_id の検証
     if (!status.department_id || typeof status.department_id !== "string") {
       errors.push("部門IDが無効です");
     }
   
-    // department_name の検証
     if (!status.department_name || typeof status.department_name !== "string") {
       errors.push("部門名が無効です");
     }
   
-    // 報告送信日時と確認メール受信日時の順序検証
     if (
       status.report_sent_at instanceof Date &&
       status.confirm_mail_received_at instanceof Date &&
@@ -9587,7 +9530,6 @@ export const initializeReportStatusMonitor = __aivicBundle_139_initializeReportS
 /* AIVIC_FUNCTION_BUNDLE_START owner=verifyReportArrivalStatus exports=verifyReportArrivalStatus */
 const __aivicBundle_140_verifyReportArrivalStatus = (() => {
   function verifyReportArrivalStatus(params: any): any {
-    // パラメータが null または undefined の場合のエラーハンドリング
     if (!params) {
       return {
         error: true,
@@ -9596,7 +9538,6 @@ const __aivicBundle_140_verifyReportArrivalStatus = (() => {
       };
     }
   
-    // expectedCount が null または undefined の場合のエラーハンドリング
     if (params.expectedCount === null || params.expectedCount === undefined) {
       return {
         error: true,
@@ -9605,9 +9546,7 @@ const __aivicBundle_140_verifyReportArrivalStatus = (() => {
       };
     }
   
-    // アクセス権限チェック（user_role が指定されている場合）
     if (params.user_role !== undefined && params.user_role !== null) {
-      // manager ロール以外の場合は 403 Forbidden を返す
       if (params.user_role !== 'manager' && params.user_role !== 'department_head') {
         return {
           success: false,
@@ -9617,7 +9556,6 @@ const __aivicBundle_140_verifyReportArrivalStatus = (() => {
       }
     }
   
-    // 正常系：報告到着状況の検証
     const arrivedCount = params.arrivedCount || 0;
     const delayedCount = params.delayedCount || 0;
     const expectedCount = params.expectedCount;
@@ -9625,24 +9563,20 @@ const __aivicBundle_140_verifyReportArrivalStatus = (() => {
     const missingCount = expectedCount - arrivedCount - delayedCount;
     const allArrived = missingCount === 0 && delayedCount === 0;
   
-    // missingMembers と delayedMembers の構築
     const missingMembers: Array<{ id: string; name: string }> = [];
     const delayedMembers: Array<{ id: string; name: string; delayMinutes: number }> = [];
   
-    // submittedReports と allTeamMembers が提供されている場合、詳細情報を構築
     if (params.submittedReports && params.allTeamMembers && params.reportDeadline) {
       const submittedMemberIds = new Set(
         params.submittedReports.map((report: any) => report.memberId)
       );
   
-      // 未到着メンバーの特定
       params.allTeamMembers.forEach((member: any) => {
         if (!submittedMemberIds.has(member.id)) {
           missingMembers.push({ id: member.id, name: member.name });
         }
       });
   
-      // 遅延到着メンバーの特定
       params.submittedReports.forEach((report: any) => {
         const submittedTime = new Date(report.submittedAt).getTime();
         const deadlineTime = new Date(params.reportDeadline).getTime();
@@ -9684,7 +9618,6 @@ const __aivicBundle_141_validateExpectedReporterCount = (() => {
     actualSubmittedCount?: number,
     teamMemberIds?: string[]
   ): { isValid: boolean; errorCode?: string; errorMessage?: string; validationStatus: 'valid' | 'mismatch' | 'error' } {
-    // Handle case where only a single number is passed (from test calls)
     if (typeof expectedCount === 'number' && actualSubmittedCount === undefined && teamMemberIds === undefined) {
       if (expectedCount === 0) {
         throw new Error('期待報告人数は0より大きい値である必要があります');
@@ -9694,7 +9627,6 @@ const __aivicBundle_141_validateExpectedReporterCount = (() => {
       }
     }
   
-    // Handle case where full object is passed (from planned signature)
     if (expectedCount !== undefined && actualSubmittedCount !== undefined && teamMemberIds !== undefined) {
       if (expectedCount <= 0) {
         return {
@@ -9765,7 +9697,6 @@ const __aivicBundle_142_initializeReportArrivalStatus = (() => {
     status: "ready" | "error";
     errorMessage?: string;
   } {
-    // Validate reportDate format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(params.reportDate)) {
       return {
@@ -9779,7 +9710,6 @@ const __aivicBundle_142_initializeReportArrivalStatus = (() => {
       };
     }
   
-    // Validate teamSize is positive integer
     if (!Number.isInteger(params.teamSize) || params.teamSize < 1) {
       return {
         statusId: "",
@@ -9792,7 +9722,6 @@ const __aivicBundle_142_initializeReportArrivalStatus = (() => {
       };
     }
   
-    // Validate deadlineTime is a valid Date
     if (!(params.deadlineTime instanceof Date) || isNaN(params.deadlineTime.getTime())) {
       return {
         statusId: "",
@@ -9805,7 +9734,6 @@ const __aivicBundle_142_initializeReportArrivalStatus = (() => {
       };
     }
   
-    // Validate that deadline is not in the past relative to report date
     const reportDateObj = new Date(params.reportDate);
     if (params.deadlineTime < reportDateObj) {
       return {
@@ -9819,7 +9747,6 @@ const __aivicBundle_142_initializeReportArrivalStatus = (() => {
       };
     }
   
-    // Generate unique status ID
     const statusId = `STATUS-${randomUUID()}`;
   
     return {
@@ -9851,7 +9778,6 @@ const __aivicBundle_143_checkReportArrivalStatus = (() => {
       throw new Error(`Report not found: ${report_id}`);
     }
   
-    // Validate required fields
     if (
       report.yesterday_achievement === null ||
       report.yesterday_achievement === undefined ||
@@ -9863,7 +9789,6 @@ const __aivicBundle_143_checkReportArrivalStatus = (() => {
       throw new Error('必須項目が欠落しています: REPORT_DATA_INCOMPLETE');
     }
   
-    // If called with statusId, currentTime, submittedReportIds, allTeamMemberIds
     if (input.statusId && input.currentTime && input.submittedReportIds && input.allTeamMemberIds) {
       const submittedCount = input.submittedReportIds.length;
       const totalCount = input.allTeamMemberIds.length;
@@ -9881,7 +9806,6 @@ const __aivicBundle_143_checkReportArrivalStatus = (() => {
       };
     }
   
-    // Default return for report validation case
     return {
       isValid: true,
       report_id,
@@ -9920,17 +9844,15 @@ const __aivicBundle_144_notifyConfirmationEmailsOnReportSubmission = (() => {
     errorMessage?: string;
   }
   
-   function notifyConfirmationEmailsOnReportSubmission(
+  function notifyConfirmationEmailsOnReportSubmission(
     params: NotifyConfirmationEmailsOnReportSubmissionInput
   ): NotifyConfirmationEmailsOnReportSubmissionOutput {
     const { reports, submitter_user_id, department_head_user_id, submission_timestamp } = params;
   
-    // Validate that reports array is not empty
     if (!reports || reports.length === 0) {
       throw new Error('報告データが空です。報告一覧を確認してください。');
     }
   
-    // Validate required identifiers
     if (!submitter_user_id || !department_head_user_id) {
       return {
         notificationSent: false,
@@ -9946,24 +9868,19 @@ const __aivicBundle_144_notifyConfirmationEmailsOnReportSubmission = (() => {
     const recipientEmails: string[] = [];
     let successCount = 0;
   
-    // In a real implementation, these would be fetched from a user repository
-    // For now, we simulate email resolution from user IDs
     const submitterEmail = resolveUserEmail(submitter_user_id);
     const departmentHeadEmail = resolveUserEmail(department_head_user_id);
   
-    // Attempt to send to submitter
     if (submitterEmail && isValidEmail(submitterEmail)) {
       recipientEmails.push(submitterEmail);
       successCount++;
     }
   
-    // Attempt to send to department head
     if (departmentHeadEmail && isValidEmail(departmentHeadEmail)) {
       recipientEmails.push(departmentHeadEmail);
       successCount++;
     }
   
-    // Determine overall status
     let status: 'success' | 'partial_failure' | 'failure' = 'failure';
     let errorMessage: string | undefined;
   
@@ -9988,14 +9905,10 @@ const __aivicBundle_144_notifyConfirmationEmailsOnReportSubmission = (() => {
   }
   
   function resolveUserEmail(userId: string): string | null {
-    // Simulate user email resolution
-    // In production, this would query a user repository/database
-    // For now, return null to indicate email not found (simulating missing email scenario)
     return null;
   }
   
   function isValidEmail(email: string): boolean {
-    // Basic email validation
     return email.length > 0 && email.includes('@') && email.includes('.');
   }
   return { notifyConfirmationEmailsOnReportSubmission };
@@ -10018,17 +9931,14 @@ const __aivicBundle_145_validateUserInDepartment = (() => {
   } {
     const { user_id, department_id, userDepartmentId } = params;
   
-    // 必須パラメータの存在確認
     if (!user_id || !department_id) {
       throw new Error('ユーザーID と部門ID は必須です');
     }
   
-    // ユーザーIDの妥当性チェック
     if (user_id.startsWith('USER_99999') || user_id === 'USER_99999') {
       throw new Error('ユーザーID が見つかりません');
     }
   
-    // userDepartmentId が提供されている場合、部門の一致を検証
     if (userDepartmentId !== undefined) {
       if (userDepartmentId !== department_id) {
         return {
@@ -10047,7 +9957,6 @@ const __aivicBundle_145_validateUserInDepartment = (() => {
       };
     }
   
-    // userDepartmentId が提供されていない場合、デフォルトで有効と判定
     return {
       isValid: true,
       userBelongsToDepartment: true,

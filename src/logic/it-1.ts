@@ -2812,7 +2812,7 @@ const __aivicBundle_26_sendReportWithMailLog = (() => {
     report_sent: boolean;
   }
   
-   async function sendReportWithMailLog(
+  async function sendReportWithMailLog(
     reportData: SendReportWithMailLogInput
   ): Promise<SendReportWithMailLogOutput> {
     const {
@@ -2977,7 +2977,7 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
     email_log_id?: string;
   }
   
-   function sendConfirmationEmail(
+  function sendConfirmationEmail(
     reportData?: SendConfirmationEmailInput | string,
     mockEmailService?: SendConfirmationEmailService | Function,
     managerInfo?: { manager_id?: string; manager_email?: string; manager_name?: string; email?: string; name?: string },
@@ -4447,7 +4447,7 @@ const __aivicBundle_54_judgeReportSubmissionStatus = (() => {
     [key: string]: any;
   }
   
-   function judgeReportSubmissionStatus(
+  function judgeReportSubmissionStatus(
     input: JudgeReportSubmissionStatusInput
   ): JudgeReportSubmissionStatusOutput {
     // SCEN-196: totalMembers and submittedMembers
@@ -4669,7 +4669,7 @@ const __aivicBundle_56_evaluateDailyReportSubmissionStatus = (() => {
     }>;
   }
   
-   function evaluateDailyReportSubmissionStatus(
+  function evaluateDailyReportSubmissionStatus(
     input: EvaluateDailyReportSubmissionStatusInput
   ): EvaluateDailyReportSubmissionStatusOutput {
     if (
@@ -4742,7 +4742,7 @@ const __aivicBundle_57_getUnreportedUsers = (() => {
     departmentId: string;
   }
   
-   function getUnreportedUsers(
+  function getUnreportedUsers(
     payload: GetUnreportedUsersInput
   ): Array<UnreportedUser> {
     const { allUsers, submittedUserIds, departmentId } = payload;
@@ -5235,7 +5235,7 @@ const __aivicBundle_64_formatUnifiedReportList = (() => {
     };
   }
   
-   function formatUnifiedReportList(
+  function formatUnifiedReportList(
     input: Array<FormatUnifiedReportListInput>
   ): FormatUnifiedReportListOutput {
     const header = {
@@ -5301,7 +5301,7 @@ const __aivicBundle_65_getReportStatusList = (() => {
     statuses: GetReportStatusListStatus[];
   }
   
-   function getReportStatusList(
+  function getReportStatusList(
     input: GetReportStatusListInput
   ): GetReportStatusListResult {
     const submittedMap = new Map<
@@ -5419,7 +5419,7 @@ const __aivicBundle_67_aggregateDailyReportsBySubmitter = (() => {
     }>;
   }
   
-   function aggregateDailyReportsBySubmitter(
+  function aggregateDailyReportsBySubmitter(
     input: Array<{
       submitter_id: string;
       submitter_name: string;
@@ -6414,7 +6414,7 @@ const __aivicBundle_80_describePriorityMissingReports = (() => {
     urgencyGroups: UrgencyGroup[];
   }
   
-   function describePriorityMissingReports(
+  function describePriorityMissingReports(
     input: DescribePriorityMissingReportsInput
   ): DescribePriorityMissingReportsOutput {
     const { members } = input;
@@ -6603,7 +6603,7 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
         throw new Error('報告者データが無効です');
       }
   
-      const submittedEmployeeIds = input.map((record) => record.employeeId);
+      const submittedEmployeeIds = input.map((record: any) => record.employeeId);
       const submittedCount = submittedEmployeeIds.length;
   
       return {
@@ -7305,7 +7305,7 @@ const __aivicBundle_92_checkAllReportsCompleted = (() => {
       // Test case: direct array of team members
       teamMembers = input;
       // Extract expected user IDs from team members
-      expectedUserIds = teamMembers.map((member) => member.user_id);
+      expectedUserIds = teamMembers.map((member: any) => member.user_id);
       // Default deadline to current time for test compatibility
       deadlineTime = new Date();
     } else if (input && typeof input === "object") {
@@ -7342,14 +7342,14 @@ const __aivicBundle_92_checkAllReportsCompleted = (() => {
     let finalExpectedUserIds = expectedUserIds;
     if (finalExpectedUserIds.length === 0 && teamMembers.length > 0) {
       // If no explicit expectedUserIds, use all team members
-      finalExpectedUserIds = teamMembers.map((m) => m[userIdKey]);
+      finalExpectedUserIds = teamMembers.map((m: any) => m[userIdKey]);
     }
   
     // Find not submitted users
     const notSubmittedUsers: Array<{ userId?: string; userName?: string; user_id?: string; user_name?: string }> = [];
     for (const userId of finalExpectedUserIds) {
       if (!submittedUserIds.has(userId)) {
-        const member = teamMembers.find((m) => m[userIdKey] === userId);
+        const member = teamMembers.find((m: any) => m[userIdKey] === userId);
         if (member) {
           if (isSnakeCase) {
             notSubmittedUsers.push({
@@ -7591,7 +7591,7 @@ const __aivicBundle_98_shouldPromptEmployee = (() => {
     isSubmitted: boolean;
   }
   
-   function shouldPromptEmployee(
+  function shouldPromptEmployee(
     input: ShouldPromptEmployeeInput
   ): boolean {
     const { isSubmitted, currentTime, deadline, employeeId } = input;
