@@ -7,53 +7,68 @@ export interface Action02PromptInput {
   reportContent: string;
   engineerName: string;
   submissionDate: string;
-  reportId: string;
+  validationRules?: {
+    minLength?: number;
+    maxLength?: number;
+    requiredFields?: string[];
+  };
 }
 
 export interface Action02PromptOutput {
-  validationResult: {
-    isValid: boolean;
-    errors: string[];
-    warnings: string[];
-  };
-  extractedData: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    issues: string[];
-  };
+  isValid: boolean;
+  validationErrors: string[];
+  sanitizedContent: string;
+  warnings: string[];
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
+  const {
+    reportContent,
+    engineerName,
+    submissionDate,
+    validationRules = {},
+  } = input;
 
-Your task is to validate the report content submitted by engineer "${input.engineerName}" on ${input.submissionDate}.
+  const {
+    minLength = 10,
+    maxLength = 5000,
+    requiredFields = ["yesterday", "today", "issues"],
+  } = validationRules;
 
-Report ID: ${input.reportId}
-Report Content:
-${input.reportContent}
+  const requiredFieldsText = requiredFields
+    .map((field) => `- ${field}`)
+    .join("\n");
 
-Please perform the following validations:
-1. Check if all required sections are present (yesterday's accomplishments, today's plans, issues)
-2. Verify that the content is complete and appropriate
-3. Extract key information from each section
-4. Identify any missing or incomplete information
-5. Flag any concerning issues or anomalies
+  return `You are a validation agent for the daily report management system.
 
-Respond with a JSON object containing:
+Your task is to validate the following daily report submission:
+
+**Engineer Name:** ${engineerName}
+**Submission Date:** ${submissionDate}
+**Report Content:**
+${reportContent}
+
+**Validation Rules:**
+- Minimum content length: ${minLength} characters
+- Maximum content length: ${maxLength} characters
+- Required sections:
+${requiredFieldsText}
+
+Please perform the following validation checks:
+
+1. Check if the report content meets the length requirements
+2. Verify that all required sections are present
+3. Identify any missing or incomplete information
+4. Check for inappropriate or suspicious content
+5. Assess overall report quality and completeness
+
+Provide your validation result in the following JSON format:
 {
-  "validationResult": {
-    "isValid": boolean,
-    "errors": string[],
-    "warnings": string[]
-  },
-  "extractedData": {
-    "yesterdayAccomplishments": string,
-    "todayPlans": string,
-    "issues": string[]
-  }
+  "isValid": boolean,
+  "validationErrors": string[],
+  "sanitizedContent": string,
+  "warnings": string[]
 }
 
-Ensure the response is valid JSON that can be parsed.`;
-
-  return prompt;
+Be strict but fair in your validation. Report any issues that would prevent this report from being registered in the system.`;
 }

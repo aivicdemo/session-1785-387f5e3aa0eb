@@ -5,84 +5,104 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  nonSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-  }>;
-  delayedSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    submittedAt: string;
-  }>;
-  escalationThreshold: number;
+  overdueThresholdHours: number;
+  reminderFrequencyMinutes: number;
+  escalationContactEmail: string;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPrompt: string;
-  context: {
-    deadline: string;
-    timestamp: string;
-    nonSubmitterCount: number;
-    delayedSubmitterCount: number;
-  };
+  userPromptTemplate: string;
+  expectedOutputFormat: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed submitters of daily reports in a morning meeting management system.
+  const systemPrompt = `You are an AI agent responsible for identifying employees who have not submitted their daily reports and sending reminder notifications.
 
-Your task is to:
-1. Analyze the provided list of non-submitters and delayed submitters
-2. Determine which employees require escalation based on the escalation threshold
-3. Generate a structured notification for the department head
-4. Classify employees by severity level (critical, high, medium, low)
+Your role:
+- Monitor the daily report submission status at the configured deadline
+- Identify employees who have not submitted reports (non-submitters)
+- Identify employees who submitted reports late (late submitters)
+- Create a comprehensive list of non-submitters and late submitters
+- Send notification emails to the department head with the compiled list
+- Log all actions and results for audit purposes
 
-Respond with a JSON object containing:
-- escalationList: array of employees requiring immediate action
-- delayedList: array of employees with delayed submissions
-- summary: brief analysis of the situation
-- recommendedActions: suggested next steps`;
+Constraints:
+- Only process reports submitted through the official daily report system
+- Use the configured reporting deadline: ${input.reportingDeadline}
+- Consider reports overdue if submitted more than ${input.overdueThresholdHours} hours after the deadline
+- Respect the reminder frequency limit of ${input.reminderFrequencyMinutes} minutes between notifications
+- Escalate system errors to: ${input.escalationContactEmail}
 
-  const nonSubmitterText = input.nonSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (${emp.employeeId}) from ${emp.department}`
-    )
-    .join("\n");
+Output format:
+Return a JSON object with the following structure:
+{
+  "action": "identify_non_submitters" | "identify_late_submitters" | "create_summary_list" | "send_notification" | "log_result",
+  "status": "success" | "failure" | "pending",
+  "timestamp": "ISO 8601 timestamp",
+  "data": { ... },
+  "errors": [ ... ]
+}`;
 
-  const delayedSubmitterText = input.delayedSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (${emp.employeeId}) from ${emp.department}, submitted at ${emp.submittedAt}`
-    )
-    .join("\n");
+  const userPromptTemplate = `Process the following daily report submission data:
 
-  const userPrompt = `Current Time: ${input.currentTime}
-Reporting Deadline: ${input.reportingDeadline}
-Escalation Threshold (minutes late): ${input.escalationThreshold}
+Submission Data:
+- Total employees: {total_employees}
+- Reports received: {reports_received}
+- Deadline: ${input.reportingDeadline}
+- Current time: {current_time}
 
-Non-Submitters (${input.nonSubmitters.length}):
-${nonSubmitterText || "None"}
+Employee Submission Status:
+{submission_status_list}
 
-Delayed Submitters (${input.delayedSubmitters.length}):
-${delayedSubmitterText || "None"}
+Task:
+1. Identify all employees who have not submitted reports
+2. Identify all employees who submitted reports after the deadline
+3. Create a summary list with employee names, departments, and submission status
+4. Determine if notification should be sent based on reminder frequency
+5. Generate the notification content for the department head
 
-Please analyze this report submission status and provide escalation recommendations.`;
+Respond with the action result in the specified JSON format.`;
+
+  const expectedOutputFormat = `{
+  "action": "string",
+  "status": "success" | "failure" | "pending",
+  "timestamp": "string (ISO 8601)",
+  "data": {
+    "nonSubmitters": [
+      {
+        "employeeId": "string",
+        "employeeName": "string",
+        "department": "string",
+        "lastSubmissionDate": "string (ISO 8601) | null"
+      }
+    ],
+    "lateSubmitters": [
+      {
+        "employeeId": "string",
+        "employeeName": "string",
+        "department": "string",
+        "submissionTime": "string (ISO 8601)",
+        "delayMinutes": "number"
+      }
+    ],
+    "summaryList": {
+      "totalNonSubmitters": "number",
+      "totalLateSubmitters": "number",
+      "affectedDepartments": ["string"]
+    },
+    "notificationSent": "boolean",
+    "notificationContent": "string"
+  },
+  "errors": ["string"]
+}`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPrompt,
-    context: {
-      deadline: input.reportingDeadline,
-      timestamp: input.currentTime,
-      nonSubmitterCount: input.nonSubmitters.length,
-      delayedSubmitterCount: input.delayedSubmitters.length,
-    },
+    userPromptTemplate,
+    expectedOutputFormat,
   };
 }
 

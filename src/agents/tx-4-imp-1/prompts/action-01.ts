@@ -12,12 +12,16 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
-  templateContent: string;
-  distributionChannels: string[];
-  scheduledTime: string;
+  prompt: string;
+  version: string;
+  metadata: {
+    timestamp: string;
+    engineerId: string;
+    reportDate: string;
+  };
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
+export function buildAction01Prompt(input: Action01PromptInput): Action01PromptOutput {
   const {
     reportDate,
     engineerName,
@@ -26,41 +30,50 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     systemContext = {},
   } = input;
 
-  const previousContext =
-    previousReportContent.length > 0
-      ? `\n前日の報告内容:\n${previousReportContent}`
-      : "";
+  const basePrompt = `あなたは朝会報告管理システムのAIエージェントです。
 
-  const systemInfo =
-    Object.keys(systemContext).length > 0
-      ? `\nシステムコンテキスト: ${JSON.stringify(systemContext)}`
-      : "";
+【タスク】
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してメール・チャットの送信まで完結させます。
 
-  return `# 日報テンプレート自動生成・配信プロンプト
-
-## 実行日時
-${reportDate}
-
-## 対象エンジニア
+【対象エンジニア情報】
 - 名前: ${engineerName}
 - ID: ${engineerId}
+- 報告日: ${reportDate}
 
-## タスク
-前日の日報テンプレートを自動生成し、対象エンジニアに配信する。
+【前回の報告内容】
+${previousReportContent || "（初回報告）"}
 
-## 生成要件
-1. 前日の実績入力フィールドを含むテンプレートを生成する
-2. 本日の予定入力フィールドを含める
-3. 抱えている課題入力フィールドを含める
-4. 提出期限を明記する
-5. テンプレートは簡潔で入力負荷が低い形式とする
+【システムコンテキスト】
+${Object.entries(systemContext)
+  .map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`)
+  .join("\n") || "（追加コンテキストなし）"}
 
-## 配信要件
-1. メール配信を主要チャネルとする
-2. チャットツール（Slack等）への同時配信を検討する
-3. 配信時刻は朝会開始の1時間前を推奨する
-4. 配信失敗時の再試行ロジックを含める
+【実行ステップ】
+1. 確認メール内容から報告漏れ・遅延部員を特定する
+2. 催促対象部員を判定する
+3. 催促メール・チャットを自動送信する
+4. 送信結果をログに記録する
 
-## 出力形式
-生成されたテンプレート内容、配信チャネル一覧、スケジュール配信時刻を返す${previousContext}${systemInfo}`;
+【出力形式】
+以下の構造でJSON形式で応答してください：
+{
+  "action": "identify_missing_reports",
+  "engineerId": "${engineerId}",
+  "reportDate": "${reportDate}",
+  "status": "pending|identified|escalated",
+  "missingReports": [],
+  "delayedReports": [],
+  "escalationRequired": false,
+  "reason": ""
+}`;
+
+  return {
+    prompt: basePrompt,
+    version: ACTION_01_PROMPT_VERSION,
+    metadata: {
+      timestamp: new Date().toISOString(),
+      engineerId,
+      reportDate,
+    },
+  };
 }

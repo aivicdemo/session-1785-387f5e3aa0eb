@@ -12,7 +12,7 @@ export interface Action01PromptInput {
 
 export interface Action01PromptOutput {
   templateId: string;
-  templateContent: string;
+  generatedTemplate: string;
   distributionTimestamp: string;
   recipientEmail: string;
 }
@@ -28,11 +28,11 @@ Engineer Information:
 Previous Day Template Reference:
 ${input.previousDayTemplate}
 
-Your task is to:
-1. Generate a daily report template based on the previous day's template structure
+Your task:
+1. Generate a daily report template based on the previous day's template
 2. Include sections for:
    - Yesterday's Achievements (実績)
-   - Today's Schedule (予定)
+   - Today's Plans (予定)
    - Current Issues/Challenges (課題)
 3. Ensure the template is clear and easy to fill out
 4. Prepare the template for distribution to the engineer

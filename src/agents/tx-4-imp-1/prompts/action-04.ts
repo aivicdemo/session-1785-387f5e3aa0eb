@@ -16,93 +16,114 @@ export interface Action04Context {
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  reportMetadata: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    submittedAt: string;
-  };
-}
-
-export interface Action04PromptInput {
-  reportContent: string;
-  reportMetadata: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    submittedAt: string;
-  };
-  priorityClassificationRules: string;
-  escalationThresholds: {
-    criticalIssueCount: number;
-    highPriorityThreshold: string;
-  };
-}
-
-export interface Action04PromptOutput {
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  priorityAssignments: Array<{
+  escalationFlags: Array<{
     issueId: string;
+    reason: string;
+    requiresHumanReview: boolean;
+  }>;
+}
+
+export interface Action04Input {
+  reportId: string;
+  reportContent: string;
+  previousContext?: Action04Context;
+  departmentId: string;
+  timestamp: string;
+}
+
+export interface Action04Output {
+  success: boolean;
+  prioritizedIssues: Array<{
+    issueId: string;
+    title: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
+    requiresEscalation: boolean;
   }>;
-  escalationRequired: boolean;
-  escalationReason?: string;
-  summaryForManager: string;
+  summaryReport: string;
+  escalationItems: Array<{
+    issueId: string;
+    escalationReason: string;
+  }>;
+  context: Action04Context;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const systemPrompt = `You are an AI agent responsible for extracting issues and assigning priorities from daily reports in the morning meeting management system.
+export function buildAction04Prompt(input: Action04Input): string {
+  const timestamp = new Date(input.timestamp).toISOString();
+  
+  const basePrompt = `You are an AI agent responsible for the final step of the daily report processing workflow: prioritizing extracted issues and preparing an escalation summary for the department head.
 
-Your task is to:
-1. Analyze the provided report content
-2. Extract all issues, bottlenecks, and blockers mentioned
-3. Assign priority levels based on the provided classification rules
-4. Determine if escalation to management is required
-5. Generate a summary for the manager
+## Current Task: Issue Priority Judgment and Classification
 
-Report Metadata:
-- Engineer ID: ${input.reportMetadata.engineerId}
-- Engineer Name: ${input.reportMetadata.engineerName}
-- Report Date: ${input.reportMetadata.reportDate}
-- Submitted At: ${input.reportMetadata.submittedAt}
+**Report ID:** ${input.reportId}
+**Department ID:** ${input.departmentId}
+**Processing Timestamp:** ${timestamp}
 
-Priority Classification Rules:
-${input.priorityClassificationRules}
-
-Escalation Thresholds:
-- Critical Issue Count Threshold: ${input.escalationThresholds.criticalIssueCount}
-- High Priority Threshold: ${input.escalationThresholds.highPriorityThreshold}
-
-Report Content to Analyze:
+### Report Content to Analyze:
 ${input.reportContent}
 
-Please provide your analysis in the following JSON format:
-{
-  "extractedIssues": [
-    {
-      "id": "ISSUE_001",
-      "title": "Issue title",
-      "description": "Detailed description",
-      "category": "Category (e.g., Technical, Process, Resource, External)"
-    }
-  ],
-  "priorityAssignments": [
-    {
-      "issueId": "ISSUE_001",
-      "priority": "critical|high|medium|low",
-      "reasoning": "Explanation for priority assignment"
-    }
-  ],
-  "escalationRequired": true|false,
-  "escalationReason": "Reason if escalation is required",
-  "summaryForManager": "Executive summary of issues and priorities"
-}`;
+### Your Responsibilities:
 
-  return systemPrompt;
+1. **Review Extracted Issues**: Analyze all issues that have been extracted from the daily reports in previous steps.
+
+2. **Assign Priority Levels**: Classify each issue into one of four priority levels:
+   - **CRITICAL**: Immediate action required; blocks progress or poses significant risk
+   - **HIGH**: Should be addressed within 1-2 days; impacts multiple team members or projects
+   - **MEDIUM**: Should be addressed within 1 week; affects specific tasks or individuals
+   - **LOW**: Can be addressed in normal workflow; minor improvements or documentation
+
+3. **Provide Reasoning**: For each priority assignment, explain the reasoning based on:
+   - Impact scope (number of people/projects affected)
+   - Urgency (time sensitivity)
+   - Risk level (potential consequences if not addressed)
+   - Dependencies (blocking other work)
+
+4. **Identify Escalation Cases**: Flag issues that require human review by the department head:
+   - Issues that deviate from normal patterns
+   - Conflicts between multiple reported issues
+   - Issues requiring policy or process changes
+   - Potential resource allocation decisions
+
+5. **Generate Summary Report**: Create a concise executive summary that:
+   - Lists all issues by priority level
+   - Highlights critical and high-priority items
+   - Notes any escalation flags
+   - Provides actionable recommendations
+
+### Output Format Requirements:
+
+Return a JSON object with the following structure:
+{
+  "success": true,
+  "prioritizedIssues": [
+    {
+      "issueId": "string",
+      "title": "string",
+      "priority": "critical" | "high" | "medium" | "low",
+      "reasoning": "string explaining the priority assignment",
+      "requiresEscalation": boolean
+    }
+  ],
+  "summaryReport": "string containing executive summary",
+  "escalationItems": [
+    {
+      "issueId": "string",
+      "escalationReason": "string explaining why human review is needed"
+    }
+  ]
+}
+
+### Context from Previous Steps:
+${input.previousContext ? JSON.stringify(input.previousContext, null, 2) : "No previous context available"}
+
+### Quality Checklist:
+- All extracted issues have been assigned a priority level
+- Priority assignments are consistent and justified
+- Escalation flags are appropriate and not excessive
+- Summary report is clear and actionable
+- Output is valid JSON
+
+Proceed with the priority judgment and classification.`;
+
+  return basePrompt;
 }

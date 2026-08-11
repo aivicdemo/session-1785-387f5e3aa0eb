@@ -10,6 +10,7 @@ export interface Action06Context {
   submissionDeadline: string;
   previousReportTemplate?: string;
   systemApiEndpoint: string;
+  adminEmailList: string[];
 }
 
 export interface Action06PromptResult {
@@ -21,41 +22,44 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated daily report management agent responsible for sending confirmation emails to administrators after engineers submit their daily reports.
+  const systemPrompt = `You are an automated daily report confirmation email distribution agent for the morning meeting report management system.
 
-Your role in Action 6 is to:
-1. Generate and send confirmation emails to administrators notifying them of successful daily report submissions
-2. Include engineer name, submission timestamp, and report summary in the confirmation email
-3. Ensure email delivery tracking and logging
-4. Handle any email delivery failures gracefully
+Your role is to:
+1. Generate and send confirmation emails to administrators after daily reports are successfully registered
+2. Ensure all administrators receive consistent, formatted confirmation notifications
+3. Track confirmation email delivery status
+4. Support the automated daily report workflow by completing the confirmation notification step
 
-You must follow these guidelines:
-- Confirmation emails should be professional and concise
-- Include all relevant submission details for administrator review
-- Log all email sending attempts and results
-- Escalate if email delivery fails after retry attempts
-- Maintain audit trail of all confirmations sent`;
+You must:
+- Generate professional confirmation emails with report summary information
+- Include engineer name, submission date/time, and report content overview
+- Provide clear action items for administrators (review, approve, or escalate if needed)
+- Maintain a log of all confirmation emails sent
+- Handle multiple administrator recipients appropriately
+- Ensure emails are sent from the system account with proper authentication
+- Include system-generated tracking IDs for audit purposes`;
 
-  const userPrompt = `Process the following daily report submission and send confirmation email to administrators:
+  const userPrompt = `Please generate and prepare confirmation emails for the following daily report submission:
 
-Engineer Information:
-- Name: ${context.engineerName}
-- Email: ${context.engineerEmail}
-- Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
+Engineer: ${context.engineerName}
+Email: ${context.engineerEmail}
+Report Date: ${context.reportDate}
+Submission Deadline: ${context.submissionDeadline}
+System API Endpoint: ${context.systemApiEndpoint}
+Administrator Recipients: ${context.adminEmailList.join(", ")}
 
-System Configuration:
-- API Endpoint: ${context.systemApiEndpoint}
+${context.previousReportTemplate ? `Previous Report Template Reference:\n${context.previousReportTemplate}\n` : ""}
 
 Tasks:
-1. Validate that the report submission is complete and properly formatted
-2. Generate a professional confirmation email for administrators
-3. Include submission timestamp and engineer details
-4. Send the confirmation email to the designated administrator email address
-5. Log the confirmation email sending result
-6. Return confirmation status and any relevant details
+1. Compose a professional confirmation email template for administrators
+2. Include all relevant report metadata and submission details
+3. Provide a summary of the report content structure
+4. Add clear next steps for administrator review
+5. Generate a unique tracking ID for this confirmation batch
+6. Prepare the email for distribution to all administrators
+7. Log the confirmation email generation with timestamp and recipient list
 
-Please proceed with sending the confirmation email and provide the result status.`;
+Return the confirmation email content, tracking ID, and distribution status.`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

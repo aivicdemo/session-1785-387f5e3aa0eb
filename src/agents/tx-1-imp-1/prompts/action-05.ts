@@ -7,99 +7,93 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedReportContent: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
-    issues: string;
-  };
-  submissionTimestamp: string;
-  isLate: boolean;
+  registrationStatus: "pending" | "registered" | "failed";
+  registrationTimestamp?: string;
+  validationErrors?: string[];
 }
 
-export interface Action05PromptResult {
-  validationStatus: "valid" | "invalid" | "partial";
-  validationErrors: string[];
-  registrationReady: boolean;
-  registrationPayload: {
+export interface Action05PromptInput {
+  context: Action05Context;
+  reportContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    issues: string;
+  };
+  managementSystemConfig: {
+    apiEndpoint: string;
+    retryAttempts: number;
+    timeoutMs: number;
+  };
+}
+
+export interface Action05PromptOutput {
+  version: string;
+  action: "register_report";
+  engineerId: string;
+  reportDate: string;
+  systemRegistrationPayload: {
     engineerId: string;
     engineerName: string;
     reportDate: string;
-    yesterdayAccomplishment: string;
-    todayPlan: string;
+    yesterdayAccomplishments: string;
+    todayPlans: string;
     issues: string;
-    submissionTimestamp: string;
-    isLate: boolean;
+    submittedAt: string;
+  };
+  confirmationEmailConfig: {
+    recipientRole: "manager";
+    emailTemplate: "report_registered_confirmation";
+    includeReportSummary: boolean;
+    priority: "normal";
+  };
+  nextAction: "send_confirmation_email";
+  escalationTriggers: {
+    shouldEscalate: boolean;
+    reason?: string;
+    escalationLevel?: "manager" | "system_admin";
   };
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
+export function buildAction05Prompt(
+  input: Action05PromptInput
+): Action05PromptOutput {
+  const submittedAt = new Date().toISOString();
 
-## Task: Validate Submitted Report Content
+  const systemRegistrationPayload = {
+    engineerId: input.context.engineerId,
+    engineerName: input.context.engineerName,
+    reportDate: input.context.reportDate,
+    yesterdayAccomplishments: input.reportContent.yesterdayAccomplishments,
+    todayPlans: input.reportContent.todayPlans,
+    issues: input.reportContent.issues,
+    submittedAt,
+  };
 
-### Engineer Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Timestamp: ${context.submissionTimestamp}
-- Is Late: ${context.isLate}
+  const hasValidationErrors =
+    input.context.validationErrors &&
+    input.context.validationErrors.length > 0;
 
-### Submitted Report Content
-**Yesterday's Accomplishment:**
-${context.submittedReportContent.yesterdayAccomplishment}
+  const escalationTriggers = {
+    shouldEscalate: hasValidationErrors,
+    reason: hasValidationErrors
+      ? `Validation errors detected: ${input.context.validationErrors?.join(", ")}`
+      : undefined,
+    escalationLevel: hasValidationErrors ? ("manager" as const) : undefined,
+  };
 
-**Today's Plan:**
-${context.submittedReportContent.todayPlan}
-
-**Issues/Concerns:**
-${context.submittedReportContent.issues}
-
-## Validation Rules
-
-1. **Completeness Check**
-   - All three sections (yesterday's accomplishment, today's plan, issues) must be present
-   - Each section must contain at least 10 characters of meaningful content
-   - No section should be empty or contain only whitespace
-
-2. **Content Quality Check**
-   - Content should be relevant to daily work activities
-   - Avoid generic or placeholder text
-   - Check for coherence and logical structure
-
-3. **Appropriateness Check**
-   - Content should not contain offensive or inappropriate language
-   - Content should be professional in tone
-   - No sensitive personal information should be exposed
-
-4. **Format Check**
-   - Content should be properly formatted and readable
-   - No excessive special characters or formatting issues
-
-## Output Format
-
-Respond with a JSON object containing:
-{
-  "validationStatus": "valid" | "invalid" | "partial",
-  "validationErrors": [array of error messages if any],
-  "registrationReady": boolean,
-  "registrationPayload": {
-    "engineerId": "${context.engineerId}",
-    "engineerName": "${context.engineerName}",
-    "reportDate": "${context.reportDate}",
-    "yesterdayAccomplishment": "validated content",
-    "todayPlan": "validated content",
-    "issues": "validated content",
-    "submissionTimestamp": "${context.submissionTimestamp}",
-    "isLate": ${context.isLate}
-  }
-}
-
-## Validation Status Definitions
-- "valid": All validation rules passed, ready for registration
-- "invalid": Critical validation failures, cannot proceed to registration
-- "partial": Some validation issues but content is acceptable with warnings
-
-Perform the validation and return the JSON response.`;
-
-  return prompt;
+  return {
+    version: ACTION_05_PROMPT_VERSION,
+    action: "register_report",
+    engineerId: input.context.engineerId,
+    reportDate: input.context.reportDate,
+    systemRegistrationPayload,
+    confirmationEmailConfig: {
+      recipientRole: "manager",
+      emailTemplate: "report_registered_confirmation",
+      includeReportSummary: true,
+      priority: "normal",
+    },
+    nextAction: "send_confirmation_email",
+    escalationTriggers,
+  };
 }

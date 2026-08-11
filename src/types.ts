@@ -28,7 +28,7 @@ export interface DailyReport {
   yesterday: string;
   today: string;
   issues: string;
-  status: "draft" | "submitted" | "reviewed";
+  status: "submitted" | "draft" | "pending";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,7 +39,7 @@ export interface ReportSubmissionHistory {
   reportId: string;
   submittedAt: Date;
   submitterUserId: string;
-  status: "pending" | "completed" | "rejected";
+  status: "completed" | "pending" | "failed";
   createdAt: Date;
 }
 

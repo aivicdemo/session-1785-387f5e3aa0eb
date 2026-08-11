@@ -29,28 +29,25 @@ class InMemoryDatabase implements DatabaseConnection {
   }
 
   async query(sql: string, params: unknown[] = []): Promise<QueryResult[]> {
-    const trimmedSql = sql.trim();
+    const trimmedSql = sql.trim().toUpperCase();
 
-    // DELETE queries
-    if (trimmedSql.toUpperCase().startsWith('DELETE FROM')) {
-      return this.handleDelete(trimmedSql, params);
+    if (trimmedSql.startsWith('DELETE FROM')) {
+      return this.handleDelete(sql, params);
     }
 
-    // INSERT queries
-    if (trimmedSql.toUpperCase().startsWith('INSERT INTO')) {
-      return this.handleInsert(trimmedSql, params);
+    if (trimmedSql.startsWith('INSERT INTO')) {
+      return this.handleInsert(sql, params);
     }
 
-    // SELECT queries
-    if (trimmedSql.toUpperCase().startsWith('SELECT')) {
-      return this.handleSelect(trimmedSql, params);
+    if (trimmedSql.startsWith('SELECT')) {
+      return this.handleSelect(sql, params);
     }
 
     return [];
   }
 
   private handleDelete(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(/DELETE FROM (\w+)(?:\s+WHERE\s+(.+))?/i);
+    const match = sql.match(/DELETE FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
     if (!match) return Promise.resolve([]);
 
     const tableName = match[1].toLowerCase();
@@ -76,30 +73,31 @@ class InMemoryDatabase implements DatabaseConnection {
   }
 
   private handleInsert(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(
-      /INSERT INTO (\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i
-    );
+    const match = sql.match(/INSERT INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i);
     if (!match) return Promise.resolve([]);
 
     const tableName = match[1].toLowerCase();
-    const columns = match[2].split(',').map((c) => c.trim());
+    const columns = match[2].split(',').map((c) => c.trim().toLowerCase());
     const table = this.tables.get(tableName);
 
     if (!table) return Promise.resolve([]);
 
     const row: QueryResult = {};
-    columns.forEach((col, idx) => {
-      row[col] = params[idx];
+    let paramIndex = 0;
+
+    columns.forEach((col) => {
+      if (paramIndex < params.length) {
+        row[col] = params[paramIndex];
+        paramIndex++;
+      }
     });
 
-    const rowId = `${tableName}_${Date.now()}_${Math.random()}`;
-    table.set(rowId, row);
+    const key = `${tableName}_${Date.now()}_${Math.random()}`;
+    table.set(key, row);
 
     const returningClause = match[4];
     if (returningClause) {
-      const returningColumns = returningClause
-        .split(',')
-        .map((c) => c.trim());
+      const returningColumns = returningClause.split(',').map((c) => c.trim().toLowerCase());
       const result: QueryResult = {};
       returningColumns.forEach((col) => {
         result[col] = row[col];
@@ -111,9 +109,7 @@ class InMemoryDatabase implements DatabaseConnection {
   }
 
   private handleSelect(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(
-      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER BY|$)/i
-    );
+    const match = sql.match(/SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
     if (!match) return Promise.resolve([]);
 
     const selectClause = match[1].trim();
@@ -133,30 +129,28 @@ class InMemoryDatabase implements DatabaseConnection {
           results.push({ cnt: results.length + 1 });
         } else {
           const selectedRow: QueryResult = {};
-          selectClause.split(',').forEach((col) => {
-            const trimmedCol = col.trim();
-            selectedRow[trimmedCol] = row[trimmedCol];
+          const columns = selectClause.split(',').map((c) => c.trim().toLowerCase());
+          columns.forEach((col) => {
+            if (col in row) {
+              selectedRow[col] = row[col];
+            }
           });
           results.push(selectedRow);
         }
       }
     });
 
-    if (selectClause.toUpperCase().includes('COUNT(*)')) {
-      return Promise.resolve([{ cnt: table.size }]);
+    if (selectClause.toUpperCase().includes('COUNT(*)') && results.length === 0) {
+      results.push({ cnt: 0 });
     }
 
     return Promise.resolve(results);
   }
 
-  private evaluateWhere(
-    whereClause: string,
-    row: QueryResult,
-    params: unknown[]
-  ): boolean {
-    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/);
+  private evaluateWhere(whereClause: string, row: QueryResult, params: unknown[]): boolean {
+    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/i);
     if (eqMatch) {
-      const column = eqMatch[1];
+      const column = eqMatch[1].toLowerCase();
       const paramValue = params[0];
       return row[column] === paramValue;
     }

@@ -3,60 +3,86 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Input {
-  engineerName: string;
-  engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
+export interface Action02Context {
+  engineerInput: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
+  };
 }
 
 export interface Action02ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  validatedInput: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
+  };
 }
 
-export function buildAction02Prompt(input: Action02Input): string {
-  const prompt = `You are a validation agent for daily report submissions in the morning meeting management system.
+export function buildAction02Prompt(context: Action02Context): string {
+  const {
+    engineerInput: {
+      yesterdayAccomplishments,
+      todayPlans,
+      currentIssues,
+      engineerId,
+      engineerName,
+      submissionTimestamp,
+    },
+  } = context;
 
-Your task is to validate the following engineer's daily report input for completeness and appropriateness.
+  const prompt = `You are validating a daily report submission for the morning meeting report management system.
 
 Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Time: ${input.submissionTimestamp}
+- ID: ${engineerId}
+- Name: ${engineerName}
+- Submission Time: ${submissionTimestamp}
 
-Report Content:
+Daily Report Content:
 1. Yesterday's Accomplishments:
-${input.yesterdayAccomplishments}
+${yesterdayAccomplishments}
 
 2. Today's Plans:
-${input.todayPlans}
+${todayPlans}
 
-3. Current Issues/Concerns:
-${input.currentIssues}
+3. Current Issues/Challenges:
+${currentIssues}
 
-Validation Criteria:
-1. All three sections must have meaningful content (not empty or just whitespace)
-2. Yesterday's accomplishments should describe concrete work completed
-3. Today's plans should be specific and actionable
-4. Current issues should clearly identify any blockers or concerns
-5. Content should be professional and relevant to work
-6. No section should contain only generic placeholder text
+Validation Requirements:
+1. Check that all three sections (yesterday's accomplishments, today's plans, current issues) are filled in
+2. Verify that each section contains meaningful content (not empty or just whitespace)
+3. Ensure yesterday's accomplishments describe concrete work completed
+4. Ensure today's plans are specific and actionable
+5. Ensure current issues are clearly articulated
+6. Check for any concerning patterns or red flags in the content
+7. Validate that the submission is within acceptable length (not too brief, not excessively long)
 
-Please validate this report and provide:
-1. Whether the report is valid (true/false)
-2. A list of specific errors if validation fails
-3. A list of warnings for content that could be improved
-
-Respond in JSON format with the following structure:
+Provide validation results in the following JSON format:
 {
   "isValid": boolean,
   "errors": string[],
-  "warnings": string[]
-}`;
+  "warnings": string[],
+  "validatedInput": {
+    "yesterdayAccomplishments": string,
+    "todayPlans": string,
+    "currentIssues": string,
+    "engineerId": string,
+    "engineerName": string,
+    "submissionTimestamp": string
+  }
+}
+
+Errors should be blocking issues that prevent registration.
+Warnings should be non-blocking concerns that should be noted.`;
 
   return prompt;
 }

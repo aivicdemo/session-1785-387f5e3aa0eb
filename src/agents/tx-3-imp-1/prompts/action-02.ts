@@ -22,22 +22,21 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThreshold: number;
+  escalationThresholdMinutes: number;
 }
 
-export interface Tx3Imp1Action02Result {
-  identifiedMembers: Array<{
+export interface Tx3Imp1Action02Output {
+  identifiedNonReporters: Array<{
     memberId: string;
     memberName: string;
     status: "not_submitted" | "overdue";
-    daysOverdue: number;
-    previousReminders: number;
+    hoursOverdue?: number;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
+    escalationReason: string;
+    previousEscalationCount: number;
   }>;
   analysisTimestamp: string;
 }
@@ -49,49 +48,88 @@ export function buildAction02Prompt(
     confirmationEmailContent,
     currentTimestamp,
     submissionDeadline,
-    escalationThreshold,
+    escalationThresholdMinutes,
   } = context;
 
-  const pendingMembers = confirmationEmailContent.reportedMembers
-    .filter((m) => m.status === "pending" || m.status === "overdue")
-    .map(
-      (m) =>
-        `- ${m.memberName} (ID: ${m.memberId}): Status=${m.status}${m.submittedAt ? `, Submitted=${m.submittedAt}` : ""}`
-    )
-    .join("\n");
+  const nonSubmittedMembers = confirmationEmailContent.reportedMembers.filter(
+    (member) => member.status !== "submitted"
+  );
 
-  const prompt = `You are an AI agent responsible for identifying unreported members from confirmation email content and determining escalation targets.
+  const overdueMembers = confirmationEmailContent.reportedMembers.filter(
+    (member) => member.status === "overdue"
+  );
 
-## Current Context
-- Current Timestamp: ${currentTimestamp}
-- Submission Deadline: ${submissionDeadline}
-- Escalation Threshold (days overdue): ${escalationThreshold}
+  const deadlineDate = new Date(submissionDeadline);
+  const currentDate = new Date(currentTimestamp);
+  const minutesOverdue = Math.floor(
+    (currentDate.getTime() - deadlineDate.getTime()) / (1000 * 60)
+  );
 
-## Confirmation Email Content
-- Email ID: ${confirmationEmailContent.emailId}
-- Sent At: ${confirmationEmailContent.sentAt}
-- Recipient: ${confirmationEmailContent.recipientName} (ID: ${confirmationEmailContent.recipientId})
-- Subject: ${confirmationEmailContent.subject}
+  const shouldEscalate = minutesOverdue >= escalationThresholdMinutes;
 
-## Reported Members Status
-${pendingMembers || "No pending members"}
+  const prompt = `
+# 報告漏れ・遅延部員の自動特定と催促対象判定
 
-## Task
-1. Identify all members who have not submitted their reports (status: "pending" or "overdue")
-2. Calculate days overdue for each member
-3. Determine which members should be escalated based on:
-   - Days overdue exceeding the escalation threshold
-   - Previous reminder count
-   - Severity of delay
-4. Classify escalation priority (high/medium/low)
+## 確認メール内容の分析
+- 送信日時: ${confirmationEmailContent.sentAt}
+- 対象者数: ${confirmationEmailContent.reportedMembers.length}
+- 提出期限: ${submissionDeadline}
+- 現在時刻: ${currentTimestamp}
 
-## Output Format
-Return a JSON object with:
-- identifiedMembers: Array of members with status, daysOverdue, and previousReminders
-- escalationTargets: Array of members requiring escalation with reason and priority
-- analysisTimestamp: Current analysis timestamp
+## 提出状況の集計
+- 提出済み: ${confirmationEmailContent.reportedMembers.filter((m) => m.status === "submitted").length}名
+- 未提出: ${nonSubmittedMembers.length}名
+- 遅延: ${overdueMembers.length}名
 
-Ensure accuracy in identifying unreported members and appropriate escalation prioritization.`;
+## 未提出者リスト
+${nonSubmittedMembers.map((m) => `- ${m.memberName} (ID: ${m.memberId})`).join("\n")}
+
+## 遅延者リスト
+${overdueMembers
+  .map((m) => {
+    const submittedDate = m.submittedAt ? new Date(m.submittedAt) : null;
+    const hoursOverdue = submittedDate
+      ? Math.floor(
+          (submittedDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60)
+        )
+      : 0;
+    return `- ${m.memberName} (ID: ${m.memberId}): ${hoursOverdue}時間遅延`;
+  })
+  .join("\n")}
+
+## 催促判定ルール
+- 提出期限超過: ${minutesOverdue >= escalationThresholdMinutes ? "はい" : "いいえ"}
+- 催促対象判定閾値: ${escalationThresholdMinutes}分以上の遅延
+- 催促対象判定: ${shouldEscalate ? "実行" : "未実行"}
+
+## 実行タスク
+1. 未提出者を特定する
+2. 遅延者の遅延時間を計算する
+3. 催促対象部員を判定する
+4. 催促メール・チャット送信対象を決定する
+
+## 出力形式
+以下の JSON 形式で結果を返してください:
+{
+  "identifiedNonReporters": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "status": "not_submitted" | "overdue",
+      "hoursOverdue": number (遅延の場合のみ)
+    }
+  ],
+  "escalationTargets": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "escalationReason": "string",
+      "previousEscalationCount": number
+    }
+  ],
+  "analysisTimestamp": "${currentTimestamp}"
+}
+`;
 
   return prompt;
 }

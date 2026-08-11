@@ -3,12 +3,16 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Input {
+export interface Action03Context {
+  engineerId: string;
   engineerName: string;
-  yesterdayAccomplishment: string;
-  todayPlan: string;
-  currentIssues: string;
-  submissionTime: string;
+  submittedContent: {
+    yesterdayAccomplishment: string;
+    todayPlan: string;
+    issues: string;
+  };
+  submissionTimestamp: string;
+  isLate: boolean;
 }
 
 export interface Action03ValidationResult {
@@ -17,33 +21,56 @@ export interface Action03ValidationResult {
   warnings: string[];
 }
 
-export function buildAction03Prompt(input: Action03Input): string {
-  const prompt = `You are validating a daily report submission for an engineer.
+export interface Action03PromptInput {
+  context: Action03Context;
+}
 
-Engineer Name: ${input.engineerName}
-Submission Time: ${input.submissionTime}
+export interface Action03PromptOutput {
+  prompt: string;
+  version: string;
+}
 
-Yesterday's Accomplishment:
-${input.yesterdayAccomplishment}
+export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const { context } = input;
 
-Today's Plan:
-${input.todayPlan}
+  const validationInstructions = `
+You are validating a daily report submission for an engineer.
 
-Current Issues:
-${input.currentIssues}
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Submission Time: ${context.submissionTimestamp}
+- Is Late: ${context.isLate}
 
-Please validate the following:
-1. All required fields are filled (not empty)
-2. Content is appropriate and professional
-3. No obvious errors or inconsistencies
-4. Issues are clearly described if present
+Submitted Content:
+1. Yesterday's Accomplishment:
+${context.submittedContent.yesterdayAccomplishment}
 
-Respond with a JSON object containing:
+2. Today's Plan:
+${context.submittedContent.todayPlan}
+
+3. Issues/Concerns:
+${context.submittedContent.issues}
+
+Your task is to validate the submission against the following criteria:
+1. Completeness: All three sections must have meaningful content (not empty or placeholder text)
+2. Clarity: Content should be clear and understandable
+3. Relevance: Content should be work-related and relevant to the engineer's role
+4. Appropriateness: No inappropriate or offensive content
+5. Consistency: Today's plan should logically follow from yesterday's accomplishment
+
+Provide your validation result in the following JSON format:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[]
-}`;
+}
 
-  return prompt;
+Errors are critical issues that prevent registration. Warnings are minor issues that should be noted but don't block registration.
+`;
+
+  return {
+    prompt: validationInstructions,
+    version: ACTION_03_PROMPT_VERSION,
+  };
 }

@@ -5,131 +5,66 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
   reportingDeadline: string;
-  overshotThresholdMinutes: number;
+  overdueThresholdHours: number;
   escalationRules: {
     maxReminders: number;
     reminderIntervalMinutes: number;
   };
-  targetMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-  }>;
-  reportStatusSummary: Array<{
-    memberId: string;
-    memberName?: string;
-    submitted: boolean;
-    submittedAt?: string;
-    daysOverdue?: number;
-  }>;
 }
 
 export interface Action04PromptOutput {
-  escalationCandidates: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-    reason: string;
-    daysOverdue: number;
-    reminderCount: number;
-    shouldEscalate: boolean;
-  }>;
-  escalationSummary: {
-    totalCandidates: number;
-    criticalCount: number;
-    warningCount: number;
+  prompt: string;
+  version: string;
+  metadata: {
+    action: string;
+    purpose: string;
     timestamp: string;
   };
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reportStatusTable = input.reportStatusSummary
-    .map(
-      (status) =>
-        `| ${status.memberId} | ${status.memberName || "N/A"} | ${status.submitted ? "✓" : "✗"} | ${status.submittedAt || "未提出"} | ${status.daysOverdue || 0}日 |`
-    )
-    .join("\n");
+export function buildAction04Prompt(
+  input: Action04PromptInput
+): Action04PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
+  } = input;
 
-  const targetMembersList = input.targetMembers
-    .map((m) => `- ${m.memberName} (${m.department}): ${m.email}`)
-    .join("\n");
+  const prompt = `You are an AI agent responsible for sending reminder notifications to team members who have not submitted their daily reports.
 
-  const prompt = `# Action 04: 提出期限超過エンジニアの自動エスカレーション判定
+## Context
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- Maximum Reminders per Member: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-## 目的
-提出期限を超過したエンジニアを自動判定し、エスカレーション対象を特定する。
+## Task
+Based on the confirmation email content and current submission status:
+1. Identify team members who have not submitted their reports
+2. Determine which members require reminder notifications
+3. Generate appropriate reminder messages for each member
+4. Log all reminder notifications sent
 
-## 入力情報
+## Escalation Rules
+- Do not send more than ${escalationRules.maxReminders} reminders to the same member
+- Wait at least ${escalationRules.reminderIntervalMinutes} minutes between reminders
+- If a member has not submitted after maximum reminders, escalate to department head
 
-### 報告期限設定
-- 期限: ${input.reportingDeadline}
-- 超過判定閾値: ${input.overshotThresholdMinutes}分以上
+## Output Format
+Provide a JSON object with:
+- membersToRemind: array of member IDs requiring reminders
+- reminderMessages: map of member ID to personalized reminder message
+- escalationCandidates: array of members requiring escalation
+- timestamp: ISO 8601 timestamp of processing`;
 
-### エスカレーションルール
-- 最大催促回数: ${input.escalationRules.maxReminders}回
-- 催促間隔: ${input.escalationRules.reminderIntervalMinutes}分
-
-### 対象メンバー一覧
-${targetMembersList}
-
-### 日報提出状況
-| メンバーID | メンバー名 | 提出状況 | 提出日時 | 超過日数 |
-|-----------|---------|--------|--------|--------|
-${reportStatusTable}
-
-## 判定ルール
-
-1. **未提出者の特定**
-   - 提出状況が「✗」のメンバーを未提出者として抽出
-   - 現在時刻と期限の差分を計算
-
-2. **超過日数の計算**
-   - 期限超過時間 ÷ 1440分 = 超過日数（小数点以下切り上げ）
-   - 超過日数が閾値を超えた場合をエスカレーション対象とする
-
-3. **催促回数の確認**
-   - 既存の催促履歴から催促回数を取得
-   - 最大催促回数に達していないかを確認
-
-4. **エスカレーション判定**
-   - 以下のいずれかに該当する場合、エスカレーション対象とする：
-     - 超過日数が1日以上
-     - 催促回数が最大回数に達している
-     - 部門内での提出率が著しく低い
-
-## 出力形式
-
-以下の JSON 形式で、エスカレーション対象メンバーの一覧を返す：
-
-\`\`\`json
-{
-  "escalationCandidates": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "email": "string",
-      "department": "string",
-      "reason": "string (未提出 | 超過 | 催促上限到達)",
-      "daysOverdue": number,
-      "reminderCount": number,
-      "shouldEscalate": boolean
-    }
-  ],
-  "escalationSummary": {
-    "totalCandidates": number,
-    "criticalCount": number (超過日数 >= 2日),
-    "warningCount": number (超過日数 < 2日),
-    "timestamp": "ISO 8601形式"
-  }
-}
-\`\`\`
-
-## 注意事項
-- 同一メンバーへの過度な催促を避けるため、催促回数の上限を厳密に確認する
-- 部門別の提出状況を考慮し、部門全体の傾向を把握する
-- エスカレーション判定後、部長への通知準備を進める`;
-
-  return prompt;
+  return {
+    prompt,
+    version: ACTION_04_PROMPT_VERSION,
+    metadata: {
+      action: "action-04",
+      purpose: "Send reminder notifications to non-submitting team members",
+      timestamp: new Date().toISOString(),
+    },
+  };
 }

@@ -6,86 +6,65 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Action02PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
-  reminderFrequencyHours: number;
-  systemErrorContext?: string;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
+  overdueMembers: Array<{
+    memberId: string;
+    memberName: string;
+    submissionTime: string | null;
+    hoursOverdue: number;
+    reminderCount: number;
+  }>;
+  escalationActions: Array<{
+    memberId: string;
+    action: "send_reminder" | "escalate_to_manager" | "no_action";
+    reason: string;
+  }>;
 }
 
-export function buildAction02Prompt(
-  input: Action02PromptInput
-): Action02PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdHours,
-    reminderFrequencyHours,
-    systemErrorContext,
-  } = input;
+export function buildAction02Prompt(input: Action02PromptInput): string {
+  const systemPrompt = `You are an AI agent responsible for identifying overdue report submissions and determining escalation actions.
 
-  const prompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails.
+Your task is to:
+1. Identify members who have not submitted their reports by the deadline
+2. Calculate how many hours each member is overdue
+3. Determine appropriate escalation actions based on the provided rules
+4. Generate a structured response with member information and recommended actions
 
-## Task: Identify Unreported and Delayed Members
+Reporting Deadline: ${input.reportingDeadline}
+Overdue Threshold: ${input.overdueThresholdHours} hours
+Maximum Reminders per Member: ${input.escalationRules.maxReminders}
+Reminder Interval: ${input.escalationRules.reminderIntervalMinutes} minutes
 
-### Context
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdHours} hours after deadline
-- Reminder Frequency Limit: ${reminderFrequencyHours} hours between reminders
-${systemErrorContext ? `- System Error Context: ${systemErrorContext}` : ""}
+Escalation Rules:
+- If a member is overdue by less than ${input.overdueThresholdHours} hours and reminder count < ${input.escalationRules.maxReminders}: send_reminder
+- If a member is overdue by more than ${input.overdueThresholdHours} hours or reminder count >= ${input.escalationRules.maxReminders}: escalate_to_manager
+- If a member has submitted on time: no_action
 
-### Your Responsibilities
-1. Parse confirmation email content to identify which team members have NOT submitted their daily reports
-2. Distinguish between:
-   - Unreported members (no submission at all)
-   - Delayed members (submitted after the deadline)
-3. Create a structured list of unreported and delayed members with:
-   - Member name/ID
-   - Status (unreported or delayed)
-   - Time overdue (if applicable)
-   - Last reminder timestamp (if applicable)
-
-### Output Format
 Return a JSON object with the following structure:
 {
-  "unreportedMembers": [
+  "overdueMembers": [
     {
-      "memberId": string,
-      "memberName": string,
-      "status": "unreported",
+      "memberId": "string",
+      "memberName": "string",
+      "submissionTime": "ISO8601 string or null",
       "hoursOverdue": number,
-      "lastReminderAt": string | null
+      "reminderCount": number
     }
   ],
-  "delayedMembers": [
+  "escalationActions": [
     {
-      "memberId": string,
-      "memberName": string,
-      "status": "delayed",
-      "submittedAt": string,
-      "hoursLate": number,
-      "lastReminderAt": string | null
+      "memberId": "string",
+      "action": "send_reminder" | "escalate_to_manager" | "no_action",
+      "reason": "string"
     }
-  ],
-  "totalUnreported": number,
-  "totalDelayed": number,
-  "analysisTimestamp": string
-}
+  ]
+}`;
 
-### Escalation Conditions
-- If system errors prevent accurate status verification, flag the issue
-- If a member has received multiple reminders within the frequency limit, note this
-- If no confirmation emails are available, escalate to human review
-
-### Rules
-- Only include members with confirmed non-submission or late submission
-- Do not make assumptions about members not mentioned in the confirmation emails
-- Preserve all member identifiers and timestamps exactly as provided
-- If member data is incomplete, include available information and flag missing fields`;
-
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
-  };
+  return systemPrompt;
 }

@@ -6,7 +6,7 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentDateTime: string;
+  currentTimestamp: string;
   escalationThreshold: number;
 }
 
@@ -23,57 +23,108 @@ export interface Action04PromptOutput {
     escalationReason: string;
     priority: "high" | "medium" | "low";
   }>;
-  actionPlan: string;
+  actionItems: Array<{
+    action: "send_reminder_email" | "send_chat_message" | "escalate_to_manager";
+    targetEmployeeId: string;
+    targetEmployeeName: string;
+    messageTemplate: string;
+  }>;
+  summary: {
+    totalNonReporters: number;
+    totalDelayedReporters: number;
+    totalEscalationTargets: number;
+    recommendedNextSteps: string[];
+  };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const lines: string[] = [
-    "# Action 04: 催促対象部員の判定と催促メール・チャット送信準備",
-    "",
-    "## 目的",
-    "確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定する",
-    "",
-    "## 入力情報",
-    `### 確認メール内容`,
-    input.confirmationEmailContent,
-    "",
-    `### 報告期限`,
-    input.reportingDeadline,
-    "",
-    `### 現在日時`,
-    input.currentDateTime,
-    "",
-    `### エスカレーション閾値（日数）`,
-    input.escalationThreshold.toString(),
-    "",
-    "## 実行タスク",
-    "1. 確認メール内容から報告漏れ・遅延部員を特定する",
-    "2. 催促対象部員を判定する（期限超過日数がエスカレーション閾値以上）",
-    "3. 各部員の催促優先度を判定する",
-    "4. 催促メール・チャット送信の準備情報を整理する",
-    "",
-    "## 出力形式",
-    "JSON形式で以下の構造で返却してください：",
-    "{",
-    '  "identifiedNonReporters": [',
-    "    {",
-    '      "employeeId": "従業員ID",',
-    '      "employeeName": "従業員名",',
-    '      "status": "non_reported | delayed",',
-    '      "daysOverdue": 超過日数',
-    "    }",
-    "  ],",
-    '  "escalationTargets": [',
-    "    {",
-    '      "employeeId": "従業員ID",',
-    '      "employeeName": "従業員名",',
-    '      "escalationReason": "エスカレーション理由",',
-    '      "priority": "high | medium | low"',
-    "    }",
-    "  ],",
-    '  "actionPlan": "実行予定アクション"',
-    "}",
-  ];
+  const {
+    confirmationEmailContent,
+    reportingDeadline,
+    currentTimestamp,
+    escalationThreshold,
+  } = input;
 
-  return lines.join("\n");
+  return `You are an AI agent responsible for identifying non-reporting and delayed reporting employees from confirmation email content and determining escalation targets.
+
+## Task: Identify Non-Reporters and Determine Escalation Targets
+
+### Input Information:
+- Confirmation Email Content:
+${confirmationEmailContent}
+
+- Reporting Deadline: ${reportingDeadline}
+- Current Timestamp: ${currentTimestamp}
+- Escalation Threshold (days): ${escalationThreshold}
+
+### Your Responsibilities:
+
+1. **Identify Non-Reporters and Delayed Reporters**
+   - Parse the confirmation email content to extract employee reporting status
+   - Identify employees who have not submitted reports (non_reported)
+   - Identify employees whose reports are overdue (delayed)
+   - Calculate days overdue for delayed reporters
+
+2. **Determine Escalation Targets**
+   - Apply escalation rules based on the threshold
+   - Prioritize escalation targets by severity
+   - Assign priority levels (high/medium/low) based on:
+     * Days overdue
+     * Number of previous escalations (if available)
+     * Report criticality
+
+3. **Generate Action Items**
+   - Determine appropriate action for each escalation target:
+     * send_reminder_email: For first-time delays
+     * send_chat_message: For moderate delays
+     * escalate_to_manager: For severe delays exceeding threshold
+   - Create message templates for each action
+
+4. **Provide Summary**
+   - Count total non-reporters
+   - Count total delayed reporters
+   - Count total escalation targets
+   - Recommend next steps based on findings
+
+### Output Format:
+Return a JSON object with the following structure:
+{
+  "identifiedNonReporters": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "status": "non_reported" | "delayed",
+      "daysOverdue": number
+    }
+  ],
+  "escalationTargets": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationReason": "string",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
+  "actionItems": [
+    {
+      "action": "send_reminder_email" | "send_chat_message" | "escalate_to_manager",
+      "targetEmployeeId": "string",
+      "targetEmployeeName": "string",
+      "messageTemplate": "string"
+    }
+  ],
+  "summary": {
+    "totalNonReporters": number,
+    "totalDelayedReporters": number,
+    "totalEscalationTargets": number,
+    "recommendedNextSteps": ["string"]
+  }
+}
+
+### Important Guidelines:
+- Ensure accuracy in identifying non-reporters and delayed reporters
+- Apply escalation rules consistently
+- Generate clear and actionable message templates
+- Provide comprehensive summary for management review
+- Flag any anomalies or special cases for human review`;
 }

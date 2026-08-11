@@ -4,19 +4,22 @@
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
-  reportDeadline: string;
-  escalationThreshold: number;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
+  reportContent: string;
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
     department: string;
   }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
-  currentTime: string;
+  priorityFramework: {
+    criteria: string[];
+    levels: string[];
+  };
 }
 
 interface Action03PromptOutput {
@@ -24,77 +27,82 @@ interface Action03PromptOutput {
   systemPrompt: string;
   userPrompt: string;
   context: {
-    deadline: string;
-    threshold: number;
-    totalMembers: number;
-    submittedCount: number;
-    overdueMembers: string[];
+    taskDescription: string;
+    objectives: string[];
+    constraints: string[];
   };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const overdueMembers = input.reportingMembers
-    .filter((member) => {
-      const submitted = input.submittedReports.find(
-        (report) => report.memberId === member.memberId
-      );
-      if (!submitted) return true;
+  const systemPrompt = `You are an AI agent responsible for extracting and prioritizing issues from daily reports in the morning meeting preparation system.
 
-      const submittedTime = new Date(submitted.submittedAt).getTime();
-      const deadlineTime = new Date(input.reportDeadline).getTime();
-      return submittedTime > deadlineTime;
-    })
-    .map((member) => member.memberId);
-
-  const systemPrompt = `You are an AI agent responsible for identifying overdue reports and escalating to management.
 Your role is to:
-1. Analyze report submission status against the deadline
-2. Identify members who have not submitted or submitted late
-3. Determine escalation priority based on the threshold
-4. Generate escalation notifications with appropriate urgency levels
+1. Analyze the provided report content and extracted issues
+2. Apply the priority framework to classify and rank issues
+3. Identify bottlenecks and dependencies between issues
+4. Provide structured output for management review
 
-You must be precise in identifying overdue reports and provide clear reasoning for escalation decisions.`;
+You must follow the priority framework strictly and provide clear reasoning for each prioritization decision.`;
 
-  const userPrompt = `Analyze the following report submission status and determine escalation actions:
+  const issuesContext = input.extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
+    )
+    .join("\n");
 
-Report Deadline: ${input.reportDeadline}
-Current Time: ${input.currentTime}
-Escalation Threshold (hours): ${input.escalationThreshold}
+  const teamContext = input.teamMembers
+    .map((member) => `- ${member.name} (${member.department})`)
+    .join("\n");
 
-Total Members: ${input.reportingMembers.length}
-Submitted Reports: ${input.submittedReports.length}
-Overdue Members: ${overdueMembers.length}
+  const priorityLevels = input.priorityFramework.levels.join(", ");
+  const priorityCriteria = input.priorityFramework.criteria
+    .map((criterion) => `- ${criterion}`)
+    .join("\n");
 
-Overdue Member IDs: ${overdueMembers.join(", ") || "None"}
+  const userPrompt = `Analyze the following daily report content and extracted issues, then prioritize them using the provided framework.
 
-Members Details:
-${input.reportingMembers
-  .map((member) => {
-    const submitted = input.submittedReports.find(
-      (report) => report.memberId === member.memberId
-    );
-    const status = submitted ? "SUBMITTED" : "NOT_SUBMITTED";
-    const submittedTime = submitted ? ` at ${submitted.submittedAt}` : "";
-    return `- ${member.memberName} (${member.memberId}) [${member.department}]: ${status}${submittedTime}`;
-  })
-  .join("\n")}
+Report Content:
+${input.reportContent}
 
-Based on this information:
-1. Confirm the list of overdue members
-2. Assess the severity of the delay
-3. Recommend escalation actions
-4. Suggest notification content for management`;
+Extracted Issues:
+${issuesContext}
+
+Team Members:
+${teamContext}
+
+Priority Framework:
+Levels: ${priorityLevels}
+
+Prioritization Criteria:
+${priorityCriteria}
+
+Please provide:
+1. A prioritized list of issues with assigned priority levels
+2. Reasoning for each prioritization decision
+3. Identified dependencies or bottlenecks between issues
+4. Recommended actions for high-priority issues
+5. Any escalation recommendations`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
     context: {
-      deadline: input.reportDeadline,
-      threshold: input.escalationThreshold,
-      totalMembers: input.reportingMembers.length,
-      submittedCount: input.submittedReports.length,
-      overdueMembers,
+      taskDescription:
+        "Prioritize and classify extracted issues from daily reports",
+      objectives: [
+        "Apply priority framework to all extracted issues",
+        "Identify critical bottlenecks",
+        "Provide actionable recommendations",
+        "Flag escalation-worthy items",
+      ],
+      constraints: [
+        "Must use only the provided priority framework",
+        "Must provide clear reasoning for each decision",
+        "Must identify all dependencies between issues",
+        "Must complete analysis within time constraints",
+      ],
     },
   };
 }

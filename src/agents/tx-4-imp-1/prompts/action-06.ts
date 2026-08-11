@@ -4,104 +4,202 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
+  reportSummary: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    reportedBy: string;
-    reportedDate: string;
+    category: string;
   }>;
-  priorityClassifications: Array<{
+  priorityAssignments: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  reportSummary: {
-    totalReports: number;
-    submittedReports: number;
-    pendingReports: number;
-    overallProgress: string;
-  };
+  departmentHead: string;
+  reportingDate: string;
 }
 
 export interface Action06PromptInput {
-  context: Action06Context;
-  departmentHead: string;
-  reportingPeriod: string;
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>;
+  previousIssues: Array<{
+    id: string;
+    title: string;
+    status: string;
+  }>;
+  priorityFramework: {
+    criticalThreshold: string;
+    highThreshold: string;
+    mediumThreshold: string;
+  };
+  departmentContext: string;
 }
 
 export interface Action06PromptOutput {
-  finalReport: string;
-  prioritizedIssuesList: Array<{
-    rank: number;
-    issueId: string;
-    title: string;
-    priority: "critical" | "high" | "medium" | "low";
-    recommendedAction: string;
-  }>;
-  escalationFlags: Array<{
-    type: "missing_report" | "unusual_issue" | "conflicting_priority" | "critical_risk";
-    description: string;
-    requiresHumanReview: boolean;
-  }>;
+  context: Action06Context;
+  formattedReport: string;
+  prioritizedIssuesList: string;
+  recommendations: string[];
 }
 
 export function buildAction06Prompt(input: Action06PromptInput): string {
-  const {
-    context,
-    departmentHead,
-    reportingPeriod,
-  } = input;
+  const reportSection = buildReportSection(input.confirmedReports);
+  const issueExtractionSection = buildIssueExtractionSection(
+    input.confirmedReports,
+    input.previousIssues
+  );
+  const priorityFrameworkSection = buildPriorityFrameworkSection(
+    input.priorityFramework
+  );
+  const contextSection = buildContextSection(input.departmentContext);
 
-  const issuesSection = context.extractedIssues
-    .map((issue) => {
-      const classification = context.priorityClassifications.find(
-        (pc) => pc.issueId === issue.id
-      );
-      return `
-- Issue ID: ${issue.id}
-  Title: ${issue.title}
-  Description: ${issue.description}
-  Reported By: ${issue.reportedBy}
-  Reported Date: ${issue.reportedDate}
-  Current Priority: ${classification?.priority || "unclassified"}
-  Priority Reasoning: ${classification?.reasoning || "pending review"}
+  return `# 日報収集から課題抽出・優先度判定までの自動実行
+
+## 実行目的
+確認メール送信後に収集された日報から、進捗状況を集約し、課題・ボトルネックを自動抽出して優先度判定を行う。
+
+## 入力情報
+
+${reportSection}
+
+${issueExtractionSection}
+
+${priorityFrameworkSection}
+
+${contextSection}
+
+## 実行タスク
+
+### タスク1: 全体進捗状況の集約・整理
+- 各従業員の日報から進捗内容を抽出
+- 部門全体の進捗状況を統合
+- 進捗の遅延・加速状況を把握
+- 進捗レポートを構造化
+
+### タスク2: 課題・ボトルネックの自動抽出
+- 日報記載の課題を抽出
+- 前日からの継続課題を追跡
+- 新規課題を特定
+- 課題の関連性を分析
+- 課題を以下のカテゴリに分類:
+  * 技術的課題
+  * リソース課題
+  * コミュニケーション課題
+  * 外部依存課題
+  * その他
+
+### タスク3: 課題の優先度判定・分類
+- 各課題の影響度を評価
+- 各課題の緊急度を評価
+- 優先度フレームワークに基づいて分類:
+  * Critical: ${input.priorityFramework.criticalThreshold}
+  * High: ${input.priorityFramework.highThreshold}
+  * Medium: ${input.priorityFramework.mediumThreshold}
+  * Low: その他
+- 優先度判定の根拠を記録
+
+## 出力形式
+
+### 1. 進捗状況集約レポート
+- 部門全体の進捗サマリー
+- 個別進捗の要点
+- 進捗状況の可視化
+
+### 2. 抽出課題リスト
+各課題について以下を記載:
+- 課題ID
+- 課題タイトル
+- 詳細説明
+- 課題カテゴリ
+- 影響範囲
+- 関連する従業員
+
+### 3. 優先度判定結果
+各課題について以下を記載:
+- 課題ID
+- 割り当てられた優先度
+- 優先度判定の根拠
+- 推奨アクション
+
+### 4. 部長向けサマリー
+- Critical課題の即時対応リスト
+- High優先度課題の本日中対応リスト
+- 継続監視が必要な課題
+- 推奨される意思決定事項
+
+## 品質基準
+- 課題抽出の漏れがないこと
+- 優先度判定が客観的で一貫性があること
+- 根拠が明確で検証可能なこと
+- 部長が即座に意思決定できる形式であること
 `;
-    })
+}
+
+function buildReportSection(reports: Action06PromptInput["confirmedReports"]): string {
+  if (reports.length === 0) {
+    return "## 収集日報\n提出された日報がありません。";
+  }
+
+  const reportDetails = reports
+    .map(
+      (report) =>
+        `- **${report.employeeName}** (ID: ${report.employeeId})\n  提出時刻: ${report.submittedAt}\n  内容: ${report.reportContent}`
+    )
     .join("\n");
 
-  const reportSummarySection = `
-Report Summary for Period: ${reportingPeriod}
-- Total Reports Expected: ${context.reportSummary.totalReports}
-- Submitted Reports: ${context.reportSummary.submittedReports}
-- Pending Reports: ${context.reportSummary.pendingReports}
-- Overall Progress Status: ${context.reportSummary.overallProgress}
-`;
+  return `## 収集日報
+提出件数: ${reports.length}件
 
-  const prompt = `You are an AI agent responsible for finalizing the daily report analysis and presenting prioritized issues to the department head.
+${reportDetails}`;
+}
 
-Department Head: ${departmentHead}
-Reporting Period: ${reportingPeriod}
+function buildIssueExtractionSection(
+  reports: Action06PromptInput["confirmedReports"],
+  previousIssues: Action06PromptInput["previousIssues"]
+): string {
+  const previousIssuesList =
+    previousIssues.length > 0
+      ? previousIssues
+          .map((issue) => `- ${issue.title} (Status: ${issue.status})`)
+          .join("\n")
+      : "前日からの継続課題はありません。";
 
-${reportSummarySection}
+  return `## 課題抽出コンテキスト
+### 前日からの継続課題
+${previousIssuesList}
 
-Extracted Issues and Current Classifications:
-${issuesSection}
+### 新規課題抽出対象
+上記の日報から以下の観点で課題を抽出してください:
+- 明示的に記載された課題
+- 進捗遅延の兆候
+- リソース不足の兆候
+- 技術的な懸念事項
+- 依存関係の問題`;
+}
 
-Your tasks:
-1. Review all extracted issues and their current priority classifications
-2. Validate the priority assignments based on business impact and urgency
-3. Identify any escalation flags (missing reports, unusual issues, conflicting priorities, critical risks)
-4. Generate a final prioritized issues list with recommended actions
-5. Create a comprehensive report summary for the department head
+function buildPriorityFrameworkSection(
+  framework: Action06PromptInput["priorityFramework"]
+): string {
+  return `## 優先度判定フレームワーク
+### Critical判定基準
+${framework.criticalThreshold}
 
-Output your analysis in a structured format that clearly indicates:
-- Final prioritized issues list (ranked by priority)
-- Recommended actions for each issue
-- Any escalation flags requiring human review
-- Overall assessment of the reporting period
+### High判定基準
+${framework.highThreshold}
 
-Ensure that critical and high-priority issues are clearly highlighted and that the reasoning for each priority assignment is transparent.`;
+### Medium判定基準
+${framework.mediumThreshold}
 
-  return prompt;
+### Low判定基準
+その他の課題`;
+}
+
+function buildContextSection(departmentContext: string): string {
+  return `## 部門コンテキスト
+${departmentContext}`;
 }
