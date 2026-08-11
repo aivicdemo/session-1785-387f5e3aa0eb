@@ -3,84 +3,108 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04PromptContext {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentTimestamp: string;
   escalationThreshold: number;
-  maxReminders: number;
+  previousEscalationCount: Record<string, number>;
 }
 
-export interface Action04PromptOutput {
-  identifiedNonReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    status: "non-reported" | "delayed";
-    daysSinceDeadline: number;
-  }>;
-  escalationTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: string;
-    reminderCount: number;
-    shouldEscalate: boolean;
-  }>;
-  communicationPlan: Array<{
-    employeeId: string;
-    channel: "email" | "chat";
-    message: string;
-    priority: "high" | "normal" | "low";
-  }>;
-  timestamp: string;
+export interface Action04PromptResult {
+  unreportedMembers: string[];
+  delayedMembers: string[];
+  escalationTargets: string[];
+  escalationReason: Record<string, string>;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporters and delayed reporters from confirmation email content, determining escalation targets, and planning communication actions.
+export function buildAction04Prompt(context: Action04PromptContext): string {
+  const {
+    confirmationEmailContent,
+    reportingDeadline,
+    escalationThreshold,
+    previousEscalationCount,
+  } = context;
 
-Your task is to:
-1. Parse the confirmation email content to identify employees who have not submitted reports or submitted late
-2. Determine which employees should be escalated based on the escalation threshold (${input.escalationThreshold} days)
-3. Check reminder count and enforce maximum reminders limit (${input.maxReminders})
-4. Generate appropriate communication messages for each target
-5. Return structured data with identified non-reporters, escalation targets, and communication plan
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([member, count]) => `${member}: ${count}回`)
+    .join("\n");
 
-Current timestamp: ${input.currentTimestamp}
-Reporting deadline: ${input.reportingDeadline}
-Escalation threshold (days): ${input.escalationThreshold}
-Maximum reminders allowed: ${input.maxReminders}
+  return `# Action 04: 報告漏れ特定から催促送信までの自動実行
 
-Confirmation email content to analyze:
-${input.confirmationEmailContent}
+## 目的
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してメール・チャットの送信まで完結させる。
 
-Return a JSON object with the following structure:
+## 入力情報
+
+### 確認メール内容
+\`\`\`
+${confirmationEmailContent}
+\`\`\`
+
+### 報告期限
+${reportingDeadline}
+
+### 催促判定基準
+- 催促対象判定閾値: ${escalationThreshold}時間以上の遅延
+- 過去の催促履歴:
+\`\`\`
+${escalationCountSummary || "なし"}
+\`\`\`
+
+## 実行ステップ
+
+### ステップ 1: 報告漏れ・遅延部員の特定
+確認メール内容を解析し、以下を特定してください:
+- 報告漏れ部員（確認メール受信後も報告がない者）
+- 遅延部員（報告期限を超過した者）
+
+### ステップ 2: 催促対象部員の判定
+以下の条件に基づいて催促対象を判定してください:
+- 遅延時間が${escalationThreshold}時間以上
+- 同一部員への催促回数が上限に達していない
+- 複数回催促後も報告がない場合はエスカレーション対象
+
+### ステップ 3: 催促メール・チャットの送信判定
+各催促対象部員に対して:
+- 初回催促: メール送信
+- 2回目以降: メール + チャット送信
+- 上限超過: エスカレーション対象として部長に報告
+
+### ステップ 4: 送信結果のログ記録
+以下の情報をログに記録してください:
+- 送信日時
+- 送信対象部員
+- 送信チャネル（メール/チャット）
+- 催促回数
+- 送信ステータス
+
+## 出力形式
+
+以下の JSON 形式で結果を返してください:
+
+\`\`\`json
 {
-  "identifiedNonReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "status": "non-reported" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "escalationTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "string",
-      "reminderCount": number,
-      "shouldEscalate": boolean
-    }
-  ],
+  "unreportedMembers": ["member1", "member2"],
+  "delayedMembers": ["member3", "member4"],
+  "escalationTargets": ["member5"],
+  "escalationReason": {
+    "member5": "3回目の催促後も報告なし"
+  },
   "communicationPlan": [
     {
-      "employeeId": "string",
-      "channel": "email" | "chat",
-      "message": "string",
-      "priority": "high" | "normal" | "low"
+      "member": "member1",
+      "channel": "email",
+      "escalationCount": 1,
+      "message": "催促メール本文"
     }
-  ],
-  "timestamp": "string"
-}`;
+  ]
+}
+\`\`\`
 
-  return systemPrompt;
+## 注意事項
+- 誤送信を防ぐため、送信前に対象者と内容を確認してください
+- 催促回数の上限は3回とします
+- 同一部員への催促間隔は最低1時間以上空けてください
+- 送信履歴は必ず記録し、取り消し・修正に対応できるようにしてください
+`;
 }

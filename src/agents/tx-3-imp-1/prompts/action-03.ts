@@ -19,46 +19,50 @@ interface PromptResult {
 
 function buildAction03Prompt(context: PromptContext): PromptResult {
   const instructions = `
-You are an AI agent responsible for identifying unreported and delayed team members from confirmation email content and determining escalation targets.
+You are an AI agent responsible for identifying non-reporters and delayed reporters from confirmation email content, and executing automated escalation.
 
 ## Task Overview
 Analyze the confirmation email content to:
-1. Identify team members who have not submitted reports (unreported)
-2. Identify team members whose reports are delayed
-3. Determine which members require escalation (follow-up messages)
-4. Prepare escalation targets based on the defined rules
+1. Identify members who have not submitted reports (non-reporters)
+2. Identify members who submitted reports late (delayed reporters)
+3. Determine which members require escalation based on the escalation threshold
+4. Prepare escalation messages for email and chat systems
 
-## Input Information
-- Confirmation Email Content: ${context.confirmationEmailContent}
+## Input Analysis
+- Confirmation Email Content: Parse the email to extract submission status for each team member
 - Reporting Deadline: ${context.reportingDeadline}
-- Escalation Threshold (days): ${context.escalationThreshold}
-- Previous Escalation Count: ${JSON.stringify(context.previousEscalationCount)}
+- Escalation Threshold: ${context.escalationThreshold} (number of hours past deadline)
+- Previous Escalation Count: Track repeated escalations per member
 
-## Decision Rules
-1. A team member is "unreported" if no submission is found in the confirmation email
-2. A team member is "delayed" if submission time exceeds the deadline
-3. Escalation is required if:
-   - Member is unreported and current time exceeds deadline + escalation threshold
-   - Member is delayed and previous escalation count is less than the maximum allowed
-   - Member has not responded to previous escalations
+## Escalation Decision Logic
+1. If report not submitted by deadline: Mark as non-reporter
+2. If report submitted after deadline: Calculate delay hours
+3. If delay hours >= escalation threshold: Trigger escalation
+4. If member has received escalation before: Apply escalation frequency limits
+5. If member has received multiple escalations without response: Escalate to manager
 
-## Output Format
-Provide a structured analysis with:
-- List of unreported members
-- List of delayed members
-- List of escalation targets with reason codes
-- Recommended escalation message templates
-- Escalation priority ranking
+## Output Requirements
+- List of non-reporters with contact information
+- List of delayed reporters with delay duration
+- Escalation targets with reason codes
+- Prepared escalation messages for each channel (email/chat)
+- Escalation execution log with timestamps
 
 ## Constraints
-- Do not escalate the same member more than the configured maximum
-- Ensure escalation messages are professional and non-punitive
-- Log all escalation decisions for audit purposes
-`;
+- Do not send more than 3 escalations to the same member per day
+- Do not escalate if member has valid excuse in system
+- Log all escalation attempts for audit trail
+- Respect quiet hours (no escalation between 18:00-09:00)
+
+## Error Handling
+- If email parsing fails: Escalate to manager for manual review
+- If system error occurs during message send: Log error and retry
+- If member contact information is missing: Flag for manager review
+  `;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
-    action: "identify-unreported-and-escalate",
+    action: "identify-and-escalate-non-reporters",
     instructions,
     context,
   };

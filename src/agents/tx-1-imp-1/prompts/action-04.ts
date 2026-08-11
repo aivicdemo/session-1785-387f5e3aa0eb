@@ -7,98 +7,115 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
-  submissionDeadline: string;
-  systemTimestamp: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
 export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
+}
+
+export interface Action04RegistrationPayload {
+  engineerId: string;
+  engineerName: string;
+  reportDate: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
+  validationStatus: "valid" | "warning";
 }
 
 export function buildAction04Prompt(context: Action04Context): string {
-  const {
-    engineerId,
-    engineerName,
-    reportDate,
-    previousReportContent,
-    submissionDeadline,
-    systemTimestamp,
-  } = context;
+  const prompt = `You are an AI agent responsible for registering daily reports in the management system.
 
-  const promptContent = `# 日報入力内容の妥当性検証タスク
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Time: ${context.submissionTimestamp}
 
-## タスク概要
-エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
+Report Content:
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
 
-## 検証対象者情報
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- システム時刻: ${systemTimestamp}
-- 提出期限: ${submissionDeadline}
+Task: Register this daily report in the management system.
 
-## 受け取った入力内容
-### 昨日の実績
-${previousReportContent.yesterday}
+Steps:
+1. Validate that all required fields are present and properly formatted
+2. Check for any data inconsistencies or anomalies
+3. Prepare the registration payload with all necessary information
+4. Register the report in the system
+5. Confirm successful registration and log the transaction
 
-### 本日の予定
-${previousReportContent.today}
-
-### 抱えている課題
-${previousReportContent.issues}
-
-## 検証基準
-1. **完全性チェック**
-   - 各項目が空白でないこと
-   - 最小文字数（各項目50文字以上）を満たしていること
-
-2. **適切性チェック**
-   - 昨日の実績が具体的で測定可能であること
-   - 本日の予定が現実的で実行可能であること
-   - 課題が明確に記述されていること
-
-3. **形式チェック**
-   - 日本語として正しい文法であること
-   - 不適切な表現や機密情報が含まれていないこと
-
-4. **一貫性チェック**
-   - 昨日の実績と本日の予定に矛盾がないこと
-   - 課題が実績・予定と関連性があること
-
-## 出力形式
-JSON形式で以下の構造で返してください：
+Output the registration result in JSON format with the following structure:
 {
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "validatedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
+  "success": boolean,
+  "registrationId": string,
+  "timestamp": string,
+  "validationStatus": "valid" | "warning",
+  "issues": string[]
+}`;
+
+  return prompt;
 }
 
-## 検証結果の判定
-- errors が空配列の場合: 登録可能（isValid: true）
-- errors が1件以上の場合: 登録不可、エンジニアに修正依頼（isValid: false）
-- warnings のみの場合: 登録可能だが注意が必要（isValid: true）
+export function validateAction04Input(context: Action04Context): Action04ValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
 
-## 注意事項
-- 検証は厳密に行い、不完全な内容は登録させない
-- エラーメッセージは具体的で改善方法を示唆するものにする
-- 警告は参考情報として提供し、登録を妨げない`;
+  if (!context.engineerId || context.engineerId.trim() === "") {
+    errors.push("Engineer ID is required");
+  }
 
-  return promptContent;
+  if (!context.engineerName || context.engineerName.trim() === "") {
+    errors.push("Engineer name is required");
+  }
+
+  if (!context.reportDate || context.reportDate.trim() === "") {
+    errors.push("Report date is required");
+  }
+
+  if (!context.yesterdayAccomplishments || context.yesterdayAccomplishments.trim() === "") {
+    warnings.push("Yesterday's accomplishments field is empty");
+  }
+
+  if (!context.todayPlans || context.todayPlans.trim() === "") {
+    warnings.push("Today's plans field is empty");
+  }
+
+  if (!context.currentIssues || context.currentIssues.trim() === "") {
+    warnings.push("Current issues field is empty");
+  }
+
+  if (!context.submissionTimestamp || context.submissionTimestamp.trim() === "") {
+    errors.push("Submission timestamp is required");
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+export function buildAction04RegistrationPayload(
+  context: Action04Context,
+  validationResult: Action04ValidationResult
+): Action04RegistrationPayload {
+  return {
+    engineerId: context.engineerId,
+    engineerName: context.engineerName,
+    reportDate: context.reportDate,
+    yesterdayAccomplishments: context.yesterdayAccomplishments,
+    todayPlans: context.todayPlans,
+    currentIssues: context.currentIssues,
+    submissionTimestamp: context.submissionTimestamp,
+    validationStatus: validationResult.isValid ? "valid" : "warning",
+  };
 }

@@ -18,11 +18,12 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
+  templateId: string;
   templateContent: string;
   distributionPlan: {
     recipients: string[];
-    deliveryMethod: string;
     scheduledTime: string;
+    channels: string[];
   };
   validationRules: Array<{
     field: string;
@@ -32,66 +33,47 @@ export interface Action01PromptOutput {
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportingDeadline,
-    targetDate,
-    engineerList,
-    systemContext,
-  } = input;
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const channelList = input.systemContext.notificationChannels.join("、");
 
-  const engineerNames = engineerList.map((e) => e.name).join(", ");
-  const recipientEmails = engineerList.map((e) => e.email).join("; ");
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-  const prompt = `# 日報テンプレート自動生成・配信タスク
+## 実行目的
+前日の日報テンプレートを自動生成し、対象エンジニア全員に配信する。
 
-## タスク概要
-前日の日報テンプレートを自動生成し、全エンジニアに配信してください。
-
-## 実行パラメータ
-- 対象日付: ${targetDate}
-- 報告期限: ${reportingDeadline}
+## 入力情報
+- 対象日付: ${input.targetDate}
+- 報告期限: ${input.reportingDeadline}
 - 対象エンジニア: ${engineerNames}
-- 配信先メール: ${recipientEmails}
+- 配信チャネル: ${channelList}
+- 日報管理システムURL: ${input.systemContext.reportManagementSystemUrl}
 
-## 日報テンプレート生成要件
-1. 前日の実績入力セクション
-   - 実装した機能
-   - 修正したバグ
-   - 完了したタスク
-   - 実績の詳細説明
+## 実行タスク
+1. 前日の日報テンプレートを生成する
+   - 昨日の実績入力欄
+   - 本日の予定入力欄
+   - 抱えている課題入力欄
+   - 必須項目の明示
 
-2. 本日の予定入力セクション
-   - 予定している実装内容
-   - 予定しているレビュー
-   - 予定しているテスト
-   - 本日の優先順位
+2. テンプレート配信計画を立案する
+   - 配信対象: 全エンジニア
+   - 配信チャネル: ${channelList}
+   - 配信スケジュール: 朝会開始の1時間前
 
-3. 抱えている課題入力セクション
-   - 現在の課題
-   - 課題の詳細
-   - 必要なサポート
-   - 課題の優先度
-
-## 配信計画
-- 配信先: ${systemContext.notificationChannels.join(", ")}
-- 配信URL: ${systemContext.reportManagementSystemUrl}
-- 配信方法: メール + システム内通知
-- 期限: ${reportingDeadline}
-
-## 妥当性検証ルール
-- すべてのセクションが入力可能な形式であること
-- 入力フィールドが明確に区別されていること
-- 文字数制限が適切に設定されていること
-- 必須項目と任意項目が明確に区別されていること
+3. 入力内容の妥当性検証ルールを定義する
+   - 必須項目の入力確認
+   - 文字数制限の設定
+   - 形式チェック項目
 
 ## 出力形式
-生成したテンプレートと配信計画を以下の構造で返してください:
+以下の構造でJSON形式で返却する:
 {
-  "templateContent": "生成されたテンプレートのHTML/テキスト",
+  "templateId": "テンプレートの一意識別子",
+  "templateContent": "HTML形式のテンプレート内容",
   "distributionPlan": {
-    "recipients": ["email1@example.com", "email2@example.com"],
-    "deliveryMethod": "email_and_system_notification",
-    "scheduledTime": "ISO8601形式の配信予定時刻"
+    "recipients": ["エンジニアメールアドレス配列"],
+    "scheduledTime": "ISO8601形式の配信予定時刻",
+    "channels": ["配信チャネル配列"]
   },
   "validationRules": [
     {
@@ -100,7 +82,10 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
       "errorMessage": "エラーメッセージ"
     }
   ]
-}`;
+}
 
-  return prompt;
+## 制約条件
+- テンプレートは全エンジニアで統一
+- 配信時刻は朝会開始の1時間前に固定
+- 検証ルールは厳密だが、エンジニアの負担を増やさない範囲で設定`;
 }

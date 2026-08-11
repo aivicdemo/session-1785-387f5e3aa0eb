@@ -4,110 +4,94 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  submissionDeadline: string;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
-    department: string;
-    email: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
-  systemTime: string;
+  reportingDeadline: string;
+  overdueThresholdHours: number;
+  notificationChannels: string[];
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Action02PromptOutput {
-  version: string;
-  timestamp: string;
   prompt: string;
+  version: string;
+  metadata: {
+    actionNumber: 2;
+    contractId: "tx_2_imp_1";
+    purpose: string;
+    expectedOutput: string;
+  };
 }
 
 export function buildAction02Prompt(
   input: Action02PromptInput
 ): Action02PromptOutput {
-  const unsubmittedMembers = input.reportingMembers.filter(
-    (member) =>
-      !input.submittedReports.some((report) => report.memberId === member.memberId)
-  );
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    notificationChannels,
+    escalationRules,
+  } = input;
 
-  const delayedMembers = input.submittedReports.filter((report) => {
-    const submittedTime = new Date(report.submittedAt);
-    const deadline = new Date(input.submissionDeadline);
-    return submittedTime > deadline;
-  });
+  const prompt = `You are an AI agent responsible for Action 2 of the tx_2_imp_1 contract: "未提出者と遅延者を自動判定する" (Automatically identify non-submitters and delayed submitters).
 
-  const delayedMemberDetails = delayedMembers
-    .map((report) => {
-      const member = input.reportingMembers.find(
-        (m) => m.memberId === report.memberId
-      );
-      return member
-        ? {
-            memberId: member.memberId,
-            memberName: member.memberName,
-            department: member.department,
-            email: member.email,
-            submittedAt: report.submittedAt,
-          }
-        : null;
-    })
-    .filter((item) => item !== null);
+Your task is to:
+1. Analyze the current report submission status across all team members
+2. Identify members who have not submitted their reports by the deadline: ${reportingDeadline}
+3. Identify members whose reports are overdue by more than ${overdueThresholdHours} hours
+4. Classify each member into one of these categories:
+   - "on_time": Report submitted before deadline
+   - "delayed": Report submitted after deadline but within grace period
+   - "overdue": Report not submitted or severely overdue
+   - "not_submitted": No report received
 
-  const prompt = `
-You are an AI agent responsible for identifying non-submitted and delayed daily reports.
+Input data will include:
+- Team member list with IDs and names
+- Report submission timestamps for each member
+- Current system time
 
-Current System Time: ${input.systemTime}
-Submission Deadline: ${input.submissionDeadline}
-
-Total Reporting Members: ${input.reportingMembers.length}
-Total Submitted Reports: ${input.submittedReports.length}
-
-Non-Submitted Members (${unsubmittedMembers.length}):
-${unsubmittedMembers.map((m) => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join("\n")}
-
-Delayed Submissions (${delayedMemberDetails.length}):
-${delayedMemberDetails.map((m) => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email} - Submitted at: ${m.submittedAt}`).join("\n")}
-
-Task:
-1. Analyze the submission status of all reporting members
-2. Identify members who have not submitted their daily reports
-3. Identify members who submitted after the deadline
-4. Create a comprehensive list of non-submitted and delayed members
-5. Prepare notification content for the department head
-
-Output Format:
+Output format must be JSON with the following structure:
 {
-  "nonSubmittedCount": number,
-  "delayedCount": number,
-  "nonSubmittedMembers": [
-    {
-      "memberId": string,
-      "memberName": string,
-      "department": string,
-      "email": string
+  "timestamp": "ISO 8601 timestamp",
+  "analysis_period": {
+    "deadline": "${reportingDeadline}",
+    "threshold_hours": ${overdueThresholdHours}
+  },
+  "results": {
+    "on_time": [{ "member_id": string, "member_name": string, "submitted_at": string }],
+    "delayed": [{ "member_id": string, "member_name": string, "submitted_at": string, "delay_minutes": number }],
+    "overdue": [{ "member_id": string, "member_name": string, "last_submission": string | null, "overdue_hours": number }],
+    "not_submitted": [{ "member_id": string, "member_name": string }]
+  },
+  "summary": {
+    "total_members": number,
+    "submitted_count": number,
+    "not_submitted_count": number,
+    "delayed_count": number,
+    "on_time_percentage": number
+  },
+  "notification_targets": {
+    "channels": ${JSON.stringify(notificationChannels)},
+    "escalation_config": {
+      "max_reminders": ${escalationRules.maxReminders},
+      "reminder_interval_minutes": ${escalationRules.reminderIntervalMinutes}
     }
-  ],
-  "delayedMembers": [
-    {
-      "memberId": string,
-      "memberName": string,
-      "department": string,
-      "email": string,
-      "submittedAt": string,
-      "delayMinutes": number
-    }
-  ],
-  "notificationRequired": boolean,
-  "urgencyLevel": "low" | "medium" | "high"
+  }
 }
-`;
+
+Ensure accuracy in timestamp comparisons and member categorization. Handle edge cases where submission times are exactly at the deadline boundary.`;
 
   return {
-    version: ACTION_02_PROMPT_VERSION,
-    timestamp: new Date().toISOString(),
     prompt,
+    version: ACTION_02_PROMPT_VERSION,
+    metadata: {
+      actionNumber: 2,
+      contractId: "tx_2_imp_1",
+      purpose:
+        "Automatically identify non-submitters and delayed submitters from report submission status",
+      expectedOutput:
+        "JSON object containing categorized member lists and submission analysis",
+    },
   };
 }

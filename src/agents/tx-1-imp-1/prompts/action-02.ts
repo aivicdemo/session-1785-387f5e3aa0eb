@@ -66,38 +66,19 @@ ${engineerInputData.currentIssues}
 - Allowed issue categories: ${validationRules.allowedIssueCategories.join(", ")}
 
 ## Validation Tasks
-1. Check if all required fields are filled with sufficient content
-2. Verify that the content is appropriate and coherent
-3. Identify any missing or incomplete information
-4. Detect any anomalies or unusual patterns in the input
-5. Validate that issue descriptions fall within allowed categories
+1. Check if each field meets the minimum length requirement
+2. Verify that issue descriptions are clear and actionable
+3. Ensure that today's plans are realistic and aligned with yesterday's accomplishments
+4. Identify any inconsistencies or red flags in the input
+5. Validate that issue categories (if mentioned) are within allowed categories
 
 ## Output Format
-Provide validation results in the following JSON structure:
-{
-  "isValid": boolean,
-  "errors": [
-    {
-      "field": string,
-      "message": string,
-      "severity": "critical" | "high"
-    }
-  ],
-  "warnings": [
-    {
-      "field": string,
-      "message": string
-    }
-  ],
-  "summary": string
-}
+Provide validation results in the following structure:
+- isValid: boolean (true if all critical validations pass)
+- errors: array of objects with {field, message, severity}
+- warnings: array of objects with {field, message}
 
-## Validation Criteria
-- Critical errors: Missing required fields or content below minimum length
-- High errors: Content that appears incomplete or inappropriate
-- Warnings: Suggestions for improvement or minor issues
-
-Perform thorough validation and return the results.`;
+Return only the JSON structure without additional explanation.`;
 
   return prompt;
 }

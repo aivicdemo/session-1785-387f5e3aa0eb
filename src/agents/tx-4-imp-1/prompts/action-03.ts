@@ -3,134 +3,135 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03Context {
+interface Action03PromptInput {
   reportContent: string;
-  extractedIssues: Array<{
-    id: string;
+  employeeId: string;
+  employeeName: string;
+  departmentId: string;
+  departmentName: string;
+  reportDate: string;
+  extractedIssues?: Array<{
+    issueId: string;
     title: string;
     description: string;
     category: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
+  previousPrioritizedIssues?: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    status: "open" | "in_progress" | "resolved";
   }>;
-  priorityFramework: {
-    criteria: string[];
-    levels: string[];
+}
+
+interface Action03PromptOutput {
+  version: string;
+  prompt: string;
+  systemRole: string;
+  instructions: string[];
+  context: {
+    action: string;
+    step: number;
+    totalSteps: number;
+    purpose: string;
   };
 }
 
-interface Action03Result {
-  classifiedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-    priority: string;
-    affectedMembers: string[];
-    estimatedImpact: string;
-    recommendedAction: string;
-  }>;
-  priorityGroups: {
-    critical: Array<{
-      id: string;
-      title: string;
-      priority: string;
-    }>;
-    high: Array<{
-      id: string;
-      title: string;
-      priority: string;
-    }>;
-    medium: Array<{
-      id: string;
-      title: string;
-      priority: string;
-    }>;
-    low: Array<{
-      id: string;
-      title: string;
-      priority: string;
-    }>;
+function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const systemRole =
+    "You are an AI agent responsible for extracting and prioritizing issues from daily reports in the morning meeting report management system. Your role is to analyze report content, identify bottlenecks and challenges, and assign priority levels based on impact and urgency.";
+
+  const instructions = [
+    "Analyze the provided report content for the employee and department",
+    "Identify all issues, challenges, and bottlenecks mentioned in the report",
+    "Categorize each issue by type (technical, process, resource, communication, other)",
+    "Assess the impact level of each issue (critical, high, medium, low)",
+    "Determine urgency based on timeline and dependencies",
+    "Cross-reference with previously prioritized issues to track status changes",
+    "Generate a prioritized list of issues for the morning meeting",
+    "Provide recommendations for issue resolution or escalation",
+  ];
+
+  const context = {
+    action: "Extract and prioritize issues from daily reports",
+    step: 3,
+    totalSteps: 6,
+    purpose:
+      "Automatically extract challenges and bottlenecks from daily reports and assign priority levels to help leadership focus on critical issues during the morning meeting",
   };
-  summaryAnalysis: {
-    totalIssuesIdentified: number;
-    criticalIssueCount: number;
-    affectedTeamCount: number;
-    recommendedFocusAreas: string[];
+
+  const reportSection = input.reportContent
+    ? `Report Content:\n${input.reportContent}\n`
+    : "";
+
+  const previousIssuesSection =
+    input.previousPrioritizedIssues && input.previousPrioritizedIssues.length > 0
+      ? `Previous Prioritized Issues:\n${input.previousPrioritizedIssues
+          .map(
+            (issue) =>
+              `- ${issue.issueId}: Priority ${issue.priority}, Status: ${issue.status}`
+          )
+          .join("\n")}\n`
+      : "";
+
+  const extractedIssuesSection =
+    input.extractedIssues && input.extractedIssues.length > 0
+      ? `Already Extracted Issues:\n${input.extractedIssues
+          .map(
+            (issue) =>
+              `- ${issue.issueId}: ${issue.title} (${issue.category})\n  ${issue.description}`
+          )
+          .join("\n")}\n`
+      : "";
+
+  const prompt = `
+Task: Extract and prioritize issues from the daily report
+
+Employee: ${input.employeeName} (ID: ${input.employeeId})
+Department: ${input.departmentName} (ID: ${input.departmentId})
+Report Date: ${input.reportDate}
+
+${reportSection}
+${extractedIssuesSection}
+${previousIssuesSection}
+
+Please perform the following analysis:
+
+1. Issue Extraction:
+   - Identify all explicit and implicit issues mentioned in the report
+   - Extract challenges, blockers, and bottlenecks
+   - Note any resource constraints or dependencies
+
+2. Categorization:
+   - Classify each issue by type
+   - Group related issues together
+   - Identify root causes where possible
+
+3. Priority Assessment:
+   - Evaluate impact on project timeline
+   - Consider business criticality
+   - Assess resource requirements for resolution
+   - Determine urgency based on deadlines and dependencies
+
+4. Status Tracking:
+   - Compare with previously identified issues
+   - Track resolution progress
+   - Identify recurring issues
+
+5. Recommendations:
+   - Suggest escalation path if needed
+   - Recommend immediate actions
+   - Identify dependencies on other teams
+
+Output a structured analysis with prioritized issue list suitable for morning meeting discussion.
+`;
+
+  return {
+    version: ACTION_03_PROMPT_VERSION,
+    prompt,
+    systemRole,
+    instructions,
+    context,
   };
-}
-
-function buildAction03Prompt(context: Action03Context): string {
-  const issuesSection = context.extractedIssues
-    .map(
-      (issue, index) =>
-        `${index + 1}. [${issue.category}] ${issue.title}\n   詳細: ${issue.description}`
-    )
-    .join("\n");
-
-  const criteriaSection = context.priorityFramework.criteria
-    .map((criterion, index) => `${index + 1}. ${criterion}`)
-    .join("\n");
-
-  const levelsSection = context.priorityFramework.levels.join(" > ");
-
-  const prompt = `あなたは日報から抽出された課題の優先度判定と分類を行うAIエージェントです。
-
-【タスク】
-以下の抽出済み課題に対して、優先度を判定し、分類してください。
-
-【抽出済み課題一覧】
-${issuesSection}
-
-【優先度判定基準】
-${criteriaSection}
-
-【優先度レベル】
-${levelsSection}
-
-【チームメンバー情報】
-${context.teamMembers.map((member) => `- ${member.name} (${member.department})`).join("\n")}
-
-【実行内容】
-1. 各課題について、提供された基準に基づいて優先度を判定してください
-2. 課題を優先度レベル別に分類してください
-3. 各課題の影響範囲と推奨アクションを記述してください
-4. 全体的な課題分析サマリーを作成してください
-
-【出力形式】
-JSON形式で以下の構造で返してください：
-{
-  "classifiedIssues": [
-    {
-      "id": "issue_id",
-      "title": "課題タイトル",
-      "description": "課題説明",
-      "category": "カテゴリ",
-      "priority": "優先度レベル",
-      "affectedMembers": ["member_id1", "member_id2"],
-      "estimatedImpact": "影響度の説明",
-      "recommendedAction": "推奨アクション"
-    }
-  ],
-  "priorityGroups": {
-    "critical": [...],
-    "high": [...],
-    "medium": [...],
-    "low": [...]
-  },
-  "summaryAnalysis": {
-    "totalIssuesIdentified": number,
-    "criticalIssueCount": number,
-    "affectedTeamCount": number,
-    "recommendedFocusAreas": ["focus_area1", "focus_area2"]
-  }
-}`;
-
-  return prompt;
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03Context, Action03Result };

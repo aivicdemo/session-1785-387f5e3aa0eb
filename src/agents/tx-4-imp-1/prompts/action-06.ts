@@ -26,19 +26,20 @@ export interface Action06PromptInput {
     actionNumber: number;
     result: string;
   }>;
-  escalationFlags: string[];
+  escalationFlags?: string[];
 }
 
 export interface Action06PromptOutput {
   reportContent: string;
-  formattedReport: {
+  prioritizedIssuesList: Array<{
+    rank: number;
+    issueId: string;
     title: string;
-    sections: Array<{
-      heading: string;
-      content: string;
-    }>;
-  };
-  presentationReady: boolean;
+    priority: "critical" | "high" | "medium" | "low";
+    recommendedAction: string;
+    estimatedImpact: string;
+  }>;
+  readinessForMeeting: boolean;
   escalationRequired: boolean;
   escalationReason?: string;
 }
@@ -47,61 +48,72 @@ export function buildAction06Prompt(input: Action06PromptInput): string {
   const {
     context,
     previousActions,
-    escalationFlags,
+    escalationFlags = [],
   } = input;
 
-  const actionHistory = previousActions
+  const previousActionsText = previousActions
     .map(
       (action) =>
         `Action ${action.actionNumber}: ${action.result}`
     )
     .join("\n");
 
-  const issuesFormatted = context.extractedIssues
-    .map((issue) => {
-      const priority = context.priorityAssignments.find(
-        (p) => p.issueId === issue.id
-      );
-      return `- [${priority?.priority.toUpperCase() || "UNASSIGNED"}] ${issue.title}: ${issue.description} (Category: ${issue.category})`;
-    })
-    .join("\n");
-
-  const escalationSection =
+  const escalationFlagsText =
     escalationFlags.length > 0
-      ? `\n\nEscalation Flags Detected:\n${escalationFlags.map((flag) => `- ${flag}`).join("\n")}`
+      ? `\n\nEscalation Flags:\n${escalationFlags.join("\n")}`
       : "";
 
-  const prompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
+  const issuesText = context.extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.id}] ${issue.title} (${issue.category}): ${issue.description}`
+    )
+    .join("\n");
+
+  const priorityText = context.priorityAssignments
+    .map(
+      (assignment) =>
+        `- Issue ${assignment.issueId}: ${assignment.priority.toUpperCase()} - ${assignment.reasoning}`
+    )
+    .join("\n");
+
+  const prompt = `You are an AI agent responsible for finalizing the daily report analysis and presenting prioritized issues to the department head.
 
 ## Context
-- Reporting Date: ${context.reportingDate}
+- Report Date: ${context.reportingDate}
 - Department Head: ${context.departmentHead}
 - Report Summary: ${context.reportSummary}
 
 ## Previous Actions Completed
-${actionHistory}
+${previousActionsText}
 
-## Extracted Issues and Priorities
-${issuesFormatted}
-${escalationSection}
+## Extracted Issues
+${issuesText}
+
+## Current Priority Assignments
+${priorityText}
+${escalationFlagsText}
 
 ## Your Task
-You must now prepare a comprehensive, well-formatted report that:
-1. Presents the overall progress status in a clear, executive-friendly format
-2. Lists all extracted issues with their assigned priorities
-3. Highlights any escalation flags that require immediate attention
-4. Provides actionable recommendations based on the priority classification
-5. Ensures the report is ready for presentation to the department head
+1. Review all extracted issues and their current priority assignments
+2. Validate the priority assignments based on business impact and urgency
+3. Create a final prioritized issues list ranked by importance
+4. Determine if the report is ready for the morning meeting
+5. Identify any escalation requirements
 
 ## Output Requirements
-- Generate a professional report that can be directly presented to leadership
-- Clearly separate critical and high-priority issues from routine items
-- Include a brief executive summary at the top
-- Organize issues by priority level
-- Flag any items requiring escalation or immediate action
-- Ensure all information is accurate and based on the previous action results
+Provide a structured response with:
+- Final prioritized issues list (ranked 1-N)
+- For each issue: rank, ID, title, priority level, recommended action, and estimated impact
+- Meeting readiness status (true/false)
+- Escalation requirement status (true/false)
+- If escalation required, provide the reason
 
-Please generate the final presentation-ready report now.`;
+## Constraints
+- Prioritize issues that could block team progress
+- Consider dependencies between issues
+- Flag any critical risks that need immediate attention
+- Ensure the report is comprehensive yet concise for the morning meeting`;
 
   return prompt;
 }

@@ -13,61 +13,108 @@ export interface Action05Context {
     issues: string;
   };
   submissionDeadline: string;
-  managementSystemUrl: string;
-  adminEmails: string[];
+  systemRegistrationStatus: "pending" | "success" | "failed";
+  registrationErrorMessage?: string;
 }
 
 export interface Action05PromptResult {
   version: string;
-  action: number;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action05Context;
+  action: "send_confirmation_email";
+  targetAdminEmails: string[];
+  emailSubject: string;
+  emailBody: string;
+  reportSummary: {
+    engineerId: string;
+    engineerName: string;
+    reportDate: string;
+    registrationTimestamp: string;
+    registrationStatus: "success" | "failed";
+  };
+  nextAction: "monitor_submission" | "escalate_error";
+  escalationReason?: string;
 }
 
-export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
-  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system and sending confirmation emails to administrators.
+export function buildAction05Prompt(context: Action05Context): string {
+  const {
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemRegistrationStatus,
+    registrationErrorMessage,
+  } = context;
 
-Your task is to:
-1. Register the engineer's daily report into the management system using the provided API
-2. Validate that the registration was successful
-3. Send confirmation emails to all administrators with the report summary
-4. Log the submission and email delivery status
+  const statusSection =
+    systemRegistrationStatus === "success"
+      ? `日報登録ステータス: 成功
+登録完了時刻: ${new Date().toISOString()}
+次のアクション: 管理者に確認メールを送信`
+      : `日報登録ステータス: 失敗
+エラー内容: ${registrationErrorMessage || "不明なエラー"}
+次のアクション: エスカレーション対応`;
 
-You must ensure:
-- The report is accurately registered with all required fields
-- Confirmation emails are sent to all specified administrators
-- The submission timestamp is recorded correctly
-- Any errors during registration or email sending are properly handled and reported`;
+  const prompt = `# Action 05: 日報登録完了後の確認メール自動配信
 
-  const userPrompt = `Please register the following daily report and send confirmation emails:
+## 実行コンテキスト
+- エンジニアID: ${engineerId}
+- エンジニア名: ${engineerName}
+- 報告日: ${reportDate}
+- 提出期限: ${submissionDeadline}
 
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
+## 登録内容
+### 昨日の実績
+${previousReportContent.yesterday}
 
-Report Content:
-- Yesterday's Achievements: ${context.previousReportContent.yesterday}
-- Today's Plan: ${context.previousReportContent.today}
-- Current Issues: ${context.previousReportContent.issues}
+### 本日の予定
+${previousReportContent.today}
 
-System Details:
-- Management System URL: ${context.managementSystemUrl}
-- Submission Deadline: ${context.submissionDeadline}
-- Administrator Emails: ${context.adminEmails.join(", ")}
+### 抱えている課題
+${previousReportContent.issues}
 
-Please:
-1. Register this report in the management system
-2. Send confirmation emails to all administrators
-3. Confirm successful completion with timestamps
-4. Report any errors encountered`;
+## 登録結果
+${statusSection}
 
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    action: 5,
-    systemPrompt,
-    userPrompt,
-    context,
-  };
+## 指示
+以下の条件に基づいて、適切なアクションを実行してください:
+
+1. **登録成功時**:
+   - 管理者メールアドレス一覧に確認メールを自動配信
+   - メール件名: "[日報確認] ${engineerName}さんの日報が登録されました (${reportDate})"
+   - メール本文に以下を含める:
+     * エンジニア名と報告日
+     * 昨日の実績・本日の予定・課題の要約
+     * 登録完了時刻
+     * 朝会での確認予定時刻
+
+2. **登録失敗時**:
+   - エスカレーション判定を実施
+   - 失敗原因がシステムエラーか入力エラーかを分類
+   - 対応方針を決定 (再試行 / 手動対応 / エンジニアへの連絡)
+
+3. **メール配信の注意点**:
+   - スパム判定を避けるため、送信元を明確に設定
+   - 配信失敗時のリトライロジックを適用
+   - 配信結果をログに記録
+
+## 出力形式
+JSON形式で以下の構造で返却してください:
+{
+  "version": "1.0.0",
+  "action": "send_confirmation_email" | "escalate_error",
+  "targetAdminEmails": ["admin1@example.com", "admin2@example.com"],
+  "emailSubject": "メール件名",
+  "emailBody": "メール本文",
+  "reportSummary": {
+    "engineerId": "${engineerId}",
+    "engineerName": "${engineerName}",
+    "reportDate": "${reportDate}",
+    "registrationTimestamp": "ISO8601形式の登録完了時刻",
+    "registrationStatus": "success" | "failed"
+  },
+  "nextAction": "monitor_submission" | "escalate_error",
+  "escalationReason": "エスカレーション理由 (失敗時のみ)"
+}`;
+
+  return prompt;
 }

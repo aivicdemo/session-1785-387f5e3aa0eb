@@ -26,44 +26,44 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     systemContext = "",
   } = input;
 
-  const previousContentSection =
+  const previousReportSection =
     previousReportContent.length > 0
-      ? `
-前日の日報内容:
-${previousReportContent}
-
-前日の内容を参考にしながら、本日の日報を作成してください。`
+      ? `\n\n## 前日の日報内容\n${previousReportContent}`
       : "";
 
   const systemContextSection =
     systemContext.length > 0
-      ? `
-システムコンテキスト:
-${systemContext}`
+      ? `\n\n## システムコンテキスト\n${systemContext}`
       : "";
 
-  return `あなたは朝会報告管理システムのAIエージェントです。
+  return `# 日報テンプレート自動生成プロンプト
 
-【タスク】
-エンジニア「${engineerName}」(ID: ${engineerId})に対して、${reportDate}の日報テンプレートを自動生成して配信してください。
+## 目的
+エンジニア向けの日報テンプレートを自動生成し、入力を促進する。
 
-【日報テンプレートの構成】
-1. 昨日の実績（具体的な成果、完了したタスク）
-2. 本日の予定（予定されているタスク、目標）
-3. 抱えている課題（現在の問題、ボトルネック、懸念事項）
+## 対象者情報
+- エンジニア名: ${engineerName}
+- エンジニアID: ${engineerId}
+- 報告日: ${reportDate}
 
-【要件】
-- テンプレートは明確で、エンジニアが簡潔に入力できる形式にする
-- 前日の日報がある場合は参考情報として提供する
-- 配信チャネルはメール、チャット、システム内通知から適切に選択する
-- 配信時刻は朝会開始の1時間前を目安とする
-- テンプレートは日本語で、敬語を使わず親切な指示文にする${previousContentSection}${systemContextSection}
+## 生成要件
+1. 前日の実績入力セクション
+2. 本日の予定入力セクション
+3. 抱えている課題入力セクション
+4. 提出期限と注意事項
 
-【出力形式】
-以下のJSON形式で出力してください:
-{
-  "templateContent": "生成されたテンプレートの完全なテキスト",
-  "distributionChannels": ["email", "chat", "system_notification"],
-  "scheduledTime": "HH:MM形式の配信予定時刻"
-}`;
+## テンプレート生成ガイドライン
+- 簡潔で入力しやすい形式にする
+- 必須項目と任意項目を明確に区別する
+- 前日の内容を参考にしながら、本日の予定を立てやすくする
+- 課題は具体的かつ解決可能な形で記述するよう促す
+${previousReportSection}${systemContextSection}
+
+## 出力形式
+生成されたテンプレートは以下の構造を持つこと:
+- 日報ヘッダー（日付、エンジニア名）
+- 前日実績セクション
+- 本日予定セクション
+- 課題セクション
+- 提出ボタンと期限表示`;
 }

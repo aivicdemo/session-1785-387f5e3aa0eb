@@ -5,12 +5,9 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  oversightThreshold: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalHours: number;
-  };
+  overdueThresholdHours: number;
+  escalationContactEmail: string;
+  systemName: string;
 }
 
 interface Action03PromptOutput {
@@ -20,80 +17,69 @@ interface Action03PromptOutput {
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting and delayed report submissions, and determining escalation targets for follow-up notifications.
+  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails and sending automated reminders.
 
 Your role:
-- Analyze confirmation email contents to identify which team members have not submitted reports
-- Distinguish between non-reporters and those who submitted late
-- Apply escalation rules to determine which members require follow-up notifications
-- Generate a structured list of escalation targets with reasoning
+- Parse confirmation email content to identify which team members have not submitted reports
+- Determine which members are overdue based on the deadline: ${input.reportingDeadline}
+- Classify members into two categories: unreported (no submission) and delayed (submitted after deadline)
+- Generate reminder notifications for both categories
+- Log all actions for audit purposes
 
-Escalation Rules:
-- Maximum reminders per member: ${input.escalationRules.maxReminders}
-- Reminder interval: ${input.escalationRules.reminderIntervalHours} hours
-- Reporting deadline: ${input.reportingDeadline}
-- Current time: ${input.currentTime}
-- Oversight threshold (minutes): ${input.oversightThreshold}
+Escalation contact for critical issues: ${input.escalationContactEmail}
+System name: ${input.systemName}
 
-Output format:
-Return a JSON object with:
+Guidelines:
+- Use the overdueThresholdHours parameter (${input.overdueThresholdHours} hours) to determine if a submission is considered delayed
+- Ensure all reminder messages are professional and non-accusatory
+- Maintain a record of reminder attempts to prevent duplicate notifications
+- Flag any system errors or unusual patterns for human review`;
+
+  const userPromptTemplate = `Please analyze the following confirmation email content and identify unreported and delayed team members:
+
+Email Content:
+{emailContent}
+
+Reporting Deadline: ${input.reportingDeadline}
+Current Timestamp: {currentTimestamp}
+Overdue Threshold: ${input.overdueThresholdHours} hours
+
+Please provide:
+1. List of unreported members (no submission received)
+2. List of delayed members (submitted after deadline)
+3. Recommended reminder message for each category
+4. Any anomalies or escalation flags
+
+Format your response as structured JSON with the following schema:
 {
-  "nonReporters": [
+  "unreportedMembers": [
     {
-      "memberId": string,
-      "memberName": string,
-      "lastReminderTime": string | null,
-      "reminderCount": number,
-      "shouldEscalate": boolean,
-      "reason": string
+      "memberId": "string",
+      "memberName": "string",
+      "email": "string"
     }
   ],
-  "delayedReporters": [
+  "delayedMembers": [
     {
-      "memberId": string,
-      "memberName": string,
-      "submissionTime": string,
-      "delayMinutes": number,
-      "shouldEscalate": boolean,
-      "reason": string
+      "memberId": "string",
+      "memberName": "string",
+      "email": "string",
+      "submissionTime": "ISO8601 timestamp",
+      "delayHours": number
     }
   ],
-  "escalationTargets": [
+  "reminderMessages": {
+    "unreported": "string",
+    "delayed": "string"
+  },
+  "escalationFlags": [
     {
-      "memberId": string,
-      "memberName": string,
-      "escalationType": "non-report" | "delayed",
-      "priority": "high" | "medium" | "low",
-      "notificationChannels": ("email" | "chat")[],
-      "message": string
+      "type": "string",
+      "description": "string",
+      "severity": "low" | "medium" | "high"
     }
-  ],
-  "summary": {
-    "totalNonReporters": number,
-    "totalDelayedReporters": number,
-    "totalEscalationTargets": number,
-    "generatedAt": string
-  }
+  ]
 }`;
-
-  const userPromptTemplate = `Analyze the following confirmation email contents and team member submission data to identify non-reporters and delayed submissions.
-
-Confirmation Email Contents:
-\${confirmationEmailContent}
-
-Team Member Data:
-\${teamMemberData}
-
-Previous Reminder History:
-\${reminderHistory}
-
-Based on the escalation rules and current time (${input.currentTime}), determine:
-1. Which team members have not submitted reports
-2. Which team members submitted reports after the deadline (${input.reportingDeadline})
-3. Which members should receive follow-up notifications based on reminder count and interval
-4. The priority and notification channels for each escalation target
-
-Provide your analysis in the specified JSON format.`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,

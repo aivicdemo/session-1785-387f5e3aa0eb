@@ -38,7 +38,7 @@ export interface SendConfirmationEmailResponse {
 export async function sendConfirmationEmail(
   request: SendConfirmationEmailRequest
 ): Promise<SendConfirmationEmailResponse> {
-  if (request.manager_email === null) {
+  if (!request.manager_email) {
     return {
       success: false,
       error: 'TypeError: 部長メールアドレスがnull',

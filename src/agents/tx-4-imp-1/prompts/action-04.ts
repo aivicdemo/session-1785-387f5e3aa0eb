@@ -24,69 +24,135 @@ export interface Action04Context {
 }
 
 export interface Action04Input {
-  reportId: string;
-  reportContent: string;
-  previousContext?: Action04Context;
-  departmentHead: string;
-  reportingDate: string;
+  confirmationEmailContent: string;
+  collectedReports: Array<{
+    engineerId: string;
+    reportText: string;
+    submittedAt: string;
+  }>;
+  previousPriorityContext?: {
+    historicalIssues: Array<{
+      title: string;
+      priority: string;
+      resolution: string;
+    }>;
+  };
 }
 
 export interface Action04Output {
-  success: boolean;
-  context: Action04Context;
-  prioritizedIssuesList: Array<{
-    rank: number;
-    issueId: string;
-    title: string;
-    priority: "critical" | "high" | "medium" | "low";
-    description: string;
-    category: string;
-    reasoning: string;
-    escalationRequired: boolean;
-  }>;
-  reportSummary: string;
-  timestamp: string;
+  priorityClassification: {
+    critical: Array<{
+      issueId: string;
+      title: string;
+      affectedEngineers: string[];
+      estimatedImpact: string;
+    }>;
+    high: Array<{
+      issueId: string;
+      title: string;
+      affectedEngineers: string[];
+      estimatedImpact: string;
+    }>;
+    medium: Array<{
+      issueId: string;
+      title: string;
+      affectedEngineers: string[];
+      estimatedImpact: string;
+    }>;
+    low: Array<{
+      issueId: string;
+      title: string;
+      affectedEngineers: string[];
+      estimatedImpact: string;
+    }>;
+  };
+  escalationRequired: boolean;
+  escalationReasons: string[];
+  reportSummary: {
+    totalReportsCollected: number;
+    totalIssuesExtracted: number;
+    criticalIssueCount: number;
+    recommendedActions: string[];
+  };
 }
 
 export function buildAction04Prompt(input: Action04Input): string {
-  const basePrompt = `You are an AI agent responsible for Action 4 of the Daily Report Management System (tx-4-imp-1).
+  const reportSummary = input.collectedReports
+    .map(
+      (report) =>
+        `Engineer ${report.engineerId} (submitted at ${report.submittedAt}):\n${report.reportText}`
+    )
+    .join("\n\n");
 
-Your task is to analyze the provided report content and perform the following:
-1. Extract key issues and bottlenecks from the report
-2. Categorize each issue appropriately
-3. Assign priority levels (critical, high, medium, low) to each issue
-4. Identify any issues that require human review or escalation
-5. Generate a prioritized issues list for the department head
+  const historicalContext =
+    input.previousPriorityContext?.historicalIssues
+      ?.map(
+        (issue) =>
+          `- ${issue.title}: Priority was ${issue.priority}, resolved by ${issue.resolution}`
+      )
+      .join("\n") || "No historical context available";
 
-Report ID: ${input.reportId}
-Reporting Date: ${input.reportingDate}
-Department Head: ${input.departmentHead}
+  return `You are an AI agent responsible for analyzing collected daily reports and classifying issues by priority.
 
-Report Content:
-${input.reportContent}
+## Task: Classify Issues by Priority and Identify Escalation Cases
 
-${
-  input.previousContext
-    ? `
-Previous Context:
-- Previously Extracted Issues: ${input.previousContext.extractedIssues.length}
-- Previous Priority Assignments: ${input.previousContext.priorityAssignments.length}
-- Previous Escalation Flags: ${input.previousContext.escalationFlags.length}
-`
-    : ""
+### Confirmation Email Content:
+${input.confirmationEmailContent}
+
+### Collected Reports:
+${reportSummary}
+
+### Historical Priority Context:
+${historicalContext}
+
+## Instructions:
+
+1. **Extract and Analyze Issues**: Review all collected reports and identify distinct issues, blockers, and bottlenecks mentioned.
+
+2. **Classify by Priority**: Assign each issue to one of four priority levels:
+   - **Critical**: Blocks multiple engineers or entire team progress; requires immediate action
+   - **High**: Impacts project timeline or multiple team members; should be addressed today
+   - **Medium**: Affects individual engineer or specific task; can be scheduled for resolution
+   - **Low**: Minor issues or nice-to-have improvements; can be deferred
+
+3. **Identify Affected Engineers**: For each issue, list which engineers are affected based on report content.
+
+4. **Estimate Impact**: Provide brief impact assessment (e.g., "Blocks 3 engineers", "Delays feature by 1 day").
+
+5. **Flag Escalation Cases**: Identify issues that require human review:
+   - Issues affecting critical path or multiple teams
+   - Recurring issues from previous days
+   - Issues with unclear resolution path
+   - Potential resource conflicts
+
+6. **Generate Recommendations**: Suggest immediate actions for critical/high priority issues.
+
+## Output Format:
+
+Provide a JSON response with the following structure:
+{
+  "priorityClassification": {
+    "critical": [
+      {
+        "issueId": "string (unique identifier)",
+        "title": "string",
+        "affectedEngineers": ["engineer1", "engineer2"],
+        "estimatedImpact": "string"
+      }
+    ],
+    "high": [...],
+    "medium": [...],
+    "low": [...]
+  },
+  "escalationRequired": boolean,
+  "escalationReasons": ["reason1", "reason2"],
+  "reportSummary": {
+    "totalReportsCollected": number,
+    "totalIssuesExtracted": number,
+    "criticalIssueCount": number,
+    "recommendedActions": ["action1", "action2"]
+  }
 }
 
-Please analyze the report and provide:
-1. A list of extracted issues with descriptions and categories
-2. Priority assignments for each issue with reasoning
-3. Escalation flags for issues requiring human review
-4. A concise summary of the overall report status
-
-Ensure that:
-- Critical issues are identified and flagged appropriately
-- Priority assignments are consistent and well-reasoned
-- Escalation decisions are based on clear criteria
-- The output is structured and actionable for the department head`;
-
-  return basePrompt;
+Ensure all issues are classified and escalation flags are set appropriately for management review.`;
 }

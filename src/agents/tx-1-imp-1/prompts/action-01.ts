@@ -8,7 +8,7 @@ export interface Action01Context {
   engineerName: string;
   previousDayReportDate: string;
   reportDeadline: string;
-  systemName: string;
+  systemUrl: string;
 }
 
 export interface Action01PromptResult {
@@ -20,24 +20,27 @@ export interface Action01PromptResult {
 }
 
 export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
-  const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
-Your role is to generate and distribute the daily report template for the previous day's work.
-You must ensure the template is clear, comprehensive, and ready for engineers to fill in.
-The template should include sections for:
-- Yesterday's achievements
-- Today's planned tasks
-- Current challenges and blockers
-- Any additional notes
+  const systemPrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
+Your role is to:
+1. Generate a daily report template based on the previous day's report
+2. Prepare the template for distribution to the engineer
+3. Ensure the template includes sections for: yesterday's achievements, today's plans, and current issues
+4. Format the template in a clear, structured manner that encourages complete and timely submission
 
-Be professional and encouraging in your communication.`;
+You must maintain consistency with the previous day's report structure while allowing for new entries.
+Always include the submission deadline and system URL for reference.`;
 
   const userPrompt = `Generate a daily report template for engineer: ${context.engineerName} (ID: ${context.engineerId})
-Report date: ${context.previousDayReportDate}
+Previous report date: ${context.previousDayReportDate}
 Submission deadline: ${context.reportDeadline}
-System: ${context.systemName}
+System URL: ${context.systemUrl}
 
-Please create a well-structured template that the engineer can easily fill in with their daily work information.
-Include clear instructions and examples where appropriate.`;
+Please create a template that:
+- References yesterday's report date
+- Includes clear sections for yesterday's achievements, today's plans, and current issues
+- Specifies the submission deadline
+- Provides the system URL for submission
+- Is formatted for easy reading and completion`;
 
   return {
     version: ACTION_01_PROMPT_VERSION,

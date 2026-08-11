@@ -5,22 +5,27 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
   reportingDeadline: string;
-  overdueThresholdMinutes: number;
+  overdueThresholdHours: number;
   escalationRules: {
+    firstReminderHours: number;
+    secondReminderHours: number;
     maxReminders: number;
-    reminderIntervalMinutes: number;
   };
-  targetMembers: Array<{
-    memberId: string;
-    memberName: string;
+  departmentMembers: Array<{
+    id: string;
+    name: string;
     email: string;
     department: string;
   }>;
-  submissionStatus: Array<{
+  submittedReports: Array<{
     memberId: string;
-    submitted: boolean;
-    submittedAt?: string;
-    isOverdue: boolean;
+    submittedAt: string;
+    content: string;
+  }>;
+  reminderHistory: Array<{
+    memberId: string;
+    reminderCount: number;
+    lastReminderAt: string;
   }>;
 }
 
@@ -30,75 +35,75 @@ export interface Action04PromptOutput {
     memberName: string;
     email: string;
     department: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
+    status: "not_submitted" | "overdue" | "pending_review";
+    hoursOverdue: number;
     reminderCount: number;
-    shouldEscalate: boolean;
+    recommendedAction: "send_reminder" | "escalate_to_manager" | "no_action";
+    reason: string;
   }>;
-  escalationSummary: {
-    totalCandidates: number;
-    highPriority: number;
-    mediumPriority: number;
-    lowPriority: number;
-    recommendedActions: string[];
+  summaryMetrics: {
+    totalMembers: number;
+    submittedCount: number;
+    overdueCount: number;
+    notSubmittedCount: number;
+    submissionRate: number;
   };
+  escalationSummary: string;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const submissionSummary = input.submissionStatus
-    .map((status) => {
-      const member = input.targetMembers.find(
-        (m) => m.memberId === status.memberId
-      );
-      return `${member?.memberName || status.memberId}: ${status.submitted ? "提出済み" : "未提出"} ${status.isOverdue ? "(期限超過)" : ""}`;
-    })
-    .join("\n");
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
+    departmentMembers,
+    submittedReports,
+    reminderHistory,
+  } = input;
 
-  const overdueMembers = input.submissionStatus
-    .filter((s) => !s.submitted && s.isOverdue)
-    .map((s) => {
-      const member = input.targetMembers.find(
-        (m) => m.memberId === s.memberId
-      );
-      return member?.memberName || s.memberId;
-    })
-    .join(", ");
+  const submittedMemberIds = new Set(submittedReports.map((r) => r.memberId));
+  const reminderMap = new Map(
+    reminderHistory.map((r) => [r.memberId, r.reminderCount])
+  );
 
-  const prompt = `# Action 04: エスカレーション対象の判定と通知準備
+  const notSubmittedMembers = departmentMembers.filter(
+    (m) => !submittedMemberIds.has(m.id)
+  );
 
-## 入力情報
-- 報告期限: ${input.reportingDeadline}
-- 期限超過判定閾値: ${input.overdueThresholdMinutes}分
-- 最大催促回数: ${input.escalationRules.maxReminders}
-- 催促間隔: ${input.escalationRules.reminderIntervalMinutes}分
+  const systemPrompt = `You are an AI agent responsible for escalation management in a daily report system.
+Your task is to analyze report submission status and determine which team members require escalation actions.
 
-## 提出状況
-\`\`\`
-${submissionSummary}
-\`\`\`
+Current System State:
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- First Reminder Trigger: ${escalationRules.firstReminderHours} hours after deadline
+- Second Reminder Trigger: ${escalationRules.secondReminderHours} hours after deadline
+- Maximum Reminders per Member: ${escalationRules.maxReminders}
 
-## 期限超過者
-${overdueMembers || "なし"}
+Team Members Status:
+- Total Members: ${departmentMembers.length}
+- Submitted Reports: ${submittedReports.length}
+- Not Submitted: ${notSubmittedMembers.length}
 
-## タスク
-以下の条件に基づいてエスカレーション対象を判定してください:
+Not Submitted Members:
+${notSubmittedMembers.map((m) => `- ${m.name} (${m.department}) - ${m.email}`).join("\n")}
 
-1. **未提出かつ期限超過**: 高優先度でエスカレーション対象
-2. **催促回数が上限に達した**: 中優先度でエスカレーション対象
-3. **複数回の期限超過**: 低優先度で監視対象
+Reminder History:
+${reminderHistory.map((r) => `- Member ID ${r.memberId}: ${r.reminderCount} reminders sent (last at ${r.lastReminderAt})`).join("\n")}
 
-## 出力形式
-JSON形式で以下を含めてください:
-- escalationCandidates: エスカレーション対象者の配列
-  - memberId, memberName, email, department
-  - reason: エスカレーション理由
-  - priority: 優先度 (high/medium/low)
-  - reminderCount: これまでの催促回数
-  - shouldEscalate: 即座にエスカレーションすべきか
-- escalationSummary: 集計情報
-  - totalCandidates: 対象者総数
-  - 優先度別の内訳
-  - recommendedActions: 推奨アクション`;
+Your Analysis Should:
+1. Identify all members who have not submitted reports
+2. Calculate hours overdue for each non-submitter
+3. Determine appropriate escalation action based on:
+   - Time overdue vs threshold
+   - Number of reminders already sent
+   - Escalation rules defined
+4. Categorize each member as:
+   - "send_reminder": Send a reminder notification
+   - "escalate_to_manager": Escalate to department manager
+   - "no_action": No action needed yet
 
-  return prompt;
+Provide a structured analysis with clear reasoning for each escalation decision.`;
+
+  return systemPrompt;
 }

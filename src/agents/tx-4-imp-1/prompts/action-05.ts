@@ -8,7 +8,7 @@ export interface Action05Context {
   reportSubmissionDeadline: string;
   currentTimestamp: string;
   previousExtractedIssues?: ExtractedIssue[];
-  teamMembersList: TeamMember[];
+  teamMembers: TeamMember[];
 }
 
 export interface ExtractedIssue {
@@ -16,9 +16,10 @@ export interface ExtractedIssue {
   title: string;
   description: string;
   reportedBy: string;
-  severity: "critical" | "high" | "medium" | "low";
   category: string;
-  relatedTasks?: string[];
+  severity: "critical" | "high" | "medium" | "low";
+  affectedAreas: string[];
+  proposedSolution?: string;
 }
 
 export interface TeamMember {
@@ -26,113 +27,115 @@ export interface TeamMember {
   name: string;
   email: string;
   department: string;
+  role: string;
 }
 
-export interface Action05PromptResult {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  expectedOutputFormat: string;
+export interface IssueExtractionResult {
+  extractedIssues: ExtractedIssue[];
+  totalIssuesFound: number;
+  criticalIssuesCount: number;
+  analysisTimestamp: string;
+  confidenceScores: Record<string, number>;
 }
 
-export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
-  const systemPrompt = buildSystemPrompt();
-  const userPrompt = buildUserPrompt(context);
-  const expectedOutputFormat = buildExpectedOutputFormat();
-
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    expectedOutputFormat,
-  };
+export interface PriorityClassification {
+  issueId: string;
+  priority: 1 | 2 | 3 | 4 | 5;
+  reasoning: string;
+  relatedIssues: string[];
+  recommendedAction: string;
 }
 
-function buildSystemPrompt(): string {
-  return `You are an AI agent specialized in analyzing daily reports and extracting critical issues and bottlenecks.
-
-Your role is to:
-1. Read and analyze confirmation email content containing daily report summaries
-2. Identify and extract issues, risks, and bottlenecks from the reports
-3. Categorize issues by type and severity
-4. Assess the priority and impact of each issue
-5. Provide structured output for management review
-
-You must maintain consistency with previously extracted issues and avoid duplicates.
-Focus on actionable insights that impact project progress and team productivity.
-Escalate critical issues that require immediate attention.`;
+export interface Action05Output {
+  extractedIssues: ExtractedIssue[];
+  priorityClassifications: PriorityClassification[];
+  reportSummary: string;
+  escalationFlags: EscalationFlag[];
+  readyForPresentation: boolean;
 }
 
-function buildUserPrompt(context: Action05Context): string {
-  const teamMembersInfo = context.teamMembersList
-    .map((member) => `- ${member.name} (${member.department}): ${member.email}`)
-    .join("\n");
-
-  const previousIssuesInfo =
-    context.previousExtractedIssues && context.previousExtractedIssues.length > 0
-      ? `\n\nPreviously extracted issues to consider for deduplication:\n${context.previousExtractedIssues
-          .map((issue) => `- [${issue.severity}] ${issue.title}: ${issue.description}`)
-          .join("\n")}`
-      : "";
-
-  return `Analyze the following confirmation email content and extract all issues, risks, and bottlenecks.
-
-Current timestamp: ${context.currentTimestamp}
-Report submission deadline: ${context.reportSubmissionDeadline}
-
-Team members:
-${teamMembersInfo}
-
-Confirmation email content:
----
-${context.confirmationEmailContent}
----
-${previousIssuesInfo}
-
-Please extract and categorize all issues found in the reports. For each issue, provide:
-1. A clear title
-2. Detailed description
-3. The team member who reported it
-4. Severity level (critical/high/medium/low)
-5. Category (technical/resource/schedule/quality/communication/other)
-6. Related tasks or dependencies if applicable
-
-Avoid duplicating previously extracted issues. Focus on new or updated issues.`;
+export interface EscalationFlag {
+  type: "critical_issue" | "repeated_problem" | "deadline_miss" | "system_error" | "unusual_pattern";
+  severity: "high" | "medium" | "low";
+  description: string;
+  affectedMembers?: string[];
+  recommendedAction: string;
 }
 
-function buildExpectedOutputFormat(): string {
-  return `{
+export function buildAction05Prompt(context: Action05Context): string {
+  const basePrompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily report confirmation emails and classifying them by priority.
+
+## Context Information
+- Confirmation Email Content: ${context.confirmationEmailContent}
+- Report Submission Deadline: ${context.reportSubmissionDeadline}
+- Current Timestamp: ${context.currentTimestamp}
+- Team Members Count: ${context.teamMembers.length}
+
+## Your Task
+1. Analyze the confirmation email content to identify all reported issues and bottlenecks
+2. Extract structured information about each issue including:
+   - Issue title and description
+   - Reporter information
+   - Category classification
+   - Severity assessment (critical/high/medium/low)
+   - Affected areas or teams
+   - Proposed solutions if mentioned
+
+3. Classify extracted issues by priority (1-5, where 1 is highest priority)
+4. Identify any escalation conditions:
+   - Critical or blocking issues
+   - Repeated problems from previous reports
+   - Deadline misses or submission delays
+   - System errors or technical blockers
+   - Unusual patterns or anomalies
+
+5. Generate a concise report summary suitable for presentation to leadership
+
+## Output Requirements
+Return a JSON object with the following structure:
+{
   "extractedIssues": [
     {
-      "id": "string (unique identifier)",
+      "id": "string",
       "title": "string",
       "description": "string",
-      "reportedBy": "string (team member name)",
-      "severity": "critical | high | medium | low",
-      "category": "technical | resource | schedule | quality | communication | other",
-      "relatedTasks": ["string"],
-      "extractedAt": "ISO 8601 timestamp",
-      "isDuplicate": "boolean",
-      "duplicateOf": "string (issue id if duplicate)"
+      "reportedBy": "string",
+      "category": "string",
+      "severity": "critical|high|medium|low",
+      "affectedAreas": ["string"],
+      "proposedSolution": "string or null"
     }
   ],
-  "summary": {
-    "totalIssuesExtracted": "number",
-    "criticalCount": "number",
-    "highCount": "number",
-    "mediumCount": "number",
-    "lowCount": "number",
-    "categoryCounts": {
-      "technical": "number",
-      "resource": "number",
-      "schedule": "number",
-      "quality": "number",
-      "communication": "number",
-      "other": "number"
+  "priorityClassifications": [
+    {
+      "issueId": "string",
+      "priority": 1-5,
+      "reasoning": "string",
+      "relatedIssues": ["string"],
+      "recommendedAction": "string"
     }
-  },
-  "escalationRequired": "boolean",
-  "escalationReason": "string (if escalationRequired is true)",
-  "recommendations": ["string"]
-}`;
+  ],
+  "reportSummary": "string",
+  "escalationFlags": [
+    {
+      "type": "critical_issue|repeated_problem|deadline_miss|system_error|unusual_pattern",
+      "severity": "high|medium|low",
+      "description": "string",
+      "affectedMembers": ["string"] or null,
+      "recommendedAction": "string"
+    }
+  ],
+  "readyForPresentation": boolean
+}
+
+## Classification Guidelines
+- Priority 1: Critical blockers requiring immediate action
+- Priority 2: High-impact issues affecting multiple teams
+- Priority 3: Medium-impact issues with workarounds available
+- Priority 4: Low-impact issues or nice-to-have improvements
+- Priority 5: Informational items or future considerations
+
+Ensure all extracted issues are clearly categorized and prioritized for efficient decision-making.`;
+
+  return basePrompt;
 }

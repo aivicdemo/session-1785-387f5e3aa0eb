@@ -7,66 +7,88 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
+  previousEscalationCount?: Record<string, number>;
 }
 
 export interface Action01PromptOutput {
   unreportedMembers: Array<{
-    id: string;
-    name: string;
-    email: string;
-    reason: "not_submitted" | "delayed";
+    memberId: string;
+    memberName: string;
+    reason: "not_submitted" | "late_submission";
+    submissionTime?: string;
+  }>;
+  escalationTargets: Array<{
+    memberId: string;
+    memberName: string;
+    escalationLevel: number;
+    shouldEscalate: boolean;
   }>;
   analysisTimestamp: string;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const membersList = input.teamMembers
-    .map((member) => `- ${member.name} (${member.email})`)
+export function buildAction01Prompt(
+  input: Action01PromptInput
+): string {
+  const {
+    confirmationEmailContent,
+    reportDeadline,
+    currentTimestamp,
+    previousEscalationCount = {},
+  } = input;
+
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
     .join("\n");
 
-  return `You are an AI agent responsible for identifying unreported and delayed team members from confirmation email content.
+  return `# 報告漏れ・遅延部員特定アクション
 
-## Task
-Analyze the confirmation email content and identify which team members have not submitted their daily reports or have submitted them late.
+## 入力情報
+- 確認メール内容:
+\`\`\`
+${confirmationEmailContent}
+\`\`\`
+- 報告期限: ${reportDeadline}
+- 現在時刻: ${currentTimestamp}
+- 過去の催促履歴:
+${escalationCountSummary || "なし"}
 
-## Input Information
-- Confirmation Email Content:
-${input.confirmationEmailContent}
+## タスク
+以下の手順で報告漏れ・遅延部員を特定し、催促対象を判定してください:
 
-- Report Deadline: ${input.reportDeadline}
-- Current Timestamp: ${input.currentTimestamp}
-- Team Members:
-${membersList}
+1. 確認メール内容から、報告を提出していない部員と遅延している部員を特定する
+2. 各部員について、未提出か遅延かの理由を分類する
+3. 過去の催促履歴を参考に、催促対象かどうかを判定する
+4. 催促レベルを決定する（初回催促、2回目以降など）
 
-## Instructions
-1. Parse the confirmation email content to extract submitted reports
-2. Compare submitted reports against the complete team member list
-3. Identify members who have not submitted reports (not_submitted)
-4. Identify members whose reports were submitted after the deadline (delayed)
-5. For each unreported or delayed member, provide their ID, name, email, and reason
-
-## Output Format
-Return a JSON object with the following structure:
+## 出力形式
+JSON形式で以下の構造で返してください:
+\`\`\`json
 {
   "unreportedMembers": [
     {
-      "id": "member_id",
-      "name": "member_name",
-      "email": "member_email",
-      "reason": "not_submitted" | "delayed"
+      "memberId": "string",
+      "memberName": "string",
+      "reason": "not_submitted" | "late_submission",
+      "submissionTime": "ISO8601形式またはnull"
     }
   ],
-  "analysisTimestamp": "ISO8601_timestamp"
+  "escalationTargets": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "escalationLevel": number,
+      "shouldEscalate": boolean
+    }
+  ],
+  "analysisTimestamp": "ISO8601形式"
 }
+\`\`\`
 
-## Important Notes
-- Be precise in identifying unreported members
-- Distinguish between not_submitted and delayed cases
-- Include all relevant member information
-- Use ISO8601 format for timestamps`;
+## 判定ルール
+- 報告期限を過ぎても提出がない場合: 未提出(not_submitted)
+- 報告期限後に提出された場合: 遅延(late_submission)
+- 同一部員への催促は最大3回までとする
+- 3回以上の催促履歴がある場合はescalationLevel=3、shouldEscalate=falseとする
+- 初回催促の場合はescalationLevel=1、shouldEscalate=true
+- 2回目催促の場合はescalationLevel=2、shouldEscalate=true`;
 }

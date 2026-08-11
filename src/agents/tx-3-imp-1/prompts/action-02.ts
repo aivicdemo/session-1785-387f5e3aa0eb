@@ -6,7 +6,7 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Tx3Imp1ConfirmationEmailContent {
   emailId: string;
   sentAt: string;
-  recipientEmail: string;
+  recipientId: string;
   recipientName: string;
   subject: string;
   body: string;
@@ -22,95 +22,94 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThresholdMinutes: number;
+  escalationThresholds: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Tx3Imp1IdentifiedMember {
   memberId: string;
   memberName: string;
-  memberEmail: string;
-  status: "not_submitted" | "overdue" | "submitted";
-  hoursOverdue?: number;
-  lastReminderSentAt?: string;
+  status: "not_submitted" | "delayed";
+  daysSinceDeadline: number;
   reminderCount: number;
 }
 
 export interface Tx3Imp1Action02Output {
   identifiedMembers: Tx3Imp1IdentifiedMember[];
-  totalIdentified: number;
-  notSubmittedCount: number;
-  overdueCount: number;
-  submittedCount: number;
+  escalationCandidates: Tx3Imp1IdentifiedMember[];
   analysisTimestamp: string;
 }
 
-export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
-  const {
-    confirmationEmailContent,
-    currentTimestamp,
-    submissionDeadline,
-    escalationThresholdMinutes,
-  } = context;
-
-  const reportedMembersText = confirmationEmailContent.reportedMembers
+export function buildAction02Prompt(
+  context: Tx3Imp1PromptContext
+): string {
+  const membersList = context.confirmationEmailContent.reportedMembers
     .map(
       (member) =>
-        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${member.submittedAt ? ` at ${member.submittedAt}` : ""}`
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
+          member.submittedAt ? ` at ${member.submittedAt}` : ""
+        }`
     )
     .join("\n");
 
-  return `You are an AI agent responsible for identifying members with missing or overdue reports from confirmation email content.
+  const deadline = new Date(context.submissionDeadline);
+  const current = new Date(context.currentTimestamp);
+  const hoursOverdue = Math.floor(
+    (current.getTime() - deadline.getTime()) / (1000 * 60 * 60)
+  );
 
-## Task: Identify Missing and Overdue Report Members
+  return `You are an AI agent responsible for identifying members with missing or delayed reports from confirmation email content.
 
-### Confirmation Email Content:
-- Email ID: ${confirmationEmailContent.emailId}
-- Sent At: ${confirmationEmailContent.sentAt}
-- Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientEmail})
-- Subject: ${confirmationEmailContent.subject}
+## Task
+Analyze the confirmation email content and identify:
+1. Members who have NOT submitted their reports (status: "pending")
+2. Members whose reports are OVERDUE (status: "overdue")
+3. Determine which members should receive reminder notifications based on escalation thresholds
 
-### Reported Members Status:
-${reportedMembersText}
+## Confirmation Email Content
+Subject: ${context.confirmationEmailContent.subject}
+Sent At: ${context.confirmationEmailContent.sentAt}
 
-### Current Context:
-- Current Timestamp: ${currentTimestamp}
-- Submission Deadline: ${submissionDeadline}
-- Escalation Threshold: ${escalationThresholdMinutes} minutes after deadline
+Reported Members Status:
+${membersList}
 
-## Analysis Instructions:
+## Current Context
+- Current Timestamp: ${context.currentTimestamp}
+- Submission Deadline: ${context.submissionDeadline}
+- Hours Since Deadline: ${hoursOverdue}
+- Max Reminders Allowed: ${context.escalationThresholds.maxReminders}
+- Reminder Interval: ${context.escalationThresholds.reminderIntervalMinutes} minutes
 
-1. **Identify Not Submitted Members**: Extract all members with status "pending" or "not_submitted"
-2. **Identify Overdue Members**: Extract all members whose submission is past the deadline
-3. **Calculate Overdue Duration**: For overdue members, calculate hours past the deadline
-4. **Track Reminder History**: Note if previous reminders have been sent to each member
-5. **Classify by Escalation Level**: Determine if member requires immediate escalation based on threshold
-
-## Output Format:
-
-Provide a JSON response with the following structure:
+## Output Requirements
+Return a JSON object with the following structure:
 {
   "identifiedMembers": [
     {
       "memberId": "string",
       "memberName": "string",
-      "memberEmail": "string",
-      "status": "not_submitted" | "overdue" | "submitted",
-      "hoursOverdue": number (optional, only for overdue),
-      "lastReminderSentAt": "string" (optional, ISO timestamp),
+      "status": "not_submitted" | "delayed",
+      "daysSinceDeadline": number,
       "reminderCount": number
     }
   ],
-  "totalIdentified": number,
-  "notSubmittedCount": number,
-  "overdueCount": number,
-  "submittedCount": number,
-  "analysisTimestamp": "${currentTimestamp}"
+  "escalationCandidates": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "status": "not_submitted" | "delayed",
+      "daysSinceDeadline": number,
+      "reminderCount": number
+    }
+  ],
+  "analysisTimestamp": "ISO8601 timestamp"
 }
 
-## Important Notes:
-- Only include members with status "not_submitted" or "overdue" in the identifiedMembers array
-- Calculate hoursOverdue as the difference between currentTimestamp and submissionDeadline
-- reminderCount should reflect the number of previous reminders sent to each member
-- Ensure all timestamps are in ISO 8601 format
-- Be precise in member identification to avoid sending reminders to already-submitted members`;
+## Rules
+- Include all members with status "pending" or "overdue" in identifiedMembers
+- Include only members who have not exceeded maxReminders in escalationCandidates
+- Calculate daysSinceDeadline as the number of complete days since the deadline
+- Set reminderCount to 0 for initial identification (will be tracked by orchestrator)
+- Return analysisTimestamp as the current timestamp in ISO8601 format`;
 }

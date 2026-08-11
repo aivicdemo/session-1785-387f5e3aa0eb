@@ -5,8 +5,8 @@ export interface AuditLog {
   timestamp: string;
   operator_role: string;
   operation_name: string;
-  target_department_id?: string;
-  target_manager_id?: string;
   result: "DENIED" | "ALLOWED" | "SUCCESS" | "FAILURE";
   reason: string;
+  target_department_id?: string;
+  target_manager_id?: string;
 }
