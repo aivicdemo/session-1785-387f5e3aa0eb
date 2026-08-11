@@ -779,10 +779,7 @@ export const sendConfirmationEmailAndLogFailure: (...args: any[]) => any = (...a
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendMorningReportWithNotification exports=sendMorningReportWithNotification */
 const __aivicBundle_12_sendMorningReportWithNotification = (() => {
-  function sendMorningReportWithNotification(
-    reportData: ConfirmationEmailRequest,
-    sendEmailMock?: EmailServiceInterface
-  ): void {
+  function sendMorningReportWithNotification(reportData: ConfirmationEmailRequest, sendEmailMock?: EmailServiceInterface): void {
     if (!sendEmailMock) {
       return;
     }

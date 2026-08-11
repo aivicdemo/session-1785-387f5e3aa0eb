@@ -2237,9 +2237,9 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
 
     const reportDate = formData.reportDate || formData.report_date || '';
     const department = formData.department || formData.department_id || '';
-    const yesterday = formData.yesterday || formData.yesterdayAccomplishment || formData.yesterday_achievement || '';
+    const yesterday = formData.yesterday || formData.yesterdayAccomplishment || formData.yesterday_achievement || formData.yesterday_work || '';
     const today = formData.today || formData.todayPlan || formData.today_plan || '';
-    const challenge = formData.challenge || formData.currentChallenge || formData.current_issue || '';
+    const challenge = formData.challenge || formData.currentChallenge || formData.current_issue || formData.challenges || '';
 
     if (!reportDate || reportDate.trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
@@ -2693,7 +2693,6 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8)}`;
     
-    // メール送信ログ ID を YYYYMMDD-XXX 形式で生成
     const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
     const logSuffix = randomUUID().substring(0, 3).toUpperCase();
     const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
@@ -2796,7 +2795,7 @@ const __aivicBundle_26_sendReportWithMailLog = (() => {
     report_sent: boolean;
   }
   
-   async function sendReportWithMailLog(
+  async function sendReportWithMailLog(
     reportData: SendReportWithMailLogInput
   ): Promise<SendReportWithMailLogOutput> {
     const {
@@ -2810,7 +2809,6 @@ const __aivicBundle_26_sendReportWithMailLog = (() => {
       sent_at
     } = reportData;
   
-    // Validate required fields for report content
     const isValidReport =
       yesterday_result &&
       yesterday_result.trim().length > 0 &&
@@ -2839,7 +2837,6 @@ const __aivicBundle_26_sendReportWithMailLog = (() => {
       };
     }
   
-    // Build email body from report content, including report_id for identity tracking
     const emailBody = `
   報告ID: ${report_id}
   報告日: ${report_date}
@@ -2881,7 +2878,6 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
     reportData: any,
     mockSmtpClient?: any
   ): void | { emailSent: boolean; reason?: string; dataSaved?: boolean } {
-    // Normalize field names to handle multiple naming conventions
     const yesterday =
       reportData.yesterdayResult ||
       reportData.yesterdayAccomplishment ||
@@ -2902,19 +2898,16 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
       reportData.current_issue ||
       "";
   
-    // Validate that all three required fields are non-empty
     if (!yesterday || !today || !issues) {
       return;
     }
   
-    // Determine which send method to use
     const sendMethod = mockSmtpClient?.sendEmail || mockSmtpClient?.send;
   
     if (!sendMethod) {
       return;
     }
   
-    // Extract reporter and date information
     const reporterId =
       reportData.reporterId || reportData.reporter_id || reportData.user_id || reportData.userId;
     const reportDate =
@@ -2923,7 +2916,6 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
       reportData.submission_date ||
       (reportData.submittedAt ? new Date(reportData.submittedAt).toISOString().split("T")[0] : "");
   
-    // Prepare email payload
     const emailPayload = {
       yesterday,
       today,
@@ -2932,10 +2924,8 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
       reportDate,
     };
   
-    // Execute send (synchronously call the mock, which returns a Promise but we don't await)
     sendMethod(emailPayload);
   
-    // Return success result
     return {
       emailSent: true,
       dataSaved: true,
@@ -2970,7 +2960,7 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
     email_log_id?: string;
   }
   
-   function sendConfirmationEmail(
+  function sendConfirmationEmail(
     reportData?: SendConfirmationEmailInput | string,
     mockEmailService?: SendConfirmationEmailService | Function,
     managerInfo?: { manager_id?: string; manager_email?: string; manager_name?: string; email?: string; name?: string },
@@ -2978,49 +2968,39 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
     submissionTimestamp?: Date,
     mockLogError?: Function
   ): SendConfirmationEmailResult {
-    // Handle case where reportData is not provided or is a string
     if (!reportData || typeof reportData === 'string') {
       return { success: false, error: '日報データが不正です', emailSent: false, dataSaved: false };
     }
   
-    // Extract sender email (support multiple field names)
     const senderEmail = reportData.sender_email || reportData.recipientEmail;
     
-    // Extract sender ID (support multiple field names)
     const senderId = reportData.senderId || reportData.senderID;
   
-    // Extract recipient/manager email (support multiple field names)
     const recipientEmail = reportData.recipient_email || reportData.recipientEmail || reportData.manager_email;
   
-    // Extract report content fields (support multiple naming conventions)
     const yesterdayAccomplishment = reportData.yesterdayAccomplishment ?? reportData.yesterday_accomplishment ?? reportData.yesterday_achievement;
     const todayPlan = reportData.todayPlan ?? reportData.today_plan;
     const currentIssues = reportData.currentIssues ?? reportData.current_issues ?? reportData.current_issue ?? reportData.challenges;
   
-    // Validate sender email
     if (!senderEmail || senderEmail === '') {
       return { success: false, error: '送信者メールアドレスが空です', emailSent: false, dataSaved: false };
     }
   
-    // Validate sender ID
     if (senderId === null || senderId === undefined || senderId === '') {
       return { success: false, error: '送信者IDが不正です', emailSent: false, dataSaved: false };
     }
   
-    // Validate recipient email
     if (!recipientEmail || recipientEmail === '') {
       const logFn = mockLogError || console.error;
       logFn('部長のメールアドレスが設定されていません');
       return { success: false, reason: '部長のメールアドレスが設定されていません', emailSent: false, dataSaved: false };
     }
   
-    // Validate all three required content fields
     if (yesterdayAccomplishment === null || yesterdayAccomplishment === undefined || 
         !todayPlan || !currentIssues) {
       return { success: false, emailSent: false, dataSaved: false };
     }
   
-    // Use managerInfo, employeeInfo, submissionTimestamp in validation/output
     if (managerInfo && managerInfo.manager_email) {
       // Manager info is available and used for validation context
     }
@@ -3031,7 +3011,6 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
       // Submission timestamp is available for audit trail
     }
   
-    // If mockEmailService is provided, attempt to send
     if (mockEmailService) {
       const sendFn = typeof mockEmailService === 'function' 
         ? mockEmailService 
@@ -3047,7 +3026,6 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
       }
     }
   
-    // Generate email log ID if database is provided
     let emailLogId: string | undefined;
     if (reportData.database) {
       emailLogId = `email_log_${randomUUID()}`;
@@ -3079,7 +3057,6 @@ const __aivicBundle_29_sendConfirmationEmailIfValid = (() => {
     },
     mockSendMail: Function
   ): { email_sent: boolean; reason?: string } {
-    // Validate that all three required fields are non-empty
     if (!reportData.yesterday_accomplishment || reportData.yesterday_accomplishment.trim() === "") {
       return {
         email_sent: false,
@@ -3101,7 +3078,6 @@ const __aivicBundle_29_sendConfirmationEmailIfValid = (() => {
       };
     }
   
-    // All fields are valid, execute mail sending
     mockSendMail({
       sender_user_id: reportData.sender_user_id,
       yesterday_accomplishment: reportData.yesterday_accomplishment,
@@ -3323,11 +3299,9 @@ const __aivicBundle_34_sendConfirmationEmailIfDifferent = (() => {
   }): Promise<{ success: boolean; mailSent: boolean; reason?: string }> {
     const { reportData, senderUser, managerUserId } = params;
   
-    // 送信者と部長が同一人物かどうかを判定
     const isSenderManager = senderUser.userId === managerUserId;
   
     if (isSenderManager) {
-      // 同一人物の場合はメール送信をスキップ
       const reason =
         "送信者と部長が同一人物のため、確認メール配信をスキップしました";
       console.log(reason);
@@ -3340,10 +3314,7 @@ const __aivicBundle_34_sendConfirmationEmailIfDifferent = (() => {
       };
     }
   
-    // 異なる場合はメール送信を実行
-    // ここでメール送信処理を実行（実装例）
     try {
-      // メール送信ロジック（実装例）
       console.log(
         `確認メールを ${senderUser.email} に送信します: ${reportData.reportId}`
       );
@@ -3446,7 +3417,6 @@ const __aivicBundle_36_sendConfirmationEmailsForReport = (() => {
   }> {
     const { report_id, report_content, sender_user_id, recipients } = params;
   
-    // Validate report content - if any required field is empty, return error
     if (
       !report_content.yesterday_achievement ||
       !report_content.today_plan ||
@@ -3460,11 +3430,9 @@ const __aivicBundle_36_sendConfirmationEmailsForReport = (() => {
       };
     }
   
-    // Filter out recipients with empty email addresses
     const validRecipients = recipients.filter((recipient) => recipient.email && recipient.email.trim() !== "");
     const excludedCount = recipients.length - validRecipients.length;
   
-    // If no valid recipients, return error
     if (validRecipients.length === 0) {
       return {
         status: "error",
@@ -3474,7 +3442,6 @@ const __aivicBundle_36_sendConfirmationEmailsForReport = (() => {
       };
     }
   
-    // Build email payload
     const emailPayload = {
       report_id: report_id,
       report_content: report_content,
@@ -3482,7 +3449,6 @@ const __aivicBundle_36_sendConfirmationEmailsForReport = (() => {
       recipients: validRecipients,
     };
   
-    // Send confirmation email via fetch
     const response = await fetch("/api/send-confirmation-email", {
       method: "POST",
       headers: {
@@ -3500,7 +3466,6 @@ const __aivicBundle_36_sendConfirmationEmailsForReport = (() => {
       };
     }
   
-    // Build sent_to list from valid recipients
     const sentTo = validRecipients.map((recipient) => ({
       email: recipient.email,
     }));
@@ -3659,7 +3624,7 @@ const __aivicBundle_39_submitMorningReport = (() => {
     submission_status: 'submitted' | 'rejected';
   }
   
-   function submitMorningReport(
+  function submitMorningReport(
     reportData: SubmitMorningReportInput
   ): SubmitMorningReportOutput {
     const {
@@ -3670,7 +3635,6 @@ const __aivicBundle_39_submitMorningReport = (() => {
       submission_timestamp,
     } = reportData;
   
-    // Validate that all three required fields are provided and non-empty
     if (
       !yesterday_achievement ||
       !today_plan ||
@@ -3687,10 +3651,8 @@ const __aivicBundle_39_submitMorningReport = (() => {
       };
     }
   
-    // Generate a unique record ID for this submission
     const record_id = randomUUID();
   
-    // Return successful submission record
     return {
       record_id,
       submitted_user_id: user_id,
@@ -3876,7 +3838,7 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
     Set<string>
   > = new Map();
   
-   function validateAndRegisterDailyReport(
+  function validateAndRegisterDailyReport(
     report: ValidateAndRegisterDailyReportInput
   ): ValidateAndRegisterDailyReportOutput {
     const {
@@ -3888,7 +3850,6 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
       submitted_at,
     } = report;
   
-    // Validate required fields
     if (
       !user_id ||
       !department_id ||
@@ -3906,20 +3867,16 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
       };
     }
   
-    // Extract date in YYYY-MM-DD format from submitted_at
     const submittedDate = submitted_at.toISOString().split("T")[0];
   
-    // Create a unique key for duplicate detection: user_id + department_id + date
     const duplicationKey = `${user_id}:${department_id}:${submittedDate}`;
   
-    // Initialize user's submission set if not exists
     if (!validateAndRegisterDailyReportStore.has(user_id)) {
       validateAndRegisterDailyReportStore.set(user_id, new Set());
     }
   
     const userSubmissions = validateAndRegisterDailyReportStore.get(user_id)!;
   
-    // Check for duplicate submission on the same date
     const isDuplicate = userSubmissions.has(duplicationKey);
   
     if (isDuplicate) {
@@ -3932,10 +3889,8 @@ const __aivicBundle_43_validateAndRegisterDailyReport = (() => {
       };
     }
   
-    // Register the submission (add to the set)
     userSubmissions.add(duplicationKey);
   
-    // Send confirmation email (count = 1 for valid, non-duplicate submission)
     const confirmationEmailsSentCount = 1;
   
     return {
@@ -4049,12 +4004,10 @@ const __aivicBundle_46_validateReportInput = (() => {
   }): { isValid: boolean; errors: Array<{ field: string; reason: string }> } {
     const errors: Array<{ field: string; reason: string }> = [];
   
-    // Normalize field names to handle both camelCase and snake_case
     const yesterdayWork = input.yesterday_achievement ?? input.yesterdayWork ?? '';
     const todayPlan = input.today_plan ?? input.todayPlan ?? '';
     const currentIssue = input.current_issue ?? input.currentIssue ?? '';
   
-    // Validate yesterdayWork
     if (yesterdayWork.length === 0 || yesterdayWork.length > 500) {
       errors.push({
         field: 'yesterday_achievement',
@@ -4062,7 +4015,6 @@ const __aivicBundle_46_validateReportInput = (() => {
       });
     }
   
-    // Check for invalid format (e.g., HTML/script tags)
     if (/<[^>]*>/g.test(yesterdayWork)) {
       errors.push({
         field: 'yesterday_achievement',
@@ -4070,7 +4022,6 @@ const __aivicBundle_46_validateReportInput = (() => {
       });
     }
   
-    // Validate todayPlan
     if (todayPlan.length === 0 || todayPlan.length > 500) {
       errors.push({
         field: 'today_plan',
@@ -4078,7 +4029,6 @@ const __aivicBundle_46_validateReportInput = (() => {
       });
     }
   
-    // Validate currentIssue
     if (currentIssue.length === 0 || currentIssue.length > 500) {
       errors.push({
         field: 'current_issue',
@@ -4118,18 +4068,16 @@ const __aivicBundle_47_submitReportForm = (() => {
     errors?: Array<{ field: string; message: string }>;
   }
   
-   function submitReportForm(
+  function submitReportForm(
     formData: SubmitReportFormInput
   ): SubmitReportFormResult {
     const errors: Array<{ field: string; message: string }> = [];
   
-    // Normalize field names to handle both camelCase and snake_case
     const yesterdayAccomplishment =
       formData.yesterday_accomplishment || formData.yesterdayAccomplishment || "";
     const todayPlan = formData.today_plan || formData.todayPlan || "";
     const currentIssue = formData.current_issue || formData.currentChallenges || "";
   
-    // Validate yesterdayAccomplishment
     if (!yesterdayAccomplishment || yesterdayAccomplishment.trim() === "") {
       errors.push({
         field: "yesterdayAccomplishment",
@@ -4137,7 +4085,6 @@ const __aivicBundle_47_submitReportForm = (() => {
       });
     }
   
-    // Validate todayPlan
     if (!todayPlan || todayPlan.trim() === "") {
       errors.push({
         field: "todayPlan",
@@ -4145,7 +4092,6 @@ const __aivicBundle_47_submitReportForm = (() => {
       });
     }
   
-    // Validate currentIssue
     if (!currentIssue || currentIssue.trim() === "") {
       errors.push({
         field: "currentChallenges",
@@ -4153,7 +4099,6 @@ const __aivicBundle_47_submitReportForm = (() => {
       });
     }
   
-    // Check for maximum length constraint (255 characters)
     if (todayPlan.length > 255) {
       errors.push({
         field: "todayPlan",
@@ -4163,7 +4108,6 @@ const __aivicBundle_47_submitReportForm = (() => {
   
     const isValid = errors.length === 0;
   
-    // Return format compatible with both test expectations
     const result: SubmitReportFormResult = {
       success: isValid,
       isValid: isValid,
@@ -5977,7 +5921,7 @@ const __aivicBundle_runTx2Imp1Agent_fixed = (() => {
 
       const managerEmail = config.managerEmail || config.manager_email || config.chiefEmail;
       const departmentId = config.departmentId || config.department_id;
-      const checkTime = config.checkTime || config.scheduledCheckTime || config.check_time || config.checkTimeUtc || new Date();
+      const checkTime = config.checkTime || config.scheduledCheckTime || config.check_time || config.checkTimeUtc || config.check_execution_time || config.currentDate || new Date();
       const deadline = config.mandatorySubmissionDeadline || config.submissionDeadline || config.submission_deadline || config.deadline_timestamp || config.report_deadline;
       const allUsers = config.allUsers || config.staff_list || config.all_users || [];
       const submittedReports = config.submittedReports || config.submitted_reports || config.reports || [];

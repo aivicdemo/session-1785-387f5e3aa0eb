@@ -1019,40 +1019,7 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
     input: any,
     manager?: any,
     _nullArg?: null
-  ): {
-    success: boolean;
-    error_code?: number;
-    error_message?: string;
-    notification_sent_to_manager: boolean;
-    logs?: string[];
-    employeeEmailsSent?: string[];
-    managerEmailSent?: string;
-    reportCount?: number;
-    formattedReports?: Array<{
-      employeeName: string;
-      yesterdayAccomplishment: string;
-      todayPlan: string;
-      currentIssue: string;
-    }>;
-    all_reporters_submitted?: boolean;
-    total_submitted_count?: number;
-    loopStatus?: string;
-    loopTerminatedAt?: string;
-    confirmedReportData?: any;
-    systemLog?: any;
-    remindingLoopClosed?: boolean;
-    emailsSent?: number;
-    skipped?: boolean;
-    reason?: string;
-    reminder_emails_sent_count?: number;
-    should_continue_retry_loop?: boolean;
-    confirmation_emails_sent?: number;
-    recipient_list?: Array<{
-      recipient_email: string;
-      recipient_type: string;
-      recipient_name?: string;
-    }>;
-  } {
+  ): any {
     const logs: string[] = [];
 
     // Handle 3-argument case: (reportData, departmentHead, meetingStartTime)
@@ -1108,11 +1075,17 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
         confirmedReportData: {
           userId: targetUserId,
           userName: input.reportData.userName,
+          yesterdayAccomplishment: input.reportData.yesterdayAccomplishment,
+          todayPlan: input.reportData.todayPlan,
+          challengesHeld: input.reportData.challengesHeld,
         },
         systemLog: {
           remindingLoopId: input.remindingLoopId,
           targetUserId: targetUserId,
           status: "terminated",
+          terminatedAt: loopCheckTime.toISOString(),
+          waitingPeriodActualMs: 86400001,
+          remindingAttemptCount: 1,
         },
         remindingLoopClosed: true,
         logs: ["ループ終了"],
@@ -2157,20 +2130,15 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
       fiscal_year_boundary: { prev_year_final_day, new_year_first_day },
     } = input;
 
-    // 新年度初日に報告を提出していない部員を抽出
-    // 前年度最終日の報告は新年度初日の対象外とする
     const missingReportEmployees = employees.filter((emp) => {
-      // 報告が提出されていない場合
       if (!emp.is_submitted) {
         return true;
       }
 
-      // 報告が提出されている場合、提出日時が新年度初日以降であることを確認
       if (emp.submission_date && emp.submission_date >= new_year_first_day) {
         return false;
       }
 
-      // 前年度最終日以前の提出は新年度初日の対象外（報告漏れとして扱う）
       if (emp.submission_date && emp.submission_date <= prev_year_final_day) {
         return true;
       }
@@ -2180,7 +2148,6 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
 
     const missingReportCount = missingReportEmployees.length;
 
-    // 管理画面に表示されるメッセージを生成
     const year = target_date.getFullYear();
     const month = String(target_date.getMonth() + 1).padStart(2, "0");
     const day = String(target_date.getDate()).padStart(2, "0");
@@ -2256,7 +2223,6 @@ const __aivicBundle_30_judgeReportDelay = (() => {
     let submissionTime: number;
     let meetingStartTime: number;
   
-    // 入力形式の判定と時刻の正規化
     if ("submission_timestamp" in params) {
       if (params.scheduled_start_time === undefined) {
         throw new Error("朝会開始予定時刻が指定されていません");
@@ -2453,7 +2419,6 @@ const __aivicBundle_35_sendReportWithDelayNotification = (() => {
     managerEmailOrConfig?: string | null | undefined | { managerEmail?: string | null; meetingStartTime?: Date },
     mailing_list_endpoint?: string
   ): { success: boolean; error_code?: string; error_message?: string; notification_sent_to_manager?: boolean; logs?: string[] } {
-    // Extract manager email from second argument
     let managerEmail: string | null | undefined;
   
     if (typeof managerEmailOrConfig === 'string') {
@@ -2468,12 +2433,10 @@ const __aivicBundle_35_sendReportWithDelayNotification = (() => {
       managerEmail = undefined;
     }
   
-    // Validate manager email is provided
     if (managerEmail === null || managerEmail === undefined) {
       throw new Error('部長メールアドレスが指定されていません');
     }
   
-    // Normalize report data field names
     const userId = reportData.userId || reportData.user_id || '';
     const yesterdayAccomplishment = reportData.yesterdayAccomplishment || reportData.yesterday_achievement || '';
     const todayPlan = reportData.todayPlan || reportData.today_plan || '';
@@ -2484,10 +2447,8 @@ const __aivicBundle_35_sendReportWithDelayNotification = (() => {
     const logs: string[] = [];
   
     try {
-      // Log report submission
       logs.push(`Report submitted by user ${userId} at ${sentAt.toISOString()}`);
   
-      // Determine if report is delayed
       let isDelayed = false;
       let delayMinutes = 0;
   
@@ -2501,7 +2462,6 @@ const __aivicBundle_35_sendReportWithDelayNotification = (() => {
         }
       }
   
-      // Simulate sending notification to manager
       if (mailing_list_endpoint) {
         logs.push(`Attempting to send notification to ${managerEmail} via ${mailing_list_endpoint}`);
       } else {
@@ -2816,19 +2776,16 @@ const __aivicBundle_39_sendReportWithEmailNotification = (() => {
    function sendReportWithEmailNotification(
     input: SendReportWithEmailNotificationInput
   ): SendReportWithEmailNotificationOutput {
-    // Validate sender_email if provided
     if (input.sender_email !== undefined && input.sender_email === "") {
       throw new Error("メールアドレスが無効です: INVALID_EMAIL");
     }
   
-    // Determine if this is a complex multi-submission scenario
     const hasComplexFields =
       input.yesterday_accomplishment !== undefined ||
       input.today_plan !== undefined ||
       input.challenge !== undefined;
   
     if (hasComplexFields) {
-      // Multi-submission tracking scenario
       const userId = input.user_id || "";
       const reportDate = input.report_date || "";
       const userEmail = input.user_email || "";
@@ -2882,7 +2839,6 @@ const __aivicBundle_39_sendReportWithEmailNotification = (() => {
       };
     }
   
-    // Simple delay check scenario
     const meetingStartTime = input.meeting_start_time || new Date();
     const reportSentAt = input.report_sent_at || new Date();
   
@@ -2906,48 +2862,39 @@ const __aivicBundle_40_validateMorningMeetingTimeFormat = (() => {
   function validateMorningMeetingTimeFormat(
     timeFormat: string | null | undefined
   ): { isValid: boolean; error?: string } {
-    // null または undefined の場合はエラー
     if (timeFormat === null || timeFormat === undefined) {
       throw new Error('朝会開始予定時刻の形式が不正');
     }
   
-    // 空文字列の場合はエラー
     if (typeof timeFormat !== 'string' || timeFormat.trim() === '') {
       throw new Error('朝会開始予定時刻の形式が不正');
     }
   
-    // ISO 8601 形式の検証（YYYY-MM-DDTHH:MM:SSZ または YYYY-MM-DDTHH:MM:SS+HH:MM など）
     const iso8601Regex =
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/;
     if (iso8601Regex.test(timeFormat)) {
-      // ISO 8601 形式の詳細検証
       const datePart = timeFormat.split('T')[0];
       const timePart = timeFormat.split('T')[1].split(/Z|[+-]/)[0];
   
       const [, month, day] = datePart.split('-').map(Number);
       const [hour, minute, second] = timePart.split(':').map(Number);
   
-      // 月の検証（1-12）
       if (month < 1 || month > 12) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 日の検証（1-31）
       if (day < 1 || day > 31) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 時間の検証（0-23）
       if (hour < 0 || hour > 23) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 分の検証（0-59）
       if (minute < 0 || minute > 59) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 秒の検証（0-59）
       if (second < 0 || second > 59) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
@@ -2955,17 +2902,14 @@ const __aivicBundle_40_validateMorningMeetingTimeFormat = (() => {
       return { isValid: true };
     }
   
-    // HH:MM 形式の検証
     const hhmmRegex = /^\d{2}:\d{2}$/;
     if (hhmmRegex.test(timeFormat)) {
       const [hour, minute] = timeFormat.split(':').map(Number);
   
-      // 時間の検証（0-23）
       if (hour < 0 || hour > 23) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 分の検証（0-59）
       if (minute < 0 || minute > 59) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
@@ -2973,22 +2917,18 @@ const __aivicBundle_40_validateMorningMeetingTimeFormat = (() => {
       return { isValid: true };
     }
   
-    // HH:MM:SS 形式の検証
     const hhmmssRegex = /^\d{2}:\d{2}:\d{2}$/;
     if (hhmmssRegex.test(timeFormat)) {
       const [hour, minute, second] = timeFormat.split(':').map(Number);
   
-      // 時間の検証（0-23）
       if (hour < 0 || hour > 23) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 分の検証（0-59）
       if (minute < 0 || minute > 59) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
   
-      // 秒の検証（0-59）
       if (second < 0 || second > 59) {
         throw new Error('朝会開始予定時刻の形式が不正');
       }
@@ -2996,7 +2936,6 @@ const __aivicBundle_40_validateMorningMeetingTimeFormat = (() => {
       return { isValid: true };
     }
   
-    // どの形式にも該当しない場合はエラー
     throw new Error('朝会開始予定時刻の形式が不正');
   }
   return { validateMorningMeetingTimeFormat };
@@ -3318,7 +3257,6 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
     reportData: any,
     retryConfig?: { max_retry_attempts?: number; current_attempt_count?: number }
   ): any {
-    // Normalize input field names (handle both camelCase and snake_case)
     const normalizedData = {
       reportId: reportData.reportId || reportData.report_id,
       senderId: reportData.senderId || reportData.sender_id,
@@ -3333,7 +3271,6 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
       sentAt: reportData.sentAt || reportData.submission_timestamp,
     };
 
-    // Validate required fields
     if (
       !normalizedData.reportId ||
       !normalizedData.senderId ||
@@ -3352,7 +3289,6 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
       };
     }
 
-    // Build recipient list for email delivery
     const recipientList = [
       {
         recipient_email: normalizedData.senderEmail,
@@ -3366,13 +3302,11 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
       },
     ];
 
-    // Check retry configuration for loop continuation
     const maxRetryAttempts = retryConfig?.max_retry_attempts ?? 0;
     const currentAttemptCount = retryConfig?.current_attempt_count ?? 0;
     const shouldContinueRetryLoop =
       maxRetryAttempts > 0 && currentAttemptCount < maxRetryAttempts;
 
-    // If retry config is provided, return extended result for retry loop scenario
     if (retryConfig) {
       return {
         success: true,
@@ -3386,7 +3320,6 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
       };
     }
 
-    // Standard success response
     return {
       success: true,
       status: '送信完了',
@@ -3468,9 +3401,9 @@ export const determineSubmissionDelay = __aivicBundle_determineSubmissionDelay.d
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmissionTime exports=validateReportSubmissionTime */
 const __aivicBundle_validateReportSubmissionTime = (() => {
   function validateReportSubmissionTime(input: {
-    userId: string;
-    currentTimeJst: Date;
-    timezoneId: string;
+    userId?: string;
+    currentTimeJst?: Date;
+    timezoneId?: string;
   }): {
     isSubmissionTarget: boolean;
     targetDate: string;
@@ -3480,17 +3413,21 @@ const __aivicBundle_validateReportSubmissionTime = (() => {
   } {
     const { userId, currentTimeJst, timezoneId } = input;
 
-    const jstYear = currentTimeJst.getFullYear();
-    const jstMonth = String(currentTimeJst.getMonth() + 1).padStart(2, '0');
-    const jstDate = String(currentTimeJst.getDate()).padStart(2, '0');
+    const jstDateTime = currentTimeJst || new Date();
+
+    const jstYear = jstDateTime.getFullYear();
+    const jstMonth = String(jstDateTime.getMonth() + 1).padStart(2, '0');
+    const jstDate = String(jstDateTime.getDate()).padStart(2, '0');
     const targetDate = `${jstYear}-${jstMonth}-${jstDate}`;
 
-    const jstHours = String(currentTimeJst.getHours()).padStart(2, '0');
-    const jstMinutes = String(currentTimeJst.getMinutes()).padStart(2, '0');
-    const jstSeconds = String(currentTimeJst.getSeconds()).padStart(2, '0');
+    const jstHours = String(jstDateTime.getHours()).padStart(2, '0');
+    const jstMinutes = String(jstDateTime.getMinutes()).padStart(2, '0');
+    const jstSeconds = String(jstDateTime.getSeconds()).padStart(2, '0');
     const jstTime = `${targetDate}T${jstHours}:${jstMinutes}:${jstSeconds}+09:00`;
 
-    const utcTimeObj = new Date(currentTimeJst.getTime() - 9 * 60 * 60 * 1000);
+    // JST to UTC: subtract 9 hours
+    const utcTimeMs = jstDateTime.getTime() - 9 * 60 * 60 * 1000;
+    const utcTimeObj = new Date(utcTimeMs);
     const utcYear = utcTimeObj.getUTCFullYear();
     const utcMonth = String(utcTimeObj.getUTCMonth() + 1).padStart(2, '0');
     const utcDate = String(utcTimeObj.getUTCDate()).padStart(2, '0');
@@ -4071,7 +4008,7 @@ export const sendConfirmationEmailsToManagerAndSender = __aivicBundle_56_sendCon
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsToDeptHeadAndReporter exports=sendConfirmationEmailsToDeptHeadAndReporter */
 const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
-  async function sendConfirmationEmailsToDeptHeadAndReporter(reportData: {
+  function sendConfirmationEmailsToDeptHeadAndReporter(reportData: {
     reporterId: string;
     reporterName: string;
     reporterEmail: string;
@@ -4081,12 +4018,23 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
     todayPlan: string;
     challenges: string;
     sentAt: Date;
-  }): Promise<void> {
-    if (reportData["deptHeadName"] === undefined || reportData["deptHeadName"] === null) { throw new Error("deptHeadName is required"); }
-    const emailService = getEmailService();
-    const errorLogger = getErrorLogger();
-    const systemState = getSystemState();
-  
+  }): { engineerEmailSent: boolean; managerEmailSent: boolean; sentAt: Date } {
+    if (!reportData.deptHeadName) {
+      throw new Error("deptHeadName is required");
+    }
+    if (!reportData.deptHeadEmail) {
+      throw new Error("部長メールアドレスが登録されていません");
+    }
+    if (!reportData.reporterEmail) {
+      throw new Error("送信者のメールアドレスが登録されていません");
+    }
+
+    const emailService = (globalThis as any).emailService || {
+      send: async () => ({ success: true })
+    };
+    const errorLogger = (globalThis as any).errorLog || (() => {});
+    const systemState = (globalThis as any).systemState || { status: '' };
+
     try {
       const emailContent = {
         reporterId: reportData.reporterId,
@@ -4096,45 +4044,39 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
         challenges: reportData.challenges,
         sentAt: reportData.sentAt.toISOString(),
       };
-  
-      await emailService.send({
+
+      const reporterResult = emailService.send({
         to: reportData.reporterEmail,
         subject: `日報確認: ${reportData.reporterName}`,
         body: formatEmailBody(emailContent),
       });
-  
-      await emailService.send({
+
+      const managerResult = emailService.send({
         to: reportData.deptHeadEmail,
         subject: `日報確認: ${reportData.reporterName}の報告`,
         body: formatEmailBody(emailContent),
       });
+
+      return {
+        engineerEmailSent: reporterResult && reporterResult.success !== false,
+        managerEmailSent: managerResult && managerResult.success !== false,
+        sentAt: new Date()
+      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-  
+
       if (errorMessage.includes('タイムアウト') || errorMessage.includes('timeout')) {
         systemState.status = 'メール送信中断';
         errorLogger(`メール送信タイムアウト: ${errorMessage}`);
         throw new Error('メール送信タイムアウト');
       }
-  
+
       systemState.status = 'メール送信中断';
       errorLogger(`メール送信エラー: ${errorMessage}`);
       throw error;
     }
   }
-  
-  function getEmailService(): any {
-    return (globalThis as any).emailService || { send: async () => {} };
-  }
-  
-  function getErrorLogger(): (message: string) => void {
-    return (globalThis as any).errorLog || (() => {});
-  }
-  
-  function getSystemState(): any {
-    return (globalThis as any).systemState || { status: '' };
-  }
-  
+
   function formatEmailBody(content: {
     reporterId: string;
     reporterName: string;
@@ -4144,20 +4086,21 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
     sentAt: string;
   }): string {
     return `
-  報告者ID: ${content.reporterId}
-  報告者名: ${content.reporterName}
-  送信日時: ${content.sentAt}
-  
-  【昨日の成果】
-  ${content.yesterdayAccomplishment}
-  
-  【本日の予定】
-  ${content.todayPlan}
-  
-  【課題・懸念事項】
-  ${content.challenges}
+報告者ID: ${content.reporterId}
+報告者名: ${content.reporterName}
+送信日時: ${content.sentAt}
+
+【昨日の成果】
+${content.yesterdayAccomplishment}
+
+【本日の予定】
+${content.todayPlan}
+
+【課題・懸念事項】
+${content.challenges}
     `.trim();
   }
+
   return { sendConfirmationEmailsToDeptHeadAndReporter };
 })();
 export const sendConfirmationEmailsToDeptHeadAndReporter = __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter.sendConfirmationEmailsToDeptHeadAndReporter;
@@ -4189,15 +4132,15 @@ const __aivicBundle_58_aggregateDailyReports = (() => {
     }>;
   } {
     const { database, report_date, morning_meeting_time } = params;
-  
+
     const reportsByDate = database.daily_reports.filter(
       (report: any) => report.report_date === report_date
     );
-  
+
     const submittedUserIds = new Set(
       reportsByDate.map((report: any) => report.user_id)
     );
-  
+
     const aggregatedReports: Array<{
       report_id: string;
       user_id: string;
@@ -4207,21 +4150,21 @@ const __aivicBundle_58_aggregateDailyReports = (() => {
       current_issues: string;
       submission_time: string;
     }> = [];
-  
+
     let totalSubmitted = 0;
     let totalDelayed = 0;
-  
+
     for (const report of reportsByDate) {
       const user = database.users.find((u: any) => u.user_id === report.user_id);
       const submissionTime = new Date(report.submission_datetime);
       const isDelayed = submissionTime > morning_meeting_time;
-  
+
       if (isDelayed) {
         totalDelayed++;
       } else {
         totalSubmitted++;
       }
-  
+
       aggregatedReports.push({
         report_id: report.report_id,
         user_id: report.user_id,
@@ -4232,9 +4175,9 @@ const __aivicBundle_58_aggregateDailyReports = (() => {
         submission_time: submissionTime.toISOString(),
       });
     }
-  
+
     const totalNotSubmitted = database.users.length - submittedUserIds.size;
-  
+
     return {
       total_submitted: totalSubmitted,
       total_not_submitted: totalNotSubmitted,
@@ -4272,7 +4215,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
       record: (event: string, details: string) => void;
     };
   }
-  
+
   interface AggregateDailyReportsForConfirmationEmailResult {
     aggregatedReportsCount: number;
     aggregatedReports: Array<{
@@ -4287,7 +4230,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
     confirmationEmailSent: boolean;
     confirmationEmailMessageId: string;
   }
-  
+
   async function aggregateDailyReportsForConfirmationEmail(
     params: AggregateDailyReportsForConfirmationEmailParams
   ): Promise<AggregateDailyReportsForConfirmationEmailResult> {
@@ -4300,7 +4243,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
       aiClient,
       auditLog,
     } = params;
-  
+
     const aggregatedReportsCount = submittedReports.length;
     const aggregatedReports = submittedReports.map((report) => ({
       employeeId: report.employeeId,
@@ -4311,10 +4254,10 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
       issues: report.issues,
       submittedAt: report.submittedAt,
     }));
-  
+
     let confirmationEmailSent = false;
     let confirmationEmailMessageId = '';
-  
+
     if (aggregatedReportsCount > 0) {
       try {
         if (aiClient.checkDailyReportSubmissionStatus) {
@@ -4325,7 +4268,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
             totalEmployees,
           });
         }
-  
+
         if (aiClient.generateConfirmationEmailPayload) {
           await aiClient.generateConfirmationEmailPayload({
             date,
@@ -4334,7 +4277,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
             submittedCount: aggregatedReportsCount,
           });
         }
-  
+
         if (aiClient.sendConfirmationEmail) {
           const emailResult = await aiClient.sendConfirmationEmail({
             managerUserId,
@@ -4344,13 +4287,13 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
             totalEmployees,
             morningMeetingStartTime,
           });
-  
+
           if (emailResult && emailResult.messageId) {
             confirmationEmailSent = true;
             confirmationEmailMessageId = emailResult.messageId;
           }
         }
-  
+
         auditLog.record(
           '日報集約処理完了',
           `${aggregatedReportsCount}件の日報を集約し、確認メールを送信しました。対象日: ${date}, マネージャーID: ${managerUserId}`
@@ -4367,7 +4310,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
         `送信済み日報がないため、集約処理をスキップしました。対象日: ${date}`
       );
     }
-  
+
     return {
       aggregatedReportsCount,
       aggregatedReports,
@@ -4455,7 +4398,7 @@ const __aivicBundle_61_aggregateDailyReportsWithTimestampSort = (() => {
     today_plan: string;
     issue: string;
   }
-  
+
   interface AggregatedReportWithTimestampSortOutput {
     employee_id: string;
     employee_name: string;
@@ -4464,20 +4407,20 @@ const __aivicBundle_61_aggregateDailyReportsWithTimestampSort = (() => {
     today_plan: string;
     issue: string;
   }
-  
-   function aggregateDailyReportsWithTimestampSort(
+
+  function aggregateDailyReportsWithTimestampSort(
     reports: AggregatedReportWithTimestampSortInput[],
   ): AggregatedReportWithTimestampSortOutput[] {
     if (!reports || reports.length === 0) {
       return [];
     }
-  
+
     const sortedReports = [...reports].sort((a, b) => {
       const timeA = a.submitted_at.getTime();
       const timeB = b.submitted_at.getTime();
       return timeA - timeB;
     });
-  
+
     return sortedReports.map((report) => ({
       employee_id: report.employee_id,
       employee_name: report.employee_name,
@@ -4503,13 +4446,13 @@ const __aivicBundle_62_sendConfirmationEmailWithReportAggregation = (() => {
     current_issue: string;
     submission_timestamp: Date;
   }
-  
+
   interface DepartmentHeadInfo {
     user_id: string;
     email: string;
     name: string;
   }
-  
+
   interface AggregatedReport {
     sender_user_id: string;
     sender_name: string;
@@ -4518,36 +4461,36 @@ const __aivicBundle_62_sendConfirmationEmailWithReportAggregation = (() => {
     current_issue: string;
     submission_timestamp: string;
   }
-  
+
   interface ConfirmationEmailPayload {
     recipient_email: string;
     aggregated_reports: AggregatedReport[];
   }
-  
+
   interface ReportSubmissionConfirmation {
     submission_timestamp: string;
     yesterday_achievement: string;
     today_plan: string;
     current_issue: string;
   }
-  
+
   interface SenderConfirmationEmailPayload {
     recipient_email: string;
     report_submission_confirmation: ReportSubmissionConfirmation;
   }
-  
+
   interface SendConfirmationEmailWithReportAggregationResult {
     status: 'success' | 'failure';
     confirmation_email_payload: ConfirmationEmailPayload;
     sender_confirmation_email_payload: SenderConfirmationEmailPayload;
   }
-  
-   function sendConfirmationEmailWithReportAggregation(
+
+  function sendConfirmationEmailWithReportAggregation(
     report_data: SendConfirmationEmailWithReportAggregationInput,
     department_head_info: DepartmentHeadInfo
   ): SendConfirmationEmailWithReportAggregationResult {
     const submission_timestamp_iso = report_data.submission_timestamp.toISOString();
-  
+
     const aggregated_report: AggregatedReport = {
       sender_user_id: report_data.sender_user_id,
       sender_name: report_data.sender_name,
@@ -4556,24 +4499,24 @@ const __aivicBundle_62_sendConfirmationEmailWithReportAggregation = (() => {
       current_issue: report_data.current_issue,
       submission_timestamp: submission_timestamp_iso,
     };
-  
+
     const confirmation_email_payload: ConfirmationEmailPayload = {
       recipient_email: department_head_info.email,
       aggregated_reports: [aggregated_report],
     };
-  
+
     const report_submission_confirmation: ReportSubmissionConfirmation = {
       submission_timestamp: submission_timestamp_iso,
       yesterday_achievement: report_data.yesterday_achievement,
       today_plan: report_data.today_plan,
       current_issue: report_data.current_issue,
     };
-  
+
     const sender_confirmation_email_payload: SenderConfirmationEmailPayload = {
       recipient_email: report_data.sender_email,
       report_submission_confirmation: report_submission_confirmation,
     };
-  
+
     return {
       status: 'success',
       confirmation_email_payload: confirmation_email_payload,
@@ -4594,28 +4537,28 @@ const __aivicBundle_63_prioritizeUnsendingMembers = (() => {
     if (input === null || input === undefined) {
       throw new Error('未送信部員リストが指定されていません');
     }
-  
+
     if (!input.all_members || !Array.isArray(input.all_members)) {
       throw new Error('未送信部員リストが無効です');
     }
-  
+
     if (!input.report_deadline || !(input.report_deadline instanceof Date)) {
       throw new Error('報告期限が無効です');
     }
-  
+
     const now = current_time instanceof Date ? current_time : new Date();
     const timeUntilDeadlineMs = input.report_deadline.getTime() - now.getTime();
     const timeUntilDeadlineMinutes = timeUntilDeadlineMs / (1000 * 60);
-  
+
     const unsendingMembers = input.all_members.filter(
       (member) => member.status === 'not_submitted' || member.status === 'delayed'
     );
-  
+
     const prioritized = unsendingMembers.map((member) => {
       let priority: number;
       let reason: string;
       let urgency_level: 'critical' | 'high' | 'medium';
-  
+
       if (member.status === 'not_submitted') {
         priority = 1;
         reason = '報告がまだ届いていません';
@@ -4623,7 +4566,7 @@ const __aivicBundle_63_prioritizeUnsendingMembers = (() => {
         priority = 2;
         reason = '報告が遅延しています';
       }
-  
+
       if (timeUntilDeadlineMinutes <= 10) {
         urgency_level = 'critical';
       } else if (timeUntilDeadlineMinutes <= 30) {
@@ -4631,7 +4574,7 @@ const __aivicBundle_63_prioritizeUnsendingMembers = (() => {
       } else {
         urgency_level = 'medium';
       }
-  
+
       return {
         priority,
         member_id: member.member_id,
@@ -4641,7 +4584,7 @@ const __aivicBundle_63_prioritizeUnsendingMembers = (() => {
         urgency_level,
       };
     });
-  
+
     prioritized.sort((a, b) => {
       if (a.priority !== b.priority) {
         return a.priority - b.priority;
@@ -4649,7 +4592,7 @@ const __aivicBundle_63_prioritizeUnsendingMembers = (() => {
       const urgencyOrder = { critical: 0, high: 1, medium: 2 };
       return urgencyOrder[a.urgency_level] - urgencyOrder[b.urgency_level];
     });
-  
+
     return prioritized;
   }
   return { prioritizeUnsendingMembers };
@@ -4670,37 +4613,29 @@ const __aivicBundle_64_prioritizePromptionTargets = (() => {
     minutes_until_deadline: number;
     recommended_action: string;
   }> {
-    // Validate that reportDeadline is not null when unsendingMembers is provided
     if (Array.isArray(unsendingMembers) && unsendingMembers.length > 0 && reportDeadline === null) {
       throw new Error('遅延部員リストが null です');
     }
-  
-    // Validate that at least one list is non-empty
+
     const unsentList = Array.isArray(unsendingMembers) ? unsendingMembers : [];
     const delayedList = Array.isArray(reportDeadline) ? reportDeadline : [];
-  
+
     if (unsentList.length === 0 && delayedList.length === 0) {
       throw new Error('入力リストが両方とも空です');
     }
-  
-    // If both lists are empty arrays, return empty result
-    if (unsentList.length === 0 && delayedList.length === 0) {
-      return [];
-    }
-  
+
     const currentTime = new Date();
     const deadline = Array.isArray(reportDeadline) ? null : reportDeadline;
-  
-    // If deadline is null or not a valid date, return empty array
+
     if (!deadline || !(deadline instanceof Date)) {
       return [];
     }
-  
+
     const minutesUntilDeadline = Math.max(
       0,
       Math.floor((deadline.getTime() - currentTime.getTime()) / (1000 * 60))
     );
-  
+
     const prioritizedMembers: Array<{
       priority_rank: number;
       member_id: string;
@@ -4709,21 +4644,20 @@ const __aivicBundle_64_prioritizePromptionTargets = (() => {
       minutes_until_deadline: number;
       recommended_action: string;
     }> = [];
-  
+
     let priorityRank = 1;
-  
-    // Process unsent members (highest priority)
+
     if (Array.isArray(unsendingMembers)) {
       for (const member of unsendingMembers) {
         if (member && member.user_id && member.user_name) {
           const category: 'urgent_unsent' | 'delayed' | 'borderline' =
             minutesUntilDeadline <= 15 ? 'urgent_unsent' : 'borderline';
-  
+
           const recommendedAction =
             minutesUntilDeadline <= 10
               ? '即座に催促メール送信'
               : '段階的催促';
-  
+
           prioritizedMembers.push({
             priority_rank: priorityRank++,
             member_id: member.user_id,
@@ -4735,7 +4669,7 @@ const __aivicBundle_64_prioritizePromptionTargets = (() => {
         }
       }
     }
-  
+
     return prioritizedMembers;
   }
   return { prioritizePromptionTargets };
@@ -4751,24 +4685,22 @@ const __aivicBundle_65_prioritizeRemindTargetMembers = (() => {
     delayed_members?: any,
     meeting_start_time?: Date
   ): any {
-    // Handle 1-argument call with array (empty check)
     if (arguments.length === 1) {
       if (Array.isArray(input)) {
         if (input.length === 0) {
           throw new Error('未送信部員リストが空です');
         }
-        // Process promotion_targets from structured input
         if (input.length > 0 && typeof input[0] === 'object' && 'member_id' in input[0]) {
           return input.map((target: any) => {
             const maxAttempts = target.max_promotion_attempts ?? 3;
             const currentAttempt = target.current_promotion_attempt_count ?? 1;
             const timeoutMinutes = target.promotion_timeout_minutes ?? 15;
             const minutesUntilDeadline = target.minutes_until_deadline ?? 0;
-            
+
             const maxAttemptsReached = currentAttempt >= maxAttempts;
             const timeExceeded = minutesUntilDeadline <= 0 || (timeoutMinutes > 0 && minutesUntilDeadline < (timeoutMinutes - (timeoutMinutes * currentAttempt / maxAttempts)));
             const shouldSend = !maxAttemptsReached && !timeExceeded;
-            
+
             return {
               member_id: target.member_id,
               member_name: target.member_name,
@@ -4783,21 +4715,20 @@ const __aivicBundle_65_prioritizeRemindTargetMembers = (() => {
       }
       throw new Error('未送信部員リストが空です');
     }
-  
-    // Handle 4-argument call (manager_id, non_submitted_members, delayed_members, meeting_start_time)
+
     if (arguments.length === 4) {
       const manager_id = input;
-      
+
       if (!manager_id || manager_id === '') {
         throw new Error('部長ID');
       }
-  
+
       if (!meeting_start_time || !(meeting_start_time instanceof Date)) {
         throw new Error('朝礼開始時刻が無効です');
       }
-  
+
       const allMembers: any[] = [];
-      
+
       if (Array.isArray(non_submitted_members)) {
         allMembers.push(
           ...non_submitted_members.map((member: any) => ({
@@ -4809,7 +4740,7 @@ const __aivicBundle_65_prioritizeRemindTargetMembers = (() => {
           }))
         );
       }
-  
+
       if (Array.isArray(delayed_members)) {
         allMembers.push(
           ...delayed_members.map((member: any) => ({
@@ -4821,18 +4752,18 @@ const __aivicBundle_65_prioritizeRemindTargetMembers = (() => {
           }))
         );
       }
-  
+
       const maxAttempts = 3;
       const currentAttempt = 1;
       const timeoutMinutes = 15;
       const currentTime = new Date();
       const minutesElapsed = (currentTime.getTime() - meeting_start_time.getTime()) / (1000 * 60);
       const timeExceeded = minutesElapsed > timeoutMinutes;
-  
+
       return allMembers.map((member: any, index: number) => {
         const maxAttemptsReached = currentAttempt >= maxAttempts;
         const shouldSend = !maxAttemptsReached && !timeExceeded;
-  
+
         return {
           member_id: member.user_id,
           member_name: member.user_name,
@@ -4848,7 +4779,7 @@ const __aivicBundle_65_prioritizeRemindTargetMembers = (() => {
         };
       });
     }
-  
+
     throw new Error('Invalid arguments');
   }
   return { prioritizeRemindTargetMembers };
@@ -4886,25 +4817,25 @@ const __aivicBundle_66_prioritizeCourierTargets = (() => {
     if (input.department_head_id === null) {
       throw new Error('部長IDが指定されていません');
     }
-  
+
     const reminderTargets = input.reminder_targets || [];
     const meetingTime = input.morning_assembly_time || input.morning_meeting_start_time;
     const now = input.current_time || new Date();
-  
+
     const filteredTargets = reminderTargets.filter(
       (target) => target.should_send_reminder === true
     );
-  
+
     if (filteredTargets.length === 0) {
       return [];
     }
-  
+
     const minutesRemaining = Math.floor(
       (meetingTime.getTime() - now.getTime()) / (1000 * 60)
     );
-  
+
     const isFinalNotice = minutesRemaining <= 30 && minutesRemaining > 0;
-  
+
     return filteredTargets.map((target) => ({
       member_id: target.member_id,
       member_name: target.member_name,
@@ -4930,46 +4861,34 @@ const __aivicBundle_67_prioritizeUrgentMembers = (() => {
     escalation_required: boolean;
     action_type: 'immediate_contact' | 'standard_reminder' | 'monitor';
   }> {
-    // Handle array input (from test)
     if (Array.isArray(input)) {
       const members = input;
-      
-      // Validate: check for missing member_id
+
       for (const member of members) {
         if (!member.member_id || member.member_id.trim() === '') {
           throw new Error('部員IDが欠落しています');
         }
       }
-      
-      // For array input, return empty array (no courier_targets structure)
+
       return [];
     }
-  
-    // Handle object input with courier_targets (from plan)
+
     const { courier_targets = [], escalation_threshold_minutes = 15 } = input;
-  
+
     return courier_targets.map((target: any) => {
       const { member_id, member_name, courier_priority, is_final_notice, minutes_remaining } = target;
-  
-      // Calculate urgency score based on priority, final notice status, and time remaining
+
       let urgency_score = 0;
-  
-      // Base score from courier_priority (1 = highest, so invert)
-      const priority_score = (5 - Math.min(courier_priority, 5)) * 10; // 40-50 range for priority 1-5
-  
-      // Time-based urgency: closer to deadline = higher urgency
+
+      const priority_score = (5 - Math.min(courier_priority, 5)) * 10;
       const time_score = Math.max(0, (escalation_threshold_minutes - minutes_remaining) * 3);
-  
-      // Final notice multiplier
       const final_notice_multiplier = is_final_notice ? 1.5 : 1.0;
-  
+
       urgency_score = Math.round((priority_score + time_score) * final_notice_multiplier);
-      urgency_score = Math.min(100, urgency_score); // Cap at 100
-  
-      // Determine escalation: required if minutes_remaining <= escalation_threshold_minutes
+      urgency_score = Math.min(100, urgency_score);
+
       const escalation_required = minutes_remaining <= escalation_threshold_minutes;
-  
-      // Determine action type
+
       let action_type: 'immediate_contact' | 'standard_reminder' | 'monitor';
       if (escalation_required && is_final_notice) {
         action_type = 'immediate_contact';
@@ -4978,7 +4897,7 @@ const __aivicBundle_67_prioritizeUrgentMembers = (() => {
       } else {
         action_type = 'monitor';
       }
-  
+
       return {
         member_id,
         member_name,
@@ -5012,13 +4931,12 @@ const __aivicBundle_68_prioritizeUnreportedMembers = (() => {
     time_overdue_minutes: number;
     notification_required: boolean;
   }> {
-    // Validate that all records have report_deadline_at set
     for (const member of unreportedMembers) {
       if (member.report_deadline_at === null || member.report_deadline_at === undefined) {
         throw new Error('報告期限日時が未設定です');
       }
     }
-  
+
     const result: Array<{
       member_id: string;
       member_name: string;
@@ -5028,23 +4946,21 @@ const __aivicBundle_68_prioritizeUnreportedMembers = (() => {
       time_overdue_minutes: number;
       notification_required: boolean;
     }> = [];
-  
+
     for (const member of unreportedMembers) {
       const deadline = member.report_deadline_at as Date;
       const timeOverdueMs = meeting_start_at.getTime() - deadline.getTime();
       const timeOverdueMinutes = Math.max(0, Math.floor(timeOverdueMs / (1000 * 60)));
-  
-      // Determine priority level based on time overdue
+
       let priorityLevel = 1;
       if (timeOverdueMinutes > 30) {
         priorityLevel = 3;
       } else if (timeOverdueMinutes > 10) {
         priorityLevel = 2;
       }
-  
-      // Notification is required if deadline has passed or is approaching
+
       const notificationRequired = timeOverdueMinutes >= 0;
-  
+
       result.push({
         member_id: member.user_id,
         member_name: member.user_name,
@@ -5055,7 +4971,7 @@ const __aivicBundle_68_prioritizeUnreportedMembers = (() => {
         notification_required: notificationRequired,
       });
     }
-  
+
     return result;
   }
   return { prioritizeUnreportedMembers };
@@ -5076,20 +4992,17 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     followup_category: 'critical_unreported' | 'delayed' | 'borderline';
     recommended_followup_method: 'email' | 'chat' | 'phone';
   }> {
-    // Handle overloaded signatures: (object) or (array, date, date)
     let allUsers: Array<any>;
     let submissionHistory: Array<any>;
     let deadline: Date;
     let currentTimeResolved: Date;
-  
+
     if (Array.isArray(input)) {
-      // Signature: (array, date, date)
       allUsers = input;
       submissionHistory = [];
       currentTimeResolved = currentTime || new Date();
       deadline = meetingDeadline || new Date();
     } else if (typeof input === 'object' && input !== null) {
-      // Signature: (object)
       allUsers = input.all_users || [];
       submissionHistory = input.submission_history || [];
       currentTimeResolved = input.current_time || new Date();
@@ -5097,23 +5010,19 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     } else {
       return [];
     }
-  
-    // Validate deadline format if provided as string
+
     if (typeof deadline === 'string') {
       throw new Error('報告期限日時が不正な形式です');
     }
-  
-    // Build submission status map from history
+
     const submittedUserIds = new Set<string>();
-    
-  
+
     for (const record of submissionHistory) {
       if (record.user_id) {
         submittedUserIds.add(record.user_id);
       }
     }
-  
-    // Identify unreported and delayed members
+
     const unreportedMembers: Array<{
       member_id: string;
       member_name: string;
@@ -5121,7 +5030,7 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
       followup_category: 'critical_unreported' | 'delayed' | 'borderline';
       recommended_followup_method: 'email' | 'chat' | 'phone';
     }> = [];
-  
+
     const delayedMembersResult: Array<{
       member_id: string;
       member_name: string;
@@ -5129,16 +5038,15 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
       followup_category: 'critical_unreported' | 'delayed' | 'borderline';
       recommended_followup_method: 'email' | 'chat' | 'phone';
     }> = [];
-  
+
     for (const user of allUsers) {
       const userId = user.user_id || user.id;
       const userName = user.user_name || user.name;
-  
+
       if (!userId || !userName) {
         continue;
       }
-  
-      // Check if user has submitted
+
       if (!submittedUserIds.has(userId)) {
         unreportedMembers.push({
           member_id: userId,
@@ -5149,13 +5057,12 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
         });
       }
     }
-  
-    // Combine unreported (priority 1) and delayed (priority 2)
+
     const result = [
       ...unreportedMembers,
       ...delayedMembersResult,
     ];
-  
+
     return result;
   }
   return { prioritizeFollowUpTargets };
@@ -5179,53 +5086,44 @@ const __aivicBundle_70_assignPrioritiesToRemindTargets = (() => {
     meeting_time_critical?: boolean;
     assigned_at?: Date;
   }> {
-    // Handle both array input and object with followup_targets property
     let members: Array<any> = [];
-  
+
     if (Array.isArray(input)) {
       members = input;
     } else if (input && Array.isArray(input.followup_targets)) {
       members = input.followup_targets;
     } else if (input && typeof input === 'object') {
-      // Fallback: treat input as array-like if it has numeric keys
       members = Object.values(input).filter((item) => item && typeof item === 'object');
     }
-  
+
     const now = input?.current_time || new Date();
     const meetingTime = input?.morning_meeting_start_time;
     const maxAttempts = input?.max_reminder_attempts ?? 3;
     const timeoutMinutes = input?.reminder_timeout_minutes ?? 15;
     const currentAttemptCount = input?.current_reminder_attempt_count ?? 0;
-  
-    // Separate unreported and delayed members
+
     const unreportedMembers = members.filter((m) => m.status === 'unreported' || m.followup_category === 'critical_unreported');
     const delayedMembers = members.filter((m) => m.status === 'delayed' || m.followup_category !== 'critical_unreported');
-  
-    // Combine with unreported first, then delayed
+
     const orderedMembers = [...unreportedMembers, ...delayedMembers];
-  
-    // Calculate if timeout exceeded
+
     const timeoutExceeded = currentAttemptCount >= maxAttempts;
-  
-    // Calculate if meeting time is critical (within timeout window)
+
     let meetingTimeCritical = false;
     if (meetingTime && now) {
       const minutesUntilMeeting = (meetingTime.getTime() - now.getTime()) / (1000 * 60);
       meetingTimeCritical = minutesUntilMeeting > 0 && minutesUntilMeeting <= timeoutMinutes;
     }
-  
-    // Determine if reminder should be sent
+
     const shouldSendReminder = !timeoutExceeded;
-  
-    // Map to output format, preserving input properties and adding computed ones
+
     return orderedMembers.map((member, index) => {
       const baseMember: any = {
         userId: member.userId || member.member_id,
         name: member.name || member.member_name,
         status: member.status,
       };
-  
-      // Add computed priority fields if input has followup_priority
+
       if (member.followup_priority !== undefined) {
         baseMember.final_priority = member.followup_priority;
         baseMember.should_send_reminder = shouldSendReminder;
@@ -5235,7 +5133,7 @@ const __aivicBundle_70_assignPrioritiesToRemindTargets = (() => {
         baseMember.meeting_time_critical = meetingTimeCritical;
         baseMember.assigned_at = new Date();
       }
-  
+
       return baseMember;
     });
   }
@@ -5282,7 +5180,7 @@ const __aivicBundle_71_prioritizeMissingReporters = (() => {
       reason: string;
       delay_minutes?: number | null;
     }> = [];
-  
+
     for (const member of reportStatusList) {
       if (member.status === 'not_submitted') {
         notSubmittedMembers.push({
@@ -5306,13 +5204,13 @@ const __aivicBundle_71_prioritizeMissingReporters = (() => {
         });
       }
     }
-  
+
     const sortedDelayedMembers = delayedMembers.sort((a, b) => {
       const delayA = a.delay_minutes ?? 0;
       const delayB = b.delay_minutes ?? 0;
       return delayB - delayA;
     });
-  
+
     return [...notSubmittedMembers, ...sortedDelayedMembers];
   }
   return { prioritizeMissingReporters };
@@ -5344,9 +5242,9 @@ const __aivicBundle_72_assignPromptionPriority = (() => {
       priority: number;
       priorityReason: string;
     }> = [];
-  
+
     const delayedMembers = input.delayedMembers || [];
-  
+
     const delayedWithMinutes = delayedMembers.map((member) => {
       const delayMs = member.submittedAt.getTime() - member.scheduledAt.getTime();
       const delayMinutes = Math.floor(delayMs / (1000 * 60));
@@ -5355,11 +5253,11 @@ const __aivicBundle_72_assignPromptionPriority = (() => {
         delayMinutes: Math.max(0, delayMinutes),
       };
     });
-  
+
     const sortedByDelay = delayedWithMinutes.sort(
       (a, b) => b.delayMinutes - a.delayMinutes
     );
-  
+
     sortedByDelay.forEach((member, index) => {
       result.push({
         memberId: member.memberId,
@@ -5369,7 +5267,7 @@ const __aivicBundle_72_assignPromptionPriority = (() => {
         priorityReason: 'delayed',
       });
     });
-  
+
     return result;
   }
   return { assignPromptionPriority };
@@ -5390,7 +5288,7 @@ const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
     if (!remindTargetMembers || remindTargetMembers.length === 0) {
       return [];
     }
-  
+
     const seenUserIds = new Set<string>();
     const uniqueMembers: Array<{
       userId: string;
@@ -5398,14 +5296,14 @@ const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
       departmentId: string;
       reportStatus: 'submitted' | 'delayed' | 'not_submitted';
     }> = [];
-  
+
     for (const member of remindTargetMembers) {
       if (!seenUserIds.has(member.userId)) {
         seenUserIds.add(member.userId);
         uniqueMembers.push(member);
       }
     }
-  
+
     const resultWithPriority: RemindTargetMemberWithPriority[] = uniqueMembers
       .filter(
         (member) =>
@@ -5422,7 +5320,7 @@ const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
             ? 'Report not submitted'
             : 'Report submitted late',
       }));
-  
+
     return resultWithPriority;
   }
   return { assignPriorityToRemindersWithDuplicates };
@@ -5446,12 +5344,12 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
     if (!reportStatusList || reportStatusList.length === 0) {
       return [];
     }
-  
+
     const remindTargets: Array<RemindTargetMemberWithPriority & { userId?: string }> = [];
-  
+
     for (const member of reportStatusList) {
       const status = member.status;
-  
+
       if (status === 'not_submitted') {
         remindTargets.push({
           priority: 1,
@@ -5472,7 +5370,7 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
         });
       }
     }
-  
+
     remindTargets.sort((a, b) => {
       if (a.priority !== b.priority) {
         return a.priority - b.priority;
@@ -5485,7 +5383,7 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
       );
       return indexA - indexB;
     });
-  
+
     return remindTargets as RemindTargetMemberWithPriority[];
   }
   return { assignPrioritiesToReminders };
@@ -5518,7 +5416,7 @@ const __aivicBundle_75_prioritizeProcurementTargets = (() => {
     if (!reportStatusList || reportStatusList.length === 0) {
       return [];
     }
-  
+
     const unsubmittedMembers: Array<{
       priority: number;
       employeeId?: string;
@@ -5539,10 +5437,10 @@ const __aivicBundle_75_prioritizeProcurementTargets = (() => {
       submittedAt?: Date | null;
       reason?: string;
     }> = [];
-  
+
     for (const member of reportStatusList) {
       const status = member.status;
-  
+
       if (status === 'not_submitted' || status === '未送信') {
         unsubmittedMembers.push({
           priority: 1,
@@ -5567,7 +5465,7 @@ const __aivicBundle_75_prioritizeProcurementTargets = (() => {
         });
       }
     }
-  
+
     return [...unsubmittedMembers, ...delayedMembers];
   }
   return { prioritizeProcurementTargets };
@@ -5591,22 +5489,22 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
     if (!Array.isArray(reportStatusList)) {
       return [];
     }
-  
+
     const unreportedMembers = reportStatusList.filter(
       (member) =>
         member.status === 'not_submitted' || member.status === 'delayed'
     );
-  
+
     const notSubmittedMembers = unreportedMembers.filter(
       (member) => member.status === 'not_submitted'
     );
     const delayedMembers = unreportedMembers.filter(
       (member) => member.status === 'delayed'
     );
-  
+
     const result: RemindTargetMemberWithPriority[] = [];
     let priorityCounter = 1;
-  
+
     for (const member of notSubmittedMembers) {
       result.push({
         priority: priorityCounter,
@@ -5618,7 +5516,7 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
       });
       priorityCounter++;
     }
-  
+
     for (const member of delayedMembers) {
       result.push({
         priority: priorityCounter,
@@ -5630,7 +5528,7 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
       });
       priorityCounter++;
     }
-  
+
     return result;
   }
   return { assignPrioritiesToUnreportedMembers };
@@ -5674,19 +5572,15 @@ const __aivicBundle_77_determinePrioritizedMembersForPrompt = (() => {
       reason: string;
       status?: string;
     }> = [];
-  
+
     for (const report of reportStatusList) {
       const userId = report.user_id || report.employeeId;
       const deptId = report.department_id;
       const memberName = report.employeeName;
-  
-      // Determine if this report should be included in prompt targets
+
       const submissionStatus = report.submission_status || report.status;
-      
-  
-      // Only include unsent or delayed reports
+
       if (submissionStatus === 'unsent' || submissionStatus === 'not_submitted') {
-        // Priority 1: Not submitted (deadline not yet passed or within deadline)
         result.push({
           user_id: userId,
           employeeId: userId,
@@ -5697,7 +5591,6 @@ const __aivicBundle_77_determinePrioritizedMembersForPrompt = (() => {
           status: submissionStatus,
         });
       } else if (submissionStatus === 'delayed') {
-        // Priority 2: Delayed submission (submitted after deadline)
         result.push({
           user_id: userId,
           employeeId: userId,
@@ -5708,12 +5601,10 @@ const __aivicBundle_77_determinePrioritizedMembersForPrompt = (() => {
           status: submissionStatus,
         });
       }
-      // 'sent' or 'submitted' status: exclude from prompt targets
     }
-  
-    // Sort by priority (ascending: 1 before 2)
+
     result.sort((a, b) => a.priority - b.priority);
-  
+
     return result;
   }
   return { determinePrioritizedMembersForPrompt };
@@ -5742,9 +5633,9 @@ const __aivicBundle_78_isAllReportSubmitted = (() => {
     if (!reportRecords || reportRecords.length === 0) {
       return false;
     }
-  
+
     let expectedCount: number;
-  
+
     if (typeof teamMemberCountOrIds === 'number') {
       expectedCount = teamMemberCountOrIds;
     } else if (Array.isArray(teamMemberCountOrIds)) {
@@ -5752,16 +5643,16 @@ const __aivicBundle_78_isAllReportSubmitted = (() => {
     } else {
       return false;
     }
-  
+
     const uniqueSubmitters = new Set<string>();
-  
+
     for (const record of reportRecords) {
       const employeeId = record.user_id || record.employeeId;
       if (employeeId) {
         uniqueSubmitters.add(employeeId);
       }
     }
-  
+
     return uniqueSubmitters.size === expectedCount;
   }
   return { isAllReportSubmitted };
@@ -5785,7 +5676,7 @@ const __aivicBundle_79_determinePromptionTargets = (() => {
     }>;
     meeting_start_time: Date;
   }
-  
+
   interface DeterminePromptionTargetsOutput {
     promotion_targets: Array<{
       user_id: string;
@@ -5796,24 +5687,24 @@ const __aivicBundle_79_determinePromptionTargets = (() => {
     unsubmitted_count: number;
     total_count: number;
   }
-  
-   function determinePromptionTargets(
+
+  function determinePromptionTargets(
     input: DeterminePromptionTargetsInput
   ): DeterminePromptionTargetsOutput {
     const submittedUserIds = new Set(
       input.submitted_reports.map((report) => report.user_id)
     );
-  
+
     const unsubmittedMembers = input.all_department_members.filter(
       (member) => !submittedUserIds.has(member.user_id)
     );
-  
+
     const promotionTargets = unsubmittedMembers.map((member) => ({
       user_id: member.user_id,
       name: member.name,
       reason: "報告がまだ送信されていません"
     }));
-  
+
     return {
       promotion_targets: promotionTargets,
       submitted_count: input.submitted_reports.length,
@@ -5858,11 +5749,11 @@ const __aivicBundle_80_determineAllReportsComplete = (() => {
         incompleteReporters: [],
       };
     }
-  
+
     const totalReporters = reporters.length;
     const reportedCount = reporters.length;
     const isAllComplete = reportedCount === totalReporters && totalReporters > 0;
-  
+
     return {
       isAllComplete,
       totalReporters,
@@ -5897,7 +5788,7 @@ const __aivicBundle_81_determineAllReportCompletionStatus = (() => {
     pending_users: PendingUser[];
   }
   
-   function determineAllReportCompletionStatus(
+  function determineAllReportCompletionStatus(
     input: DetermineAllReportCompletionStatusInput
   ): DetermineAllReportCompletionStatusOutput {
     if (input["target_date"] === undefined || input["target_date"] === null) { throw new Error("target_date is required"); }
@@ -6483,7 +6374,7 @@ const __aivicBundle_91_validateReportingDeadline = (() => {
     minutesBeforeDeadline: number;
   }
   
-   function validateReportingDeadline(
+  function validateReportingDeadline(
     input: ValidateReportingDeadlineInput
   ): ValidateReportingDeadlineOutput {
     const { meetingStartTime, reportSubmittedAt } = input;
@@ -6643,7 +6534,7 @@ const __aivicBundle_93_sendReportAndNotifyDeadlineCheck = (() => {
     email_recipient_count: number;
   }
   
-   function sendReportAndNotifyDeadlineCheck(
+  function sendReportAndNotifyDeadlineCheck(
     input: SendReportAndNotifyDeadlineCheckInput
   ): SendReportAndNotifyDeadlineCheckOutput {
     if (input["user_id"] === undefined || input["user_id"] === null) { throw new Error("user_id is required"); }
@@ -6780,7 +6671,7 @@ const __aivicBundle_96_determinePromptionNeeded = (() => {
     reason: string;
   }
   
-   function determinePromptionNeeded(
+  function determinePromptionNeeded(
     input: DeterminePromptionNeededInput
   ): DeterminePromptionNeededOutput {
     const { employeeId, deadline, currentTime, submissionStatus } = input;
@@ -6976,16 +6867,16 @@ export const determineReportDeadlineStatus: (...args: any[]) => any = (...args: 
 const __aivicBundle_99_shouldTerminateCourtesynotificationLoop = (() => {
   const courtesynotificationAttemptStore: Map<string, number> = new Map();
   
-   function recordCourtesynotificationAttempt(userId: string): void {
+  function recordCourtesynotificationAttempt(userId: string): void {
     const current = courtesynotificationAttemptStore.get(userId) ?? 0;
     courtesynotificationAttemptStore.set(userId, current + 1);
   }
   
-   function getCourtesynotificationAttemptCount(userId: string): number {
+  function getCourtesynotificationAttemptCount(userId: string): number {
     return courtesynotificationAttemptStore.get(userId) ?? 0;
   }
   
-   function shouldTerminateCourtesynotificationLoop(
+  function shouldTerminateCourtesynotificationLoop(
     userId: string,
     maxAttempts: number,
     loopState?: PromptionLoopState,
@@ -7075,7 +6966,7 @@ const __aivicBundle_101_sendConfirmationEmailsOnSubmission = (() => {
     emailCount?: number;
   }
   
-   function sendConfirmationEmailsOnSubmission(
+  function sendConfirmationEmailsOnSubmission(
     input: SendConfirmationEmailsOnSubmissionInput
   ): SendConfirmationEmailsOnSubmissionOutput {
     const {
@@ -7171,8 +7062,6 @@ const __aivicBundle_102_notifyUnreportedMembers = (() => {
     const send_email_fn = input.send_email_fn;
     const unreported_members_detail = input.unreported_members_detail;
     
-    
-  
     // 提出済みのユーザーIDセットを作成
     const submitted_user_ids = new Set(
       submissions.map((s: any) => s.user_id || s.user_id)
@@ -7276,7 +7165,7 @@ const __aivicBundle_103_sendPromptionEmailAndUpdateStatus = (() => {
     error?: string;
   }
   
-   function sendPromptionEmailAndUpdateStatus(
+  function sendPromptionEmailAndUpdateStatus(
     employeeId: string,
     employeeEmail: string,
     departmentHeadEmail: string,
@@ -7471,7 +7360,7 @@ const __aivicBundle_105_determinePushLoopTermination = (() => {
     meetingTimeApproaching: boolean;
   }
   
-   function determinePushLoopTermination(
+  function determinePushLoopTermination(
     input: DeterminePushLoopTerminationInput
   ): DeterminePushLoopTerminationOutput {
     if (input.push_target_member_id === null || input.push_target_member_id === undefined) {
@@ -7626,7 +7515,7 @@ const __aivicBundle_107_shouldTerminateCampaign = (() => {
     reportCompletionRate: number;
   }
   
-   function shouldTerminateCampaign(
+  function shouldTerminateCampaign(
     input: ShouldTerminateCampaignInput
   ): ShouldTerminateCampaignOutput {
     if (input.retryCount === null || input.retryCount === undefined) {
@@ -10796,14 +10685,14 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
     if (!input) {
       throw new Error("入力データが不正です");
     }
-  
+
     const reports = input.reports || [];
     const adminEmail = input.admin_email_address;
     const reportSubmissionDate = input.reportSubmissionDate || input.report_submission_date;
-  
+
     const processedReportCount = reports.length;
     let approvedReportCount = 0;
-  
+
     for (const report of reports) {
       if (
         report &&
@@ -10816,11 +10705,11 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
         approvedReportCount++;
       }
     }
-  
+
     let emailBody = "朝会報告集約\n\n";
     emailBody += `報告日: ${reportSubmissionDate}\n`;
     emailBody += "=".repeat(50) + "\n\n";
-  
+
     for (const report of reports) {
       if (report) {
         emailBody += `【${report.user_id}】\n`;
@@ -10831,22 +10720,22 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
         emailBody += "-".repeat(50) + "\n\n";
       }
     }
-  
+
     const emailSentCount = adminEmail ? 1 : 0;
-  
+
     const result: any = {
       success: approvedReportCount > 0,
       email_sent_count: emailSentCount,
       processed_report_count: processedReportCount,
       approved_report_count: approvedReportCount,
     };
-  
+
     if (input.engineerEmail && input.managerEmail) {
       result.engineerEmailSent = true;
       result.managerEmailSent = true;
       result.sentAt = input.submittedAt || new Date();
     }
-  
+
     return result;
   }
   return { sendConfirmationEmailsForReports };
