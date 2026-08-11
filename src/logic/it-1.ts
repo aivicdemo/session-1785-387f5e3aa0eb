@@ -7977,16 +7977,16 @@ const __aivicBundle_104_getDelayedReporters = (() => {
         };
   
         if (submission.user_id !== undefined) {
-          entry.user_id = userId;
+          entry.user_id = userId as string;
         }
         if (submission.employeeId !== undefined) {
-          entry.employeeId = userId;
+          entry.employeeId = userId as string;
         }
         if (submission.user_name !== undefined) {
-          entry.user_name = userName;
+          entry.user_name = userName as string;
         }
         if (submission.employeeName !== undefined) {
-          entry.employeeName = userName;
+          entry.employeeName = userName as string;
         }
   
         delayedReporters.push(entry);
@@ -8010,16 +8010,16 @@ const __aivicBundle_104_getDelayedReporters = (() => {
         };
   
         if (submission.user_id !== undefined) {
-          entry.user_id = userId;
+          entry.user_id = userId as string;
         }
         if (submission.employeeId !== undefined) {
-          entry.employeeId = userId;
+          entry.employeeId = userId as string;
         }
         if (submission.user_name !== undefined) {
-          entry.user_name = userName;
+          entry.user_name = userName as string;
         }
         if (submission.employeeName !== undefined) {
-          entry.employeeName = userName;
+          entry.employeeName = userName as string;
         }
   
         delayedReporters.push(entry);
@@ -8054,8 +8054,8 @@ const __aivicBundle_105_classifyReportArrivalStatus = (() => {
     const delayed: Array<{ user_id: string; submitted_at: Date }> = [];
   
     for (const report of reportSubmissions) {
-      const userId = report.user_id || report.employeeId || "";
-      const submittedAt = report.submitted_at ?? report.submittedAt ?? null;
+      const userId = (report.user_id || report.employeeId || "") as string;
+      const submittedAt = (report.submitted_at ?? report.submittedAt ?? null) as Date | null;
   
       if (submittedAt === null || submittedAt === undefined) {
         not_arrived.push({ user_id: userId, submitted_at: null });
@@ -8110,6 +8110,8 @@ const __aivicBundle_106_validateReportContent = (() => {
       entry.yesterday_accomplishment ||
       entry.yesterday_achievement ||
       entry.yesterdayAchievement ||
+      entry.yesterday_achieved ||
+      entry.yesterday ||
       "";
   
     if (!yesterdayValue || yesterdayValue.trim() === "") {
@@ -8121,6 +8123,7 @@ const __aivicBundle_106_validateReportContent = (() => {
       entry.today_work ||
       entry.todayPlan ||
       entry.today_plan ||
+      entry.today ||
       "";
   
     if (!todayValue || todayValue.trim() === "") {
@@ -8139,6 +8142,9 @@ const __aivicBundle_106_validateReportContent = (() => {
       entry.currentIssues ||
       entry.issues_held ||
       entry.issuesHeld ||
+      entry.current_issue ||
+      entry.currentIssue ||
+      entry.issue ||
       "";
   
     if (!challengesValue || challengesValue.trim() === "") {

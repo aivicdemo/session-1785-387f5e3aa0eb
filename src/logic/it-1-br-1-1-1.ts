@@ -4045,6 +4045,7 @@ const __aivicBundle_57_sendConfirmationEmailsToDeptHeadAndReporter = (() => {
     sentAt: Date;
   }): Promise<void> {
     if (reportData["deptHeadName"] === undefined || reportData["deptHeadName"] === null) { throw new Error("deptHeadName is required"); }
+    
     const emailService = getEmailService();
     const errorLogger = getErrorLogger();
     const systemState = getSystemState();
