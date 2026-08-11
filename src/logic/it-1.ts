@@ -2227,121 +2227,73 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
-const __aivicBundle_19_validateDailyReportSubmission = (() => {
-  interface ValidateDailyReportSubmissionInput {
-    yesterdayAccomplishment?: string;
-    todayPlan?: string;
-    currentChallenges?: string;
-    yesterday_achievement?: string;
-    today_plan?: string;
-    current_issues?: string;
-    current_issue?: string;
-    submission_date?: string;
-    user_id?: string;
-  }
-  
-  interface ValidateDailyReportSubmissionOutput {
-    isValid: boolean;
-    errors?: Array<{
-      field: string;
-      message: string;
-    }>;
-    shouldSendConfirmationEmail?: boolean;
-    is_allowed?: boolean;
-    message?: string;
-  }
-  
-  const validateDailyReportSubmissionStore = new Map<string, Set<string>>();
-  
-   function validateDailyReportSubmission(
-    input: ValidateDailyReportSubmissionInput
-  ): ValidateDailyReportSubmissionOutput {
+const __aivicBundle_validateDailyReportSubmission = (() => {
+  const submissionStore = new Map<string, Set<string>>();
+
+  function validateDailyReportSubmission(
+    formData: any
+  ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
     const errors: Array<{ field: string; message: string }> = [];
-  
-    // Normalize field names to handle both camelCase and snake_case
-    const yesterdayValue =
-      input.yesterdayAccomplishment ?? input.yesterday_achievement ?? '';
-    const todayValue = input.todayPlan ?? input.today_plan ?? '';
-    const challengeValue =
-      input.currentChallenges ?? input.current_issues ?? input.current_issue ?? '';
-  
-    // Validate yesterdayAccomplishment / yesterday_achievement
-    if (!yesterdayValue || yesterdayValue.trim().length === 0) {
-      errors.push({
-        field: 'yesterdayAccomplishment',
-        message: '昨日やったことが必須です',
-      });
+
+    const reportDate = formData.reportDate || formData.report_date || '';
+    const department = formData.department || formData.department_id || '';
+    const yesterday = formData.yesterday || formData.yesterdayAccomplishment || formData.yesterday_achievement || '';
+    const today = formData.today || formData.todayPlan || formData.today_plan || '';
+    const challenge = formData.challenge || formData.currentChallenge || formData.current_issue || '';
+
+    if (!reportDate || reportDate.trim() === '') {
+      errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
-  
-    // Validate todayPlan / today_plan
-    if (!todayValue || todayValue.trim().length === 0) {
-      errors.push({
-        field: 'todayPlan',
-        message: '今日やることが必須です',
-      });
+    if (!department || department.trim() === '') {
+      errors.push({ field: 'department', message: '部門選択が未入力' });
     }
-  
-    // Validate currentChallenges / current_issues / current_issue
-    if (!challengeValue || challengeValue.trim().length === 0) {
-      errors.push({
-        field: 'currentChallenges',
-        message: '抱えている課題が必須です',
-      });
+    if (!yesterday || yesterday.trim() === '') {
+      errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
-  
-    // Check for character limit on todayPlan (項目2)
-    const maxCharsItem2 = 500;
-    if (todayValue && todayValue.length > maxCharsItem2) {
-      throw new Error(`項目2が最大許容文字数(${maxCharsItem2})を超過しています`);
+    if (!today || today.trim() === '') {
+      errors.push({ field: 'today', message: '今日やることが未入力' });
     }
-  
-    // If there are validation errors, return early
-    if (errors.length > 0) {
-      return {
-        isValid: false,
-        errors,
-        shouldSendConfirmationEmail: false,
-      };
+    if (!challenge || challenge.trim() === '') {
+      errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
-  
-    // Check for duplicate submission (same user, same date)
-    const userId = input.user_id ?? '';
-    const submissionDate = input.submission_date ?? '';
-  
-    if (userId && submissionDate) {
+
+    const isValid = errors.length === 0;
+
+    // 重複チェック（userId と submission_date がある場合）
+    const userId = formData.user_id || formData.userId || '';
+    const submissionDate = formData.submission_date || formData.submissionDate || '';
+
+    if (userId && submissionDate && isValid) {
       const submissionKey = `${userId}:${submissionDate}`;
-  
-      if (!validateDailyReportSubmissionStore.has(submissionKey)) {
-        validateDailyReportSubmissionStore.set(submissionKey, new Set());
+      if (!submissionStore.has(submissionKey)) {
+        submissionStore.set(submissionKey, new Set());
       }
-  
-      const submissionSet = validateDailyReportSubmissionStore.get(submissionKey)!;
-  
+      const submissionSet = submissionStore.get(submissionKey)!;
       if (submissionSet.size > 0) {
-        // This is a duplicate submission
         return {
           isValid: true,
+          errors: [],
+          validationStatus: '妥当性確認: 完了',
           is_allowed: false,
           message: '既に送信済みです',
-          shouldSendConfirmationEmail: false,
+          shouldSendConfirmationEmail: false
         };
       }
-  
-      // Mark this submission as recorded
       submissionSet.add('submitted');
     }
-  
-    // All validations passed
+
     return {
-      isValid: true,
-      is_allowed: true,
-      message: '送信完了しました',
-      shouldSendConfirmationEmail: true,
+      isValid,
+      errors,
+      validationStatus: isValid ? '妥当性確認: 完了' : '妥当性確認: 失敗',
+      shouldSendConfirmationEmail: isValid,
+      is_allowed: isValid,
+      message: isValid ? '送信完了しました' : undefined
     };
   }
   return { validateDailyReportSubmission };
 })();
-export const validateDailyReportSubmission = __aivicBundle_19_validateDailyReportSubmission.validateDailyReportSubmission;
+export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission.validateDailyReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendDailyReportAndNotify exports=sendDailyReportAndNotify */
@@ -2623,7 +2575,7 @@ export const sendConfirmationEmailWithReport = __aivicBundle_24_sendConfirmation
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendConfirmationEmailWithReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitDailyReport exports=submitDailyReport */
-const __aivicBundle_submitDailyReport = (() => {
+const __aivicBundle_submitDailyReport_fixed = (() => {
   async function submitDailyReport(
     reportData: any,
     mockDuplicateCheckFn?: Function
@@ -2673,6 +2625,8 @@ const __aivicBundle_submitDailyReport = (() => {
       submittedAt = new Date(reportData.send_date);
     } else if (reportData.send_date_time) {
       submittedAt = reportData.send_date_time;
+    } else {
+      submittedAt = new Date();
     }
 
     const reportDate =
@@ -2680,10 +2634,6 @@ const __aivicBundle_submitDailyReport = (() => {
       reportData.reportDate ||
       reportData.submission_date ||
       (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
-
-    if (reportData.send_datetime === null) {
-      throw new Error("送信日時が指定されていません");
-    }
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {
       const retained = {
@@ -2821,7 +2771,7 @@ const __aivicBundle_submitDailyReport = (() => {
 
   return { submitDailyReport };
 })();
-export const submitDailyReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_submitDailyReport.submitDailyReport as (...args: any[]) => any)(...args);
+export const submitDailyReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_submitDailyReport_fixed.submitDailyReport as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendReportWithMailLog exports=sendReportWithMailLog */
@@ -5986,7 +5936,7 @@ export const sendAggregatedReportEmail = __aivicBundle_75_sendAggregatedReportEm
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendAggregatedReportEmail */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx2Imp1Agent exports=runTx2Imp1Agent */
-const __aivicBundle_runTx2Imp1Agent = (() => {
+const __aivicBundle_runTx2Imp1Agent_fixed = (() => {
   async function runTx2Imp1Agent(
     params?: any,
     aiClient?: any,
@@ -6302,7 +6252,7 @@ const __aivicBundle_runTx2Imp1Agent = (() => {
 
   return { runTx2Imp1Agent };
 })();
-export const runTx2Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx2Imp1Agent.runTx2Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx2Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx2Imp1Agent_fixed.runTx2Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx2Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=prioritizeChallengeTargets exports=prioritizeChallengeTargets */
@@ -8619,7 +8569,7 @@ export const generateUnreportedPromptNotification = __aivicBundle_110_generateUn
 /* AIVIC_FUNCTION_BUNDLE_END owner=generateUnreportedPromptNotification */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx1Imp1Agent exports=runTx1Imp1Agent */
-const __aivicBundle_runTx1Imp1Agent = (() => {
+const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
   function runTx1Imp1Agent(
     input?: any | any[] | null,
     context?: any | Date | null,
@@ -8963,7 +8913,7 @@ const __aivicBundle_runTx1Imp1Agent = (() => {
 
   return { runTx1Imp1Agent };
 })();
-export const runTx1Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx1Imp1Agent.runTx1Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx1Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx1Imp1Agent_fixed.runTx1Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx1Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx3Imp1Agent exports=runTx3Imp1Agent */

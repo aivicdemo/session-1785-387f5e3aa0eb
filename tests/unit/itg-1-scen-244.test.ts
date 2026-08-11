@@ -1,5 +1,7 @@
 import { sendConfirmationEmailsToBothRecipients } from '../../src/logic/it-1-br-1-1-1';
 
+const fetchMock = require('jest-fetch-mock');
+
 describe('it-1-br-1-1-1: 報告送信時に送信者本人と部長宛に確認メールを自動配信', () => {
   // SCEN-244: 同一日報内容を複数部員が送信した場合に同値データとして正しく区別される
   test('should distinguish identical report content by different senders with different metadata', () => {
