@@ -171,7 +171,7 @@ describe("日報収集から報告漏れ特定までの自動判定と通知 AI�
 
     // ================== Mock AI Client ==================
     const mock_ai_client = {
-      analyzeReportStatus: jest.fn<(...args: any[]) => any>(),
+      analyzeReportStatus: jest.fn(),
     };
 
     const ai_response = {
