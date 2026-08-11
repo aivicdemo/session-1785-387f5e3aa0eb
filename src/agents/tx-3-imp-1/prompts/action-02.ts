@@ -5,36 +5,40 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Tx3Imp1ConfirmationEmailContent {
   emailId: string;
-  senderId: string;
+  sentAt: string;
   recipientId: string;
+  recipientName: string;
   subject: string;
   body: string;
-  sentAt: string;
-  reportStatus: {
-    submitted: boolean;
+  reportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "submitted" | "pending" | "overdue";
     submittedAt?: string;
-    content?: string;
-  };
+  }>;
 }
 
 export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
-  reportDeadline: string;
   currentTimestamp: string;
+  submissionDeadline: string;
   escalationThreshold: number;
 }
 
-export interface Tx3Imp1IdentifiedMember {
-  memberId: string;
-  memberName: string;
-  status: "not_submitted" | "delayed" | "submitted";
-  daysSinceDeadline?: number;
-  escalationCount?: number;
-}
-
-export interface Tx3Imp1Action02Output {
-  identifiedMembers: Tx3Imp1IdentifiedMember[];
-  escalationTargets: Tx3Imp1IdentifiedMember[];
+export interface Tx3Imp1Action02Result {
+  identifiedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "not_submitted" | "overdue";
+    daysOverdue: number;
+    previousReminders: number;
+  }>;
+  escalationTargets: Array<{
+    memberId: string;
+    memberName: string;
+    reason: string;
+    priority: "high" | "medium" | "low";
+  }>;
   analysisTimestamp: string;
 }
 
@@ -43,68 +47,51 @@ export function buildAction02Prompt(
 ): string {
   const {
     confirmationEmailContent,
-    reportDeadline,
     currentTimestamp,
+    submissionDeadline,
     escalationThreshold,
   } = context;
 
-  const emailBody = confirmationEmailContent.body || "";
-  const reportContent = confirmationEmailContent.reportStatus.content || "";
+  const pendingMembers = confirmationEmailContent.reportedMembers
+    .filter((m) => m.status === "pending" || m.status === "overdue")
+    .map(
+      (m) =>
+        `- ${m.memberName} (ID: ${m.memberId}): Status=${m.status}${m.submittedAt ? `, Submitted=${m.submittedAt}` : ""}`
+    )
+    .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying non-reporting and delayed members from confirmation email content.
+  const prompt = `You are an AI agent responsible for identifying unreported members from confirmation email content and determining escalation targets.
 
-## Task: Identify Non-Reporting and Delayed Members
-
-### Input Information:
-- Confirmation Email Subject: ${confirmationEmailContent.subject}
-- Confirmation Email Body:
-${emailBody}
-
-- Report Content (if submitted):
-${reportContent}
-
-- Report Deadline: ${reportDeadline}
+## Current Context
 - Current Timestamp: ${currentTimestamp}
-- Escalation Threshold (days): ${escalationThreshold}
+- Submission Deadline: ${submissionDeadline}
+- Escalation Threshold (days overdue): ${escalationThreshold}
 
-### Instructions:
-1. Parse the confirmation email content to identify all members mentioned
-2. Determine each member's submission status:
-   - "not_submitted": Member has not submitted a report
-   - "delayed": Member submitted after the deadline
-   - "submitted": Member submitted on time
-3. For delayed members, calculate days since deadline
-4. Identify escalation targets: members who are either not submitted or delayed beyond the threshold
-5. Extract member IDs and names from the email content
+## Confirmation Email Content
+- Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
+- Recipient: ${confirmationEmailContent.recipientName} (ID: ${confirmationEmailContent.recipientId})
+- Subject: ${confirmationEmailContent.subject}
 
-### Output Format:
-Return a JSON object with the following structure:
-{
-  "identifiedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "status": "not_submitted" | "delayed" | "submitted",
-      "daysSinceDeadline": number (optional, only for delayed),
-      "escalationCount": number (optional)
-    }
-  ],
-  "escalationTargets": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "status": "not_submitted" | "delayed" | "submitted",
-      "daysSinceDeadline": number (optional)
-    }
-  ],
-  "analysisTimestamp": "ISO 8601 timestamp"
-}
+## Reported Members Status
+${pendingMembers || "No pending members"}
 
-### Constraints:
-- Only identify members explicitly mentioned in the confirmation email
-- Use exact member names and IDs from the email content
-- Escalation targets must have status "not_submitted" or daysSinceDeadline >= ${escalationThreshold}
-- Ensure all timestamps are in ISO 8601 format`;
+## Task
+1. Identify all members who have not submitted their reports (status: "pending" or "overdue")
+2. Calculate days overdue for each member
+3. Determine which members should be escalated based on:
+   - Days overdue exceeding the escalation threshold
+   - Previous reminder count
+   - Severity of delay
+4. Classify escalation priority (high/medium/low)
+
+## Output Format
+Return a JSON object with:
+- identifiedMembers: Array of members with status, daysOverdue, and previousReminders
+- escalationTargets: Array of members requiring escalation with reason and priority
+- analysisTimestamp: Current analysis timestamp
+
+Ensure accuracy in identifying unreported members and appropriate escalation prioritization.`;
 
   return prompt;
 }

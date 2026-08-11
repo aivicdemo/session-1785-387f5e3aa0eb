@@ -5,11 +5,10 @@ export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 export interface Action03Input {
   engineerName: string;
-  engineerEmail: string;
   yesterdayAccomplishment: string;
   todayPlan: string;
   currentIssues: string;
-  submissionTimestamp: string;
+  submissionTime: string;
 }
 
 export interface Action03ValidationResult {
@@ -19,13 +18,10 @@ export interface Action03ValidationResult {
 }
 
 export function buildAction03Prompt(input: Action03Input): string {
-  const prompt = `You are a validation agent for daily report submissions in the morning meeting management system.
-
-Your task is to validate the following engineer's daily report submission:
+  const prompt = `You are validating a daily report submission for an engineer.
 
 Engineer Name: ${input.engineerName}
-Engineer Email: ${input.engineerEmail}
-Submission Timestamp: ${input.submissionTimestamp}
+Submission Time: ${input.submissionTime}
 
 Yesterday's Accomplishment:
 ${input.yesterdayAccomplishment}
@@ -36,25 +32,18 @@ ${input.todayPlan}
 Current Issues:
 ${input.currentIssues}
 
-Please validate the submission according to these criteria:
-1. All required fields must be filled (not empty or null)
-2. Yesterday's accomplishment should describe concrete work completed
-3. Today's plan should be specific and actionable
-4. Current issues should be clearly articulated if any exist
-5. The submission should not contain obviously inappropriate content
-6. The submission should be coherent and professional in tone
+Please validate the following:
+1. All required fields are filled (not empty)
+2. Content is appropriate and professional
+3. No obvious errors or inconsistencies
+4. Issues are clearly described if present
 
 Respond with a JSON object containing:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[]
-}
-
-Where:
-- isValid: true if all critical validations pass, false otherwise
-- errors: array of critical validation failures that prevent registration
-- warnings: array of non-critical issues that should be noted but don't block registration`;
+}`;
 
   return prompt;
 }

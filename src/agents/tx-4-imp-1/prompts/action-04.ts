@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04Context {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,113 +11,98 @@ export interface Action04PromptInput {
     description: string;
     category: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
   }>;
-  priorityFramework?: {
-    urgency: string;
-    impact: string;
-    effort: string;
+  reportMetadata: {
+    engineerId: string;
+    engineerName: string;
+    reportDate: string;
+    submittedAt: string;
+  };
+}
+
+export interface Action04PromptInput {
+  reportContent: string;
+  reportMetadata: {
+    engineerId: string;
+    engineerName: string;
+    reportDate: string;
+    submittedAt: string;
+  };
+  priorityClassificationRules: string;
+  escalationThresholds: {
+    criticalIssueCount: number;
+    highPriorityThreshold: string;
   };
 }
 
 export interface Action04PromptOutput {
-  prioritizedIssues: Array<{
+  extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
     category: string;
-    priority: "critical" | "high" | "medium" | "low";
-    priorityScore: number;
-    reasoning: string;
-    affectedTeamMembers: string[];
-    recommendedAction: string;
   }>;
-  summary: string;
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>;
   escalationRequired: boolean;
   escalationReason?: string;
+  summaryForManager: string;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const priorityFramework = input.priorityFramework || {
-    urgency: "high",
-    impact: "high",
-    effort: "medium",
-  };
+  const systemPrompt = `You are an AI agent responsible for extracting issues and assigning priorities from daily reports in the morning meeting management system.
 
-  const teamMembersList = input.teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
+Your task is to:
+1. Analyze the provided report content
+2. Extract all issues, bottlenecks, and blockers mentioned
+3. Assign priority levels based on the provided classification rules
+4. Determine if escalation to management is required
+5. Generate a summary for the manager
 
-  const issuesList = input.extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
-    )
-    .join("\n");
+Report Metadata:
+- Engineer ID: ${input.reportMetadata.engineerId}
+- Engineer Name: ${input.reportMetadata.engineerName}
+- Report Date: ${input.reportMetadata.reportDate}
+- Submitted At: ${input.reportMetadata.submittedAt}
 
-  const prompt = `You are an AI agent responsible for prioritizing and classifying extracted issues from daily reports.
+Priority Classification Rules:
+${input.priorityClassificationRules}
 
-## Task: Prioritize and Classify Issues
+Escalation Thresholds:
+- Critical Issue Count Threshold: ${input.escalationThresholds.criticalIssueCount}
+- High Priority Threshold: ${input.escalationThresholds.highPriorityThreshold}
 
-### Report Content Summary:
+Report Content to Analyze:
 ${input.reportContent}
 
-### Extracted Issues to Prioritize:
-${issuesList}
-
-### Team Members Context:
-${teamMembersList}
-
-### Priority Framework:
-- Urgency: ${priorityFramework.urgency}
-- Impact: ${priorityFramework.impact}
-- Effort: ${priorityFramework.effort}
-
-## Instructions:
-
-1. Analyze each extracted issue based on the priority framework
-2. Assign a priority level: critical, high, medium, or low
-3. Calculate a priority score (0-100) based on:
-   - Urgency (40% weight)
-   - Impact (40% weight)
-   - Effort to resolve (20% weight)
-4. Provide reasoning for each priority assignment
-5. Identify which team members are affected by each issue
-6. Recommend specific actions for each issue
-7. Determine if escalation is required for any critical issues
-8. Generate a summary of the prioritization results
-
-## Output Format:
-
-Return a JSON object with the following structure:
+Please provide your analysis in the following JSON format:
 {
-  "prioritizedIssues": [
+  "extractedIssues": [
     {
-      "id": "issue_id",
-      "title": "issue_title",
-      "description": "issue_description",
-      "category": "issue_category",
-      "priority": "critical|high|medium|low",
-      "priorityScore": number,
-      "reasoning": "explanation of priority assignment",
-      "affectedTeamMembers": ["member_id1", "member_id2"],
-      "recommendedAction": "specific action to address this issue"
+      "id": "ISSUE_001",
+      "title": "Issue title",
+      "description": "Detailed description",
+      "category": "Category (e.g., Technical, Process, Resource, External)"
     }
   ],
-  "summary": "overall summary of prioritization results",
-  "escalationRequired": boolean,
-  "escalationReason": "reason for escalation if required"
-}
+  "priorityAssignments": [
+    {
+      "issueId": "ISSUE_001",
+      "priority": "critical|high|medium|low",
+      "reasoning": "Explanation for priority assignment"
+    }
+  ],
+  "escalationRequired": true|false,
+  "escalationReason": "Reason if escalation is required",
+  "summaryForManager": "Executive summary of issues and priorities"
+}`;
 
-## Constraints:
-- Prioritize issues that impact multiple team members higher
-- Critical issues must have a priority score above 75
-- Consider dependencies between issues
-- Ensure recommendations are actionable and specific
-- Flag any issues that require immediate management attention`;
-
-  return prompt;
+  return systemPrompt;
 }

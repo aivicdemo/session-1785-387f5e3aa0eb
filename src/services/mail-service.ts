@@ -26,17 +26,10 @@ export interface SendConfirmationEmailRequest {
   };
   scheduled_meeting_time?: Date;
   current_timestamp?: Date;
-  manager_user?: {
-    user_id: string;
-    user_name: string;
-    email: string | null;
-    role: string;
-    division_id: string;
-  };
 }
 
 export interface SendConfirmationEmailResponse {
-  success?: boolean;
+  success: boolean;
   error?: string;
   status?: string;
   message_id?: string;
@@ -45,7 +38,7 @@ export interface SendConfirmationEmailResponse {
 export async function sendConfirmationEmail(
   request: SendConfirmationEmailRequest
 ): Promise<SendConfirmationEmailResponse> {
-  if (!request.manager_email) {
+  if (request.manager_email === null) {
     return {
       success: false,
       error: 'TypeError: 部長メールアドレスがnull',

@@ -25,18 +25,19 @@ Engineer Information:
 - Email: ${input.engineerEmail}
 - Submission Deadline: ${input.submissionDeadline}
 
-Previous Day Template:
+Previous Day Template Reference:
 ${input.previousDayTemplate}
 
-Task:
-Generate a daily report template for ${input.engineerName} based on the previous day's template structure. The template should include sections for:
-1. Yesterday's Achievements (実績)
-2. Today's Plans (予定)
-3. Current Issues/Challenges (課題)
+Your task is to:
+1. Generate a daily report template based on the previous day's template structure
+2. Include sections for:
+   - Yesterday's Achievements (実績)
+   - Today's Schedule (予定)
+   - Current Issues/Challenges (課題)
+3. Ensure the template is clear and easy to fill out
+4. Prepare the template for distribution to the engineer
 
-The template should be clear, concise, and ready for distribution via email to ${input.engineerEmail}.
-
-Output the template in a structured format that can be easily filled in by the engineer.`;
+Output the generated template in a structured format that can be sent via email.`;
 
   return prompt;
 }

@@ -6,99 +6,74 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentTimestamp: string;
-  previousReminders: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
-  }>;
-  reminderRules: {
-    maxReminderCount: number;
-    reminderIntervalMinutes: number;
-    escalationThresholdCount: number;
-  };
+  currentDateTime: string;
+  escalationThreshold: number;
 }
 
 export interface Action04PromptOutput {
   identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
-    reason: "not_submitted" | "delayed";
-    submissionTime?: string;
+    status: "non_reported" | "delayed";
+    daysOverdue: number;
   }>;
-  remindersToSend: Array<{
-    employeeId: string;
-    employeeName: string;
-    channel: "email" | "chat";
-    message: string;
-    priority: "normal" | "high";
-  }>;
-  escalationCases: Array<{
+  escalationTargets: Array<{
     employeeId: string;
     employeeName: string;
     escalationReason: string;
-    recommendedAction: string;
+    priority: "high" | "medium" | "low";
   }>;
-  executionLog: {
-    timestamp: string;
-    totalIdentified: number;
-    remindersScheduled: number;
-    escalationsDetected: number;
-  };
+  actionPlan: string;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reminderHistoryText = input.previousReminders
-    .map(
-      (reminder) =>
-        `- Employee ID: ${reminder.employeeId}, Reminder Count: ${reminder.reminderCount}, Last Reminder: ${reminder.lastReminderTime}`
-    )
-    .join("\n");
+  const lines: string[] = [
+    "# Action 04: 催促対象部員の判定と催促メール・チャット送信準備",
+    "",
+    "## 目的",
+    "確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定する",
+    "",
+    "## 入力情報",
+    `### 確認メール内容`,
+    input.confirmationEmailContent,
+    "",
+    `### 報告期限`,
+    input.reportingDeadline,
+    "",
+    `### 現在日時`,
+    input.currentDateTime,
+    "",
+    `### エスカレーション閾値（日数）`,
+    input.escalationThreshold.toString(),
+    "",
+    "## 実行タスク",
+    "1. 確認メール内容から報告漏れ・遅延部員を特定する",
+    "2. 催促対象部員を判定する（期限超過日数がエスカレーション閾値以上）",
+    "3. 各部員の催促優先度を判定する",
+    "4. 催促メール・チャット送信の準備情報を整理する",
+    "",
+    "## 出力形式",
+    "JSON形式で以下の構造で返却してください：",
+    "{",
+    '  "identifiedNonReporters": [',
+    "    {",
+    '      "employeeId": "従業員ID",',
+    '      "employeeName": "従業員名",',
+    '      "status": "non_reported | delayed",',
+    '      "daysOverdue": 超過日数',
+    "    }",
+    "  ],",
+    '  "escalationTargets": [',
+    "    {",
+    '      "employeeId": "従業員ID",',
+    '      "employeeName": "従業員名",',
+    '      "escalationReason": "エスカレーション理由",',
+    '      "priority": "high | medium | low"',
+    "    }",
+    "  ],",
+    '  "actionPlan": "実行予定アクション"',
+    "}",
+  ];
 
-  const prompt = `You are an AI agent responsible for identifying non-reporting employees and sending automated reminders.
-
-## Task: Identify Non-Reporters and Send Reminders
-
-### Confirmation Email Content:
-${input.confirmationEmailContent}
-
-### Reporting Deadline:
-${input.reportingDeadline}
-
-### Current Timestamp:
-${input.currentTimestamp}
-
-### Previous Reminder History:
-${reminderHistoryText || "No previous reminders sent"}
-
-### Reminder Rules:
-- Maximum reminders per employee: ${input.reminderRules.maxReminderCount}
-- Reminder interval: ${input.reminderRules.reminderIntervalMinutes} minutes
-- Escalation threshold: ${input.reminderRules.escalationThresholdCount} reminders
-
-## Instructions:
-
-1. **Identify Non-Reporters**: Parse the confirmation email content to identify employees who have not submitted their reports or submitted late.
-
-2. **Determine Reminder Eligibility**: Check previous reminder history. Only send reminders if:
-   - The employee has not reached the maximum reminder count
-   - The interval since the last reminder has passed
-   - The employee is still in non-reporting status
-
-3. **Generate Reminder Messages**: Create appropriate reminder messages for each eligible employee, considering:
-   - Professional tone
-   - Clear deadline information
-   - Channel preference (email or chat)
-
-4. **Identify Escalation Cases**: Flag employees who:
-   - Have reached or exceeded the escalation threshold
-   - Have repeated non-reporting patterns
-   - Require management intervention
-
-5. **Output Format**: Return a structured response with identified non-reporters, reminders to send, escalation cases, and execution log.
-
-## Response Format:
-Return a JSON object matching the Action04PromptOutput interface with all required fields populated.`;
-
-  return prompt;
+  return lines.join("\n");
 }

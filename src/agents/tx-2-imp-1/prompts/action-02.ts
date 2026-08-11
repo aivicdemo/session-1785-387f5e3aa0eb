@@ -4,14 +4,10 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportDate: string;
-  targetEngineers: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  submissionDeadline: string;
-  systemContext: string;
+  reportingDeadline: string;
+  overdueThresholdHours: number;
+  reminderFrequencyHours: number;
+  systemErrorContext?: string;
 }
 
 export interface Action02PromptOutput {
@@ -19,35 +15,74 @@ export interface Action02PromptOutput {
   version: string;
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const engineerList = input.targetEngineers
-    .map((eng) => `- ${eng.name} (${eng.email})`)
-    .join("\n");
+export function buildAction02Prompt(
+  input: Action02PromptInput
+): Action02PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    reminderFrequencyHours,
+    systemErrorContext,
+  } = input;
 
-  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
+  const prompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails.
 
-Context:
-- Report Date: ${input.reportDate}
-- Submission Deadline: ${input.submissionDeadline}
-- System Context: ${input.systemContext}
+## Task: Identify Unreported and Delayed Members
 
-Target Engineers:
-${engineerList}
+### Context
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours after deadline
+- Reminder Frequency Limit: ${reminderFrequencyHours} hours between reminders
+${systemErrorContext ? `- System Error Context: ${systemErrorContext}` : ""}
 
-Task: Automatically determine which engineers have not submitted their daily reports and which have submitted late. Create a list of non-submitters and late submitters.
+### Your Responsibilities
+1. Parse confirmation email content to identify which team members have NOT submitted their daily reports
+2. Distinguish between:
+   - Unreported members (no submission at all)
+   - Delayed members (submitted after the deadline)
+3. Create a structured list of unreported and delayed members with:
+   - Member name/ID
+   - Status (unreported or delayed)
+   - Time overdue (if applicable)
+   - Last reminder timestamp (if applicable)
 
-Requirements:
-1. Check the submission status of each engineer
-2. Identify engineers who have not submitted by the deadline
-3. Identify engineers who submitted after the deadline
-4. Generate a comprehensive list with submission status for each engineer
-5. Prepare notification content for the department head
+### Output Format
+Return a JSON object with the following structure:
+{
+  "unreportedMembers": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "status": "unreported",
+      "hoursOverdue": number,
+      "lastReminderAt": string | null
+    }
+  ],
+  "delayedMembers": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "status": "delayed",
+      "submittedAt": string,
+      "hoursLate": number,
+      "lastReminderAt": string | null
+    }
+  ],
+  "totalUnreported": number,
+  "totalDelayed": number,
+  "analysisTimestamp": string
+}
 
-Output Format:
-- Non-submitters: [list of engineer names and emails]
-- Late submitters: [list of engineer names, emails, and submission time]
-- Summary: [brief summary of submission status]
-- Recommended Actions: [suggested next steps]`;
+### Escalation Conditions
+- If system errors prevent accurate status verification, flag the issue
+- If a member has received multiple reminders within the frequency limit, note this
+- If no confirmation emails are available, escalate to human review
+
+### Rules
+- Only include members with confirmed non-submission or late submission
+- Do not make assumptions about members not mentioned in the confirmation emails
+- Preserve all member identifiers and timestamps exactly as provided
+- If member data is incomplete, include available information and flag missing fields`;
 
   return {
     prompt,

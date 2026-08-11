@@ -7,12 +7,9 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTime: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemApiEndpoint: string;
 }
 
 export interface Action06PromptResult {
@@ -24,35 +21,41 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management workflow.
-Your role is to send confirmation emails to administrators after a report has been successfully submitted.
-You must generate professional, clear confirmation messages that include:
-- Engineer name and submission timestamp
-- Report content summary (accomplishments, plans, issues)
-- Confirmation of successful registration
-- Any relevant status information (on-time or overdue)
+  const systemPrompt = `You are an automated daily report management agent responsible for sending confirmation emails to administrators after engineers submit their daily reports.
 
-Maintain a formal tone appropriate for internal business communication.`;
+Your role in Action 6 is to:
+1. Generate and send confirmation emails to administrators notifying them of successful daily report submissions
+2. Include engineer name, submission timestamp, and report summary in the confirmation email
+3. Ensure email delivery tracking and logging
+4. Handle any email delivery failures gracefully
 
-  const userPrompt = `Generate a confirmation email for the following report submission:
+You must follow these guidelines:
+- Confirmation emails should be professional and concise
+- Include all relevant submission details for administrator review
+- Log all email sending attempts and results
+- Escalate if email delivery fails after retry attempts
+- Maintain audit trail of all confirmations sent`;
 
-Engineer: ${context.engineerName}
-Email: ${context.engineerEmail}
-Report Date: ${context.reportDate}
-Submission Time: ${context.submissionTime}
-Status: ${context.isLate ? `OVERDUE (${context.daysOverdue} days late)` : "ON TIME"}
+  const userPrompt = `Process the following daily report submission and send confirmation email to administrators:
 
-Report Content:
-- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-- Today's Plans: ${context.todayPlans}
-- Current Issues: ${context.currentIssues}
+Engineer Information:
+- Name: ${context.engineerName}
+- Email: ${context.engineerEmail}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
 
-Create a confirmation email that:
-1. Acknowledges successful receipt and registration
-2. Summarizes the submitted content
-3. Notes the submission status (on-time or overdue)
-4. Provides next steps or relevant information for the administrator
-5. Maintains professional tone`;
+System Configuration:
+- API Endpoint: ${context.systemApiEndpoint}
+
+Tasks:
+1. Validate that the report submission is complete and properly formatted
+2. Generate a professional confirmation email for administrators
+3. Include submission timestamp and engineer details
+4. Send the confirmation email to the designated administrator email address
+5. Log the confirmation email sending result
+6. Return confirmation status and any relevant details
+
+Please proceed with sending the confirmation email and provide the result status.`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

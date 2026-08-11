@@ -7,7 +7,7 @@ export interface Action02Input {
   engineerName: string;
   engineerEmail: string;
   yesterdayAccomplishments: string;
-  todayPlan: string;
+  todayPlans: string;
   currentIssues: string;
   submissionTimestamp: string;
 }
@@ -19,27 +19,39 @@ export interface Action02ValidationResult {
 }
 
 export function buildAction02Prompt(input: Action02Input): string {
-  const prompt = `You are validating a daily report submission from an engineer.
+  const prompt = `You are a validation agent for daily report submissions in the morning meeting management system.
 
-Engineer: ${input.engineerName} (${input.engineerEmail})
-Submission Time: ${input.submissionTimestamp}
+Your task is to validate the following engineer's daily report input for completeness and appropriateness.
 
-Yesterday's Accomplishments:
+Engineer Information:
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Time: ${input.submissionTimestamp}
+
+Report Content:
+1. Yesterday's Accomplishments:
 ${input.yesterdayAccomplishments}
 
-Today's Plan:
-${input.todayPlan}
+2. Today's Plans:
+${input.todayPlans}
 
-Current Issues:
+3. Current Issues/Concerns:
 ${input.currentIssues}
 
-Please validate the following:
-1. All three sections (yesterday's accomplishments, today's plan, current issues) are filled in
-2. Each section contains meaningful content (not empty or just whitespace)
-3. The content is appropriate and professional
-4. No obvious errors or inconsistencies
+Validation Criteria:
+1. All three sections must have meaningful content (not empty or just whitespace)
+2. Yesterday's accomplishments should describe concrete work completed
+3. Today's plans should be specific and actionable
+4. Current issues should clearly identify any blockers or concerns
+5. Content should be professional and relevant to work
+6. No section should contain only generic placeholder text
 
-Respond with a JSON object containing:
+Please validate this report and provide:
+1. Whether the report is valid (true/false)
+2. A list of specific errors if validation fails
+3. A list of warnings for content that could be improved
+
+Respond in JSON format with the following structure:
 {
   "isValid": boolean,
   "errors": string[],

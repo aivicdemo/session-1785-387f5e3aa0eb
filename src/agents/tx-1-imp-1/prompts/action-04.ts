@@ -7,7 +7,7 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent?: {
+  previousReportContent: {
     yesterday: string;
     today: string;
     issues: string;
@@ -20,7 +20,7 @@ export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedContent?: {
+  validatedContent: {
     yesterday: string;
     today: string;
     issues: string;
@@ -37,52 +37,51 @@ export function buildAction04Prompt(context: Action04Context): string {
     systemTimestamp,
   } = context;
 
-  const previousContentSection = previousReportContent
-    ? `
-前日の日報内容:
-- 昨日の実績: ${previousReportContent.yesterday}
-- 本日の予定: ${previousReportContent.today}
-- 抱えている課題: ${previousReportContent.issues}
-`
-    : "";
+  const promptContent = `
+# 日報入力内容の妥当性検証タスク
 
-  const prompt = `# 日報入力内容の妥当性検証タスク
-
-## 対象エンジニア情報
+## 実行コンテキスト
 - エンジニアID: ${engineerId}
 - エンジニア名: ${engineerName}
 - 報告日: ${reportDate}
 - 提出期限: ${submissionDeadline}
 - システム時刻: ${systemTimestamp}
 
-## 前日の日報参照情報
-${previousContentSection}
+## 検証対象の日報内容
 
-## 検証タスク
-以下の項目について、入力内容の妥当性を検証してください:
+### 昨日の実績
+${previousReportContent.yesterday}
 
-1. **昨日の実績の妥当性**
-   - 具体的な成果物や完了したタスクが記載されているか
-   - 前日の予定との整合性があるか
-   - 実績が空白でないか
+### 本日の予定
+${previousReportContent.today}
 
-2. **本日の予定の妥当性**
-   - 具体的で実行可能な予定が記載されているか
-   - 優先度が明確か
-   - 予定が空白でないか
+### 抱えている課題
+${previousReportContent.issues}
 
-3. **抱えている課題の妥当性**
-   - 課題が具体的に記載されているか
-   - 課題の内容が理解可能か
-   - 課題がある場合、その対応方針が示唆されているか
+## 検証ルール
 
-4. **全体的な整合性**
-   - 昨日の実績と本日の予定に矛盾がないか
-   - 課題が実績や予定に関連しているか
-   - 日報全体として一貫性があるか
+### 必須チェック項目
+1. 昨日の実績が空でないこと
+2. 本日の予定が空でないこと
+3. 各項目が100文字以上2000文字以下であること
+4. 日本語または英語で記述されていること
+
+### 妥当性チェック項目
+1. 昨日の実績に具体的な成果が記載されていること
+2. 本日の予定が現実的で達成可能であること
+3. 課題が明確に記述されていること（課題がない場合は「特になし」と記載）
+4. 内容に矛盾がないこと
+
+### 異常検知チェック項目
+1. テンプレート文字列がそのまま残っていないこと
+2. 不適切な言語表現がないこと
+3. 個人情報が含まれていないこと
+4. 過度にネガティブな表現がないこと
 
 ## 出力形式
-以下のJSON形式で検証結果を返してください:
+
+JSON形式で以下の構造で返却してください：
+
 {
   "isValid": boolean,
   "errors": string[],
@@ -94,11 +93,17 @@ ${previousContentSection}
   }
 }
 
-- isValid: 全ての必須項目が適切に入力されている場合true
-- errors: 修正が必須な問題のリスト
-- warnings: 改善が推奨される問題のリスト
-- validatedContent: 検証済みの入力内容（正規化済み）
-`;
+- isValid: 全ての必須チェックと妥当性チェックに合格した場合true
+- errors: 必須チェックに不合格した項目のエラーメッセージ配列
+- warnings: 妥当性チェックで警告が必要な項目のメッセージ配列
+- validatedContent: 検証済みの日報内容（軽微な修正のみ適用）
 
-  return prompt;
+## 検証の厳密性
+- 必須チェック不合格 → isValid=false、エラーを記録
+- 妥当性チェック不合格 → isValid=false、エラーを記録
+- 異常検知で問題検出 → isValid=false、エラーを記録
+- 全チェック合格 → isValid=true、warningsは空配列
+  `;
+
+  return promptContent;
 }

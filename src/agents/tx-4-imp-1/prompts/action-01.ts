@@ -3,59 +3,64 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
+export interface Action01PromptInput {
   reportDate: string;
   engineerName: string;
   engineerId: string;
-  departmentName: string;
-  submissionDeadline: string;
-  previousReportTemplate?: string;
+  previousReportContent?: string;
+  systemContext?: Record<string, unknown>;
 }
 
-export interface Action01PromptResult {
+export interface Action01PromptOutput {
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
 }
 
-export function buildAction01Prompt(context: Action01PromptContext): string {
-  const lines: string[] = [];
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const {
+    reportDate,
+    engineerName,
+    engineerId,
+    previousReportContent = "",
+    systemContext = {},
+  } = input;
 
-  lines.push("# 日報テンプレート自動生成・配信プロンプト");
-  lines.push("");
-  lines.push("## 実行目的");
-  lines.push("前日の日報テンプレートを自動生成して配信し、エンジニアの入力準備を整える");
-  lines.push("");
-  lines.push("## 対象者情報");
-  lines.push(`- エンジニア名: ${context.engineerName}`);
-  lines.push(`- エンジニアID: ${context.engineerId}`);
-  lines.push(`- 部門: ${context.departmentName}`);
-  lines.push("");
-  lines.push("## 日報提出期限");
-  lines.push(`- 提出期限: ${context.submissionDeadline}`);
-  lines.push(`- 対象日付: ${context.reportDate}`);
-  lines.push("");
-  lines.push("## テンプレート生成要件");
-  lines.push("1. 前日の日報テンプレートを参照し、本日の日報フォーマットを生成する");
-  lines.push("2. 以下の項目を含める:");
-  lines.push("   - 昨日の実績（前日の予定との対比）");
-  lines.push("   - 本日の予定（具体的なタスク・マイルストーン）");
-  lines.push("   - 抱えている課題（ブロッカー・リスク・懸念事項）");
-  lines.push("3. 前日の実績セクションに前日の予定を自動入力する");
-  lines.push("4. テンプレートは簡潔で、5分以内に入力完了できる形式にする");
-  lines.push("");
-  lines.push("## 配信方法");
-  lines.push("1. メール配信（メインチャネル）");
-  lines.push("2. チャットツール通知（サブチャネル）");
-  lines.push("3. 日報管理システムへの自動プッシュ通知");
-  lines.push("");
-  lines.push("## 前日テンプレート参照");
-  if (context.previousReportTemplate) {
-    lines.push("前日のテンプレート:");
-    lines.push(context.previousReportTemplate);
-  } else {
-    lines.push("前日のテンプレートは利用できません。標準フォーマットを使用してください。");
-  }
+  const previousContext =
+    previousReportContent.length > 0
+      ? `\n前日の報告内容:\n${previousReportContent}`
+      : "";
 
-  return lines.join("\n");
+  const systemInfo =
+    Object.keys(systemContext).length > 0
+      ? `\nシステムコンテキスト: ${JSON.stringify(systemContext)}`
+      : "";
+
+  return `# 日報テンプレート自動生成・配信プロンプト
+
+## 実行日時
+${reportDate}
+
+## 対象エンジニア
+- 名前: ${engineerName}
+- ID: ${engineerId}
+
+## タスク
+前日の日報テンプレートを自動生成し、対象エンジニアに配信する。
+
+## 生成要件
+1. 前日の実績入力フィールドを含むテンプレートを生成する
+2. 本日の予定入力フィールドを含める
+3. 抱えている課題入力フィールドを含める
+4. 提出期限を明記する
+5. テンプレートは簡潔で入力負荷が低い形式とする
+
+## 配信要件
+1. メール配信を主要チャネルとする
+2. チャットツール（Slack等）への同時配信を検討する
+3. 配信時刻は朝会開始の1時間前を推奨する
+4. 配信失敗時の再試行ロジックを含める
+
+## 出力形式
+生成されたテンプレート内容、配信チャネル一覧、スケジュール配信時刻を返す${previousContext}${systemInfo}`;
 }

@@ -14,19 +14,16 @@ export interface Action01PromptOutput {
   unreportedMembers: Array<{
     memberId: string;
     memberName: string;
-    reason: string;
-  }>;
-  delayedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    delayMinutes: number;
+    reason: "not_submitted" | "delayed";
+    submissionTime?: string;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
     escalationLevel: number;
-    recommendedAction: string;
+    shouldEscalate: boolean;
   }>;
+  analysisTimestamp: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
@@ -37,43 +34,46 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     previousEscalationCount = {},
   } = input;
 
-  const escalationInfo = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([memberId, count]) => `${memberId}: ${count}回`)
     .join("\n");
 
-  return `# 報告漏れ・遅延部員の特定と催促対象判定
+  return `# 確認メール内容から報告漏れ・遅延部員を特定するタスク
 
 ## 入力情報
-- 確認メール内容:
+### 確認メール内容
+\`\`\`
 ${confirmationEmailContent}
+\`\`\`
 
-- 報告期限: ${reportDeadline}
-- 現在時刻: ${currentTimestamp}
-${escalationInfo ? `- 過去の催促履歴:\n${escalationInfo}` : ""}
+### 提出期限
+${reportDeadline}
+
+### 現在時刻
+${currentTimestamp}
+
+### 過去の催促履歴
+${escalationCountSummary || "なし"}
 
 ## タスク
-以下の手順で報告漏れ・遅延部員を特定し、催促対象を判定してください:
+以下の手順で報告漏れ・遅延部員を特定してください：
 
-1. 確認メール内容から報告済みの部員と未報告の部員を特定する
-2. 報告期限との比較から遅延部員を判定する
-3. 過去の催促履歴を考慮して、催促対象と催促レベルを判定する
-4. 各部員に対する推奨アクション（メール送信、チャット通知など）を決定する
+1. 確認メール内容から、各部員の日報提出状況を抽出する
+2. 提出期限と現在時刻を比較し、遅延判定を行う
+3. 未提出者と遅延者を分類する
+4. 過去の催促履歴を参考に、催促対象を判定する
+5. 催促レベル（1回目、2回目以上）を決定する
 
 ## 出力形式
-JSON形式で以下の構造で返してください:
+JSON形式で以下の構造で返してください：
+\`\`\`json
 {
   "unreportedMembers": [
     {
       "memberId": "string",
       "memberName": "string",
-      "reason": "string"
-    }
-  ],
-  "delayedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "delayMinutes": number
+      "reason": "not_submitted" | "delayed",
+      "submissionTime": "ISO8601形式またはundefined"
     }
   ],
   "escalationTargets": [
@@ -81,13 +81,17 @@ JSON形式で以下の構造で返してください:
       "memberId": "string",
       "memberName": "string",
       "escalationLevel": number,
-      "recommendedAction": "string"
+      "shouldEscalate": boolean
     }
-  ]
+  ],
+  "analysisTimestamp": "ISO8601形式"
 }
+\`\`\`
 
 ## 判定ルール
-- escalationLevel: 1=初回催促, 2=2回目催促, 3=管理者エスカレーション
-- recommendedAction: "send_email", "send_chat", "escalate_to_manager"
-- 同一部員への催促は上限3回までとする`;
+- 未提出：確認メール内容に記載がない部員
+- 遅延：提出時刻が期限を超過している部員
+- 催促対象：未提出または遅延している部員
+- 催促レベル：同一部員への催促回数 + 1
+- 催促上限：同一部員への催促は最大3回まで`;
 }

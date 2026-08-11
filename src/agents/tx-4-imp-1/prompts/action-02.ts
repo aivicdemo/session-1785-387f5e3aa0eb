@@ -19,28 +19,25 @@ export interface Action02PromptOutput {
   extractedData: {
     yesterdayAccomplishments: string;
     todayPlans: string;
-    currentIssues: string;
+    issues: string[];
   };
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
   const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-Task: Validate the submitted report content and extract key information.
+Your task is to validate the report content submitted by engineer "${input.engineerName}" on ${input.submissionDate}.
 
-Report Details:
-- Engineer Name: ${input.engineerName}
-- Submission Date: ${input.submissionDate}
-- Report ID: ${input.reportId}
-
+Report ID: ${input.reportId}
 Report Content:
 ${input.reportContent}
 
 Please perform the following validations:
-1. Check if all required sections are present (yesterday's accomplishments, today's plans, current issues)
-2. Verify that the content is not empty or placeholder text
-3. Identify any incomplete or inappropriate content
-4. Extract structured data from each section
+1. Check if all required sections are present (yesterday's accomplishments, today's plans, issues)
+2. Verify that the content is complete and appropriate
+3. Extract key information from each section
+4. Identify any missing or incomplete information
+5. Flag any concerning issues or anomalies
 
 Respond with a JSON object containing:
 {
@@ -52,9 +49,11 @@ Respond with a JSON object containing:
   "extractedData": {
     "yesterdayAccomplishments": string,
     "todayPlans": string,
-    "currentIssues": string
+    "issues": string[]
   }
-}`;
+}
+
+Ensure the response is valid JSON that can be parsed.`;
 
   return prompt;
 }

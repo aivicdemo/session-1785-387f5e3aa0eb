@@ -3,13 +3,11 @@
 
 // src/services/mail-stub.ts
 
-interface MailServiceCallRecord {
-  timestamp: Date;
+interface MailCallRecord {
   managerUserId: string;
   listId: string;
   memberCount: number;
-  success: boolean;
-  error?: string;
+  timestamp: Date;
 }
 
 interface StubMailService {
@@ -18,11 +16,11 @@ interface StubMailService {
     listId: string,
     memberCount: number
   ): Promise<void>;
-  getCallHistory(): MailServiceCallRecord[];
   clearCallHistory(): void;
+  getCallHistory(): MailCallRecord[];
 }
 
-let callHistory: MailServiceCallRecord[] = [];
+const mailCallHistory: MailCallRecord[] = [];
 
 export function getStubMailService(): StubMailService {
   return {
@@ -31,33 +29,20 @@ export function getStubMailService(): StubMailService {
       listId: string,
       memberCount: number
     ): Promise<void> {
-      const record: MailServiceCallRecord = {
-        timestamp: new Date(),
+      mailCallHistory.push({
         managerUserId,
         listId,
         memberCount,
-        success: true,
-      };
-
-      try {
-        // スタブ実装: メール送信をシミュレート
-        // テストで失敗を注入する場合は、モック AI クライアント側で
-        // sendNotificationEmail から例外を throw する
-        callHistory.push(record);
-      } catch (error) {
-        record.success = false;
-        record.error = error instanceof Error ? error.message : String(error);
-        callHistory.push(record);
-        throw error;
-      }
-    },
-
-    getCallHistory(): MailServiceCallRecord[] {
-      return [...callHistory];
+        timestamp: new Date(),
+      });
     },
 
     clearCallHistory(): void {
-      callHistory = [];
+      mailCallHistory.length = 0;
+    },
+
+    getCallHistory(): MailCallRecord[] {
+      return [...mailCallHistory];
     },
   };
 }

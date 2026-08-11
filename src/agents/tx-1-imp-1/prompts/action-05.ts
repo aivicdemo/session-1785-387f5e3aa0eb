@@ -7,75 +7,99 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
+  submittedReportContent: {
+    yesterdayAccomplishment: string;
+    todayPlan: string;
     issues: string;
   };
-  submissionDeadline: string;
-  managementSystemUrl: string;
-  adminEmails: string[];
+  submissionTimestamp: string;
+  isLate: boolean;
 }
 
 export interface Action05PromptResult {
-  version: string;
-  action: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action05Context;
+  validationStatus: "valid" | "invalid" | "partial";
+  validationErrors: string[];
+  registrationReady: boolean;
+  registrationPayload: {
+    engineerId: string;
+    engineerName: string;
+    reportDate: string;
+    yesterdayAccomplishment: string;
+    todayPlan: string;
+    issues: string;
+    submissionTimestamp: string;
+    isLate: boolean;
+  };
 }
 
-export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
-  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system and sending confirmation emails to administrators.
+export function buildAction05Prompt(context: Action05Context): string {
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-Your role in the workflow:
-- Receive validated daily report input from the previous action
-- Register the report into the management system via API
-- Send confirmation emails to all administrators
-- Log the registration and email sending results
-- Handle any errors during registration or email sending
+## Task: Validate Submitted Report Content
 
-You must:
-1. Validate that all required fields are present in the report
-2. Format the report data according to management system requirements
-3. Attempt registration with retry logic for transient failures
-4. Send confirmation emails with report summary to all administrators
-5. Record timestamps and status of all operations
-6. Escalate to human review if registration fails after retries or if email sending encounters critical errors
+### Engineer Information
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Timestamp: ${context.submissionTimestamp}
+- Is Late: ${context.isLate}
 
-Do not:
-- Modify the report content beyond formatting
-- Send emails to addresses outside the admin list
-- Proceed with email sending if registration fails
-- Ignore error responses from the management system`;
+### Submitted Report Content
+**Yesterday's Accomplishment:**
+${context.submittedReportContent.yesterdayAccomplishment}
 
-  const userPrompt = `Register the following daily report and send confirmation emails:
+**Today's Plan:**
+${context.submittedReportContent.todayPlan}
 
-Engineer ID: ${context.engineerId}
-Engineer Name: ${context.engineerName}
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
+**Issues/Concerns:**
+${context.submittedReportContent.issues}
 
-Report Content:
-- Yesterday's Achievements: ${context.previousReportContent.yesterday}
-- Today's Plan: ${context.previousReportContent.today}
-- Current Issues: ${context.previousReportContent.issues}
+## Validation Rules
 
-Management System URL: ${context.managementSystemUrl}
-Administrator Emails: ${context.adminEmails.join(", ")}
+1. **Completeness Check**
+   - All three sections (yesterday's accomplishment, today's plan, issues) must be present
+   - Each section must contain at least 10 characters of meaningful content
+   - No section should be empty or contain only whitespace
 
-Steps to execute:
-1. Register the report in the management system
-2. Confirm successful registration
-3. Send confirmation email to all administrators with the report summary
-4. Return the registration ID and email sending status
-5. If any step fails, provide detailed error information for escalation`;
+2. **Content Quality Check**
+   - Content should be relevant to daily work activities
+   - Avoid generic or placeholder text
+   - Check for coherence and logical structure
 
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    action: "action-05",
-    systemPrompt,
-    userPrompt,
-    context,
-  };
+3. **Appropriateness Check**
+   - Content should not contain offensive or inappropriate language
+   - Content should be professional in tone
+   - No sensitive personal information should be exposed
+
+4. **Format Check**
+   - Content should be properly formatted and readable
+   - No excessive special characters or formatting issues
+
+## Output Format
+
+Respond with a JSON object containing:
+{
+  "validationStatus": "valid" | "invalid" | "partial",
+  "validationErrors": [array of error messages if any],
+  "registrationReady": boolean,
+  "registrationPayload": {
+    "engineerId": "${context.engineerId}",
+    "engineerName": "${context.engineerName}",
+    "reportDate": "${context.reportDate}",
+    "yesterdayAccomplishment": "validated content",
+    "todayPlan": "validated content",
+    "issues": "validated content",
+    "submissionTimestamp": "${context.submissionTimestamp}",
+    "isLate": ${context.isLate}
+  }
+}
+
+## Validation Status Definitions
+- "valid": All validation rules passed, ready for registration
+- "invalid": Critical validation failures, cannot proceed to registration
+- "partial": Some validation issues but content is acceptable with warnings
+
+Perform the validation and return the JSON response.`;
+
+  return prompt;
 }

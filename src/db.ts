@@ -3,7 +3,7 @@
 
 // src/db.ts
 
-// In-memory storage for all entities
+// In-memory storage for database records
 const transactionLogs: Array<{
   exec_id: string;
   action_type: string;
@@ -32,9 +32,9 @@ const confirmationEmailHistories: Array<{
 }> = [];
 
 export async function insertConfirmationEmailHistory(
-  data: Record<string, unknown>
+  record: Record<string, unknown>
 ): Promise<void> {
-  confirmationEmailHistories.push(data);
+  confirmationEmailHistories.push(record);
 }
 
 export async function getTransactionLogByExecId(
@@ -49,12 +49,12 @@ export async function getTransactionLogByExecId(
   return transactionLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertTransactionLog(data: {
+export async function insertTransactionLog(record: {
   exec_id: string;
   action_type: string;
   count: number;
 }): Promise<{ inserted: boolean }> {
-  transactionLogs.push(data);
+  transactionLogs.push(record);
   return { inserted: true };
 }
 
@@ -70,12 +70,12 @@ export async function getMailSendLogsByExecId(
   return mailSendLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertMailSendLog(data: {
+export async function insertMailSendLog(record: {
   exec_id: string;
   recipient_id: string;
   mail_type: string;
 }): Promise<{ inserted: boolean }> {
-  mailSendLogs.push(data);
+  mailSendLogs.push(record);
   return { inserted: true };
 }
 
@@ -90,11 +90,11 @@ export async function getExtractedIssuesByExecId(
   return extractedIssues.filter((issue) => issue.exec_id === exec_id);
 }
 
-export async function insertExtractedIssue(data: {
+export async function insertExtractedIssue(record: {
   exec_id: string;
   issue_id: string;
 }): Promise<{ inserted: boolean }> {
-  extractedIssues.push(data);
+  extractedIssues.push(record);
   return { inserted: true };
 }
 
@@ -109,10 +109,10 @@ export async function getPriorityJudgmentLogsByExecId(
   return priorityJudgmentLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertPriorityJudgmentLog(data: {
+export async function insertPriorityJudgmentLog(record: {
   exec_id: string;
   judgment_result: string;
 }): Promise<{ inserted: boolean }> {
-  priorityJudgmentLogs.push(data);
+  priorityJudgmentLogs.push(record);
   return { inserted: true };
 }
