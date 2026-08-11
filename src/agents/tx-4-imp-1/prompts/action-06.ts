@@ -3,204 +3,114 @@
 
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
-export interface Action06PromptInput {
-  reportSummary: string;
+export interface Action06Context {
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    category: string;
+    reportedBy: string;
+    reportDate: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
-  }>;
-  priorityClassificationRules: {
-    critical: string[];
-    high: string[];
-    medium: string[];
-    low: string[];
-  };
-  previousPrioritizations?: Array<{
+  priorityClassifications: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
+    category: string;
   }>;
+  reportSummary: {
+    totalReports: number;
+    submittedCount: number;
+    overallProgress: string;
+    keyMetrics: Record<string, unknown>;
+  };
+}
+
+export interface Action06PromptInput {
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    reportedBy: string;
+    reportDate: string;
+  }>;
+  reportSummary: {
+    totalReports: number;
+    submittedCount: number;
+    overallProgress: string;
+    keyMetrics: Record<string, unknown>;
+  };
+  priorityJudgmentCriteria: {
+    criticalConditions: string[];
+    highConditions: string[];
+    mediumConditions: string[];
+    lowConditions: string[];
+  };
 }
 
 export interface Action06PromptOutput {
-  prioritizedIssues: Array<{
+  priorityClassifications: Array<{
     issueId: string;
-    title: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
-    affectedTeamMembers: string[];
-    recommendedAction: string;
-    estimatedImpact: string;
+    category: string;
   }>;
-  criticalAlerts: Array<{
-    type: string;
-    message: string;
-    requiredAction: string;
+  escalationRecommendations: Array<{
+    issueId: string;
+    escalationRequired: boolean;
+    reason: string;
+    suggestedAction: string;
   }>;
-  reportSummary: {
-    totalIssuesExtracted: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-    overallStatus: "normal" | "warning" | "critical";
+  reportReadiness: {
+    isReadyForPresentation: boolean;
+    missingElements: string[];
+    additionalNotesForManager: string;
   };
 }
 
 export function buildAction06Prompt(input: Action06PromptInput): string {
-  const rulesSection = formatPriorityRules(input.priorityClassificationRules);
-  const issuesSection = formatExtractedIssues(input.extractedIssues);
-  const historySection = input.previousPrioritizations
-    ? formatPrioritizationHistory(input.previousPrioritizations)
-    : "";
-
-  return `# 課題優先度判定・分類プロンプト
-
-## 目的
-日報から抽出された課題・ボトルネックに対して、優先度を自動判定・分類し、部長に整理済みのレポートを提供する。
-
-## 入力情報
-
-### 報告内容サマリー
-${input.reportSummary}
-
-### 抽出済み課題一覧
-${issuesSection}
-
-### チームメンバー情報
-${formatTeamMembers(input.teamMembers)}
-
-### 優先度分類ルール
-${rulesSection}
-
-${historySection ? `### 過去の優先度判定履歴\n${historySection}` : ""}
-
-## 実行タスク
-
-1. **課題の優先度判定**
-   - 各課題について、提供されたルールに基づいて優先度を判定する
-   - critical / high / medium / low の4段階で分類する
-   - 判定根拠を明確に記述する
-
-2. **影響範囲の特定**
-   - 各課題がどのチームメンバーに影響するかを特定する
-   - 複数部門にまたがる課題の場合は、その旨を記述する
-
-3. **推奨アクション**
-   - 優先度に応じた推奨対応を記述する
-   - 実装難度・リスク・効果を考慮する
-
-4. **重大アラート検出**
-   - 通常と異なる事象や重大なリスク課題を検出する
-   - 即座の対応が必要な案件を特定する
-
-5. **全体ステータス判定**
-   - 課題全体の状況を normal / warning / critical で判定する
-   - 朝会での議論優先度を示唆する
-
-## 出力形式
-
-以下の JSON 構造で結果を返す：
-
-\`\`\`json
-{
-  "prioritizedIssues": [
-    {
-      "issueId": "課題ID",
-      "title": "課題タイトル",
-      "priority": "critical|high|medium|low",
-      "reasoning": "優先度判定の根拠",
-      "affectedTeamMembers": ["メンバーID"],
-      "recommendedAction": "推奨対応",
-      "estimatedImpact": "想定される影響度"
-    }
-  ],
-  "criticalAlerts": [
-    {
-      "type": "アラートタイプ",
-      "message": "アラート内容",
-      "requiredAction": "必要な対応"
-    }
-  ],
-  "reportSummary": {
-    "totalIssuesExtracted": 数値,
-    "criticalCount": 数値,
-    "highCount": 数値,
-    "mediumCount": 数値,
-    "lowCount": 数値,
-    "overallStatus": "normal|warning|critical"
-  }
-}
-\`\`\`
-
-## 注意事項
-
-- 過去の判定履歴がある場合は、一貫性を保ちながらも新しい情報を反映する
-- 同一課題の重複判定を避ける
-- 優先度判定は客観的根拠に基づく
-- 判定が困難な場合は、その旨を明記し、部長の最終確認が必要であることを示す
-`;
-}
-
-function formatPriorityRules(
-  rules: Record<string, string[]>
-): string {
-  return Object.entries(rules)
-    .map(([priority, criteria]) => {
-      const criteriaList = criteria
-        .map((c) => `  - ${c}`)
-        .join("\n");
-      return `**${priority.toUpperCase()}**:\n${criteriaList}`;
-    })
-    .join("\n\n");
-}
-
-function formatExtractedIssues(
-  issues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>
-): string {
-  return issues
+  const issuesSection = input.extractedIssues
     .map(
       (issue) =>
-        `- **[${issue.id}] ${issue.title}** (${issue.category})\n  ${issue.description}`
+        `Issue ID: ${issue.id}\nTitle: ${issue.title}\nDescription: ${issue.description}\nReported by: ${issue.reportedBy}\nDate: ${issue.reportDate}`
     )
-    .join("\n");
-}
+    .join("\n\n");
 
-function formatTeamMembers(
-  members: Array<{
-    id: string;
-    name: string;
-    department: string;
-  }>
-): string {
-  return members
-    .map((m) => `- ${m.name} (${m.id}) - ${m.department}`)
-    .join("\n");
-}
+  const criteriaSection = Object.entries(input.priorityJudgmentCriteria)
+    .map(([level, conditions]) => `${level}:\n${conditions.map((c) => `- ${c}`).join("\n")}`)
+    .join("\n\n");
 
-function formatPrioritizationHistory(
-  history: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>
-): string {
-  return history
-    .map(
-      (h) =>
-        `- [${h.issueId}]: ${h.priority} - ${h.reasoning}`
-    )
+  const metricsSection = Object.entries(input.reportSummary.keyMetrics)
+    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
     .join("\n");
+
+  return `You are an AI agent responsible for the final step of daily report processing: prioritizing and classifying extracted issues for management review.
+
+## Current Report Summary
+Total Reports: ${input.reportSummary.totalReports}
+Submitted: ${input.reportSummary.submittedCount}
+Overall Progress: ${input.reportSummary.overallProgress}
+
+Key Metrics:
+${metricsSection}
+
+## Extracted Issues to Prioritize
+${issuesSection}
+
+## Priority Judgment Criteria
+${criteriaSection}
+
+## Your Task
+1. Analyze each extracted issue against the priority judgment criteria
+2. Assign a priority level (critical, high, medium, low) to each issue
+3. Provide clear reasoning for each priority assignment
+4. Categorize issues by type (technical, resource, schedule, quality, other)
+5. Identify any issues requiring escalation
+6. Assess overall report readiness for management presentation
+
+## Output Requirements
+- Ensure all issues are classified with consistent logic
+- Flag any issues that require immediate escalation
+- Identify any missing information that would affect priority judgment
+- Provide actionable recommendations for the manager
+- Maintain objectivity in priority assessment`;
 }

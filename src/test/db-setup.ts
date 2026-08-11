@@ -17,50 +17,66 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-const memoryStore: Record<TableName, TableRow[]> = {
-  users: [],
-  daily_reports: [],
-  report_send_history: [],
-  audit_events: [],
-};
+interface InMemoryTable {
+  rows: TableRow[];
+}
 
-function createTableOperations(tableName: TableName): TableOperations {
+interface InMemoryStore {
+  users: InMemoryTable;
+  daily_reports: InMemoryTable;
+  report_send_history: InMemoryTable;
+  audit_events: InMemoryTable;
+}
+
+function createInMemoryStore(): InMemoryStore {
   return {
-    async del(): Promise<number> {
-      const count = memoryStore[tableName].length;
-      memoryStore[tableName] = [];
-      return count;
-    },
-
-    async insert(row: TableRow | TableRow[]): Promise<void> {
-      const rows = Array.isArray(row) ? row : [row];
-      memoryStore[tableName].push(...rows);
-    },
-
-    async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-      return memoryStore[tableName].filter((row) => {
-        return Object.entries(conditions).every(([key, value]) => {
-          return row[key] === value;
-        });
-      });
-    },
+    users: { rows: [] },
+    daily_reports: { rows: [] },
+    report_send_history: { rows: [] },
+    audit_events: { rows: [] },
   };
+}
+
+function matchesConditions(row: TableRow, conditions: Record<string, unknown>): boolean {
+  return Object.entries(conditions).every(([key, value]) => row[key] === value);
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  memoryStore.users = [];
-  memoryStore.daily_reports = [];
-  memoryStore.report_send_history = [];
-  memoryStore.audit_events = [];
+  const store = createInMemoryStore();
 
-  return (tableName: TableName): TableOperations => {
-    return createTableOperations(tableName);
+  const testDb: TestDatabase = (tableName: TableName) => {
+    const table = store[tableName];
+
+    return {
+      async del(): Promise<number> {
+        const count = table.rows.length;
+        table.rows = [];
+        return count;
+      },
+
+      async insert(row: TableRow | TableRow[]): Promise<void> {
+        const rows = Array.isArray(row) ? row : [row];
+        table.rows.push(...rows);
+      },
+
+      async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
+        return table.rows.filter((row) => matchesConditions(row, conditions));
+      },
+    };
   };
+
+  return testDb;
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  await db("users").del();
-  await db("daily_reports").del();
-  await db("report_send_history").del();
-  await db("audit_events").del();
+  const tableNames: TableName[] = [
+    "users",
+    "daily_reports",
+    "report_send_history",
+    "audit_events",
+  ];
+
+  for (const tableName of tableNames) {
+    await db(tableName).del();
+  }
 }

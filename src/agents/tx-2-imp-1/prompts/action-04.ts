@@ -3,136 +3,43 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04PromptContext {
   reportingDeadline: string;
-  overdueThresholdMinutes: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
+  escalationThreshold: number;
+  systemErrorContext?: string;
+}
+
+export interface Action04PromptResult {
+  version: string;
+  action: string;
+  instructions: string;
+  context: Action04PromptContext;
+}
+
+export function buildAction04Prompt(
+  context: Action04PromptContext
+): Action04PromptResult {
+  const instructions = `
+You are an AI agent responsible for sending confirmation emails to managers after daily reports are submitted.
+
+Your task is to:
+1. Prepare confirmation email content summarizing the daily reports received
+2. Identify any missing or delayed reports based on the reporting deadline: ${context.reportingDeadline}
+3. Determine escalation actions if the number of missing reports exceeds the threshold: ${context.escalationThreshold}
+4. Format the confirmation email with:
+   - Total reports received
+   - List of submitted reports with timestamps
+   - List of missing/delayed reports with employee names
+   - Recommended actions for escalation
+5. ${context.systemErrorContext ? `Handle system error context: ${context.systemErrorContext}` : "Ensure no system errors occurred during report collection"}
+
+Output the confirmation email content in a structured format ready for delivery to managers.
+  `.trim();
+
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    action: "send-confirmation-email",
+    instructions,
+    context,
   };
-  targetMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-  }>;
-  submissionStatus: Array<{
-    memberId: string;
-    submitted: boolean;
-    submittedAt?: string;
-    isOverdue: boolean;
-  }>;
-}
-
-export interface Action04PromptOutput {
-  escalationCandidates: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
-    recommendedAction: string;
-  }>;
-  summary: {
-    totalMembers: number;
-    submitted: number;
-    overdue: number;
-    escalationCount: number;
-  };
-  timestamp: string;
-}
-
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const submittedCount = input.submissionStatus.filter(
-    (s) => s.submitted
-  ).length;
-  const overdueCount = input.submissionStatus.filter(
-    (s) => s.isOverdue
-  ).length;
-
-  const escalationCandidates = input.submissionStatus
-    .filter((status) => status.isOverdue)
-    .map((status) => {
-      const member = input.targetMembers.find(
-        (m) => m.memberId === status.memberId
-      );
-      return {
-        memberId: status.memberId,
-        memberName: member?.memberName || "Unknown",
-        email: member?.email || "",
-        department: member?.department || "",
-        isOverdue: status.isOverdue,
-      };
-    });
-
-  const prompt = `
-# 日報提出状況の監視と催促判定
-
-## 現在の提出状況
-- 報告期限: ${input.reportingDeadline}
-- 遅延判定閾値: ${input.overdueThresholdMinutes}分
-- 総対象者数: ${input.targetMembers.length}
-- 提出済み: ${submittedCount}
-- 遅延者: ${overdueCount}
-
-## 催促ルール
-- 最大催促回数: ${input.escalationRules.maxReminders}
-- 催促間隔: ${input.escalationRules.reminderIntervalMinutes}分
-
-## 遅延者一覧
-${escalationCandidates
-  .map(
-    (candidate) => `
-- ${candidate.memberName} (${candidate.department})
-  - メール: ${candidate.email}
-  - 遅延状態: ${candidate.isOverdue ? "遅延中" : "提出済み"}
-`
-  )
-  .join("")}
-
-## 判定タスク
-以下の項目について判定してください:
-
-1. **催促対象の特定**
-   - 遅延者の中から催促が必要な対象を特定
-   - 既に複数回催促済みの場合は判定ルールを適用
-
-2. **優先度の判定**
-   - 遅延時間に基づいて優先度を判定 (high/medium/low)
-   - 部門別の重要度を考慮
-
-3. **推奨アクション**
-   - 各対象者に対する具体的な催促方法を提案
-   - メール送信、チャット通知など
-
-4. **エスカレーション判定**
-   - 複数回催促後も報告がない場合の対応を判定
-   - 部長への報告が必要な場合を特定
-
-## 出力形式
-JSON形式で以下の構造で返してください:
-{
-  "escalationCandidates": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "email": "string",
-      "department": "string",
-      "reason": "string",
-      "priority": "high|medium|low",
-      "recommendedAction": "string"
-    }
-  ],
-  "summary": {
-    "totalMembers": number,
-    "submitted": number,
-    "overdue": number,
-    "escalationCount": number
-  },
-  "timestamp": "ISO8601形式の現在時刻"
-}
-`;
-
-  return prompt;
 }

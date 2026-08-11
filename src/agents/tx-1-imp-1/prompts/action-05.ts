@@ -7,80 +7,110 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
+  previousReportContent?: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
+  submissionDeadline: string;
+  systemName: string;
 }
 
-export interface Action05ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
+export interface Action05PromptResult {
+  version: string;
+  action: number;
+  purpose: string;
+  instructions: string;
+  context: Action05Context;
+  expectedOutput: string;
+  validationRules: string[];
 }
 
-export interface Action05RegistrationPayload {
-  engineerId: string;
-  engineerName: string;
-  reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
-  validationStatus: "valid" | "warning";
-}
+export function buildAction05Prompt(
+  context: Action05Context
+): Action05PromptResult {
+  const instructions = `
+You are an AI agent responsible for validating daily report input content.
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const prompt = `You are an AI agent responsible for registering daily reports to the management system.
+Your task is to:
+1. Receive the engineer's input for yesterday's achievements, today's plans, and current issues
+2. Validate the completeness and appropriateness of the input
+3. Check for any anomalies or concerning patterns in the reported content
+4. Provide structured validation feedback
 
-## Task: Register Daily Report to Management System
+Validation criteria:
+- Yesterday's achievements: Must contain at least one concrete accomplishment
+- Today's plans: Must contain at least one specific task or goal
+- Current issues: Should be clearly articulated if present; empty is acceptable if no blockers exist
+- Content length: Minimum 10 characters per field, maximum 2000 characters
+- Language: Must be in Japanese or English
+- No offensive or inappropriate content
+- No duplicate entries from previous reports
 
-### Input Information:
+Context information:
 - Engineer ID: ${context.engineerId}
 - Engineer Name: ${context.engineerName}
 - Report Date: ${context.reportDate}
-- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
-- Today's Plans: ${context.todayPlans}
-- Current Issues: ${context.currentIssues}
-- Submission Timestamp: ${context.submissionTimestamp}
+- Submission Deadline: ${context.submissionDeadline}
+- System Name: ${context.systemName}
 
-### Your Responsibilities:
-1. Validate that all required fields are present and properly formatted
-2. Check for data consistency and logical coherence
-3. Prepare the report for registration in the management system
-4. Generate a registration payload with all necessary information
-5. Ensure the report is ready for confirmation email distribution
-
-### Validation Criteria:
-- All text fields must be non-empty
-- Yesterday's accomplishments should describe completed work
-- Today's plans should outline planned activities
-- Current issues should identify any blockers or concerns
-- Submission timestamp must be valid and recent
-
-### Output Format:
-Provide a JSON response with:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "registrationPayload": {
-    "engineerId": string,
-    "engineerName": string,
-    "reportDate": string,
-    "yesterdayAccomplishments": string,
-    "todayPlans": string,
-    "currentIssues": string,
-    "submissionTimestamp": string,
-    "validationStatus": "valid" | "warning"
-  }
+${
+  context.previousReportContent
+    ? `
+Previous report reference (for anomaly detection):
+- Yesterday's achievements: ${context.previousReportContent.yesterday}
+- Today's plans: ${context.previousReportContent.today}
+- Issues: ${context.previousReportContent.issues}
+`
+    : ""
 }
 
-### Important Notes:
-- If validation fails, list all errors that prevent registration
-- If validation succeeds but has minor issues, list warnings and set validationStatus to "warning"
-- The registration payload must be complete and ready for system insertion
-- Do not modify the engineer's input; only validate and structure it`;
+Output format:
+{
+  "isValid": boolean,
+  "validationStatus": "VALID" | "INVALID" | "WARNING",
+  "errors": string[],
+  "warnings": string[],
+  "normalizedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  },
+  "anomalyDetected": boolean,
+  "anomalyDescription": string | null
+}
+`;
 
-  return prompt;
+  const expectedOutput = `
+A JSON object containing:
+- isValid: true if all validation rules pass, false otherwise
+- validationStatus: Overall status of the validation
+- errors: Array of validation error messages
+- warnings: Array of non-critical warning messages
+- normalizedContent: Cleaned and formatted input content
+- anomalyDetected: true if unusual patterns are detected
+- anomalyDescription: Description of detected anomalies or null
+`;
+
+  const validationRules = [
+    "Each field must not be empty",
+    "Each field must contain at least 10 characters",
+    "Each field must not exceed 2000 characters",
+    "Content must be in Japanese or English",
+    "No offensive or inappropriate language",
+    "No exact duplication from previous report",
+    "Issues field can be empty if no blockers exist",
+    "Detect repetitive or concerning patterns",
+  ];
+
+  return {
+    version: ACTION_05_PROMPT_VERSION,
+    action: 5,
+    purpose:
+      "Validate daily report input content for completeness and appropriateness",
+    instructions,
+    context,
+    expectedOutput,
+    validationRules,
+  };
 }

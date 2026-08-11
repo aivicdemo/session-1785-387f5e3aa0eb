@@ -3,46 +3,38 @@
 
 // src/services/mail-stub.ts
 
-interface MailCallRecord {
-  managerUserId: string;
-  listId: string;
-  memberCount: number;
+interface MailServiceCallRecord {
+  to: string;
+  subject: string;
+  body: string;
   timestamp: Date;
 }
 
 interface StubMailService {
-  sendNotificationEmail(
-    managerUserId: string,
-    listId: string,
-    memberCount: number
-  ): Promise<void>;
+  sendMail(to: string, subject: string, body: string): Promise<void>;
+  getCallHistory(): MailServiceCallRecord[];
   clearCallHistory(): void;
-  getCallHistory(): MailCallRecord[];
 }
 
-const mailCallHistory: MailCallRecord[] = [];
+const mailCallHistory: MailServiceCallRecord[] = [];
 
 export function getStubMailService(): StubMailService {
   return {
-    async sendNotificationEmail(
-      managerUserId: string,
-      listId: string,
-      memberCount: number
-    ): Promise<void> {
+    async sendMail(to: string, subject: string, body: string): Promise<void> {
       mailCallHistory.push({
-        managerUserId,
-        listId,
-        memberCount,
+        to,
+        subject,
+        body,
         timestamp: new Date(),
       });
     },
 
-    clearCallHistory(): void {
-      mailCallHistory.length = 0;
+    getCallHistory(): MailServiceCallRecord[] {
+      return [...mailCallHistory];
     },
 
-    getCallHistory(): MailCallRecord[] {
-      return [...mailCallHistory];
+    clearCallHistory(): void {
+      mailCallHistory.length = 0;
     },
   };
 }

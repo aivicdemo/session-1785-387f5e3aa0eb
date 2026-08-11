@@ -19,64 +19,75 @@ export interface Action01PromptInput {
 
 export interface Action01PromptOutput {
   templateContent: string;
-  distributionList: string[];
-  scheduledTime: string;
+  distributionPlan: {
+    recipients: string[];
+    scheduledTime: string;
+    channels: string[];
+  };
+  validationRules: Array<{
+    field: string;
+    required: boolean;
+    constraints: string[];
+  }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
   const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const deadline = new Date(input.reportingDeadline).toLocaleString("ja-JP");
-  const targetDate = new Date(input.targetDate).toLocaleString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  const channelList = input.systemContext.notificationChannels.join("、");
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  return `# 日報テンプレート自動生成・配信アクション
 
-## 実行目的
-前日の日報テンプレートを自動生成して、全エンジニアに配信する
+## 目的
+前日の日報テンプレートを自動生成してエンジニアに配信し、本日の日報入力を促進する。
 
-## 対象者
-${engineerNames}
+## 実行コンテキスト
+- 対象日付: ${input.targetDate}
+- 報告期限: ${input.reportingDeadline}
+- 対象エンジニア: ${engineerNames}
+- 配信チャネル: ${channelList}
 
-## 実行日時
-対象日: ${targetDate}
-配信期限: ${deadline}
-
-## 生成すべき日報テンプレート内容
-以下の項目を含む日報テンプレートを生成してください:
-
-1. **昨日の実績**
+## 生成すべき日報テンプレート要素
+1. 昨日の実績セクション
    - 完了したタスク
    - 進捗状況
    - 実績の詳細
 
-2. **本日の予定**
-   - 予定されているタスク
-   - 優先順位
-   - 予定時間
+2. 本日の予定セクション
+   - 予定タスク
+   - 優先度
+   - 予想所要時間
 
-3. **抱えている課題**
-   - 現在の課題
-   - 課題の詳細
-   - 必要なサポート
+3. 抱えている課題セクション
+   - 課題内容
+   - 影響範囲
+   - 対応状況
 
-## 配信先
-${input.engineerList.map((e) => e.email).join("\n")}
+## 配信計画
+- 配信先: 全対象エンジニア
+- 配信時刻: 朝会開始の30分前
+- 配信チャネル: ${channelList}
+- 期限: ${input.reportingDeadline}
 
-## 配信チャネル
-${input.systemContext.notificationChannels.join("、")}
+## 検証ルール
+- 全セクションの入力が必須
+- 各セクションは500文字以内
+- 課題がある場合は対応状況の記入が必須
 
-## 実行条件
-- テンプレートは日本語で作成
-- 記入例を含める
-- 必須項目を明確に表示
-- 提出期限を明記
-- システムURL: ${input.systemContext.reportManagementSystemUrl}
-
-## 期待される出力
-- 生成されたテンプレートHTML/テキスト
-- 配信対象者リスト
-- 配信予定時刻`;
+## 出力形式
+JSON形式で以下を含める:
+{
+  "templateContent": "生成されたテンプレート本文",
+  "distributionPlan": {
+    "recipients": ["engineer1@example.com", ...],
+    "scheduledTime": "HH:MM",
+    "channels": ["email", "chat", ...]
+  },
+  "validationRules": [
+    {
+      "field": "フィールド名",
+      "required": true/false,
+      "constraints": ["制約1", "制約2", ...]
+    }
+  ]
+}`;
 }

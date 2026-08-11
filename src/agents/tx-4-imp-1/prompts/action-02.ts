@@ -18,7 +18,7 @@ export interface Action02PromptOutput {
   isValid: boolean;
   validationErrors: string[];
   sanitizedContent: string;
-  warnings: string[];
+  timestamp: string;
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
@@ -33,46 +33,47 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
     },
   } = input;
 
-  const requiredFieldsText =
-    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
-  const minLength = validationRules.minLength || 10;
-  const maxLength = validationRules.maxLength || 5000;
+  const rulesDescription = validationRules.requiredFields
+    ? `必須フィールド: ${validationRules.requiredFields.join(", ")}`
+    : "";
 
-  return `You are a validation agent for the morning report management system.
+  const prompt = `
+# 日報入力内容の妥当性検証
 
-Your task is to validate the daily report submission from engineer: ${engineerName}
-Submission date: ${submissionDate}
-
-Report content to validate:
----
+## 検証対象
+- エンジニア名: ${engineerName}
+- 提出日時: ${submissionDate}
+- 入力内容:
+\`\`\`
 ${reportContent}
----
+\`\`\`
 
-Validation rules:
-1. Content length must be between ${minLength} and ${maxLength} characters
-2. Must contain all required sections: ${requiredFieldsText}
-3. Content must be professional and appropriate
-4. No sensitive information should be exposed
-5. Report should be coherent and understandable
+## 検証ルール
+- 最小文字数: ${validationRules.minLength || 10}文字
+- 最大文字数: ${validationRules.maxLength || 5000}文字
+${rulesDescription}
 
-Please perform the following validations:
-1. Check if all required fields are present
-2. Verify content length is within acceptable range
-3. Identify any inappropriate or sensitive content
-4. Check for coherence and clarity
-5. Identify any warnings or concerns
+## 検証項目
+1. 入力内容が空でないか確認
+2. 文字数が指定範囲内か確認
+3. 必須フィールドが含まれているか確認
+4. 不適切な表現や機密情報が含まれていないか確認
+5. 日本語として適切な文法か確認
 
-Respond with:
-- A list of validation errors (if any)
-- A list of warnings (if any)
-- The sanitized content (with any sensitive information removed)
-- Overall validation status (valid/invalid)
-
-Format your response as JSON with the following structure:
+## 出力形式
+検証結果をJSON形式で以下の構造で返してください:
 {
   "isValid": boolean,
   "validationErrors": string[],
   "sanitizedContent": string,
-  "warnings": string[]
-}`;
+  "timestamp": string
+}
+
+isValid: 全ての検証に合格した場合true
+validationErrors: 検出された問題の説明リスト
+sanitizedContent: 検証済みの入力内容（不適切な表現を修正）
+timestamp: 検証実行時刻（ISO 8601形式）
+`;
+
+  return prompt;
 }

@@ -7,79 +7,77 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  previousReminders?: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
   }>;
 }
 
-export interface IdentifiedNonReporter {
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  status: "not_submitted" | "delayed";
-  daysSinceDeadline: number;
-  reminderCount: number;
-}
-
 export interface Action01PromptOutput {
-  nonReporters: IdentifiedNonReporter[];
-  analysisTimestamp: string;
-  totalEmployeesExpected: number;
-  totalNonReporters: number;
-  urgencyLevel: "low" | "medium" | "high";
+  unreportedEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    reason: string;
+  }>;
+  delayedEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    delayMinutes: number;
+  }>;
+  identificationTimestamp: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const reminderContext =
-    input.previousReminders && input.previousReminders.length > 0
-      ? `\n\n過去の催促履歴:\n${input.previousReminders
-          .map(
-            (r) =>
-              `- ${r.employeeId}: ${r.reminderCount}回催促済み (最終: ${r.lastReminderTime})`
-          )
-          .join("\n")}`
-      : "";
+  const engineerListStr = input.engineerList
+    .map((e) => `- ${e.name} (${e.id}): ${e.email}`)
+    .join("\n");
 
-  return `あなたは朝会報告管理システムのAIエージェントです。
-確認メール内容から報告漏れ・遅延部員を自動特定するタスクを実行してください。
+  return `# 報告漏れ・遅延部員の自動特定
 
-【タスク】
-確認メール内容を分析し、以下を実行してください:
-1. 報告漏れ・遅延部員を特定する
-2. 各部員の遅延日数を計算する
-3. 催促対象の緊急度レベルを判定する
-
-【入力情報】
-確認メール内容:
+## 確認メール内容
 ${input.confirmationEmailContent}
 
-報告期限: ${input.reportDeadline}
-現在時刻: ${input.currentTimestamp}
-${reminderContext}
+## 対象エンジニア一覧
+${engineerListStr}
 
-【出力形式】
-JSON形式で以下の構造で返してください:
+## 提出期限
+${input.reportDeadline}
+
+## 現在時刻
+${input.currentTimestamp}
+
+## タスク
+以下の手順で報告漏れ・遅延部員を特定してください：
+
+1. 確認メール内容から実際に報告を提出したエンジニアを抽出する
+2. 対象エンジニア一覧と比較して、報告を提出していないエンジニアを特定する
+3. 提出期限を超過しているかどうかを判定する
+4. 各部員について以下の情報を整理する：
+   - 報告漏れ部員：理由を含める
+   - 遅延部員：遅延時間（分）を含める
+
+## 出力形式
+JSON形式で以下の構造で返してください：
 {
-  "nonReporters": [
+  "unreportedEngineers": [
     {
-      "employeeId": "string",
-      "employeeName": "string",
-      "department": "string",
-      "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number,
-      "reminderCount": number
+      "id": "エンジニアID",
+      "name": "エンジニア名",
+      "email": "メールアドレス",
+      "reason": "報告漏れの理由"
     }
   ],
-  "analysisTimestamp": "ISO8601形式",
-  "totalEmployeesExpected": number,
-  "totalNonReporters": number,
-  "urgencyLevel": "low" | "medium" | "high"
-}
-
-【判定ルール】
-- status: 未提出は "not_submitted"、期限超過は "delayed"
-- urgencyLevel: 非報告者が全体の30%以上なら "high"、10-30%なら "medium"、10%未満なら "low"
-- reminderCount: 過去の催促回数を参照し、同一部員への複数回催促を追跡`;
+  "delayedEngineers": [
+    {
+      "id": "エンジニアID",
+      "name": "エンジニア名",
+      "email": "メールアドレス",
+      "delayMinutes": 遅延分数
+    }
+  ],
+  "identificationTimestamp": "特定時刻（ISO 8601形式）"
+}`;
 }

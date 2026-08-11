@@ -7,14 +7,9 @@ export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
   currentTimestamp: string;
-  previousReminders?: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
-  }>;
-  reminderRules?: {
-    maxReminderCount: number;
-    reminderIntervalMinutes: number;
+  escalationRules?: {
+    maxRetries?: number;
+    retryIntervalHours?: number;
   };
 }
 
@@ -22,108 +17,124 @@ export interface Action04PromptOutput {
   identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
-    reason: "not_submitted" | "delayed";
-    submissionTime?: string;
+    status: "non-reported" | "delayed";
+    daysSinceDeadline: number;
   }>;
-  remindersToSend: Array<{
+  escalationTargets: Array<{
     employeeId: string;
     employeeName: string;
-    reminderType: "email" | "chat" | "both";
-    message: string;
-    shouldEscalate: boolean;
+    escalationReason: string;
+    priority: "high" | "medium" | "low";
   }>;
-  escalationCases: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: string;
-    recommendedAction: string;
+  communicationPlan: Array<{
+    targetEmployeeId: string;
+    communicationMethod: "email" | "chat" | "both";
+    messageTemplate: string;
+    scheduledTime?: string;
   }>;
   executionLog: {
     timestamp: string;
-    totalIdentified: number;
-    remindersScheduled: number;
-    escalationsDetected: number;
+    processedRecords: number;
+    escalatedCount: number;
+    errors: string[];
   };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reminderRules = input.reminderRules || {
-    maxReminderCount: 3,
-    reminderIntervalMinutes: 30,
-  };
+  const {
+    confirmationEmailContent,
+    reportingDeadline,
+    currentTimestamp,
+    escalationRules = {},
+  } = input;
 
-  const previousRemindersInfo =
-    input.previousReminders && input.previousReminders.length > 0
-      ? `\n前回の催促履歴:\n${input.previousReminders
-          .map(
-            (r) =>
-              `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
-          )
-          .join("\n")}`
-      : "";
+  const maxRetries = escalationRules.maxRetries ?? 3;
+  const retryIntervalHours = escalationRules.retryIntervalHours ?? 24;
 
-  return `あなたは朝会報告管理システムのAIエージェントです。確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してメール・チャットの送信を完結させます。
+  return `You are an AI agent responsible for identifying non-reporting and delayed employees from confirmation email content and executing escalation procedures.
 
-【タスク】
-確認メール内容を分析し、以下を実行してください:
-1. 報告漏れ・遅延部員を特定する
-2. 催促対象部員を判定する
-3. 催促メール・チャットの送信内容を生成する
-4. エスカレーション対象を判定する
+## Task: Analyze Confirmation Email and Execute Escalation
 
-【入力情報】
-確認メール内容:
-${input.confirmationEmailContent}
+### Input Information:
+- Confirmation Email Content:
+${confirmationEmailContent}
 
-報告期限: ${input.reportingDeadline}
-現在時刻: ${input.currentTimestamp}
-${previousRemindersInfo}
+- Reporting Deadline: ${reportingDeadline}
+- Current Timestamp: ${currentTimestamp}
 
-【催促ルール】
-- 最大催促回数: ${reminderRules.maxReminderCount}回
-- 催促間隔: ${reminderRules.reminderIntervalMinutes}分
-- 最大催促回数に達した場合はエスカレーション対象とする
-- システムエラーで送信に失敗した場合もエスカレーション対象とする
+### Escalation Rules:
+- Maximum Retries: ${maxRetries}
+- Retry Interval: ${retryIntervalHours} hours
+- Escalation Conditions:
+  1. Employee has not submitted report by deadline
+  2. Employee has submitted but with significant delay (>2 hours past deadline)
+  3. Previous escalation attempts exist without resolution
 
-【出力形式】
-以下のJSON形式で結果を返してください:
+### Your Responsibilities:
+
+1. **Identify Non-Reporters and Delayed Reporters**
+   - Parse confirmation email content to extract employee submission status
+   - Identify employees who have not reported
+   - Identify employees who reported late
+   - Calculate days/hours since deadline for each delayed reporter
+
+2. **Determine Escalation Targets**
+   - Apply escalation rules to determine which employees require escalation
+   - Assign priority levels (high/medium/low) based on:
+     - Time elapsed since deadline
+     - Number of previous escalation attempts
+     - Employee's historical reporting pattern
+
+3. **Plan Communication**
+   - Determine appropriate communication method (email/chat/both)
+   - Select message template based on escalation reason
+   - Schedule communication timing if applicable
+
+4. **Generate Execution Log**
+   - Record timestamp of analysis
+   - Count processed records
+   - Count escalated employees
+   - Document any errors or exceptions encountered
+
+### Output Format:
+Return a JSON object with the following structure:
 {
   "identifiedNonReporters": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "reason": "not_submitted" | "delayed",
-      "submissionTime": "string (ISO 8601形式、未提出の場合は省略)"
+      "status": "non-reported" | "delayed",
+      "daysSinceDeadline": number
     }
   ],
-  "remindersToSend": [
+  "escalationTargets": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "reminderType": "email" | "chat" | "both",
-      "message": "string",
-      "shouldEscalate": boolean
+      "escalationReason": "string",
+      "priority": "high" | "medium" | "low"
     }
   ],
-  "escalationCases": [
+  "communicationPlan": [
     {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "string",
-      "recommendedAction": "string"
+      "targetEmployeeId": "string",
+      "communicationMethod": "email" | "chat" | "both",
+      "messageTemplate": "string",
+      "scheduledTime": "string (optional)"
     }
   ],
   "executionLog": {
-    "timestamp": "string (ISO 8601形式)",
-    "totalIdentified": number,
-    "remindersScheduled": number,
-    "escalationsDetected": number
+    "timestamp": "string",
+    "processedRecords": number,
+    "escalatedCount": number,
+    "errors": ["string"]
   }
 }
 
-【注意事項】
-- 同一部員への複数回催促後も報告がない場合はエスカレーション対象とする
-- 催促メッセージは丁寧かつ簡潔に作成する
-- 送信履歴を考慮し、不要な重複催促を避ける
-- 判定ルールに該当しない特殊ケースは理由を明記してエスカレーション対象とする`;
+### Important Notes:
+- Ensure accuracy in identifying non-reporters vs. delayed reporters
+- Apply escalation rules consistently
+- Prioritize high-priority escalations
+- Document all errors for human review
+- Consider previous escalation attempts to avoid over-escalation`;
 }

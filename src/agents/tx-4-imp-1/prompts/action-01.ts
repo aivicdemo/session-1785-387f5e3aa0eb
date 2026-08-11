@@ -4,60 +4,69 @@
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
 export interface Action01PromptInput {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  previousReportContent?: string;
-  systemContext?: Record<string, unknown>;
+  reportDeadline: string;
+  targetDate: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  systemContext: {
+    reportSystemUrl: string;
+    managementSystemUrl: string;
+  };
 }
 
 export interface Action01PromptOutput {
   templateContent: string;
-  distributionChannels: string[];
+  distributionList: string[];
   scheduledTime: string;
-  metadata: {
-    version: string;
-    generatedAt: string;
-    targetAudience: string;
-  };
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportDate,
-    engineerName,
-    engineerId,
-    previousReportContent = "",
-    systemContext = {},
-  } = input;
+  const { reportDeadline, targetDate, engineerList, systemContext } = input;
 
-  const basePrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
+  const engineerListText = engineerList
+    .map((eng) => `- ${eng.name} (${eng.email})`)
+    .join("\n");
 
-Task: Generate a daily report template to be distributed to engineer "${engineerName}" (ID: ${engineerId}) for the date ${reportDate}.
+  const prompt = `You are an AI agent responsible for generating and distributing daily report templates.
 
-Context:
-- Previous report content (if available): ${previousReportContent || "No previous report"}
-- System context: ${JSON.stringify(systemContext)}
+## Task: Generate Daily Report Template for Distribution
 
-Requirements:
-1. Create a structured daily report template with the following sections:
-   - Yesterday's Achievements (実績)
-   - Today's Plan (予定)
-   - Current Issues/Challenges (課題)
-   - Blockers or Dependencies (阻害要因)
-   - Additional Notes (備考)
+### Context
+- Target Date: ${targetDate}
+- Report Deadline: ${reportDeadline}
+- Report System URL: ${systemContext.reportSystemUrl}
+- Management System URL: ${systemContext.managementSystemUrl}
 
-2. Ensure the template is clear, concise, and easy to fill out
-3. Include placeholders for the engineer to input their information
-4. Format the template in a way that can be easily parsed and stored in the report management system
+### Target Engineers
+${engineerListText}
 
-Output format:
-- Provide the complete template content as a string
-- Include metadata about distribution channels (email, chat, etc.)
-- Specify the scheduled distribution time
-- Include version information and generation timestamp
+### Requirements
+1. Generate a professional daily report template that includes:
+   - Yesterday's achievements and deliverables
+   - Today's planned tasks and objectives
+   - Current challenges and blockers
+   - Risk assessment and mitigation plans
 
-Generate the template now:`;
+2. Create distribution instructions for sending to all engineers
 
-  return basePrompt;
+3. Ensure the template is clear, concise, and encourages complete information submission
+
+4. Include deadline reminder and submission instructions
+
+### Output Format
+Provide:
+1. Complete template content (ready to send)
+2. List of recipient email addresses
+3. Recommended distribution time
+
+### Constraints
+- Template must be in Japanese
+- Keep template length under 500 words
+- Include system links for easy access
+- Ensure compliance with company reporting standards`;
+
+  return prompt;
 }

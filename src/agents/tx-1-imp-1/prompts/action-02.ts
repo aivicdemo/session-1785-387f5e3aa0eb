@@ -4,7 +4,7 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02Context {
-  engineerInput: {
+  engineerInputData: {
     yesterdayAccomplishments: string;
     todayPlans: string;
     currentIssues: string;
@@ -12,74 +12,80 @@ export interface Action02Context {
     engineerName: string;
     submissionTimestamp: string;
   };
-  validationRules: {
-    minAccomplishmentsLength: number;
-    minPlansLength: number;
-    minIssuesLength: number;
-    allowedIssueCategories: string[];
-  };
 }
 
-export interface ValidationResult {
+export interface Action02ValidationResult {
   isValid: boolean;
-  errors: Array<{
-    field: string;
-    message: string;
-    severity: "error" | "warning";
-  }>;
+  errors: string[];
   warnings: string[];
+  validatedData: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
+  };
 }
 
 export function buildAction02Prompt(context: Action02Context): string {
   const {
-    engineerInput,
-    validationRules,
+    engineerInputData: {
+      yesterdayAccomplishments,
+      todayPlans,
+      currentIssues,
+      engineerId,
+      engineerName,
+      submissionTimestamp,
+    },
   } = context;
 
-  const prompt = `You are an AI agent responsible for validating daily report input content.
+  const prompt = `You are a validation agent for daily report submissions in the morning meeting management system.
 
-## Input Content to Validate
-- Engineer ID: ${engineerInput.engineerId}
-- Engineer Name: ${engineerInput.engineerName}
-- Submission Timestamp: ${engineerInput.submissionTimestamp}
+Your task is to validate the engineer's input content for completeness and appropriateness.
 
-### Yesterday's Accomplishments
-${engineerInput.yesterdayAccomplishments}
+Engineer Information:
+- ID: ${engineerId}
+- Name: ${engineerName}
+- Submission Time: ${submissionTimestamp}
 
-### Today's Plans
-${engineerInput.todayPlans}
+Input Content to Validate:
+1. Yesterday's Accomplishments:
+${yesterdayAccomplishments}
 
-### Current Issues
-${engineerInput.currentIssues}
+2. Today's Plans:
+${todayPlans}
 
-## Validation Rules
-- Minimum accomplishments length: ${validationRules.minAccomplishmentsLength} characters
-- Minimum plans length: ${validationRules.minPlansLength} characters
-- Minimum issues length: ${validationRules.minIssuesLength} characters
-- Allowed issue categories: ${validationRules.allowedIssueCategories.join(", ")}
+3. Current Issues/Challenges:
+${currentIssues}
 
-## Validation Tasks
-1. Check if each field meets the minimum length requirement
-2. Verify that the content is substantive and not just placeholder text
-3. Ensure issue descriptions are clear and actionable
-4. Identify any incomplete or vague sections
-5. Flag any content that appears to be copy-pasted or generic
+Validation Criteria:
+1. Completeness: All three sections must have meaningful content (not empty or just whitespace)
+2. Appropriateness: Content should be relevant to work activities
+3. Length: Each section should have reasonable length (at least 10 characters, not excessively long)
+4. Format: Content should be clear and understandable
+5. No sensitive data: Ensure no confidential information is exposed
 
-## Output Format
-Provide validation results in the following JSON structure:
+Please validate the input and provide:
+1. Whether the input is valid (true/false)
+2. List of errors (if any)
+3. List of warnings (if any)
+4. The validated data
+
+Respond in JSON format with the following structure:
 {
   "isValid": boolean,
-  "errors": [
-    {
-      "field": "field_name",
-      "message": "error_description",
-      "severity": "error" | "warning"
-    }
-  ],
-  "warnings": ["warning_message"]
-}
-
-Respond with only the JSON object, no additional text.`;
+  "errors": string[],
+  "warnings": string[],
+  "validatedData": {
+    "yesterdayAccomplishments": string,
+    "todayPlans": string,
+    "currentIssues": string,
+    "engineerId": string,
+    "engineerName": string,
+    "submissionTimestamp": string
+  }
+}`;
 
   return prompt;
 }

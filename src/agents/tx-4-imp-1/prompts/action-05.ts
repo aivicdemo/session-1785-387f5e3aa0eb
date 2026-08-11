@@ -11,110 +11,111 @@ export interface Action05Context {
     submittedAt: string;
     status: "submitted" | "pending" | "overdue";
   }>;
-  extractionCriteria: {
-    issueKeywords: string[];
-    bottleneckIndicators: string[];
-    riskLevels: string[];
+  extractedIssues: Array<{
+    issueId: string;
+    description: string;
+    relatedEmployees: string[];
+    category: string;
+    severity: "low" | "medium" | "high" | "critical";
+  }>;
+  priorityJudgmentCriteria: {
+    businessImpact: number;
+    urgency: number;
+    resourceRequirement: number;
+    dependencies: number;
   };
-  priorityRules: {
-    criticalKeywords: string[];
-    highPriorityKeywords: string[];
-    mediumPriorityKeywords: string[];
-    lowPriorityKeywords: string[];
-  };
-  reportingDeadline: string;
-  currentTimestamp: string;
 }
 
-export interface ExtractedIssue {
-  id: string;
-  description: string;
-  reportedBy: string;
-  category: "issue" | "bottleneck" | "risk";
-  priority: "critical" | "high" | "medium" | "low";
-  affectedAreas: string[];
-  suggestedAction: string;
-  confidence: number;
-}
-
-export interface Action05Output {
-  totalReportsProcessed: number;
-  issuesExtracted: ExtractedIssue[];
-  priorityDistribution: {
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
+export interface Action05PromptInput {
+  context: Action05Context;
+  reportingPeriod: {
+    date: string;
+    startTime: string;
+    endTime: string;
   };
-  summaryReport: string;
-  recommendedActions: string[];
-  processingTimestamp: string;
+  departmentInfo: {
+    departmentId: string;
+    departmentName: string;
+    totalMembers: number;
+  };
+  escalationThresholds: {
+    criticalIssueCount: number;
+    overallRiskLevel: string;
+  };
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const reportsList = context.confirmedReports
-    .map(
-      (report) =>
-        `- ${report.employeeName} (${report.employeeId}): ${report.reportContent}`
-    )
-    .join("\n");
+export interface Action05PromptOutput {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  contextData: Action05Context;
+}
 
-  const issueKeywordsStr = context.extractionCriteria.issueKeywords.join(", ");
-  const bottleneckIndicatorsStr =
-    context.extractionCriteria.bottleneckIndicators.join(", ");
-  const riskLevelsStr = context.extractionCriteria.riskLevels.join(", ");
+export function buildAction05Prompt(
+  input: Action05PromptInput
+): Action05PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for the final step of the daily report management workflow.
+Your task is to analyze confirmed reports and extracted issues, then provide a comprehensive priority-judged report to the department head.
 
-  const criticalKeywordsStr = context.priorityRules.criticalKeywords.join(
-    ", "
-  );
-  const highPriorityKeywordsStr =
-    context.priorityRules.highPriorityKeywords.join(", ");
-  const mediumPriorityKeywordsStr =
-    context.priorityRules.mediumPriorityKeywords.join(", ");
-  const lowPriorityKeywordsStr =
-    context.priorityRules.lowPriorityKeywords.join(", ");
+Key responsibilities:
+1. Analyze all confirmed daily reports from team members
+2. Review extracted issues and bottlenecks
+3. Apply priority judgment criteria to categorize issues
+4. Identify critical risks and escalation-worthy items
+5. Generate a structured report with prioritized action items
 
-  return `You are an AI agent responsible for extracting and prioritizing issues from daily reports.
+Priority judgment framework:
+- Critical: Business impact > ${input.escalationThresholds.criticalIssueCount}, immediate action required
+- High: Multiple dependencies or resource constraints
+- Medium: Standard operational issues
+- Low: Minor improvements or observations
 
-## Task: Extract Issues and Determine Priority
+Output format must include:
+- Executive summary
+- Prioritized issue list with justification
+- Risk assessment
+- Recommended actions
+- Escalation flags for human review`;
 
-### Confirmed Reports to Analyze:
-${reportsList}
+  const userPrompt = `Process the following daily report data for ${input.reportingPeriod.date}:
 
-### Extraction Criteria:
-- Issue Keywords: ${issueKeywordsStr}
-- Bottleneck Indicators: ${bottleneckIndicatorsStr}
-- Risk Levels: ${riskLevelsStr}
+Department: ${input.departmentInfo.departmentName} (${input.departmentInfo.totalMembers} members)
+Reporting Period: ${input.reportingPeriod.startTime} - ${input.reportingPeriod.endTime}
 
-### Priority Classification Rules:
-- Critical Priority Keywords: ${criticalKeywordsStr}
-- High Priority Keywords: ${highPriorityKeywordsStr}
-- Medium Priority Keywords: ${mediumPriorityKeywordsStr}
-- Low Priority Keywords: ${lowPriorityKeywordsStr}
+Confirmed Reports Summary:
+${input.context.confirmedReports
+  .map(
+    (report) =>
+      `- ${report.employeeName} (${report.employeeId}): ${report.status} at ${report.submittedAt}`
+  )
+  .join("\n")}
 
-### Instructions:
-1. Analyze each report for issues, bottlenecks, and risks
-2. Extract and categorize each identified issue
-3. Assign priority levels based on the provided keywords and context
-4. Generate a summary report with recommended actions
-5. Organize issues by priority for management review
+Extracted Issues:
+${input.context.extractedIssues
+  .map(
+    (issue) =>
+      `- [${issue.severity.toUpperCase()}] ${issue.description} (Category: ${issue.category}, Affected: ${issue.relatedEmployees.join(", ")})`
+  )
+  .join("\n")}
 
-### Output Requirements:
-- Provide a structured list of extracted issues with:
-  - Issue ID (auto-generated)
-  - Description
-  - Reported by (employee name)
-  - Category (issue/bottleneck/risk)
-  - Priority level (critical/high/medium/low)
-  - Affected areas
-  - Suggested action
-  - Confidence score (0-1)
-- Include priority distribution summary
-- Provide actionable recommendations for management
+Priority Judgment Criteria Weights:
+- Business Impact: ${input.context.priorityJudgmentCriteria.businessImpact}
+- Urgency: ${input.context.priorityJudgmentCriteria.urgency}
+- Resource Requirement: ${input.context.priorityJudgmentCriteria.resourceRequirement}
+- Dependencies: ${input.context.priorityJudgmentCriteria.dependencies}
 
-### Deadline Context:
-- Reporting Deadline: ${context.reportingDeadline}
-- Current Timestamp: ${context.currentTimestamp}
+Escalation Threshold: ${input.escalationThresholds.overallRiskLevel}
 
-Proceed with issue extraction and prioritization.`;
+Please analyze this data and provide:
+1. A prioritized list of issues with clear justification
+2. Risk assessment for the department
+3. Recommended immediate actions
+4. Items requiring human review and escalation`;
+
+  return {
+    version: ACTION_05_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    contextData: input.context,
+  };
 }

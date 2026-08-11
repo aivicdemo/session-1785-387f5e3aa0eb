@@ -3,108 +3,299 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04Context {
+export interface Action04PromptContext {
+  reportCollectionDeadline: string;
+  escalationThreshold: number;
+  priorityClassificationRules: PriorityRule[];
+  teamMembers: TeamMember[];
+  previousReports: DailyReport[];
+}
+
+export interface PriorityRule {
+  category: string;
+  keywords: string[];
+  priority: "critical" | "high" | "medium" | "low";
+  escalationRequired: boolean;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: string;
+}
+
+export interface DailyReport {
+  memberId: string;
+  date: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  issues: string;
+  submittedAt: string;
+  status: "submitted" | "pending" | "overdue";
+}
+
+export interface ExtractedIssue {
+  id: string;
+  description: string;
+  category: string;
+  priority: "critical" | "high" | "medium" | "low";
+  affectedMembers: string[];
+  reportDate: string;
+  escalationRequired: boolean;
+}
+
+export interface ProgressSummary {
+  totalMembers: number;
+  submittedCount: number;
+  pendingCount: number;
+  overdueCount: number;
+  submissionRate: number;
+  extractedIssues: ExtractedIssue[];
+  prioritizedIssues: PrioritizedIssue[];
+}
+
+export interface PrioritizedIssue {
+  issueId: string;
+  priority: number;
+  category: string;
+  severity: "critical" | "high" | "medium" | "low";
+  recommendedAction: string;
+  targetResolutionDate: string;
+}
+
+export interface Action04PromptInput {
+  context: Action04PromptContext;
+  collectedReports: DailyReport[];
+  confirmationEmailsSent: boolean;
+  currentTimestamp: string;
+}
+
+export interface Action04PromptOutput {
+  progressSummary: ProgressSummary;
+  extractedIssues: ExtractedIssue[];
+  prioritizedIssues: PrioritizedIssue[];
   reportContent: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  escalationFlags: Array<{
-    issueId: string;
-    reason: string;
-    requiresHumanReview: boolean;
-  }>;
+  requiresEscalation: boolean;
+  escalationReason?: string;
 }
 
-export interface Action04Input {
-  confirmationEmailContent: string;
-  reportCollectionData: Array<{
-    engineerId: string;
-    engineerName: string;
-    reportText: string;
-    submittedAt: string;
-  }>;
-  previousIssueContext?: Array<{
-    id: string;
-    title: string;
-    status: string;
-  }>;
-}
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const {
+    context,
+    collectedReports,
+    confirmationEmailsSent,
+    currentTimestamp,
+  } = input;
 
-export interface Action04Output {
-  context: Action04Context;
-  prioritizedIssuesList: Array<{
-    rank: number;
-    issueId: string;
-    title: string;
-    priority: "critical" | "high" | "medium" | "low";
-    affectedEngineers: string[];
-    description: string;
-    recommendedAction: string;
-    escalationRequired: boolean;
-  }>;
-  summaryReport: {
-    totalIssuesExtracted: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-    escalationCount: number;
+  const submittedReports = collectedReports.filter(
+    (r) => r.status === "submitted"
+  );
+  const pendingReports = collectedReports.filter((r) => r.status === "pending");
+  const overdueReports = collectedReports.filter((r) => r.status === "overdue");
+
+  const submissionRate =
+    context.teamMembers.length > 0
+      ? (submittedReports.length / context.teamMembers.length) * 100
+      : 0;
+
+  const extractedIssues: ExtractedIssue[] = [];
+  const issueMap = new Map<string, ExtractedIssue>();
+
+  collectedReports.forEach((report) => {
+    if (report.issues && report.issues.trim().length > 0) {
+      const issueId = `issue_${report.memberId}_${report.date}`;
+      const matchedRules = context.priorityClassificationRules.filter(
+        (rule) =>
+          rule.keywords.some((keyword) =>
+            report.issues.toLowerCase().includes(keyword.toLowerCase())
+          )
+      );
+
+      const priority =
+        matchedRules.length > 0
+          ? matchedRules[0].priority
+          : ("medium" as const);
+      const escalationRequired =
+        matchedRules.length > 0 && matchedRules[0].escalationRequired;
+
+      const issue: ExtractedIssue = {
+        id: issueId,
+        description: report.issues,
+        category: matchedRules.length > 0 ? matchedRules[0].category : "other",
+        priority,
+        affectedMembers: [report.memberId],
+        reportDate: report.date,
+        escalationRequired,
+      };
+
+      issueMap.set(issueId, issue);
+    }
+  });
+
+  extractedIssues.push(...issueMap.values());
+
+  const priorityOrder: Record<string, number> = {
+    critical: 1,
+    high: 2,
+    medium: 3,
+    low: 4,
   };
-  timestamp: string;
+
+  const prioritizedIssues: PrioritizedIssue[] = extractedIssues
+    .sort(
+      (a, b) =>
+        priorityOrder[a.priority] - priorityOrder[b.priority] ||
+        (b.escalationRequired ? 1 : -1)
+    )
+    .map((issue, index) => ({
+      issueId: issue.id,
+      priority: index + 1,
+      category: issue.category,
+      severity: issue.priority,
+      recommendedAction: generateRecommendedAction(issue),
+      targetResolutionDate: calculateTargetResolutionDate(
+        issue.priority,
+        currentTimestamp
+      ),
+    }));
+
+  const requiresEscalation =
+    extractedIssues.some((issue) => issue.escalationRequired) ||
+    overdueReports.length > context.escalationThreshold;
+
+  const escalationReason = requiresEscalation
+    ? generateEscalationReason(
+        extractedIssues,
+        overdueReports,
+        context.escalationThreshold
+      )
+    : undefined;
+
+  const progressSummary: ProgressSummary = {
+    totalMembers: context.teamMembers.length,
+    submittedCount: submittedReports.length,
+    pendingCount: pendingReports.length,
+    overdueCount: overdueReports.length,
+    submissionRate,
+    extractedIssues,
+    prioritizedIssues,
+  };
+
+  const reportContent = generateReportContent(
+    progressSummary,
+    collectedReports,
+    context.teamMembers
+  );
+
+  const prompt = `
+# 日報収集から課題抽出・優先度判定までの自動実行
+
+## 現在の状況
+- タイムスタンプ: ${currentTimestamp}
+- 確認メール送信完了: ${confirmationEmailsSent}
+- 日報提出期限: ${context.reportCollectionDeadline}
+
+## 提出状況サマリー
+- 総メンバー数: ${progressSummary.totalMembers}
+- 提出済み: ${progressSummary.submittedCount}
+- 保留中: ${progressSummary.pendingCount}
+- 期限超過: ${progressSummary.overdueCount}
+- 提出率: ${progressSummary.submissionRate.toFixed(1)}%
+
+## 収集された日報内容
+${reportContent}
+
+## 抽出された課題（優先度順）
+${prioritizedIssues.map((issue, idx) => `${idx + 1}. [${issue.severity.toUpperCase()}] ${issue.category}: ${issue.recommendedAction} (目標解決日: ${issue.targetResolutionDate})`).join("\n")}
+
+## エスカレーション判定
+- 必要: ${requiresEscalation}
+${escalationReason ? `- 理由: ${escalationReason}` : ""}
+
+## 実行すべきアクション
+1. 上記の進捗サマリーと課題優先度リストを部長に提示する
+2. エスカレーション対象の課題について、対応方針の確認を求める
+3. 提出期限超過者への再催促が必要な場合は、その対象者リストを提供する
+4. 次回朝会での議論対象となる課題を整理する
+`;
+
+  return prompt;
 }
 
-export function buildAction04Prompt(input: Action04Input): string {
-  const reportSummary = input.reportCollectionData
-    .map(
-      (report) =>
-        `[${report.engineerId}] ${report.engineerName}: ${report.reportText}`
-    )
+function generateRecommendedAction(issue: ExtractedIssue): string {
+  const actionMap: Record<string, string> = {
+    critical: "直ちに対応が必要。チーム全体で対応方針を協議する",
+    high: "本日中に対応方針を決定し、実行を開始する",
+    medium: "今週中に対応方針を決定する",
+    low: "次週以降の対応を検討する",
+  };
+  return actionMap[issue.priority] || "対応方針を検討する";
+}
+
+function calculateTargetResolutionDate(
+  priority: string,
+  currentTimestamp: string
+): string {
+  const current = new Date(currentTimestamp);
+  const daysToAdd: Record<string, number> = {
+    critical: 1,
+    high: 3,
+    medium: 7,
+    low: 14,
+  };
+
+  const targetDate = new Date(current);
+  targetDate.setDate(targetDate.getDate() + (daysToAdd[priority] || 7));
+
+  return targetDate.toISOString().split("T")[0];
+}
+
+function generateEscalationReason(
+  issues: ExtractedIssue[],
+  overdueReports: DailyReport[],
+  threshold: number
+): string {
+  const reasons: string[] = [];
+
+  const criticalIssues = issues.filter((i) => i.priority === "critical");
+  if (criticalIssues.length > 0) {
+    reasons.push(`重大課題が${criticalIssues.length}件検出されました`);
+  }
+
+  if (overdueReports.length > threshold) {
+    reasons.push(
+      `期限超過者が${overdueReports.length}名で、閾値(${threshold}名)を超過しています`
+    );
+  }
+
+  return reasons.length > 0
+    ? reasons.join("。")
+    : "エスカレーション対象の課題が検出されました";
+}
+
+function generateReportContent(
+  summary: ProgressSummary,
+  reports: DailyReport[],
+  teamMembers: TeamMember[]
+): string {
+  const memberMap = new Map(teamMembers.map((m) => [m.id, m]));
+
+  const reportLines = reports
+    .filter((r) => r.status === "submitted")
+    .map((report) => {
+      const member = memberMap.get(report.memberId);
+      const memberName = member ? member.name : report.memberId;
+
+      return `
+### ${memberName} (${report.date})
+- 昨日の実績: ${report.yesterdayAccomplishments || "記載なし"}
+- 本日の予定: ${report.todayPlans || "記載なし"}
+- 課題: ${report.issues || "なし"}
+`;
+    })
     .join("\n");
 
-  const previousContext =
-    input.previousIssueContext && input.previousIssueContext.length > 0
-      ? `\n\n## Previous Issue Context:\n${input.previousIssueContext.map((issue) => `- ${issue.title} (Status: ${issue.status})`).join("\n")}`
-      : "";
-
-  return `You are an AI agent responsible for analyzing daily reports and extracting issues with priority classification.
-
-## Task: Extract Issues and Assign Priorities
-
-### Confirmation Email Content:
-${input.confirmationEmailContent}
-
-### Collected Reports:
-${reportSummary}
-${previousContext}
-
-### Your Responsibilities:
-1. Extract all issues, bottlenecks, and risks mentioned in the reports
-2. Categorize each issue (e.g., Technical, Resource, Process, External Dependency)
-3. Assign priority levels: critical, high, medium, low
-4. Identify issues requiring human review or escalation
-5. Provide reasoning for each priority assignment
-6. Flag any unusual or high-risk situations
-
-### Output Format:
-Return a JSON object with:
-- extractedIssues: Array of identified issues with id, title, description, category
-- priorityAssignments: Array with issueId, priority level, and reasoning
-- escalationFlags: Array of issues requiring human review with reasons
-- summaryReport: Count of issues by priority level
-
-### Priority Guidelines:
-- CRITICAL: Blocks project delivery, safety risk, or immediate action required
-- HIGH: Significant impact on timeline or quality, needs resolution this week
-- MEDIUM: Should be addressed soon, impacts efficiency or team morale
-- LOW: Nice to have, can be scheduled for future sprints
-
-Analyze thoroughly and provide structured output.`;
+  return reportLines || "提出済みの日報がありません";
 }

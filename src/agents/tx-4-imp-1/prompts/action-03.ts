@@ -6,7 +6,7 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 interface Action03PromptContext {
   reportDeadline: string;
   escalationThreshold: number;
-  maxReminders: number;
+  maxRetries: number;
   reportingMembers: Array<{
     id: string;
     name: string;
@@ -18,91 +18,89 @@ interface Action03PromptContext {
     submittedAt: string;
     content: string;
   }>;
-  reminderHistory: Array<{
+  nonSubmittedMembers: string[];
+  delayedMembers: Array<{
     memberId: string;
-    reminderCount: number;
-    lastReminderAt: string;
+    delayMinutes: number;
   }>;
 }
 
 interface Action03PromptResult {
   version: string;
-  action: string;
   systemPrompt: string;
   userPrompt: string;
   context: Action03PromptContext;
 }
 
 function buildAction03Prompt(context: Action03PromptContext): Action03PromptResult {
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed reporters from daily report confirmation emails.
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitted and delayed daily reports.
+Your task is to analyze the confirmation email content and automatically identify:
+1. Members who have not submitted their reports
+2. Members whose reports are delayed beyond the deadline
+3. Determine escalation targets based on submission status and delay duration
 
-Your task is to:
-1. Analyze the confirmation email content to identify members who have not submitted their daily reports
-2. Identify members whose reports were submitted after the deadline
-3. Determine which members should receive reminder notifications based on:
-   - Current reminder count (must not exceed ${context.maxReminders})
-   - Time elapsed since deadline (escalation threshold: ${context.escalationThreshold} hours)
-   - Previous reminder history
-4. Generate a structured list of members requiring follow-up action
-5. Classify each member by urgency level (URGENT, HIGH, NORMAL)
+You must provide a structured analysis with:
+- List of non-submitted members with their details
+- List of delayed members with delay duration
+- Recommended escalation actions
+- Priority level for each escalation case
 
-Output format must be valid JSON with the following structure:
-{
-  "nonSubmitters": [
-    {
-      "memberId": string,
-      "name": string,
-      "email": string,
-      "department": string,
-      "hoursOverdue": number,
-      "urgency": "URGENT" | "HIGH" | "NORMAL",
-      "reminderCount": number,
-      "shouldRemind": boolean,
-      "reason": string
-    }
-  ],
-  "delayedSubmitters": [
-    {
-      "memberId": string,
-      "name": string,
-      "email": string,
-      "department": string,
-      "submittedAt": string,
-      "hoursLate": number,
-      "urgency": "URGENT" | "HIGH" | "NORMAL",
-      "reminderCount": number,
-      "shouldRemind": boolean,
-      "reason": string
-    }
-  ],
-  "summary": {
-    "totalNonSubmitters": number,
-    "totalDelayedSubmitters": number,
-    "urgentCount": number,
-    "remindersToSend": number
-  }
-}`;
+Follow these rules:
+- Use the provided deadline: ${context.reportDeadline}
+- Consider a report delayed if submission exceeds ${context.escalationThreshold} minutes
+- Limit escalation attempts to ${context.maxRetries} per member
+- Provide clear reasoning for each escalation decision`;
 
-  const userPrompt = `Analyze the following daily report submission status as of ${new Date().toISOString()}:
+  const nonSubmittedList = context.nonSubmittedMembers
+    .map((memberId) => {
+      const member = context.reportingMembers.find((m) => m.id === memberId);
+      return member
+        ? `- ${member.name} (${member.department}): ${member.email}`
+        : `- Unknown member: ${memberId}`;
+    })
+    .join("\n");
+
+  const delayedList = context.delayedMembers
+    .map((delayed) => {
+      const member = context.reportingMembers.find(
+        (m) => m.id === delayed.memberId
+      );
+      return member
+        ? `- ${member.name} (${member.department}): ${delayed.delayMinutes} minutes late`
+        : `- Unknown member: ${delayed.memberId}`;
+    })
+    .join("\n");
+
+  const userPrompt = `Analyze the following daily report submission status:
 
 Report Deadline: ${context.reportDeadline}
-Escalation Threshold: ${context.escalationThreshold} hours after deadline
-Maximum Reminders per Member: ${context.maxReminders}
+Total Members: ${context.reportingMembers.length}
+Submitted Reports: ${context.submittedReports.length}
 
-Reporting Members (${context.reportingMembers.length} total):
-${JSON.stringify(context.reportingMembers, null, 2)}
+Non-Submitted Members (${context.nonSubmittedMembers.length}):
+${nonSubmittedList || "None"}
 
-Submitted Reports (${context.submittedReports.length} received):
-${JSON.stringify(context.submittedReports, null, 2)}
+Delayed Members (${context.delayedMembers.length}):
+${delayedList || "None"}
 
-Reminder History:
-${JSON.stringify(context.reminderHistory, null, 2)}
+Submitted Reports Summary:
+${context.submittedReports
+  .map((report) => {
+    const member = context.reportingMembers.find(
+      (m) => m.id === report.memberId
+    );
+    return `- ${member?.name || "Unknown"}: Submitted at ${report.submittedAt}`;
+  })
+  .join("\n") || "No reports submitted"}
 
-Please identify non-submitters and delayed reporters, determine urgency levels, and recommend which members should receive reminder notifications.`;
+Based on this information:
+1. Identify all members requiring escalation
+2. Classify escalation priority (High/Medium/Low)
+3. Recommend specific actions for each escalation case
+4. Provide a summary report for the department head`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
-    action: "identify-non-submitters-and-delayed-reporters",
     systemPrompt,
     userPrompt,
     context,
@@ -110,4 +108,3 @@ Please identify non-submitters and delayed reporters, determine urgency levels, 
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03PromptContext, Action03PromptResult };

@@ -4,84 +4,112 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Tx3Imp1ConfirmationEmailContent {
-  recipients: string[];
-  submittedEngineers: string[];
-  pendingEngineers: string[];
-  overdueEngineers: string[];
-  timestamp: string;
+  emailId: string;
+  sentAt: string;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  body: string;
+  reportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "submitted" | "pending" | "overdue";
+    submittedAt?: string;
+  }>;
 }
 
 export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
-  escalationThreshold: number;
+  submissionDeadline: string;
+  escalationThresholdMinutes: number;
 }
 
-export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
+export interface Tx3Imp1IdentifiedMember {
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  status: "not_reported" | "delayed" | "submitted";
+  hoursOverdue?: number;
+  requiresEscalation: boolean;
+}
+
+export interface Tx3Imp1Action02Output {
+  identifiedMembers: Tx3Imp1IdentifiedMember[];
+  totalNotReported: number;
+  totalDelayed: number;
+  escalationTargets: Tx3Imp1IdentifiedMember[];
+  analysisTimestamp: string;
+}
+
+export function buildAction02Prompt(
+  context: Tx3Imp1PromptContext
+): string {
   const {
     confirmationEmailContent,
     currentTimestamp,
-    escalationThreshold,
+    submissionDeadline,
+    escalationThresholdMinutes,
   } = context;
 
-  const pendingList = confirmationEmailContent.pendingEngineers
-    .map((engineer) => `  - ${engineer}`)
+  const reportedMembersList = confirmationEmailContent.reportedMembers
+    .map(
+      (member) =>
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
+          member.submittedAt ? ` at ${member.submittedAt}` : ""
+        }`
+    )
     .join("\n");
 
-  const overdueList = confirmationEmailContent.overdueEngineers
-    .map((engineer) => `  - ${engineer}`)
-    .join("\n");
+  return `You are an AI agent responsible for identifying unreported and delayed members from confirmation email content.
 
-  const submissionRate = (
-    (confirmationEmailContent.submittedEngineers.length /
-      confirmationEmailContent.recipients.length) *
-    100
-  ).toFixed(1);
+## Task: Identify Unreported and Delayed Members
 
-  return `# Action 02: 催促対象部員を判定する
+### Input Data:
+**Confirmation Email Content:**
+- Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
+- Subject: ${confirmationEmailContent.subject}
+- Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientEmail})
 
-## 現在の状況
-- 実行時刻: ${currentTimestamp}
-- 対象者総数: ${confirmationEmailContent.recipients.length}
-- 提出済み: ${confirmationEmailContent.submittedEngineers.length}
-- 提出率: ${submissionRate}%
+**Reported Members Status:**
+${reportedMembersList}
 
-## 未提出者
-${pendingList || "  なし"}
+**Current Timestamp:** ${currentTimestamp}
+**Submission Deadline:** ${submissionDeadline}
+**Escalation Threshold:** ${escalationThresholdMinutes} minutes after deadline
 
-## 期限超過者
-${overdueList || "  なし"}
+### Instructions:
+1. Analyze the confirmation email content and reported members list
+2. Identify members with status "pending" or "overdue" as unreported or delayed
+3. Calculate hours overdue for members with "overdue" status
+4. Determine which members require escalation (overdue by more than ${escalationThresholdMinutes} minutes)
+5. Classify each member into one of: "not_reported", "delayed", or "submitted"
+6. Generate a structured analysis output
 
-## 判定ルール
-1. 期限超過者は必ず催促対象とする
-2. 未提出者で期限まで${escalationThreshold}分以内の者は催促対象とする
-3. 同一部員への催促は1日1回までとする
-4. 催促回数が3回以上の場合は部長への報告対象とする
-
-## 実行内容
-以下の判定を行い、催促対象部員のリストを作成してください:
-- 各未提出者について、催促対象か否かを判定
-- 催促対象者の優先度を決定（期限超過 > 期限間近）
-- 催促メッセージのテンプレートを選択
-- 送信チャネル（メール/チャット）を決定
-
-## 出力形式
-JSON形式で以下の構造で返してください:
+### Output Format:
+Provide a JSON response with the following structure:
 {
-  "escalationTargets": [
+  "identifiedMembers": [
     {
-      "engineer": "string",
-      "reason": "string",
-      "priority": "high" | "medium" | "low",
-      "channel": "email" | "chat" | "both",
-      "messageTemplate": "string"
+      "memberId": "string",
+      "memberName": "string",
+      "memberEmail": "string",
+      "status": "not_reported" | "delayed" | "submitted",
+      "hoursOverdue": number (optional, only for delayed members),
+      "requiresEscalation": boolean
     }
   ],
-  "summary": {
-    "totalTargets": number,
-    "highPriority": number,
-    "mediumPriority": number,
-    "lowPriority": number
-  }
-}`;
+  "totalNotReported": number,
+  "totalDelayed": number,
+  "escalationTargets": [array of members requiring escalation],
+  "analysisTimestamp": "${currentTimestamp}"
+}
+
+### Rules:
+- Only include members with "pending" or "overdue" status in the analysis
+- Calculate hoursOverdue as (currentTimestamp - submissionDeadline) / 60 minutes
+- Set requiresEscalation to true only if hoursOverdue > ${escalationThresholdMinutes}
+- Ensure all member emails are included for escalation communication
+- Maintain data integrity and accuracy in member identification`;
 }

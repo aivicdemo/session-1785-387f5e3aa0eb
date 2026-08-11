@@ -3,87 +3,99 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03PromptInput {
+interface Action03Context {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationContactEmail: string;
-  systemName: string;
-}
-
-interface Action03PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPromptTemplate: string;
-}
-
-function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from daily report confirmation emails in the morning meeting preparation system.
-
-Your role is to:
-1. Analyze confirmation email contents to identify which team members have not submitted their daily reports
-2. Distinguish between unreported members (no submission) and delayed members (late submission)
-3. Determine which members require follow-up notifications based on configured rules
-4. Generate a structured list of members requiring escalation
-
-System context:
-- System name: ${input.systemName}
-- Reporting deadline: ${input.reportingDeadline}
-- Overdue threshold: ${input.overdueThresholdHours} hours after deadline
-- Escalation contact: ${input.escalationContactEmail}
-
-Output format must be JSON with the following structure:
-{
-  "unreportedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "department": "string",
-      "lastCheckTime": "ISO8601 timestamp"
-    }
-  ],
-  "delayedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "department": "string",
-      "submissionTime": "ISO8601 timestamp",
-      "delayMinutes": "number"
-    }
-  ],
-  "escalationRequired": "boolean",
-  "escalationReason": "string",
-  "summary": "string"
-}`;
-
-  const userPromptTemplate = `Analyze the following confirmation email contents and identify unreported and delayed team members.
-
-Confirmation email data:
-\`\`\`
-{emailContent}
-\`\`\`
-
-Team member list:
-\`\`\`
-{teamMemberList}
-\`\`\`
-
-Current timestamp: {currentTimestamp}
-Reporting deadline: ${input.reportingDeadline}
-Overdue threshold: ${input.overdueThresholdHours} hours
-
-Please identify:
-1. Members who have not submitted any report (unreportedMembers)
-2. Members whose reports were submitted after the deadline (delayedMembers)
-3. Whether escalation to ${input.escalationContactEmail} is required
-4. Provide a summary of the reporting status
-
-Return the analysis as valid JSON.`;
-
-  return {
-    version: ACTION_03_PROMPT_VERSION,
-    systemPrompt,
-    userPromptTemplate,
+  currentTime: string;
+  oversightThresholdMinutes: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
   };
 }
 
+interface Action03Input {
+  unsubmittedEngineers: Array<{
+    employeeId: string;
+    name: string;
+    department: string;
+    email: string;
+    lastReminderTime?: string;
+    reminderCount: number;
+  }>;
+  delayedEngineers: Array<{
+    employeeId: string;
+    name: string;
+    department: string;
+    email: string;
+    submissionTime: string;
+    delayMinutes: number;
+  }>;
+}
+
+interface Action03Output {
+  escalationDecisions: Array<{
+    employeeId: string;
+    action: "send_reminder" | "escalate_to_manager" | "no_action";
+    reason: string;
+    priority: "high" | "medium" | "low";
+  }>;
+  reminderContent: {
+    subject: string;
+    body: string;
+    channels: Array<"email" | "chat">;
+  };
+  escalationContent?: {
+    managerNotification: string;
+    escalationReason: string;
+  };
+}
+
+function buildAction03Prompt(context: Action03Context, input: Action03Input): string {
+  const unsubmittedList = input.unsubmittedEngineers
+    .map(
+      (eng) =>
+        `- ${eng.name} (${eng.employeeId}, ${eng.department}): ${eng.reminderCount} reminders sent`
+    )
+    .join("\n");
+
+  const delayedList = input.delayedEngineers
+    .map(
+      (eng) =>
+        `- ${eng.name} (${eng.employeeId}, ${eng.department}): ${eng.delayMinutes} minutes late`
+    )
+    .join("\n");
+
+  return `You are an AI agent responsible for determining escalation actions for unsubmitted and delayed daily reports.
+
+Current Context:
+- Reporting Deadline: ${context.reportingDeadline}
+- Current Time: ${context.currentTime}
+- Oversight Threshold: ${context.oversightThresholdMinutes} minutes
+- Max Reminders: ${context.escalationRules.maxReminders}
+- Reminder Interval: ${context.escalationRules.reminderIntervalMinutes} minutes
+
+Unsubmitted Engineers:
+${unsubmittedList || "None"}
+
+Delayed Engineers:
+${delayedList || "None"}
+
+Your task:
+1. Analyze each unsubmitted engineer's reminder history
+2. Determine if they should receive another reminder or be escalated to their manager
+3. For delayed engineers, assess if additional follow-up is needed
+4. Generate appropriate reminder content or escalation notifications
+5. Prioritize escalation decisions based on severity
+
+Decision Rules:
+- If reminder count < ${context.escalationRules.maxReminders}: send reminder
+- If reminder count >= ${context.escalationRules.maxReminders}: escalate to manager
+- If delay > 60 minutes: mark as high priority
+- If delay > 30 minutes: mark as medium priority
+- Otherwise: mark as low priority
+
+Output your analysis as a structured decision list with actions, reasons, and priorities.`;
+}
+
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03Context, Action03Input, Action03Output };
