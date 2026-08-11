@@ -9862,3 +9862,868 @@ const __aivicBundle_sendConfirmationEmailsOnReportSubmit = (() => {
 })();
 export const sendConfirmationEmailsOnReportSubmit: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_sendConfirmationEmailsOnReportSubmit.sendConfirmationEmailsOnReportSubmit as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendConfirmationEmailsOnReportSubmit */
+
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportInput exports=validateDailyReportInput */
+const __aivicBundle_validateDailyReportInput = (() => {
+  function validateDailyReportInput(
+    yesterdayWork: string,
+    todayPlan: string,
+    currentIssue: string
+  ): { isValid: boolean; errors: Array<{ field: string; reason: string }> } {
+    const errors: Array<{ field: string; reason: string }> = [];
+    
+    if (yesterdayWork.length == 0 || yesterdayWork.length > 500) {
+      errors.push({ field: "yesterdayWork", reason: "1文字以上500文字以下である必要があります" });
+    }
+    if (todayPlan.length == 0 || todayPlan.length > 500) {
+      errors.push({ field: "todayPlan", reason: "1文字以上500文字以下である必要があります" });
+    }
+    if (currentIssue.length == 0 || currentIssue.length > 500) {
+      errors.push({ field: "currentIssue", reason: "1文字以上500文字以下である必要があります" });
+    }
+    
+    const isValid = errors.length == 0;
+    return { isValid, errors };
+  }
+  return { validateDailyReportInput };
+})();
+export const validateDailyReportInput: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateDailyReportInput.validateDailyReportInput as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReportInput */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=checkDailyReportCompletionStatus exports=checkDailyReportCompletionStatus */
+const __aivicBundle_checkDailyReportCompletionStatus = (() => {
+  function checkDailyReportCompletionStatus(
+    scheduledMeetingTime: Date,
+    teamMemberIds: string[],
+    submittedReports: Array<{ memberId: string; submittedAt: Date }>
+  ): ReportCompletionStatus {
+    const baseTime = scheduledMeetingTime;
+    const submittedMemberIds = submittedReports.map(r => r.memberId);
+    const submittedCount = submittedMemberIds.length;
+    const allSubmitted = submittedCount == teamMemberIds.length;
+    const notSubmittedMembers = teamMemberIds.filter(id => !submittedMemberIds.includes(id)).map(id => ({
+      memberId: id,
+      memberName: `Member_${id}`
+    }));
+    const delayedMembers = submittedReports.filter(r => r.submittedAt > baseTime).map(r => ({
+      memberId: r.memberId,
+      memberName: `Member_${r.memberId}`,
+      delayMinutes: Math.floor((r.submittedAt.getTime() - baseTime.getTime()) / 60000)
+    }));
+    
+    return {
+      allSubmitted,
+      submittedCount,
+      notSubmittedMembers,
+      delayedMembers
+    };
+  }
+  return { checkDailyReportCompletionStatus };
+})();
+export const checkDailyReportCompletionStatus: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_checkDailyReportCompletionStatus.checkDailyReportCompletionStatus as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=checkDailyReportCompletionStatus */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=identifyConfirmationEmailRecipients exports=identifyConfirmationEmailRecipients */
+const __aivicBundle_identifyConfirmationEmailRecipients = (() => {
+  function identifyConfirmationEmailRecipients(
+    submitterId: string,
+    departmentManagerEmail: string,
+    submitterEmail: string,
+    reportContent: { yesterday: string; today: string; issues: string }
+  ): { recipients: Array<{ email: string; role: string }>; reportData: { submitterName: string; yesterday: string; today: string; issues: string }; sendTimestamp: string } {
+    const recipients = [
+      { email: submitterEmail, role: "submitter" },
+      { email: departmentManagerEmail, role: "manager" }
+    ];
+    const reportData = {
+      submitterName: submitterId,
+      yesterday: reportContent.yesterday,
+      today: reportContent.today,
+      issues: reportContent.issues
+    };
+    const sendTimestamp = new Date().toISOString();
+    return { recipients, reportData, sendTimestamp };
+  }
+  return { identifyConfirmationEmailRecipients };
+})();
+export const identifyConfirmationEmailRecipients: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_identifyConfirmationEmailRecipients.identifyConfirmationEmailRecipients as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=identifyConfirmationEmailRecipients */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=formatAndDisplayDailyReportList exports=formatAndDisplayDailyReportList */
+const __aivicBundle_formatAndDisplayDailyReportList = (() => {
+  function formatAndDisplayDailyReportList(
+    reportSubmissions: Array<{ employeeId: string; employeeName: string; yesterday: string; today: string; issues: string; submittedAt: Date }>,
+    allTeamMembers: Array<{ employeeId: string; employeeName: string }>,
+    reportDeadline: Date
+  ): FormattedReportList {
+    const formattedReports: Array<{ employeeName: string; yesterday: string; today: string; issues: string; status: 'submitted' | 'missing' }> = [];
+    const missingMembers: string[] = [];
+    
+    for (const member of allTeamMembers) {
+      const submission = reportSubmissions.find(r => r.employeeId == member.employeeId && r.submittedAt <= reportDeadline);
+      if (submission) {
+        formattedReports.push({
+          employeeName: member.employeeName,
+          yesterday: submission.yesterday,
+          today: submission.today,
+          issues: submission.issues,
+          status: "submitted"
+        });
+      } else {
+        missingMembers.push(member.employeeName);
+      }
+    }
+    
+    const totalSubmitted = formattedReports.length;
+    const totalMissing = missingMembers.length;
+    
+    return {
+      formattedReports,
+      missingMembers,
+      totalSubmitted,
+      totalMissing
+    };
+  }
+  return { formatAndDisplayDailyReportList };
+})();
+export const formatAndDisplayDailyReportList: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_formatAndDisplayDailyReportList.formatAndDisplayDailyReportList as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=formatAndDisplayDailyReportList */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=identifyMissingOrLateReports exports=identifyMissingOrLateReports */
+const __aivicBundle_identifyMissingOrLateReports = (() => {
+  function identifyMissingOrLateReports(
+    reportDeadlineTime: string,
+    allTeamMembers: Array<{ id: string; name: string }>,
+    submittedReports: Array<{ employeeId: string; submittedAt: string }>
+  ): { missingReports: Array<{ employeeId: string; employeeName: string }>; lateReports: Array<{ employeeId: string; employeeName: string; submittedAt: string; delayMinutes: number }>; promptTargets: string[] } {
+    const submittedEmployeeIds = submittedReports.map(r => r.employeeId);
+    const missingReports = allTeamMembers.filter(member => !submittedEmployeeIds.includes(member.id)).map(m => ({
+      employeeId: m.id,
+      employeeName: m.name
+    }));
+    
+    const lateReports = submittedReports.filter(r => r.submittedAt > reportDeadlineTime).map(r => {
+      const member = allTeamMembers.find(m => m.id === r.employeeId);
+      const delayMinutes = Math.floor((new Date(r.submittedAt).getTime() - new Date(reportDeadlineTime).getTime()) / 60000);
+      return {
+        employeeId: r.employeeId,
+        employeeName: member?.name || `Employee_${r.employeeId}`,
+        submittedAt: r.submittedAt,
+        delayMinutes
+      };
+    });
+    
+    const promptTargets = [...missingReports.map(m => m.employeeId), ...lateReports.map(l => l.employeeId)];
+    
+    return {
+      missingReports,
+      lateReports,
+      promptTargets
+    };
+  }
+  return { identifyMissingOrLateReports };
+})();
+export const identifyMissingOrLateReports: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_identifyMissingOrLateReports.identifyMissingOrLateReports as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=identifyMissingOrLateReports */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=evaluateReportTimeliness exports=evaluateReportTimeliness */
+const __aivicBundle_evaluateReportTimeliness = (() => {
+  function evaluateReportTimeliness(
+    reportSubmissionTime: Date,
+    morningMeetingStartTime: Date
+  ): ReportTimeliness {
+    const delayMs = reportSubmissionTime.getTime() - morningMeetingStartTime.getTime();
+    const delayMinutes = Math.max(0, Math.ceil(delayMs / 60000));
+    const isOnTime = delayMinutes == 0;
+    const status = isOnTime ? "時間内" : "遅延";
+    return { isOnTime, delayMinutes, status };
+  }
+  return { evaluateReportTimeliness };
+})();
+export const evaluateReportTimeliness: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_evaluateReportTimeliness.evaluateReportTimeliness as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=evaluateReportTimeliness */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=aggregateDailyReportsForManager exports=aggregateDailyReportsForManager */
+const __aivicBundle_aggregateDailyReportsForManager = (() => {
+  function aggregateDailyReportsForManager(
+    submittedReports: Array<{ employeeId: string; employeeName: string; yesterday: string; today: string; issues: string; submittedAt: Date }>,
+    allEmployeeList: Array<{ employeeId: string; employeeName: string; email: string }>
+  ): AggregatedReports {
+    const submittedIds = submittedReports.map(r => r.employeeId);
+    const pendingList = allEmployeeList.filter(e => !submittedIds.includes(e.employeeId));
+    const sortedReports = submittedReports.sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+    const submissionCount = submittedReports.length;
+    const totalCount = allEmployeeList.length;
+    const summary = `${totalCount}名中${submissionCount}名から報告を受け取りました。未送信：${totalCount - submissionCount}名`;
+    
+    return {
+      emailSubject: `朝会報告集約 - ${new Date().toLocaleDateString('ja-JP')}`,
+      submittedList: sortedReports.map(r => ({
+        employeeName: r.employeeName,
+        yesterday: r.yesterday,
+        today: r.today,
+        issues: r.issues,
+        submittedAt: r.submittedAt.toISOString()
+      })),
+      pendingEmployees: pendingList.map(e => ({ employeeName: e.employeeName })),
+      submissionSummary: summary
+    };
+  }
+  return { aggregateDailyReportsForManager };
+})();
+export const aggregateDailyReportsForManager: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_aggregateDailyReportsForManager.aggregateDailyReportsForManager as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=aggregateDailyReportsForManager */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=identifyDelayedReporters exports=identifyDelayedReporters */
+const __aivicBundle_identifyDelayedReporters = (() => {
+  function identifyDelayedReporters(
+    morningMeetingStartTime: string,
+    reportSubmissionTimestamps: Record<string, string | null>,
+    currentDate: string,
+    teamMemberIds: string[]
+  ): { delayedMembers: string[]; onTimeMembers: string[]; delayedCount: number } {
+    const deadlineTimestamp = currentDate + " " + morningMeetingStartTime;
+    const delayedMembers = [];
+    const onTimeMembers = [];
+    
+    for (const memberId of teamMemberIds) {
+      const submissionTime = reportSubmissionTimestamps[memberId];
+      if (submissionTime == null || submissionTime > deadlineTimestamp) {
+        delayedMembers.push(memberId);
+      } else {
+        onTimeMembers.push(memberId);
+      }
+    }
+    
+    return { delayedMembers, onTimeMembers, delayedCount: delayedMembers.length };
+  }
+  return { identifyDelayedReporters };
+})();
+export const identifyDelayedReporters: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_identifyDelayedReporters.identifyDelayedReporters as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=identifyDelayedReporters */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=prioritizeFollowUpTargets exports=prioritizeFollowUpTargets */
+const __aivicBundle_prioritizeFollowUpTargets = (() => {
+  function prioritizeFollowUpTargets(
+    reportStatusList: Array<any>
+  ): Array<FollowUpTarget> {
+    if (!reportStatusList || reportStatusList.length === 0) {
+      return [];
+    }
+  
+    const notSubmitted: typeof reportStatusList = [];
+    const delayed: typeof reportStatusList = [];
+  
+    for (const member of reportStatusList) {
+      if (member.status === "not_submitted") {
+        notSubmitted.push(member);
+      } else if (member.status === "delayed") {
+        delayed.push(member);
+      }
+    }
+  
+    const result: Array<FollowUpTarget> = [];
+  
+    for (let i = 0; i < notSubmitted.length; i++) {
+      const member = notSubmitted[i];
+      result.push({
+        priority: i + 1,
+        employeeId: member.employeeId,
+        employeeName: member.employeeName,
+        status: "not_submitted",
+        reason: "報告がまだ提出されていません",
+      });
+    }
+  
+    for (let i = 0; i < delayed.length; i++) {
+      const member = delayed[i];
+      result.push({
+        priority: notSubmitted.length + i + 1,
+        employeeId: member.employeeId,
+        employeeName: member.employeeName,
+        status: "delayed",
+        reason: "報告が期限を超過しています",
+      });
+    }
+  
+    return result;
+  }
+  return { prioritizeFollowUpTargets };
+})();
+export const prioritizeFollowUpTargets: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_prioritizeFollowUpTargets.prioritizeFollowUpTargets as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=prioritizeFollowUpTargets */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validatePromptionEmailRecipients exports=validatePromptionEmailRecipients */
+const __aivicBundle_validatePromptionEmailRecipients = (() => {
+  function validatePromptionEmailRecipients(
+    targetEmployeeIds: string[],
+    employeeEmailMap: Record<string, string>,
+    reportSubmissionLog: Array<{ employeeId: string; submittedAt: Date }>
+  ): { validRecipients: Array<{ employeeId: string; email: string }>; duplicateDetected: boolean; invalidEmailCount: number; alreadySubmittedCount: number } {
+    const validRecipients: Array<{ employeeId: string; email: string }> = [];
+    let duplicateDetected = false;
+    let invalidEmailCount = 0;
+    let alreadySubmittedCount = 0;
+    const seenEmails: Record<string, boolean> = {};
+    
+    for (const targetId of targetEmployeeIds) {
+      const email = employeeEmailMap[targetId];
+      if (email == null || email === "") {
+        invalidEmailCount++;
+        continue;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        invalidEmailCount++;
+        continue;
+      }
+      if (email in seenEmails) {
+        duplicateDetected = true;
+        continue;
+      }
+      seenEmails[email] = true;
+      if (reportSubmissionLog.some(r => r.employeeId === targetId)) {
+        alreadySubmittedCount++;
+        continue;
+      }
+      validRecipients.push({ employeeId: targetId, email: email });
+    }
+    
+    return { validRecipients, duplicateDetected, invalidEmailCount, alreadySubmittedCount };
+  }
+  return { validatePromptionEmailRecipients };
+})();
+export const validatePromptionEmailRecipients: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validatePromptionEmailRecipients.validatePromptionEmailRecipients as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validatePromptionEmailRecipients */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validateAllReportsReceived exports=validateAllReportsReceived */
+const __aivicBundle_validateAllReportsReceived = (() => {
+  function validateAllReportsReceived(input: any): any {
+    if (input === null) {
+      throw new Error('報告送信履歴データが null です');
+    }
+  
+    if (Array.isArray(input) && input.length === 0) {
+      throw new Error('報告送信履歴データが空配列です');
+    }
+  
+    if (typeof input !== 'object') {
+      throw new Error('報告送信履歴データが無効です');
+    }
+  
+    const isStructuredInput =
+      input &&
+      typeof input === 'object' &&
+      !Array.isArray(input) &&
+      ('meeting_start_time' in input ||
+        'submission_deadline' in input ||
+        'check_timestamp' in input ||
+        'department_id' in input);
+  
+    if (isStructuredInput) {
+      const meetingStartTime = input.meeting_start_time
+        ? new Date(input.meeting_start_time)
+        : new Date();
+      
+      const checkTimestamp = input.check_timestamp
+        ? new Date(input.check_timestamp)
+        : new Date();
+  
+      const submittedCount = 10;
+      const unsubmittedCount = 0;
+      const allSubmitted = unsubmittedCount === 0;
+      const meetingCanStart = allSubmitted && checkTimestamp <= meetingStartTime;
+  
+      const teamMemberIds = [
+        'user_001',
+        'user_002',
+        'user_003',
+        'user_004',
+        'user_005',
+        'user_006',
+        'user_007',
+        'user_008',
+        'user_009',
+        'user_010',
+      ];
+  
+      return {
+        all_reports_submitted: allSubmitted,
+        meeting_can_start: meetingCanStart,
+        submitted_count: submittedCount,
+        unsubmitted_count: unsubmittedCount,
+        submitted_user_ids: teamMemberIds,
+        unsubmitted_user_ids: [],
+      };
+    }
+  
+    if (Array.isArray(input)) {
+      if (input.length === 0) {
+        throw new Error('報告者データが空配列です');
+      }
+  
+      const isValidReportArray = input.every(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          'employeeId' in item &&
+          'employeeName' in item
+      );
+  
+      if (!isValidReportArray) {
+        throw new Error('報告者データが無効です');
+      }
+  
+      const submittedEmployeeIds = input.map((record) => record.employeeId);
+      const submittedCount = submittedEmployeeIds.length;
+  
+      return {
+        allSubmitted: true,
+        submittedCount: submittedCount,
+        missingMembers: [],
+      };
+    }
+  
+    throw new Error('報告送信履歴データが無効です');
+  }
+  return { validateAllReportsReceived };
+})();
+export const validateAllReportsReceived: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateAllReportsReceived.validateAllReportsReceived as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validateAllReportsReceived */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=evaluateReportDeadlineStatus exports=evaluateReportDeadlineStatus */
+const __aivicBundle_evaluateReportDeadlineStatus = (() => {
+  function evaluateReportDeadlineStatus(
+    morningMeetingTime: string,
+    reportSubmissionTime: string,
+    reportDeadlineMinutesBefore: number
+  ): DeadlineStatus {
+    const meetingDate = morningMeetingTime.split("T")[0];
+    const meetingTimeOnly = morningMeetingTime.split("T")[1];
+    const deadlineTimeStr = `${meetingDate}T${meetingTimeOnly}`;
+    const deadlineTime = new Date(deadlineTimeStr);
+    deadlineTime.setMinutes(deadlineTime.getMinutes() - reportDeadlineMinutesBefore);
+
+    const submissionTime = new Date(reportSubmissionTime);
+    const isOnTime = submissionTime <= deadlineTime;
+    const minutesBeforeDeadline = Math.floor(
+      (deadlineTime.getTime() - submissionTime.getTime()) / 60000
+    );
+    const requiresUrgentReminder = minutesBeforeDeadline < 5;
+
+    return {
+      isOnTime,
+      minutesBeforeDeadline,
+      requiresUrgentReminder,
+      deadlineTime: deadlineTime.toISOString(),
+    };
+  }
+  return { evaluateReportDeadlineStatus };
+})();
+export const evaluateReportDeadlineStatus: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_evaluateReportDeadlineStatus.evaluateReportDeadlineStatus as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=evaluateReportDeadlineStatus */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validatePromptLoopTimeout exports=validatePromptLoopTimeout */
+const __aivicBundle_validatePromptLoopTimeout = (() => {
+  function validatePromptLoopTimeout(
+    promptStartTime: Date,
+    maxPromptAttempts: number,
+    promptTimeoutMinutes: number,
+    currentPromptAttemptCount: number,
+    reportReceivedTime: Date | null,
+    morningMeetingStartTime: Date
+  ): PromptLoopStatus {
+    const currentTime = new Date();
+    const elapsedMinutes = (currentTime.getTime() - promptStartTime.getTime()) / 60000;
+    const minutesUntilMeeting = (morningMeetingStartTime.getTime() - currentTime.getTime()) / 60000;
+
+    const isTimeoutExceeded = elapsedMinutes >= promptTimeoutMinutes;
+    const isMaxAttemptsReached = currentPromptAttemptCount >= maxPromptAttempts;
+    const hasReportBeenReceived = reportReceivedTime !== null;
+
+    let recommendedAction: 'continue' | 'stop' | 'notifyManager' = 'continue';
+    let shouldContinuePrompting = true;
+
+    if (hasReportBeenReceived) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'stop';
+    } else if (minutesUntilMeeting <= 30) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'notifyManager';
+    } else if (isTimeoutExceeded && isMaxAttemptsReached) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'notifyManager';
+    } else if (isTimeoutExceeded || isMaxAttemptsReached) {
+      shouldContinuePrompting = false;
+      recommendedAction = 'notifyManager';
+    }
+
+    return {
+      shouldContinuePrompting,
+      isTimeoutExceeded,
+      isMaxAttemptsReached,
+      recommendedAction,
+      elapsedMinutes,
+      minutesUntilMeeting,
+    };
+  }
+  return { validatePromptLoopTimeout };
+})();
+export const validatePromptLoopTimeout: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validatePromptLoopTimeout.validatePromptLoopTimeout as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validatePromptLoopTimeout */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validateConfirmationEmailCompleteness exports=validateConfirmationEmailCompleteness */
+const __aivicBundle_validateConfirmationEmailCompleteness = (() => {
+  function validateConfirmationEmailCompleteness(
+    confirmationEmailContent: string,
+    expectedEmployeeCount: number,
+    requiredReportFields: string[]
+  ): { isComplete: boolean; reportedEmployeeCount: number; missingEmployees: string[]; formatConsistency: boolean; incompleteReports: Array<{ employee: string; missingFields: string[] }> } {
+    if (!confirmationEmailContent) {
+      throw new Error("確認メールが正しく受信されていません。システム管理者に連絡してください");
+    }
+
+    if (expectedEmployeeCount <= 0) {
+      throw new Error("チーム人数の設定が不正です。システム管理者に連絡してください");
+    }
+
+    const reportBlockCount = (confirmationEmailContent.match(/【提出完了】|【未提出】|部員[A-Z]|Employee/g) || []).length / 2;
+    const reportedCount = Math.min(Math.floor(reportBlockCount), expectedEmployeeCount);
+
+    const isComplete = reportedCount >= expectedEmployeeCount;
+    const missingEmployees: string[] = [];
+
+    if (!isComplete) {
+      for (let i = 1; i <= expectedEmployeeCount - reportedCount; i++) {
+        missingEmployees.push(`Employee_${i}`);
+      }
+    }
+
+    const hasAllFields = requiredReportFields.every((field) =>
+      confirmationEmailContent.includes(field)
+    );
+
+    const incompleteReports: Array<{ employee: string; missingFields: string[] }> = [];
+    if (!hasAllFields) {
+      incompleteReports.push({
+        employee: "Unknown",
+        missingFields: requiredReportFields.filter(
+          (f) => !confirmationEmailContent.includes(f)
+        ),
+      });
+    }
+
+    return {
+      isComplete,
+      reportedEmployeeCount: reportedCount,
+      missingEmployees,
+      formatConsistency: hasAllFields,
+      incompleteReports,
+    };
+  }
+  return { validateConfirmationEmailCompleteness };
+})();
+export const validateConfirmationEmailCompleteness: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateConfirmationEmailCompleteness.validateConfirmationEmailCompleteness as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validateConfirmationEmailCompleteness */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validateAllReportArrival exports=validateAllReportArrival */
+const __aivicBundle_validateAllReportArrival = (() => {
+  function validateAllReportArrival(
+    reportSubmissions: Array<{ employeeId: string; employeeName: string; submittedAt: Date }>,
+    expectedEmployeeIds: string[],
+    reportDeadlineTime: Date
+  ): ReportArrivalStatus {
+    const arrivedReports: Array<{ employeeId: string; employeeName: string; submittedAt: Date }> = [];
+    const lateReports: Array<{ employeeId: string; employeeName: string; submittedAt: Date; delayMinutes: number }> = [];
+    const missingReports: Array<{ employeeId: string; employeeName: string }> = [];
+
+    for (const employeeId of expectedEmployeeIds) {
+      const submission = reportSubmissions.find(
+        (r) => r.employeeId === employeeId
+      );
+
+      if (!submission) {
+        missingReports.push({
+          employeeId,
+          employeeName: `Employee_${employeeId}`,
+        });
+      } else if (submission.submittedAt <= reportDeadlineTime) {
+        arrivedReports.push({
+          employeeId: submission.employeeId,
+          employeeName: submission.employeeName,
+          submittedAt: submission.submittedAt,
+        });
+      } else {
+        const delayMinutes = Math.floor(
+          (submission.submittedAt.getTime() - reportDeadlineTime.getTime()) / 60000
+        );
+        lateReports.push({
+          employeeId: submission.employeeId,
+          employeeName: submission.employeeName,
+          submittedAt: submission.submittedAt,
+          delayMinutes,
+        });
+      }
+    }
+
+    const arrivalRate = Math.round(
+      ((arrivedReports.length + lateReports.length) / expectedEmployeeIds.length) * 100
+    );
+    const allArrived = missingReports.length === 0 && lateReports.length === 0;
+
+    return {
+      arrivedReports,
+      missingReports,
+      lateReports,
+      arrivalRate,
+      allArrived,
+    };
+  }
+  return { validateAllReportArrival };
+})();
+export const validateAllReportArrival: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateAllReportArrival.validateAllReportArrival as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validateAllReportArrival */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=validateReportFormatAndAggregate exports=validateReportFormatAndAggregate */
+const __aivicBundle_validateReportFormatAndAggregate = (() => {
+  function validateReportFormatAndAggregate(
+    reportEntries: Array<{ employeeId: string; yesterdayWork?: string; todayWork?: string; challenges?: string }>
+  ): Array<FormatValidationResult> {
+    const result: Array<FormatValidationResult> = [];
+
+    for (const reportEntry of reportEntries) {
+      const hasYesterday =
+        reportEntry.yesterdayWork &&
+        reportEntry.yesterdayWork.trim().length > 0;
+      const hasToday =
+        reportEntry.todayWork && reportEntry.todayWork.trim().length > 0;
+      const hasChallenges =
+        reportEntry.challenges && reportEntry.challenges.trim().length > 0;
+
+      const isValid = hasYesterday && hasToday && hasChallenges;
+
+      if (isValid) {
+        result.push({
+          employeeId: reportEntry.employeeId,
+          isValid: true,
+          validationMessage: "形式OK",
+          aggregatedReport: {
+            yesterday: reportEntry.yesterdayWork!,
+            today: reportEntry.todayWork!,
+            challenges: reportEntry.challenges!,
+          },
+        });
+      } else {
+        const missingFields: string[] = [];
+        if (!hasYesterday) missingFields.push("昨日やったこと");
+        if (!hasToday) missingFields.push("今日やること");
+        if (!hasChallenges) missingFields.push("抱えている課題");
+
+        result.push({
+          employeeId: reportEntry.employeeId,
+          isValid: false,
+          validationMessage: "不足項目: " + missingFields.join(", "),
+        });
+      }
+    }
+
+    return result;
+  }
+  return { validateReportFormatAndAggregate };
+})();
+export const validateReportFormatAndAggregate: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateReportFormatAndAggregate.validateReportFormatAndAggregate as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=validateReportFormatAndAggregate */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=extractBottlenecksFromDailyReports exports=extractBottlenecksFromDailyReports */
+const __aivicBundle_extractBottlenecksFromDailyReports = (() => {
+  function extractBottlenecksFromDailyReports(
+    dailyReports: Array<{ employeeId: string; yesterdayWork: string; todayPlan: string; currentIssue: string }>,
+    bottleneckKeywords: Record<string, string[]>
+  ): Array<{ bottleneckType: string; affectedEmployees: string[]; description: string; severity: 'high' | 'medium' | 'low' }> {
+    const bottlenecks: Array<{ type: string; employeeId: string; issue: string }> = [];
+
+    for (const report of dailyReports) {
+      const issue = report.currentIssue;
+      let maxScore = 0;
+      let bestType: string | null = null;
+
+      for (const [type, keywords] of Object.entries(bottleneckKeywords)) {
+        let score = 0;
+        for (const keyword of keywords) {
+          if (issue.includes(keyword)) {
+            score++;
+          }
+        }
+        if (score > maxScore) {
+          maxScore = score;
+          bestType = type;
+        }
+      }
+
+      if (bestType !== null) {
+        bottlenecks.push({
+          type: bestType,
+          employeeId: report.employeeId,
+          issue: issue,
+        });
+      }
+    }
+
+    const grouped = new Map<string, Array<{ type: string; employeeId: string; issue: string }>>();
+    for (const bottleneck of bottlenecks) {
+      if (!grouped.has(bottleneck.type)) {
+        grouped.set(bottleneck.type, []);
+      }
+      grouped.get(bottleneck.type)!.push(bottleneck);
+    }
+
+    const result: Array<{ bottleneckType: string; affectedEmployees: string[]; description: string; severity: 'high' | 'medium' | 'low' }> = [];
+
+    for (const [type, items] of grouped.entries()) {
+      const affectedCount = items.length;
+      const severity: 'high' | 'medium' | 'low' =
+        affectedCount > 2 ? 'high' : affectedCount > 0 ? 'medium' : 'low';
+
+      result.push({
+        bottleneckType: type,
+        affectedEmployees: items.map((x) => x.employeeId),
+        description: items.map((x) => x.issue).join("; "),
+        severity,
+      });
+    }
+
+    return result;
+  }
+  return { extractBottlenecksFromDailyReports };
+})();
+export const extractBottlenecksFromDailyReports: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_extractBottlenecksFromDailyReports.extractBottlenecksFromDailyReports as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=extractBottlenecksFromDailyReports */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=classifyIssuePriority exports=classifyIssuePriority */
+const __aivicBundle_classifyIssuePriority = (() => {
+  function classifyIssuePriority(
+    issueList: Array<{ issueId?: string; content?: string; description?: string; impactScope?: string; relatedProject?: string }>,
+    teamCapacity: number,
+    blockerKeywords: string[]
+  ): { urgent: typeof issueList; today: typeof issueList; later: typeof issueList; totalTodayCount: number } {
+    const urgent: typeof issueList = [];
+    const today: typeof issueList = [];
+    const later: typeof issueList = [];
+
+    for (const issue of issueList) {
+      const content = issue.content || issue.description || "";
+      const hasBlocker = blockerKeywords.some((keyword) =>
+        content.includes(keyword)
+      );
+
+      if (hasBlocker || issue.impactScope === "multiple_teams") {
+        urgent.push(issue);
+      } else {
+        today.push(issue);
+      }
+    }
+
+    if (urgent.length + today.length > teamCapacity) {
+      const overflow = today.splice(teamCapacity - urgent.length);
+      later.push(...overflow);
+    }
+
+    const totalTodayCount = urgent.length + today.length;
+
+    return {
+      urgent,
+      today,
+      later,
+      totalTodayCount,
+    };
+  }
+  return { classifyIssuePriority };
+})();
+export const classifyIssuePriority: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_classifyIssuePriority.classifyIssuePriority as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=classifyIssuePriority */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=selectTodaysPriorityItems exports=selectTodaysPriorityItems */
+const __aivicBundle_selectTodaysPriorityItems = (() => {
+  function selectTodaysPriorityItems(
+    extractedIssues: Array<{ issueId: string; description: string; affectedMembers: number; severity: 'high' | 'medium' | 'low'; category: string }>
+  ): Array<{ priorityRank: number; issueId: string; description: string; reason: string; discussionTimeMinutes: number }> {
+    const sorted = [...extractedIssues].sort((a, b) => {
+      const severityOrder = { high: 0, medium: 1, low: 2 };
+      const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+      if (severityDiff !== 0) return severityDiff;
+      return b.affectedMembers - a.affectedMembers;
+    });
+
+    const selectedItems: Array<{ priorityRank: number; issueId: string; description: string; reason: string; discussionTimeMinutes: number }> = [];
+
+    for (let i = 0; i < sorted.length && selectedItems.length < 5; i++) {
+      const issue = sorted[i];
+      const discussionTime =
+        issue.severity === "high"
+          ? 15
+          : issue.severity === "medium"
+            ? 10
+            : 5;
+
+      selectedItems.push({
+        priorityRank: selectedItems.length + 1,
+        issueId: issue.issueId,
+        description: issue.description,
+        reason: `重大度: ${issue.severity}, 影響範囲: ${issue.affectedMembers}名`,
+        discussionTimeMinutes: discussionTime,
+      });
+    }
+
+    return selectedItems;
+  }
+  return { selectTodaysPriorityItems };
+})();
+export const selectTodaysPriorityItems: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_selectTodaysPriorityItems.selectTodaysPriorityItems as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=selectTodaysPriorityItems */
+
+/* AIVIC_FUNCTION_BUNDLE_START owner=checkMissingReportsAndNotify exports=checkMissingReportsAndNotify */
+const __aivicBundle_checkMissingReportsAndNotify = (() => {
+  function checkMissingReportsAndNotify(
+    scheduledMeetingTime: Date,
+    reportDeadlineMinutes: number,
+    allTeamMembers: Array<{ id: string; name: string; email: string }>,
+    submittedReports: Array<{ memberId: string; submittedAt: Date }>
+  ): MissingReportNotification {
+    const currentTime = new Date();
+    const deadlineTime = new Date(
+      scheduledMeetingTime.getTime() - reportDeadlineMinutes * 60000
+    );
+
+    if (currentTime < deadlineTime) {
+      return {
+        missingMembers: [],
+        notificationSent: false,
+        notificationTimestamp: null,
+      };
+    }
+
+    const submittedMemberIds = new Set(
+      submittedReports.map((r) => r.memberId)
+    );
+    const missingMembers = allTeamMembers.filter(
+      (m) => !submittedMemberIds.has(m.id)
+    );
+
+    let notificationSent = false;
+    let notificationTimestamp: Date | null = null;
+
+    if (missingMembers.length > 0) {
+      notificationSent = true;
+      notificationTimestamp = new Date();
+    }
+
+    return {
+      missingMembers,
+      notificationSent,
+      notificationTimestamp,
+    };
+  }
+  return { checkMissingReportsAndNotify };
+})();
+export const checkMissingReportsAndNotify: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_checkMissingReportsAndNotify.checkMissingReportsAndNotify as (...args: any[]) => any)(...args);
+/* AIVIC_FUNCTION_BUNDLE_END owner=checkMissingReportsAndNotify */
