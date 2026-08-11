@@ -2227,7 +2227,7 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
-const __aivicBundle_validateDailyReportSubmission_final = (() => {
+const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   const submissionStore = new Map<string, Set<string>>();
 
   function validateDailyReportSubmission(
@@ -2239,9 +2239,18 @@ const __aivicBundle_validateDailyReportSubmission_final = (() => {
     const department = formData.department || formData.department_id || '';
     const yesterday = formData.yesterday || formData.yesterdayAccomplishment || formData.yesterday_achievement || '';
     const today = formData.today || formData.todayPlan || formData.today_plan || '';
-    const challenge = formData.challenge || formData.currentChallenge || formData.current_issue || '';
+    const challenge = formData.challenge || formData.currentChallenge || formData.current_issue || formData.currentIssue || '';
 
-    if (!reportDate || reportDate.trim() === '') {
+    // reportDate 検証：ISO 8601 形式または YYYY-MM-DD 形式
+    const isValidDateFormat = (dateStr: string): boolean => {
+      if (!dateStr) return false;
+      const isoRegex = /^\d{4}-\d{2}-\d{2}(T|$)/;
+      if (!isoRegex.test(dateStr)) return false;
+      const dateObj = new Date(dateStr);
+      return !isNaN(dateObj.getTime());
+    };
+
+    if (!reportDate || !isValidDateFormat(reportDate)) {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
     if (!department || department.trim() === '') {
@@ -2295,7 +2304,7 @@ const __aivicBundle_validateDailyReportSubmission_final = (() => {
   }
   return { validateDailyReportSubmission };
 })();
-export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_final.validateDailyReportSubmission;
+export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_fixed.validateDailyReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateDailyReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendDailyReportAndNotify exports=sendDailyReportAndNotify */
@@ -2697,8 +2706,12 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     
     // メール送信ログ ID を YYYYMMDD-XXX 形式で生成（deterministic）
     const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
-    const logSuffix = randomUUID().substring(0, 3).toUpperCase();
-    const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
+    const hashInput = `${userId}:${reportDate}:${yesterdayWork}:${todayPlan}:${currentIssues}`;
+    const hashCode = hashInput.split('').reduce((acc, char) => {
+      return ((acc << 5) - acc) + char.charCodeAt(0);
+    }, 0);
+    const hashSuffix = Math.abs(hashCode % 1000).toString().padStart(3, '0');
+    const mailSendLogId = `LOG-${dateStr}-${hashSuffix}`;
 
     const userEmail = reportData.user_email || reportData.userEmail || "";
     const managerEmail = reportData.manager_email || "";
