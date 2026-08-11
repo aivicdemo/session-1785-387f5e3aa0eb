@@ -20,129 +20,85 @@ export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  sanitizedContent: {
+  validatedContent: {
     yesterday: string;
     today: string;
     issues: string;
   };
 }
 
-export interface Action04PromptConfig {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    maxYesterdayLength: number;
-    minTodayLength: number;
-    maxTodayLength: number;
-    minIssuesLength: number;
-    maxIssuesLength: number;
-    requiredFields: string[];
-  };
-  tone: "formal" | "casual" | "neutral";
-  language: "ja" | "en";
+export function buildAction04Prompt(context: Action04Context): string {
+  const {
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
+  } = context;
+
+  const promptContent = `# 日報入力内容の妥当性検証タスク
+
+## タスク概要
+エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
+
+## 検証対象者情報
+- エンジニアID: ${engineerId}
+- エンジニア名: ${engineerName}
+- 報告日: ${reportDate}
+- システム時刻: ${systemTimestamp}
+- 提出期限: ${submissionDeadline}
+
+## 受け取った入力内容
+### 昨日の実績
+${previousReportContent.yesterday}
+
+### 本日の予定
+${previousReportContent.today}
+
+### 抱えている課題
+${previousReportContent.issues}
+
+## 検証基準
+1. **完全性チェック**
+   - 各項目が空白でないこと
+   - 最小文字数（各項目50文字以上）を満たしていること
+
+2. **適切性チェック**
+   - 昨日の実績が具体的で測定可能であること
+   - 本日の予定が現実的で実行可能であること
+   - 課題が明確に記述されていること
+
+3. **形式チェック**
+   - 日本語として正しい文法であること
+   - 不適切な表現や機密情報が含まれていないこと
+
+4. **一貫性チェック**
+   - 昨日の実績と本日の予定に矛盾がないこと
+   - 課題が実績・予定と関連性があること
+
+## 出力形式
+JSON形式で以下の構造で返してください：
+{
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
 }
 
-export function buildAction04Prompt(config: Action04PromptConfig): string {
-  const {
-    context,
-    validationRules,
-    tone = "neutral",
-    language = "ja",
-  } = config;
+## 検証結果の判定
+- errors が空配列の場合: 登録可能（isValid: true）
+- errors が1件以上の場合: 登録不可、エンジニアに修正依頼（isValid: false）
+- warnings のみの場合: 登録可能だが注意が必要（isValid: true）
 
-  const systemPromptJa = `あなたは日報管理システムの入力内容検証エージェントです。
-エンジニアから提出された日報の入力内容を以下の基準で検証してください。
+## 注意事項
+- 検証は厳密に行い、不完全な内容は登録させない
+- エラーメッセージは具体的で改善方法を示唆するものにする
+- 警告は参考情報として提供し、登録を妨げない`;
 
-【検証対象】
-- 昨日の実績（${validationRules.minYesterdayLength}〜${validationRules.maxYesterdayLength}文字）
-- 本日の予定（${validationRules.minTodayLength}〜${validationRules.maxTodayLength}文字）
-- 抱えている課題（${validationRules.minIssuesLength}〜${validationRules.maxIssuesLength}文字）
-
-【検証ルール】
-1. 必須項目の完全性チェック: ${validationRules.requiredFields.join(", ")}
-2. 文字数の妥当性チェック
-3. 内容の適切性チェック（不適切な表現、機密情報の漏洩がないか）
-4. 形式の統一性チェック
-
-【出力形式】
-JSON形式で以下の構造で返してください:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "sanitizedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
-}`;
-
-  const systemPromptEn = `You are a report content validation agent for the daily report management system.
-Validate the daily report content submitted by the engineer based on the following criteria.
-
-【Validation Targets】
-- Yesterday's achievements (${validationRules.minYesterdayLength}~${validationRules.maxYesterdayLength} characters)
-- Today's schedule (${validationRules.minTodayLength}~${validationRules.maxTodayLength} characters)
-- Current issues (${validationRules.minIssuesLength}~${validationRules.maxIssuesLength} characters)
-
-【Validation Rules】
-1. Required fields completeness check: ${validationRules.requiredFields.join(", ")}
-2. Character count appropriateness check
-3. Content appropriateness check (inappropriate expressions, information leakage)
-4. Format consistency check
-
-【Output Format】
-Return in JSON format with the following structure:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "sanitizedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
-}`;
-
-  const systemPrompt = language === "ja" ? systemPromptJa : systemPromptEn;
-
-  const userPromptJa = `【エンジニア情報】
-ID: ${context.engineerId}
-名前: ${context.engineerName}
-報告日: ${context.reportDate}
-提出期限: ${context.submissionDeadline}
-
-【提出内容】
-昨日の実績:
-${context.previousReportContent.yesterday}
-
-本日の予定:
-${context.previousReportContent.today}
-
-抱えている課題:
-${context.previousReportContent.issues}
-
-上記の内容を検証し、JSON形式で結果を返してください。`;
-
-  const userPromptEn = `【Engineer Information】
-ID: ${context.engineerId}
-Name: ${context.engineerName}
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-
-【Submitted Content】
-Yesterday's achievements:
-${context.previousReportContent.yesterday}
-
-Today's schedule:
-${context.previousReportContent.today}
-
-Current issues:
-${context.previousReportContent.issues}
-
-Validate the above content and return the result in JSON format.`;
-
-  const userPrompt = language === "ja" ? userPromptJa : userPromptEn;
-
-  return `${systemPrompt}\n\n${userPrompt}`;
+  return promptContent;
 }

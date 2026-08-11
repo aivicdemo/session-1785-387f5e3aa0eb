@@ -8,7 +8,7 @@ export interface Action05Context {
   reportSubmissionDeadline: string;
   currentTimestamp: string;
   previousExtractedIssues?: ExtractedIssue[];
-  teamMembers: TeamMember[];
+  teamMembersList: TeamMember[];
 }
 
 export interface ExtractedIssue {
@@ -18,8 +18,7 @@ export interface ExtractedIssue {
   reportedBy: string;
   severity: "critical" | "high" | "medium" | "low";
   category: string;
-  affectedAreas: string[];
-  proposedSolution?: string;
+  relatedTasks?: string[];
 }
 
 export interface TeamMember {
@@ -27,164 +26,113 @@ export interface TeamMember {
   name: string;
   email: string;
   department: string;
-  role: string;
 }
 
-export interface IssueExtractionResult {
-  extractedIssues: ExtractedIssue[];
-  priorityClassification: PriorityClassification;
-  summaryAnalysis: string;
-  recommendedActions: RecommendedAction[];
+export interface Action05PromptResult {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  expectedOutputFormat: string;
 }
 
-export interface PriorityClassification {
-  critical: ExtractedIssue[];
-  high: ExtractedIssue[];
-  medium: ExtractedIssue[];
-  low: ExtractedIssue[];
+export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
+  const systemPrompt = buildSystemPrompt();
+  const userPrompt = buildUserPrompt(context);
+  const expectedOutputFormat = buildExpectedOutputFormat();
+
+  return {
+    version: ACTION_05_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    expectedOutputFormat,
+  };
 }
 
-export interface RecommendedAction {
-  issueId: string;
-  action: string;
-  owner: string;
-  targetDate: string;
-  estimatedImpact: string;
+function buildSystemPrompt(): string {
+  return `You are an AI agent specialized in analyzing daily reports and extracting critical issues and bottlenecks.
+
+Your role is to:
+1. Read and analyze confirmation email content containing daily report summaries
+2. Identify and extract issues, risks, and bottlenecks from the reports
+3. Categorize issues by type and severity
+4. Assess the priority and impact of each issue
+5. Provide structured output for management review
+
+You must maintain consistency with previously extracted issues and avoid duplicates.
+Focus on actionable insights that impact project progress and team productivity.
+Escalate critical issues that require immediate attention.`;
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const teamMembersList = context.teamMembers
-    .map((member) => `- ${member.name} (${member.department}, ${member.role})`)
+function buildUserPrompt(context: Action05Context): string {
+  const teamMembersInfo = context.teamMembersList
+    .map((member) => `- ${member.name} (${member.department}): ${member.email}`)
     .join("\n");
 
-  const previousIssuesContext =
+  const previousIssuesInfo =
     context.previousExtractedIssues && context.previousExtractedIssues.length > 0
-      ? `\n\n## 前回抽出された課題（参考）:\n${context.previousExtractedIssues
-          .map(
-            (issue) =>
-              `- [${issue.severity.toUpperCase()}] ${issue.title}: ${issue.description}`
-          )
+      ? `\n\nPreviously extracted issues to consider for deduplication:\n${context.previousExtractedIssues
+          .map((issue) => `- [${issue.severity}] ${issue.title}: ${issue.description}`)
           .join("\n")}`
       : "";
 
-  return `# Action 05: 課題・ボトルネック抽出と優先度判定
+  return `Analyze the following confirmation email content and extract all issues, risks, and bottlenecks.
 
-## 目的
-確認メール内容から日報の課題・ボトルネックを自動抽出し、優先度を判定・分類して、部長に整理済みレポートを提供する。
+Current timestamp: ${context.currentTimestamp}
+Report submission deadline: ${context.reportSubmissionDeadline}
 
-## 入力情報
+Team members:
+${teamMembersInfo}
 
-### 確認メール内容
-\`\`\`
+Confirmation email content:
+---
 ${context.confirmationEmailContent}
-\`\`\`
+---
+${previousIssuesInfo}
 
-### チームメンバー
-${teamMembersList}
+Please extract and categorize all issues found in the reports. For each issue, provide:
+1. A clear title
+2. Detailed description
+3. The team member who reported it
+4. Severity level (critical/high/medium/low)
+5. Category (technical/resource/schedule/quality/communication/other)
+6. Related tasks or dependencies if applicable
 
-### 提出期限
-${context.reportSubmissionDeadline}
+Avoid duplicating previously extracted issues. Focus on new or updated issues.`;
+}
 
-### 現在時刻
-${context.currentTimestamp}
-
-${previousIssuesContext}
-
-## 実行タスク
-
-### 1. 課題・ボトルネック抽出
-確認メール内容から以下の情報を抽出してください：
-- 進捗遅延の原因
-- 技術的な課題
-- リソース不足
-- 依存関係の問題
-- その他の阻害要因
-
-各課題について以下を記録してください：
-- 課題ID（一意の識別子）
-- タイトル
-- 詳細説明
-- 報告者
-- 影響を受ける領域
-- 提案されている解決策（存在する場合）
-
-### 2. 優先度判定・分類
-抽出された各課題を以下の基準で分類してください：
-
-**Critical（緊急）**:
-- プロジェクト全体の進捗を停止させる可能性がある
-- 本日中の対応が必須
-- 複数チームに影響
-
-**High（高）**:
-- 重要なマイルストーンに影響する
-- 本日中の対応が強く推奨される
-- 1つ以上のチームに影響
-
-**Medium（中）**:
-- 進捗に遅延をもたらす可能性がある
-- 本週中の対応が必要
-- 特定チームに影響
-
-**Low（低）**:
-- 軽微な問題
-- 対応は次週以降でも可能
-- 単一メンバーに影響
-
-### 3. 推奨アクション生成
-各課題に対して以下を定義してください：
-- 推奨される対応内容
-- 対応責任者（チームメンバーから選定）
-- 目標完了日時
-- 期待される影響度
-
-### 4. サマリー分析
-全体的な進捗状況と課題の傾向を分析してください：
-- 課題の集中度（特定領域に集中しているか）
-- 傾向（新規課題か既知課題か）
-- 全体的なリスク評価
-
-## 出力形式
-
-JSON形式で以下の構造で返してください：
-
-\`\`\`json
-{
+function buildExpectedOutputFormat(): string {
+  return `{
   "extractedIssues": [
     {
-      "id": "ISSUE-001",
-      "title": "課題タイトル",
-      "description": "詳細説明",
-      "reportedBy": "報告者名",
-      "severity": "critical|high|medium|low",
-      "category": "技術|リソース|依存関係|その他",
-      "affectedAreas": ["領域1", "領域2"],
-      "proposedSolution": "提案されている解決策"
+      "id": "string (unique identifier)",
+      "title": "string",
+      "description": "string",
+      "reportedBy": "string (team member name)",
+      "severity": "critical | high | medium | low",
+      "category": "technical | resource | schedule | quality | communication | other",
+      "relatedTasks": ["string"],
+      "extractedAt": "ISO 8601 timestamp",
+      "isDuplicate": "boolean",
+      "duplicateOf": "string (issue id if duplicate)"
     }
   ],
-  "priorityClassification": {
-    "critical": [/* critical課題のリスト */],
-    "high": [/* high課題のリスト */],
-    "medium": [/* medium課題のリスト */],
-    "low": [/* low課題のリスト */]
-  },
-  "summaryAnalysis": "全体分析テキスト",
-  "recommendedActions": [
-    {
-      "issueId": "ISSUE-001",
-      "action": "推奨アクション",
-      "owner": "責任者名",
-      "targetDate": "YYYY-MM-DD HH:mm",
-      "estimatedImpact": "期待される影響度"
+  "summary": {
+    "totalIssuesExtracted": "number",
+    "criticalCount": "number",
+    "highCount": "number",
+    "mediumCount": "number",
+    "lowCount": "number",
+    "categoryCounts": {
+      "technical": "number",
+      "resource": "number",
+      "schedule": "number",
+      "quality": "number",
+      "communication": "number",
+      "other": "number"
     }
-  ]
-}
-\`\`\`
-
-## 注意事項
-- 同じ課題が複数回報告されている場合は統合してください
-- 前回抽出された課題との関連性を考慮してください
-- 優先度判定は客観的な基準に基づいてください
-- 不明確な情報は「要確認」として記録してください
-`;
+  },
+  "escalationRequired": "boolean",
+  "escalationReason": "string (if escalationRequired is true)",
+  "recommendations": ["string"]
+}`;
 }

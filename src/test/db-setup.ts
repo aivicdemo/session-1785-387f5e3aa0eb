@@ -3,101 +3,75 @@
 
 type TableName = "users" | "daily_reports" | "report_send_history" | "audit_events";
 
-interface TableData {
-  users: Array<{
-    user_id: string;
-    user_name: string;
-    department: string;
-    role: string;
-  }>;
-  daily_reports: Array<{
-    report_id: string;
-    user_id: string;
-    report_date: string;
-    yesterday_achievement: string;
-    today_plan: string;
-    issues: string;
-    created_at: Date;
-  }>;
-  report_send_history: Array<{
-    history_id: string;
-    user_id: string;
-    report_date: string;
-    sent_at: Date;
-    status: string;
-  }>;
-  audit_events: Array<{
-    event_type: string;
-    target_role: string;
-    unsubmitted_count: number;
-    timestamp: Date;
-    [key: string]: unknown;
-  }>;
+interface TableRow {
+  [key: string]: unknown;
 }
 
-interface TestDatabaseQuery {
-  del(): Promise<void>;
-  insert(data: Record<string, unknown>): Promise<void>;
-  where(conditions: Record<string, unknown>): Promise<unknown[]>;
+interface TableOperations {
+  del(): Promise<number>;
+  insert(row: TableRow | TableRow[]): Promise<void>;
+  where(conditions: Record<string, unknown>): Promise<TableRow[]>;
 }
 
 interface TestDatabase {
-  (tableName: TableName): TestDatabaseQuery;
+  (tableName: TableName): TableOperations;
 }
 
-const memoryStore = new Map<string, TableData>();
+interface InMemoryTable {
+  rows: TableRow[];
+}
 
-function createMemoryTable(tableName: TableName): TestDatabaseQuery {
+interface InMemoryStore {
+  users: InMemoryTable;
+  daily_reports: InMemoryTable;
+  report_send_history: InMemoryTable;
+  audit_events: InMemoryTable;
+}
+
+function createInMemoryStore(): InMemoryStore {
   return {
-    del: async () => {
-      const store = memoryStore.get("current") || {
-        users: [],
-        daily_reports: [],
-        report_send_history: [],
-        audit_events: [],
-      };
-      store[tableName] = [];
-      memoryStore.set("current", store);
-    },
-    insert: async (data: Record<string, unknown>) => {
-      const store = memoryStore.get("current") || {
-        users: [],
-        daily_reports: [],
-        report_send_history: [],
-        audit_events: [],
-      };
-      (store[tableName] as unknown[]).push(data);
-      memoryStore.set("current", store);
-    },
-    where: async (conditions: Record<string, unknown>) => {
-      const store = memoryStore.get("current") || {
-        users: [],
-        daily_reports: [],
-        report_send_history: [],
-        audit_events: [],
-      };
-      const table = store[tableName] as Array<Record<string, unknown>>;
-      return table.filter((row) => {
-        return Object.entries(conditions).every(([key, value]) => row[key] === value);
-      });
-    },
+    users: { rows: [] },
+    daily_reports: { rows: [] },
+    report_send_history: { rows: [] },
+    audit_events: { rows: [] },
   };
+}
+
+function matchesConditions(row: TableRow, conditions: Record<string, unknown>): boolean {
+  return Object.entries(conditions).every(([key, value]) => row[key] === value);
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const initialStore: TableData = {
-    users: [],
-    daily_reports: [],
-    report_send_history: [],
-    audit_events: [],
-  };
-  memoryStore.set("current", initialStore);
+  const store = createInMemoryStore();
 
-  return (tableName: TableName): TestDatabaseQuery => {
-    return createMemoryTable(tableName);
+  const testDb: TestDatabase = (tableName: TableName) => {
+    const table = store[tableName];
+
+    return {
+      async del(): Promise<number> {
+        const count = table.rows.length;
+        table.rows = [];
+        return count;
+      },
+
+      async insert(row: TableRow | TableRow[]): Promise<void> {
+        const rows = Array.isArray(row) ? row : [row];
+        table.rows.push(...rows);
+      },
+
+      async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
+        return table.rows.filter((row) => matchesConditions(row, conditions));
+      },
+    };
   };
+
+  return testDb;
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  memoryStore.clear();
+  const tableNames: TableName[] = ["users", "daily_reports", "report_send_history", "audit_events"];
+
+  for (const tableName of tableNames) {
+    await db(tableName).del();
+  }
 }

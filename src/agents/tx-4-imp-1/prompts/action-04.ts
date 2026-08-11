@@ -27,103 +27,66 @@ export interface Action04Input {
   reportId: string;
   reportContent: string;
   previousContext?: Action04Context;
-  departmentId: string;
-  timestamp: string;
+  departmentHead: string;
+  reportingDate: string;
 }
 
 export interface Action04Output {
   success: boolean;
-  prioritizedIssues: Array<{
+  context: Action04Context;
+  prioritizedIssuesList: Array<{
+    rank: number;
     issueId: string;
     title: string;
     priority: "critical" | "high" | "medium" | "low";
+    description: string;
+    category: string;
     reasoning: string;
-    requiresEscalation: boolean;
+    escalationRequired: boolean;
   }>;
-  summaryReport: string;
-  escalationItems: Array<{
-    issueId: string;
-    escalationReason: string;
-  }>;
-  context: Action04Context;
+  reportSummary: string;
+  timestamp: string;
 }
 
 export function buildAction04Prompt(input: Action04Input): string {
-  const timestamp = new Date(input.timestamp).toISOString();
-  
-  const basePrompt = `You are an AI agent responsible for the final step of the daily report processing workflow: prioritizing extracted issues and preparing an escalation summary for the department head.
+  const basePrompt = `You are an AI agent responsible for Action 4 of the Daily Report Management System (tx-4-imp-1).
 
-## Current Task: Issue Priority Judgment and Classification
+Your task is to analyze the provided report content and perform the following:
+1. Extract key issues and bottlenecks from the report
+2. Categorize each issue appropriately
+3. Assign priority levels (critical, high, medium, low) to each issue
+4. Identify any issues that require human review or escalation
+5. Generate a prioritized issues list for the department head
 
-**Report ID:** ${input.reportId}
-**Department ID:** ${input.departmentId}
-**Processing Timestamp:** ${timestamp}
+Report ID: ${input.reportId}
+Reporting Date: ${input.reportingDate}
+Department Head: ${input.departmentHead}
 
-### Report Content to Analyze:
+Report Content:
 ${input.reportContent}
 
-### Your Responsibilities:
-
-1. **Review Extracted Issues**: Analyze all issues that have been extracted from the daily reports in previous steps.
-
-2. **Assign Priority Levels**: Classify each issue into one of four priority levels:
-   - **CRITICAL**: Immediate action required; blocks progress or poses significant risk
-   - **HIGH**: Should be addressed within 1-2 days; impacts multiple team members or projects
-   - **MEDIUM**: Should be addressed within 1 week; affects specific tasks or individuals
-   - **LOW**: Can be addressed in normal workflow; minor improvements or documentation
-
-3. **Provide Reasoning**: For each priority assignment, explain the reasoning based on:
-   - Impact scope (number of people/projects affected)
-   - Urgency (time sensitivity)
-   - Risk level (potential consequences if not addressed)
-   - Dependencies (blocking other work)
-
-4. **Identify Escalation Cases**: Flag issues that require human review by the department head:
-   - Issues that deviate from normal patterns
-   - Conflicts between multiple reported issues
-   - Issues requiring policy or process changes
-   - Potential resource allocation decisions
-
-5. **Generate Summary Report**: Create a concise executive summary that:
-   - Lists all issues by priority level
-   - Highlights critical and high-priority items
-   - Notes any escalation flags
-   - Provides actionable recommendations
-
-### Output Format Requirements:
-
-Return a JSON object with the following structure:
-{
-  "success": true,
-  "prioritizedIssues": [
-    {
-      "issueId": "string",
-      "title": "string",
-      "priority": "critical" | "high" | "medium" | "low",
-      "reasoning": "string explaining the priority assignment",
-      "requiresEscalation": boolean
-    }
-  ],
-  "summaryReport": "string containing executive summary",
-  "escalationItems": [
-    {
-      "issueId": "string",
-      "escalationReason": "string explaining why human review is needed"
-    }
-  ]
+${
+  input.previousContext
+    ? `
+Previous Context:
+- Previously Extracted Issues: ${input.previousContext.extractedIssues.length}
+- Previous Priority Assignments: ${input.previousContext.priorityAssignments.length}
+- Previous Escalation Flags: ${input.previousContext.escalationFlags.length}
+`
+    : ""
 }
 
-### Context from Previous Steps:
-${input.previousContext ? JSON.stringify(input.previousContext, null, 2) : "No previous context available"}
+Please analyze the report and provide:
+1. A list of extracted issues with descriptions and categories
+2. Priority assignments for each issue with reasoning
+3. Escalation flags for issues requiring human review
+4. A concise summary of the overall report status
 
-### Quality Checklist:
-- All extracted issues have been assigned a priority level
-- Priority assignments are consistent and justified
-- Escalation flags are appropriate and not excessive
-- Summary report is clear and actionable
-- Output is valid JSON
-
-Proceed with the priority judgment and classification.`;
+Ensure that:
+- Critical issues are identified and flagged appropriately
+- Priority assignments are consistent and well-reasoned
+- Escalation decisions are based on clear criteria
+- The output is structured and actionable for the department head`;
 
   return basePrompt;
 }

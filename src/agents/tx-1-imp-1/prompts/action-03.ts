@@ -3,74 +3,72 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Context {
-  engineerId: string;
-  engineerName: string;
-  submittedContent: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
-    issues: string;
-  };
-  submissionTimestamp: string;
-  isLate: boolean;
-}
-
-export interface Action03ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
 export interface Action03PromptInput {
-  context: Action03Context;
+  engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionDeadline: string;
+  systemName: string;
 }
 
 export interface Action03PromptOutput {
-  prompt: string;
-  version: string;
+  validationStatus: "valid" | "invalid";
+  validationErrors: string[];
+  registrationPayload: {
+    engineerName: string;
+    engineerEmail: string;
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    submittedAt: string;
+  };
+  nextAction: "register" | "request_correction" | "escalate";
+  escalationReason?: string;
 }
 
-export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const { context } = input;
-
-  const validationInstructions = `
-You are validating a daily report submission for an engineer.
+export function buildAction03Prompt(input: Action03PromptInput): string {
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the "${input.systemName}" system.
 
 Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Submission Time: ${context.submissionTimestamp}
-- Is Late: ${context.isLate}
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Deadline: ${input.submissionDeadline}
 
-Submitted Content:
-1. Yesterday's Accomplishment:
-${context.submittedContent.yesterdayAccomplishment}
+Submitted Daily Report Content:
+- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
+- Today's Plans: ${input.todayPlans}
+- Current Issues: ${input.currentIssues}
 
-2. Today's Plan:
-${context.submittedContent.todayPlan}
+Your task is to:
+1. Validate the completeness and appropriateness of the submitted content
+2. Check that all required fields are filled with meaningful content
+3. Identify any issues or inconsistencies
+4. Determine the next action (register, request correction, or escalate)
 
-3. Issues/Concerns:
-${context.submittedContent.issues}
+Validation Criteria:
+- Yesterday's Accomplishments: Must not be empty and should describe concrete work completed
+- Today's Plans: Must not be empty and should describe specific tasks planned
+- Current Issues: Should be filled; if empty, note as potential concern but not necessarily invalid
+- Content Quality: Entries should be professional and relevant to engineering work
+- Timeliness: Check if submission is within or past the deadline
 
-Your task is to validate the submission against the following criteria:
-1. Completeness: All three sections must have meaningful content (not empty or placeholder text)
-2. Clarity: Content should be clear and understandable
-3. Relevance: Content should be work-related and relevant to the engineer's role
-4. Appropriateness: No inappropriate or offensive content
-5. Consistency: Today's plan should logically follow from yesterday's accomplishment
-
-Provide your validation result in the following JSON format:
+Respond with a JSON object containing:
 {
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[]
-}
+  "validationStatus": "valid" or "invalid",
+  "validationErrors": [list of specific validation errors if any],
+  "registrationPayload": {
+    "engineerName": "${input.engineerName}",
+    "engineerEmail": "${input.engineerEmail}",
+    "yesterdayAccomplishments": [submitted content],
+    "todayPlans": [submitted content],
+    "currentIssues": [submitted content],
+    "submittedAt": [current timestamp in ISO format]
+  },
+  "nextAction": "register" or "request_correction" or "escalate",
+  "escalationReason": [reason if escalation is needed, null otherwise]
+}`;
 
-Errors are critical issues that prevent registration. Warnings are minor issues that should be noted but don't block registration.
-`;
-
-  return {
-    prompt: validationInstructions,
-    version: ACTION_03_PROMPT_VERSION,
-  };
+  return prompt;
 }

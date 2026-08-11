@@ -8,8 +8,8 @@ export interface Action02PromptInput {
   engineerName: string;
   submissionDate: string;
   validationRules?: {
-    minLength?: number;
-    maxLength?: number;
+    minContentLength?: number;
+    maxContentLength?: number;
     requiredFields?: string[];
   };
 }
@@ -17,8 +17,8 @@ export interface Action02PromptInput {
 export interface Action02PromptOutput {
   isValid: boolean;
   validationErrors: string[];
-  sanitizedContent: string;
   warnings: string[];
+  sanitizedContent: string;
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
@@ -26,49 +26,106 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
     reportContent,
     engineerName,
     submissionDate,
-    validationRules = {},
+    validationRules = {
+      minContentLength: 10,
+      maxContentLength: 5000,
+      requiredFields: ["yesterday", "today", "issues"],
+    },
   } = input;
 
-  const {
-    minLength = 10,
-    maxLength = 5000,
-    requiredFields = ["yesterday", "today", "issues"],
-  } = validationRules;
+  const requiredFieldsText =
+    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
 
-  const requiredFieldsText = requiredFields
-    .map((field) => `- ${field}`)
-    .join("\n");
+  return `You are a validation agent for the morning report management system.
 
-  return `You are a validation agent for the daily report management system.
+Your task is to validate the daily report submission from engineer: ${engineerName}
+Submission date: ${submissionDate}
 
-Your task is to validate the following daily report submission:
-
-**Engineer Name:** ${engineerName}
-**Submission Date:** ${submissionDate}
-**Report Content:**
+Report content to validate:
+"""
 ${reportContent}
+"""
 
-**Validation Rules:**
-- Minimum content length: ${minLength} characters
-- Maximum content length: ${maxLength} characters
-- Required sections:
-${requiredFieldsText}
+Validation rules:
+- Minimum content length: ${validationRules.minContentLength} characters
+- Maximum content length: ${validationRules.maxContentLength} characters
+- Required fields to check: ${requiredFieldsText}
+- Content must be in Japanese or English
+- No offensive or inappropriate language
+- Must contain substantive information (not just placeholders or "N/A")
 
-Please perform the following validation checks:
+Please perform the following validation:
+1. Check if the report meets all validation rules
+2. Identify any validation errors or warnings
+3. Provide a sanitized version of the content if valid
+4. Return a structured validation result
 
-1. Check if the report content meets the length requirements
-2. Verify that all required sections are present
-3. Identify any missing or incomplete information
-4. Check for inappropriate or suspicious content
-5. Assess overall report quality and completeness
-
-Provide your validation result in the following JSON format:
+Respond in JSON format with the following structure:
 {
   "isValid": boolean,
   "validationErrors": string[],
-  "sanitizedContent": string,
-  "warnings": string[]
+  "warnings": string[],
+  "sanitizedContent": string
+}`;
 }
 
-Be strict but fair in your validation. Report any issues that would prevent this report from being registered in the system.`;
+export function validateAction02Input(
+  input: Action02PromptInput
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!input.reportContent || typeof input.reportContent !== "string") {
+    errors.push("reportContent is required and must be a string");
+  }
+
+  if (!input.engineerName || typeof input.engineerName !== "string") {
+    errors.push("engineerName is required and must be a string");
+  }
+
+  if (!input.submissionDate || typeof input.submissionDate !== "string") {
+    errors.push("submissionDate is required and must be a string");
+  }
+
+  if (input.reportContent && input.reportContent.length < 1) {
+    errors.push("reportContent cannot be empty");
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+export function parseAction02Response(
+  responseText: string
+): Action02PromptOutput {
+  try {
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return {
+        isValid: false,
+        validationErrors: ["Failed to parse response format"],
+        warnings: [],
+        sanitizedContent: "",
+      };
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    return {
+      isValid: Boolean(parsed.isValid),
+      validationErrors: Array.isArray(parsed.validationErrors)
+        ? parsed.validationErrors
+        : [],
+      warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
+      sanitizedContent: String(parsed.sanitizedContent || ""),
+    };
+  } catch {
+    return {
+      isValid: false,
+      validationErrors: ["Failed to parse AI response"],
+      warnings: [],
+      sanitizedContent: "",
+    };
+  }
 }

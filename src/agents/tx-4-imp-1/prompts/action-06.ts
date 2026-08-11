@@ -21,185 +21,87 @@ export interface Action06Context {
 }
 
 export interface Action06PromptInput {
-  confirmedReports: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
+  context: Action06Context;
+  previousActions: Array<{
+    actionNumber: number;
+    result: string;
   }>;
-  previousIssues: Array<{
-    id: string;
-    title: string;
-    status: string;
-  }>;
-  priorityFramework: {
-    criticalThreshold: string;
-    highThreshold: string;
-    mediumThreshold: string;
-  };
-  departmentContext: string;
+  escalationFlags: string[];
 }
 
 export interface Action06PromptOutput {
-  context: Action06Context;
-  formattedReport: string;
-  prioritizedIssuesList: string;
-  recommendations: string[];
+  reportContent: string;
+  formattedReport: {
+    title: string;
+    sections: Array<{
+      heading: string;
+      content: string;
+    }>;
+  };
+  presentationReady: boolean;
+  escalationRequired: boolean;
+  escalationReason?: string;
 }
 
 export function buildAction06Prompt(input: Action06PromptInput): string {
-  const reportSection = buildReportSection(input.confirmedReports);
-  const issueExtractionSection = buildIssueExtractionSection(
-    input.confirmedReports,
-    input.previousIssues
-  );
-  const priorityFrameworkSection = buildPriorityFrameworkSection(
-    input.priorityFramework
-  );
-  const contextSection = buildContextSection(input.departmentContext);
+  const {
+    context,
+    previousActions,
+    escalationFlags,
+  } = input;
 
-  return `# 日報収集から課題抽出・優先度判定までの自動実行
-
-## 実行目的
-確認メール送信後に収集された日報から、進捗状況を集約し、課題・ボトルネックを自動抽出して優先度判定を行う。
-
-## 入力情報
-
-${reportSection}
-
-${issueExtractionSection}
-
-${priorityFrameworkSection}
-
-${contextSection}
-
-## 実行タスク
-
-### タスク1: 全体進捗状況の集約・整理
-- 各従業員の日報から進捗内容を抽出
-- 部門全体の進捗状況を統合
-- 進捗の遅延・加速状況を把握
-- 進捗レポートを構造化
-
-### タスク2: 課題・ボトルネックの自動抽出
-- 日報記載の課題を抽出
-- 前日からの継続課題を追跡
-- 新規課題を特定
-- 課題の関連性を分析
-- 課題を以下のカテゴリに分類:
-  * 技術的課題
-  * リソース課題
-  * コミュニケーション課題
-  * 外部依存課題
-  * その他
-
-### タスク3: 課題の優先度判定・分類
-- 各課題の影響度を評価
-- 各課題の緊急度を評価
-- 優先度フレームワークに基づいて分類:
-  * Critical: ${input.priorityFramework.criticalThreshold}
-  * High: ${input.priorityFramework.highThreshold}
-  * Medium: ${input.priorityFramework.mediumThreshold}
-  * Low: その他
-- 優先度判定の根拠を記録
-
-## 出力形式
-
-### 1. 進捗状況集約レポート
-- 部門全体の進捗サマリー
-- 個別進捗の要点
-- 進捗状況の可視化
-
-### 2. 抽出課題リスト
-各課題について以下を記載:
-- 課題ID
-- 課題タイトル
-- 詳細説明
-- 課題カテゴリ
-- 影響範囲
-- 関連する従業員
-
-### 3. 優先度判定結果
-各課題について以下を記載:
-- 課題ID
-- 割り当てられた優先度
-- 優先度判定の根拠
-- 推奨アクション
-
-### 4. 部長向けサマリー
-- Critical課題の即時対応リスト
-- High優先度課題の本日中対応リスト
-- 継続監視が必要な課題
-- 推奨される意思決定事項
-
-## 品質基準
-- 課題抽出の漏れがないこと
-- 優先度判定が客観的で一貫性があること
-- 根拠が明確で検証可能なこと
-- 部長が即座に意思決定できる形式であること
-`;
-}
-
-function buildReportSection(reports: Action06PromptInput["confirmedReports"]): string {
-  if (reports.length === 0) {
-    return "## 収集日報\n提出された日報がありません。";
-  }
-
-  const reportDetails = reports
+  const actionHistory = previousActions
     .map(
-      (report) =>
-        `- **${report.employeeName}** (ID: ${report.employeeId})\n  提出時刻: ${report.submittedAt}\n  内容: ${report.reportContent}`
+      (action) =>
+        `Action ${action.actionNumber}: ${action.result}`
     )
     .join("\n");
 
-  return `## 収集日報
-提出件数: ${reports.length}件
+  const issuesFormatted = context.extractedIssues
+    .map((issue) => {
+      const priority = context.priorityAssignments.find(
+        (p) => p.issueId === issue.id
+      );
+      return `- [${priority?.priority.toUpperCase() || "UNASSIGNED"}] ${issue.title}: ${issue.description} (Category: ${issue.category})`;
+    })
+    .join("\n");
 
-${reportDetails}`;
-}
+  const escalationSection =
+    escalationFlags.length > 0
+      ? `\n\nEscalation Flags Detected:\n${escalationFlags.map((flag) => `- ${flag}`).join("\n")}`
+      : "";
 
-function buildIssueExtractionSection(
-  reports: Action06PromptInput["confirmedReports"],
-  previousIssues: Action06PromptInput["previousIssues"]
-): string {
-  const previousIssuesList =
-    previousIssues.length > 0
-      ? previousIssues
-          .map((issue) => `- ${issue.title} (Status: ${issue.status})`)
-          .join("\n")
-      : "前日からの継続課題はありません。";
+  const prompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
 
-  return `## 課題抽出コンテキスト
-### 前日からの継続課題
-${previousIssuesList}
+## Context
+- Reporting Date: ${context.reportingDate}
+- Department Head: ${context.departmentHead}
+- Report Summary: ${context.reportSummary}
 
-### 新規課題抽出対象
-上記の日報から以下の観点で課題を抽出してください:
-- 明示的に記載された課題
-- 進捗遅延の兆候
-- リソース不足の兆候
-- 技術的な懸念事項
-- 依存関係の問題`;
-}
+## Previous Actions Completed
+${actionHistory}
 
-function buildPriorityFrameworkSection(
-  framework: Action06PromptInput["priorityFramework"]
-): string {
-  return `## 優先度判定フレームワーク
-### Critical判定基準
-${framework.criticalThreshold}
+## Extracted Issues and Priorities
+${issuesFormatted}
+${escalationSection}
 
-### High判定基準
-${framework.highThreshold}
+## Your Task
+You must now prepare a comprehensive, well-formatted report that:
+1. Presents the overall progress status in a clear, executive-friendly format
+2. Lists all extracted issues with their assigned priorities
+3. Highlights any escalation flags that require immediate attention
+4. Provides actionable recommendations based on the priority classification
+5. Ensures the report is ready for presentation to the department head
 
-### Medium判定基準
-${framework.mediumThreshold}
+## Output Requirements
+- Generate a professional report that can be directly presented to leadership
+- Clearly separate critical and high-priority issues from routine items
+- Include a brief executive summary at the top
+- Organize issues by priority level
+- Flag any items requiring escalation or immediate action
+- Ensure all information is accurate and based on the previous action results
 
-### Low判定基準
-その他の課題`;
-}
+Please generate the final presentation-ready report now.`;
 
-function buildContextSection(departmentContext: string): string {
-  return `## 部門コンテキスト
-${departmentContext}`;
+  return prompt;
 }

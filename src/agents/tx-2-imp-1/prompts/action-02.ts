@@ -4,67 +4,110 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  submissionDeadline: string;
+  reportingMembers: Array<{
+    memberId: string;
+    memberName: string;
+    department: string;
+    email: string;
+  }>;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
+  systemTime: string;
 }
 
 export interface Action02PromptOutput {
-  overdueMembers: Array<{
-    memberId: string;
-    memberName: string;
-    submissionTime: string | null;
-    hoursOverdue: number;
-    reminderCount: number;
-  }>;
-  escalationActions: Array<{
-    memberId: string;
-    action: "send_reminder" | "escalate_to_manager" | "no_action";
-    reason: string;
-  }>;
+  version: string;
+  timestamp: string;
+  prompt: string;
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const systemPrompt = `You are an AI agent responsible for identifying overdue report submissions and determining escalation actions.
+export function buildAction02Prompt(
+  input: Action02PromptInput
+): Action02PromptOutput {
+  const unsubmittedMembers = input.reportingMembers.filter(
+    (member) =>
+      !input.submittedReports.some((report) => report.memberId === member.memberId)
+  );
 
-Your task is to:
-1. Identify members who have not submitted their reports by the deadline
-2. Calculate how many hours each member is overdue
-3. Determine appropriate escalation actions based on the provided rules
-4. Generate a structured response with member information and recommended actions
+  const delayedMembers = input.submittedReports.filter((report) => {
+    const submittedTime = new Date(report.submittedAt);
+    const deadline = new Date(input.submissionDeadline);
+    return submittedTime > deadline;
+  });
 
-Reporting Deadline: ${input.reportingDeadline}
-Overdue Threshold: ${input.overdueThresholdHours} hours
-Maximum Reminders per Member: ${input.escalationRules.maxReminders}
-Reminder Interval: ${input.escalationRules.reminderIntervalMinutes} minutes
+  const delayedMemberDetails = delayedMembers
+    .map((report) => {
+      const member = input.reportingMembers.find(
+        (m) => m.memberId === report.memberId
+      );
+      return member
+        ? {
+            memberId: member.memberId,
+            memberName: member.memberName,
+            department: member.department,
+            email: member.email,
+            submittedAt: report.submittedAt,
+          }
+        : null;
+    })
+    .filter((item) => item !== null);
 
-Escalation Rules:
-- If a member is overdue by less than ${input.overdueThresholdHours} hours and reminder count < ${input.escalationRules.maxReminders}: send_reminder
-- If a member is overdue by more than ${input.overdueThresholdHours} hours or reminder count >= ${input.escalationRules.maxReminders}: escalate_to_manager
-- If a member has submitted on time: no_action
+  const prompt = `
+You are an AI agent responsible for identifying non-submitted and delayed daily reports.
 
-Return a JSON object with the following structure:
+Current System Time: ${input.systemTime}
+Submission Deadline: ${input.submissionDeadline}
+
+Total Reporting Members: ${input.reportingMembers.length}
+Total Submitted Reports: ${input.submittedReports.length}
+
+Non-Submitted Members (${unsubmittedMembers.length}):
+${unsubmittedMembers.map((m) => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join("\n")}
+
+Delayed Submissions (${delayedMemberDetails.length}):
+${delayedMemberDetails.map((m) => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email} - Submitted at: ${m.submittedAt}`).join("\n")}
+
+Task:
+1. Analyze the submission status of all reporting members
+2. Identify members who have not submitted their daily reports
+3. Identify members who submitted after the deadline
+4. Create a comprehensive list of non-submitted and delayed members
+5. Prepare notification content for the department head
+
+Output Format:
 {
-  "overdueMembers": [
+  "nonSubmittedCount": number,
+  "delayedCount": number,
+  "nonSubmittedMembers": [
     {
-      "memberId": "string",
-      "memberName": "string",
-      "submissionTime": "ISO8601 string or null",
-      "hoursOverdue": number,
-      "reminderCount": number
+      "memberId": string,
+      "memberName": string,
+      "department": string,
+      "email": string
     }
   ],
-  "escalationActions": [
+  "delayedMembers": [
     {
-      "memberId": "string",
-      "action": "send_reminder" | "escalate_to_manager" | "no_action",
-      "reason": "string"
+      "memberId": string,
+      "memberName": string,
+      "department": string,
+      "email": string,
+      "submittedAt": string,
+      "delayMinutes": number
     }
-  ]
-}`;
+  ],
+  "notificationRequired": boolean,
+  "urgencyLevel": "low" | "medium" | "high"
+}
+`;
 
-  return systemPrompt;
+  return {
+    version: ACTION_02_PROMPT_VERSION,
+    timestamp: new Date().toISOString(),
+    prompt,
+  };
 }

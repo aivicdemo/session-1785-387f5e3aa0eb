@@ -4,10 +4,14 @@
 export async function logError(message: string): Promise<void> {
   // メモリ内ログストレージ
   if (!globalThis.__logErrorStore) {
-    (globalThis as any).__logErrorStore = [];
+    globalThis.__logErrorStore = [];
   }
-  (globalThis as any).__logErrorStore.push({
+  globalThis.__logErrorStore.push({
     timestamp: new Date(),
     message,
   });
+}
+
+declare global {
+  var __logErrorStore: Array<{ timestamp: Date; message: string }> | undefined;
 }

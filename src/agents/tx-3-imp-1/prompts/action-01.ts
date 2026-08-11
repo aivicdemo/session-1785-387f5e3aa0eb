@@ -7,83 +7,66 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  previousReminders?: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
   }>;
 }
 
-export interface IdentifiedEmployee {
-  employeeId: string;
-  employeeName: string;
-  status: "not_submitted" | "delayed" | "submitted";
-  submissionTime?: string;
-  daysOverdue?: number;
-}
-
 export interface Action01PromptOutput {
-  identifiedEmployees: IdentifiedEmployee[];
-  totalEmployees: number;
-  notSubmittedCount: number;
-  delayedCount: number;
-  submittedCount: number;
+  unreportedMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    reason: "not_submitted" | "delayed";
+  }>;
   analysisTimestamp: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const reminderInfo =
-    input.previousReminders && input.previousReminders.length > 0
-      ? `\n\n前回の催促履歴:\n${input.previousReminders
-          .map(
-            (r) =>
-              `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
-          )
-          .join("\n")}`
-      : "";
+  const membersList = input.teamMembers
+    .map((member) => `- ${member.name} (${member.email})`)
+    .join("\n");
 
-  return `あなたは朝会報告管理システムのAIエージェントです。
+  return `You are an AI agent responsible for identifying unreported and delayed team members from confirmation email content.
 
-【タスク】
-確認メール内容から報告漏れ・遅延部員を自動特定してください。
+## Task
+Analyze the confirmation email content and identify which team members have not submitted their daily reports or have submitted them late.
 
-【入力情報】
-確認メール内容:
+## Input Information
+- Confirmation Email Content:
 ${input.confirmationEmailContent}
 
-報告期限: ${input.reportDeadline}
-現在時刻: ${input.currentTimestamp}${reminderInfo}
+- Report Deadline: ${input.reportDeadline}
+- Current Timestamp: ${input.currentTimestamp}
+- Team Members:
+${membersList}
 
-【実行内容】
-1. 確認メール内容を解析し、各従業員の報告状況を特定してください
-2. 報告期限と現在時刻を比較し、以下のステータスを判定してください:
-   - "not_submitted": 報告が提出されていない
-   - "delayed": 報告期限を超過して提出されている
-   - "submitted": 期限内に提出されている
-3. 遅延日数を計算してください
-4. 全体の統計情報を集計してください
+## Instructions
+1. Parse the confirmation email content to extract submitted reports
+2. Compare submitted reports against the complete team member list
+3. Identify members who have not submitted reports (not_submitted)
+4. Identify members whose reports were submitted after the deadline (delayed)
+5. For each unreported or delayed member, provide their ID, name, email, and reason
 
-【出力形式】
-JSON形式で以下の構造で返してください:
+## Output Format
+Return a JSON object with the following structure:
 {
-  "identifiedEmployees": [
+  "unreportedMembers": [
     {
-      "employeeId": "従業員ID",
-      "employeeName": "従業員名",
-      "status": "not_submitted|delayed|submitted",
-      "submissionTime": "提出時刻（ISO 8601形式、未提出の場合はnull）",
-      "daysOverdue": 遅延日数（未提出または期限内の場合は0）
+      "id": "member_id",
+      "name": "member_name",
+      "email": "member_email",
+      "reason": "not_submitted" | "delayed"
     }
   ],
-  "totalEmployees": 総従業員数,
-  "notSubmittedCount": 未提出者数,
-  "delayedCount": 遅延者数,
-  "submittedCount": 期限内提出者数,
-  "analysisTimestamp": "分析実行時刻（ISO 8601形式）"
+  "analysisTimestamp": "ISO8601_timestamp"
 }
 
-【注意事項】
-- 従業員IDと従業員名は確認メール内容から正確に抽出してください
-- 遅延日数は小数点以下を切り上げてください
-- 統計情報の合計は totalEmployees と一致する必要があります`;
+## Important Notes
+- Be precise in identifying unreported members
+- Distinguish between not_submitted and delayed cases
+- Include all relevant member information
+- Use ISO8601 format for timestamps`;
 }

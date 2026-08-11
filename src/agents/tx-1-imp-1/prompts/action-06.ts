@@ -10,7 +10,7 @@ export interface Action06Context {
   submissionDeadline: string;
   previousReportTemplate?: string;
   systemApiEndpoint: string;
-  adminEmailList: string[];
+  adminEmail: string;
 }
 
 export interface Action06PromptResult {
@@ -26,40 +26,48 @@ export function buildAction06Prompt(context: Action06Context): Action06PromptRes
 
 Your role is to:
 1. Generate and send confirmation emails to administrators after daily reports are successfully registered
-2. Ensure all administrators receive consistent, formatted confirmation notifications
-3. Track confirmation email delivery status
-4. Support the automated daily report workflow by completing the confirmation notification step
+2. Ensure all report submissions are acknowledged and tracked
+3. Maintain a record of confirmation email delivery status
+4. Handle any delivery failures or system errors gracefully
 
-You must:
-- Generate professional confirmation emails with report summary information
-- Include engineer name, submission date/time, and report content overview
-- Provide clear action items for administrators (review, approve, or escalate if needed)
-- Maintain a log of all confirmation emails sent
-- Handle multiple administrator recipients appropriately
-- Ensure emails are sent from the system account with proper authentication
-- Include system-generated tracking IDs for audit purposes`;
+You must follow these guidelines:
+- Send confirmation emails only after successful report registration in the management system
+- Include all relevant report details in the confirmation email
+- Track delivery status and log any failures
+- Ensure emails are not marked as spam by using proper formatting and sender configuration
+- Maintain audit trails of all confirmation emails sent`;
 
-  const userPrompt = `Please generate and prepare confirmation emails for the following daily report submission:
+  const userPrompt = `Process the daily report confirmation email distribution for the following context:
 
-Engineer: ${context.engineerName}
-Email: ${context.engineerEmail}
+Engineer Name: ${context.engineerName}
+Engineer Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
 Submission Deadline: ${context.submissionDeadline}
 System API Endpoint: ${context.systemApiEndpoint}
-Administrator Recipients: ${context.adminEmailList.join(", ")}
+Administrator Email: ${context.adminEmail}
 
-${context.previousReportTemplate ? `Previous Report Template Reference:\n${context.previousReportTemplate}\n` : ""}
+Tasks to complete:
+1. Verify that the daily report has been successfully registered in the management system
+2. Generate a professional confirmation email with:
+   - Report submission acknowledgment
+   - Report date and submission timestamp
+   - Summary of submitted information (yesterday's results, today's plans, issues)
+   - Next steps and any required follow-up actions
+3. Send the confirmation email to the administrator at ${context.adminEmail}
+4. Log the confirmation email delivery status
+5. If delivery fails, record the error and prepare for retry or escalation
 
-Tasks:
-1. Compose a professional confirmation email template for administrators
-2. Include all relevant report metadata and submission details
-3. Provide a summary of the report content structure
-4. Add clear next steps for administrator review
-5. Generate a unique tracking ID for this confirmation batch
-6. Prepare the email for distribution to all administrators
-7. Log the confirmation email generation with timestamp and recipient list
+Confirmation Email Requirements:
+- Subject: "[Daily Report Confirmation] ${context.engineerName} - ${context.reportDate}"
+- Include engineer name, email, and submission time
+- Provide clear acknowledgment of successful registration
+- Format should be professional and easy to read
+- Include any relevant system reference numbers or tracking IDs
 
-Return the confirmation email content, tracking ID, and distribution status.`;
+Error Handling:
+- If the report is not found in the system, escalate to human review
+- If email delivery fails, log the failure with timestamp and error details
+- If there are validation errors in the registered report, flag for administrator review`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

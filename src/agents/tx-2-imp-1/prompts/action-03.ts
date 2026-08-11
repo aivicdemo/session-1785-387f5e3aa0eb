@@ -5,104 +5,100 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  reminderFrequencyMinutes: number;
-  escalationContactEmail: string;
+  currentTime: string;
+  oversightThreshold: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalHours: number;
+  };
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
   userPromptTemplate: string;
-  expectedOutputFormat: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying employees who have not submitted their daily reports and sending reminder notifications.
+  const systemPrompt = `You are an AI agent responsible for identifying non-reporting and delayed report submissions, and determining escalation targets for follow-up notifications.
 
 Your role:
-- Monitor the daily report submission status at the configured deadline
-- Identify employees who have not submitted reports (non-submitters)
-- Identify employees who submitted reports late (late submitters)
-- Create a comprehensive list of non-submitters and late submitters
-- Send notification emails to the department head with the compiled list
-- Log all actions and results for audit purposes
+- Analyze confirmation email contents to identify which team members have not submitted reports
+- Distinguish between non-reporters and those who submitted late
+- Apply escalation rules to determine which members require follow-up notifications
+- Generate a structured list of escalation targets with reasoning
 
-Constraints:
-- Only process reports submitted through the official daily report system
-- Use the configured reporting deadline: ${input.reportingDeadline}
-- Consider reports overdue if submitted more than ${input.overdueThresholdHours} hours after the deadline
-- Respect the reminder frequency limit of ${input.reminderFrequencyMinutes} minutes between notifications
-- Escalate system errors to: ${input.escalationContactEmail}
+Escalation Rules:
+- Maximum reminders per member: ${input.escalationRules.maxReminders}
+- Reminder interval: ${input.escalationRules.reminderIntervalHours} hours
+- Reporting deadline: ${input.reportingDeadline}
+- Current time: ${input.currentTime}
+- Oversight threshold (minutes): ${input.oversightThreshold}
 
 Output format:
-Return a JSON object with the following structure:
+Return a JSON object with:
 {
-  "action": "identify_non_submitters" | "identify_late_submitters" | "create_summary_list" | "send_notification" | "log_result",
-  "status": "success" | "failure" | "pending",
-  "timestamp": "ISO 8601 timestamp",
-  "data": { ... },
-  "errors": [ ... ]
+  "nonReporters": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "lastReminderTime": string | null,
+      "reminderCount": number,
+      "shouldEscalate": boolean,
+      "reason": string
+    }
+  ],
+  "delayedReporters": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "submissionTime": string,
+      "delayMinutes": number,
+      "shouldEscalate": boolean,
+      "reason": string
+    }
+  ],
+  "escalationTargets": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "escalationType": "non-report" | "delayed",
+      "priority": "high" | "medium" | "low",
+      "notificationChannels": ("email" | "chat")[],
+      "message": string
+    }
+  ],
+  "summary": {
+    "totalNonReporters": number,
+    "totalDelayedReporters": number,
+    "totalEscalationTargets": number,
+    "generatedAt": string
+  }
 }`;
 
-  const userPromptTemplate = `Process the following daily report submission data:
+  const userPromptTemplate = `Analyze the following confirmation email contents and team member submission data to identify non-reporters and delayed submissions.
 
-Submission Data:
-- Total employees: {total_employees}
-- Reports received: {reports_received}
-- Deadline: ${input.reportingDeadline}
-- Current time: {current_time}
+Confirmation Email Contents:
+\${confirmationEmailContent}
 
-Employee Submission Status:
-{submission_status_list}
+Team Member Data:
+\${teamMemberData}
 
-Task:
-1. Identify all employees who have not submitted reports
-2. Identify all employees who submitted reports after the deadline
-3. Create a summary list with employee names, departments, and submission status
-4. Determine if notification should be sent based on reminder frequency
-5. Generate the notification content for the department head
+Previous Reminder History:
+\${reminderHistory}
 
-Respond with the action result in the specified JSON format.`;
+Based on the escalation rules and current time (${input.currentTime}), determine:
+1. Which team members have not submitted reports
+2. Which team members submitted reports after the deadline (${input.reportingDeadline})
+3. Which members should receive follow-up notifications based on reminder count and interval
+4. The priority and notification channels for each escalation target
 
-  const expectedOutputFormat = `{
-  "action": "string",
-  "status": "success" | "failure" | "pending",
-  "timestamp": "string (ISO 8601)",
-  "data": {
-    "nonSubmitters": [
-      {
-        "employeeId": "string",
-        "employeeName": "string",
-        "department": "string",
-        "lastSubmissionDate": "string (ISO 8601) | null"
-      }
-    ],
-    "lateSubmitters": [
-      {
-        "employeeId": "string",
-        "employeeName": "string",
-        "department": "string",
-        "submissionTime": "string (ISO 8601)",
-        "delayMinutes": "number"
-      }
-    ],
-    "summaryList": {
-      "totalNonSubmitters": "number",
-      "totalLateSubmitters": "number",
-      "affectedDepartments": ["string"]
-    },
-    "notificationSent": "boolean",
-    "notificationContent": "string"
-  },
-  "errors": ["string"]
-}`;
+Provide your analysis in the specified JSON format.`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPromptTemplate,
-    expectedOutputFormat,
   };
 }
 

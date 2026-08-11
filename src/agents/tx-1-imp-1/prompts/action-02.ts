@@ -4,85 +4,100 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02Context {
-  engineerInput: {
+  engineerInputData: {
     yesterdayAccomplishments: string;
     todayPlans: string;
     currentIssues: string;
     engineerId: string;
     engineerName: string;
     submissionTimestamp: string;
+  };
+  validationRules: {
+    minAccomplishmentsLength: number;
+    minPlansLength: number;
+    minIssuesLength: number;
+    allowedIssueCategories: string[];
   };
 }
 
-export interface Action02ValidationResult {
+export interface ValidationResult {
   isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  validatedInput: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
-  };
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  severity: "critical" | "high";
+}
+
+export interface ValidationWarning {
+  field: string;
+  message: string;
 }
 
 export function buildAction02Prompt(context: Action02Context): string {
   const {
-    engineerInput: {
-      yesterdayAccomplishments,
-      todayPlans,
-      currentIssues,
-      engineerId,
-      engineerName,
-      submissionTimestamp,
-    },
+    engineerInputData,
+    validationRules,
   } = context;
 
-  const prompt = `You are validating a daily report submission for the morning meeting report management system.
+  const prompt = `You are an AI agent responsible for validating daily report input content.
 
-Engineer Information:
-- ID: ${engineerId}
-- Name: ${engineerName}
-- Submission Time: ${submissionTimestamp}
+## Input Data to Validate
+- Engineer ID: ${engineerInputData.engineerId}
+- Engineer Name: ${engineerInputData.engineerName}
+- Submission Timestamp: ${engineerInputData.submissionTimestamp}
 
-Daily Report Content:
-1. Yesterday's Accomplishments:
-${yesterdayAccomplishments}
+### Yesterday's Accomplishments
+${engineerInputData.yesterdayAccomplishments}
 
-2. Today's Plans:
-${todayPlans}
+### Today's Plans
+${engineerInputData.todayPlans}
 
-3. Current Issues/Challenges:
-${currentIssues}
+### Current Issues
+${engineerInputData.currentIssues}
 
-Validation Requirements:
-1. Check that all three sections (yesterday's accomplishments, today's plans, current issues) are filled in
-2. Verify that each section contains meaningful content (not empty or just whitespace)
-3. Ensure yesterday's accomplishments describe concrete work completed
-4. Ensure today's plans are specific and actionable
-5. Ensure current issues are clearly articulated
-6. Check for any concerning patterns or red flags in the content
-7. Validate that the submission is within acceptable length (not too brief, not excessively long)
+## Validation Rules
+- Minimum accomplishments length: ${validationRules.minAccomplishmentsLength} characters
+- Minimum plans length: ${validationRules.minPlansLength} characters
+- Minimum issues length: ${validationRules.minIssuesLength} characters
+- Allowed issue categories: ${validationRules.allowedIssueCategories.join(", ")}
 
-Provide validation results in the following JSON format:
+## Validation Tasks
+1. Check if all required fields are filled with sufficient content
+2. Verify that the content is appropriate and coherent
+3. Identify any missing or incomplete information
+4. Detect any anomalies or unusual patterns in the input
+5. Validate that issue descriptions fall within allowed categories
+
+## Output Format
+Provide validation results in the following JSON structure:
 {
   "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "validatedInput": {
-    "yesterdayAccomplishments": string,
-    "todayPlans": string,
-    "currentIssues": string,
-    "engineerId": string,
-    "engineerName": string,
-    "submissionTimestamp": string
-  }
+  "errors": [
+    {
+      "field": string,
+      "message": string,
+      "severity": "critical" | "high"
+    }
+  ],
+  "warnings": [
+    {
+      "field": string,
+      "message": string
+    }
+  ],
+  "summary": string
 }
 
-Errors should be blocking issues that prevent registration.
-Warnings should be non-blocking concerns that should be noted.`;
+## Validation Criteria
+- Critical errors: Missing required fields or content below minimum length
+- High errors: Content that appears incomplete or inappropriate
+- Warnings: Suggestions for improvement or minor issues
+
+Perform thorough validation and return the results.`;
 
   return prompt;
 }

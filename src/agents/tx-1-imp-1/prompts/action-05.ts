@@ -7,93 +7,67 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  registrationStatus: "pending" | "registered" | "failed";
-  registrationTimestamp?: string;
-  validationErrors?: string[];
-}
-
-export interface Action05PromptInput {
-  context: Action05Context;
-  reportContent: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
-  managementSystemConfig: {
-    apiEndpoint: string;
-    retryAttempts: number;
-    timeoutMs: number;
-  };
+  submissionDeadline: string;
+  managementSystemUrl: string;
+  adminEmails: string[];
 }
 
-export interface Action05PromptOutput {
+export interface Action05PromptResult {
   version: string;
-  action: "register_report";
-  engineerId: string;
-  reportDate: string;
-  systemRegistrationPayload: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    issues: string;
-    submittedAt: string;
-  };
-  confirmationEmailConfig: {
-    recipientRole: "manager";
-    emailTemplate: "report_registered_confirmation";
-    includeReportSummary: boolean;
-    priority: "normal";
-  };
-  nextAction: "send_confirmation_email";
-  escalationTriggers: {
-    shouldEscalate: boolean;
-    reason?: string;
-    escalationLevel?: "manager" | "system_admin";
-  };
+  action: number;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action05Context;
 }
 
-export function buildAction05Prompt(
-  input: Action05PromptInput
-): Action05PromptOutput {
-  const submittedAt = new Date().toISOString();
+export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
+  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system and sending confirmation emails to administrators.
 
-  const systemRegistrationPayload = {
-    engineerId: input.context.engineerId,
-    engineerName: input.context.engineerName,
-    reportDate: input.context.reportDate,
-    yesterdayAccomplishments: input.reportContent.yesterdayAccomplishments,
-    todayPlans: input.reportContent.todayPlans,
-    issues: input.reportContent.issues,
-    submittedAt,
-  };
+Your task is to:
+1. Register the engineer's daily report into the management system using the provided API
+2. Validate that the registration was successful
+3. Send confirmation emails to all administrators with the report summary
+4. Log the submission and email delivery status
 
-  const hasValidationErrors =
-    input.context.validationErrors &&
-    input.context.validationErrors.length > 0;
+You must ensure:
+- The report is accurately registered with all required fields
+- Confirmation emails are sent to all specified administrators
+- The submission timestamp is recorded correctly
+- Any errors during registration or email sending are properly handled and reported`;
 
-  const escalationTriggers = {
-    shouldEscalate: hasValidationErrors,
-    reason: hasValidationErrors
-      ? `Validation errors detected: ${input.context.validationErrors?.join(", ")}`
-      : undefined,
-    escalationLevel: hasValidationErrors ? ("manager" as const) : undefined,
-  };
+  const userPrompt = `Please register the following daily report and send confirmation emails:
+
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+
+Report Content:
+- Yesterday's Achievements: ${context.previousReportContent.yesterday}
+- Today's Plan: ${context.previousReportContent.today}
+- Current Issues: ${context.previousReportContent.issues}
+
+System Details:
+- Management System URL: ${context.managementSystemUrl}
+- Submission Deadline: ${context.submissionDeadline}
+- Administrator Emails: ${context.adminEmails.join(", ")}
+
+Please:
+1. Register this report in the management system
+2. Send confirmation emails to all administrators
+3. Confirm successful completion with timestamps
+4. Report any errors encountered`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,
-    action: "register_report",
-    engineerId: input.context.engineerId,
-    reportDate: input.context.reportDate,
-    systemRegistrationPayload,
-    confirmationEmailConfig: {
-      recipientRole: "manager",
-      emailTemplate: "report_registered_confirmation",
-      includeReportSummary: true,
-      priority: "normal",
-    },
-    nextAction: "send_confirmation_email",
-    escalationTriggers,
+    action: 5,
+    systemPrompt,
+    userPrompt,
+    context,
   };
 }

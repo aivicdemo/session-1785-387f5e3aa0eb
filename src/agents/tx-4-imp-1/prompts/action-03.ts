@@ -3,7 +3,7 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03PromptInput {
+interface Action03Context {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -22,89 +22,115 @@ interface Action03PromptInput {
   };
 }
 
-interface Action03PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: {
-    taskDescription: string;
-    objectives: string[];
-    constraints: string[];
+interface Action03Result {
+  classifiedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    affectedMembers: string[];
+    estimatedImpact: string;
+    recommendedAction: string;
+  }>;
+  priorityGroups: {
+    critical: Array<{
+      id: string;
+      title: string;
+      priority: string;
+    }>;
+    high: Array<{
+      id: string;
+      title: string;
+      priority: string;
+    }>;
+    medium: Array<{
+      id: string;
+      title: string;
+      priority: string;
+    }>;
+    low: Array<{
+      id: string;
+      title: string;
+      priority: string;
+    }>;
+  };
+  summaryAnalysis: {
+    totalIssuesIdentified: number;
+    criticalIssueCount: number;
+    affectedTeamCount: number;
+    recommendedFocusAreas: string[];
   };
 }
 
-function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for extracting and prioritizing issues from daily reports in the morning meeting preparation system.
-
-Your role is to:
-1. Analyze the provided report content and extracted issues
-2. Apply the priority framework to classify and rank issues
-3. Identify bottlenecks and dependencies between issues
-4. Provide structured output for management review
-
-You must follow the priority framework strictly and provide clear reasoning for each prioritization decision.`;
-
-  const issuesContext = input.extractedIssues
+function buildAction03Prompt(context: Action03Context): string {
+  const issuesSection = context.extractedIssues
     .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
+      (issue, index) =>
+        `${index + 1}. [${issue.category}] ${issue.title}\n   詳細: ${issue.description}`
     )
     .join("\n");
 
-  const teamContext = input.teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
+  const criteriaSection = context.priorityFramework.criteria
+    .map((criterion, index) => `${index + 1}. ${criterion}`)
     .join("\n");
 
-  const priorityLevels = input.priorityFramework.levels.join(", ");
-  const priorityCriteria = input.priorityFramework.criteria
-    .map((criterion) => `- ${criterion}`)
-    .join("\n");
+  const levelsSection = context.priorityFramework.levels.join(" > ");
 
-  const userPrompt = `Analyze the following daily report content and extracted issues, then prioritize them using the provided framework.
+  const prompt = `あなたは日報から抽出された課題の優先度判定と分類を行うAIエージェントです。
 
-Report Content:
-${input.reportContent}
+【タスク】
+以下の抽出済み課題に対して、優先度を判定し、分類してください。
 
-Extracted Issues:
-${issuesContext}
+【抽出済み課題一覧】
+${issuesSection}
 
-Team Members:
-${teamContext}
+【優先度判定基準】
+${criteriaSection}
 
-Priority Framework:
-Levels: ${priorityLevels}
+【優先度レベル】
+${levelsSection}
 
-Prioritization Criteria:
-${priorityCriteria}
+【チームメンバー情報】
+${context.teamMembers.map((member) => `- ${member.name} (${member.department})`).join("\n")}
 
-Please provide:
-1. A prioritized list of issues with assigned priority levels
-2. Reasoning for each prioritization decision
-3. Identified dependencies or bottlenecks between issues
-4. Recommended actions for high-priority issues
-5. Any escalation recommendations`;
+【実行内容】
+1. 各課題について、提供された基準に基づいて優先度を判定してください
+2. 課題を優先度レベル別に分類してください
+3. 各課題の影響範囲と推奨アクションを記述してください
+4. 全体的な課題分析サマリーを作成してください
 
-  return {
-    version: ACTION_03_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    context: {
-      taskDescription:
-        "Prioritize and classify extracted issues from daily reports",
-      objectives: [
-        "Apply priority framework to all extracted issues",
-        "Identify critical bottlenecks",
-        "Provide actionable recommendations",
-        "Flag escalation-worthy items",
-      ],
-      constraints: [
-        "Must use only the provided priority framework",
-        "Must provide clear reasoning for each decision",
-        "Must identify all dependencies between issues",
-        "Must complete analysis within time constraints",
-      ],
-    },
-  };
+【出力形式】
+JSON形式で以下の構造で返してください：
+{
+  "classifiedIssues": [
+    {
+      "id": "issue_id",
+      "title": "課題タイトル",
+      "description": "課題説明",
+      "category": "カテゴリ",
+      "priority": "優先度レベル",
+      "affectedMembers": ["member_id1", "member_id2"],
+      "estimatedImpact": "影響度の説明",
+      "recommendedAction": "推奨アクション"
+    }
+  ],
+  "priorityGroups": {
+    "critical": [...],
+    "high": [...],
+    "medium": [...],
+    "low": [...]
+  },
+  "summaryAnalysis": {
+    "totalIssuesIdentified": number,
+    "criticalIssueCount": number,
+    "affectedTeamCount": number,
+    "recommendedFocusAreas": ["focus_area1", "focus_area2"]
+  }
+}`;
+
+  return prompt;
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03Context, Action03Result };

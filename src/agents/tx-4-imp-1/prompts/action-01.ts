@@ -8,72 +8,62 @@ export interface Action01PromptInput {
   engineerName: string;
   engineerId: string;
   previousReportContent?: string;
-  systemContext?: Record<string, unknown>;
+  systemContext?: string;
 }
 
 export interface Action01PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    timestamp: string;
-    engineerId: string;
-    reportDate: string;
-  };
+  templateContent: string;
+  distributionChannels: string[];
+  scheduledTime: string;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): Action01PromptOutput {
+export function buildAction01Prompt(input: Action01PromptInput): string {
   const {
     reportDate,
     engineerName,
     engineerId,
     previousReportContent = "",
-    systemContext = {},
+    systemContext = "",
   } = input;
 
-  const basePrompt = `あなたは朝会報告管理システムのAIエージェントです。
+  const previousContentSection =
+    previousReportContent.length > 0
+      ? `
+前日の日報内容:
+${previousReportContent}
+
+前日の内容を参考にしながら、本日の日報を作成してください。`
+      : "";
+
+  const systemContextSection =
+    systemContext.length > 0
+      ? `
+システムコンテキスト:
+${systemContext}`
+      : "";
+
+  return `あなたは朝会報告管理システムのAIエージェントです。
 
 【タスク】
-確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してメール・チャットの送信まで完結させます。
+エンジニア「${engineerName}」(ID: ${engineerId})に対して、${reportDate}の日報テンプレートを自動生成して配信してください。
 
-【対象エンジニア情報】
-- 名前: ${engineerName}
-- ID: ${engineerId}
-- 報告日: ${reportDate}
+【日報テンプレートの構成】
+1. 昨日の実績（具体的な成果、完了したタスク）
+2. 本日の予定（予定されているタスク、目標）
+3. 抱えている課題（現在の問題、ボトルネック、懸念事項）
 
-【前回の報告内容】
-${previousReportContent || "（初回報告）"}
-
-【システムコンテキスト】
-${Object.entries(systemContext)
-  .map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`)
-  .join("\n") || "（追加コンテキストなし）"}
-
-【実行ステップ】
-1. 確認メール内容から報告漏れ・遅延部員を特定する
-2. 催促対象部員を判定する
-3. 催促メール・チャットを自動送信する
-4. 送信結果をログに記録する
+【要件】
+- テンプレートは明確で、エンジニアが簡潔に入力できる形式にする
+- 前日の日報がある場合は参考情報として提供する
+- 配信チャネルはメール、チャット、システム内通知から適切に選択する
+- 配信時刻は朝会開始の1時間前を目安とする
+- テンプレートは日本語で、敬語を使わず親切な指示文にする${previousContentSection}${systemContextSection}
 
 【出力形式】
-以下の構造でJSON形式で応答してください：
+以下のJSON形式で出力してください:
 {
-  "action": "identify_missing_reports",
-  "engineerId": "${engineerId}",
-  "reportDate": "${reportDate}",
-  "status": "pending|identified|escalated",
-  "missingReports": [],
-  "delayedReports": [],
-  "escalationRequired": false,
-  "reason": ""
+  "templateContent": "生成されたテンプレートの完全なテキスト",
+  "distributionChannels": ["email", "chat", "system_notification"],
+  "scheduledTime": "HH:MM形式の配信予定時刻"
 }`;
-
-  return {
-    prompt: basePrompt,
-    version: ACTION_01_PROMPT_VERSION,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      engineerId,
-      reportDate,
-    },
-  };
 }

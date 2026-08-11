@@ -5,66 +5,100 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
+  overdueThresholdMinutes: number;
   escalationRules: {
     maxReminders: number;
     reminderIntervalMinutes: number;
   };
+  targetMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+  }>;
+  submissionStatus: Array<{
+    memberId: string;
+    submitted: boolean;
+    submittedAt?: string;
+    isOverdue: boolean;
+  }>;
 }
 
 export interface Action04PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: string;
-    purpose: string;
-    timestamp: string;
+  escalationCandidates: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+    reason: string;
+    priority: "high" | "medium" | "low";
+    reminderCount: number;
+    shouldEscalate: boolean;
+  }>;
+  escalationSummary: {
+    totalCandidates: number;
+    highPriority: number;
+    mediumPriority: number;
+    lowPriority: number;
+    recommendedActions: string[];
   };
 }
 
-export function buildAction04Prompt(
-  input: Action04PromptInput
-): Action04PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdHours,
-    escalationRules,
-  } = input;
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const submissionSummary = input.submissionStatus
+    .map((status) => {
+      const member = input.targetMembers.find(
+        (m) => m.memberId === status.memberId
+      );
+      return `${member?.memberName || status.memberId}: ${status.submitted ? "提出済み" : "未提出"} ${status.isOverdue ? "(期限超過)" : ""}`;
+    })
+    .join("\n");
 
-  const prompt = `You are an AI agent responsible for sending reminder notifications to team members who have not submitted their daily reports.
+  const overdueMembers = input.submissionStatus
+    .filter((s) => !s.submitted && s.isOverdue)
+    .map((s) => {
+      const member = input.targetMembers.find(
+        (m) => m.memberId === s.memberId
+      );
+      return member?.memberName || s.memberId;
+    })
+    .join(", ");
 
-## Context
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdHours} hours
-- Maximum Reminders per Member: ${escalationRules.maxReminders}
-- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
+  const prompt = `# Action 04: エスカレーション対象の判定と通知準備
 
-## Task
-Based on the confirmation email content and current submission status:
-1. Identify team members who have not submitted their reports
-2. Determine which members require reminder notifications
-3. Generate appropriate reminder messages for each member
-4. Log all reminder notifications sent
+## 入力情報
+- 報告期限: ${input.reportingDeadline}
+- 期限超過判定閾値: ${input.overdueThresholdMinutes}分
+- 最大催促回数: ${input.escalationRules.maxReminders}
+- 催促間隔: ${input.escalationRules.reminderIntervalMinutes}分
 
-## Escalation Rules
-- Do not send more than ${escalationRules.maxReminders} reminders to the same member
-- Wait at least ${escalationRules.reminderIntervalMinutes} minutes between reminders
-- If a member has not submitted after maximum reminders, escalate to department head
+## 提出状況
+\`\`\`
+${submissionSummary}
+\`\`\`
 
-## Output Format
-Provide a JSON object with:
-- membersToRemind: array of member IDs requiring reminders
-- reminderMessages: map of member ID to personalized reminder message
-- escalationCandidates: array of members requiring escalation
-- timestamp: ISO 8601 timestamp of processing`;
+## 期限超過者
+${overdueMembers || "なし"}
 
-  return {
-    prompt,
-    version: ACTION_04_PROMPT_VERSION,
-    metadata: {
-      action: "action-04",
-      purpose: "Send reminder notifications to non-submitting team members",
-      timestamp: new Date().toISOString(),
-    },
-  };
+## タスク
+以下の条件に基づいてエスカレーション対象を判定してください:
+
+1. **未提出かつ期限超過**: 高優先度でエスカレーション対象
+2. **催促回数が上限に達した**: 中優先度でエスカレーション対象
+3. **複数回の期限超過**: 低優先度で監視対象
+
+## 出力形式
+JSON形式で以下を含めてください:
+- escalationCandidates: エスカレーション対象者の配列
+  - memberId, memberName, email, department
+  - reason: エスカレーション理由
+  - priority: 優先度 (high/medium/low)
+  - reminderCount: これまでの催促回数
+  - shouldEscalate: 即座にエスカレーションすべきか
+- escalationSummary: 集計情報
+  - totalCandidates: 対象者総数
+  - 優先度別の内訳
+  - recommendedActions: 推奨アクション`;
+
+  return prompt;
 }

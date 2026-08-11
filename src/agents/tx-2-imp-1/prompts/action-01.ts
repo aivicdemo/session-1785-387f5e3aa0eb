@@ -21,80 +21,86 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionPlan: {
     recipients: string[];
-    sendTime: string;
-    channels: string[];
+    deliveryMethod: string;
+    scheduledTime: string;
   };
   validationRules: Array<{
     field: string;
-    required: boolean;
-    constraints: string[];
+    rule: string;
+    errorMessage: string;
   }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const deadline = new Date(input.reportingDeadline).toLocaleString("ja-JP");
-  const targetDateFormatted = new Date(input.targetDate).toLocaleDateString(
-    "ja-JP",
-    {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }
-  );
+  const {
+    reportingDeadline,
+    targetDate,
+    engineerList,
+    systemContext,
+  } = input;
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  const engineerNames = engineerList.map((e) => e.name).join(", ");
+  const recipientEmails = engineerList.map((e) => e.email).join("; ");
 
-## 実行目的
-前日の日報テンプレートを自動生成してエンジニアに配信し、本日の日報入力を促進する。
+  const prompt = `# 日報テンプレート自動生成・配信タスク
 
-## 対象者
-${engineerNames}
+## タスク概要
+前日の日報テンプレートを自動生成し、全エンジニアに配信してください。
 
-## 実行日時
-対象日: ${targetDateFormatted}
-提出期限: ${deadline}
+## 実行パラメータ
+- 対象日付: ${targetDate}
+- 報告期限: ${reportingDeadline}
+- 対象エンジニア: ${engineerNames}
+- 配信先メール: ${recipientEmails}
 
-## 実行内容
+## 日報テンプレート生成要件
+1. 前日の実績入力セクション
+   - 実装した機能
+   - 修正したバグ
+   - 完了したタスク
+   - 実績の詳細説明
 
-### 1. 日報テンプレート生成
-以下の項目を含む日報テンプレートを生成してください:
-- 昨日の実績（具体的な成果、完了したタスク）
-- 本日の予定（予定されたタスク、目標）
-- 抱えている課題（進捗阻害要因、リスク、相談事項）
-- 備考（その他の報告事項）
+2. 本日の予定入力セクション
+   - 予定している実装内容
+   - 予定しているレビュー
+   - 予定しているテスト
+   - 本日の優先順位
 
-### 2. テンプレート配信計画
-配信先: ${input.engineerList.map((e) => e.email).join(", ")}
-配信チャネル: ${input.systemContext.notificationChannels.join("、")}
-配信タイミング: 朝会開始の1時間前
+3. 抱えている課題入力セクション
+   - 現在の課題
+   - 課題の詳細
+   - 必要なサポート
+   - 課題の優先度
 
-### 3. 入力内容の妥当性検証ルール
-- 昨日の実績: 必須、100文字以上
-- 本日の予定: 必須、100文字以上
-- 抱えている課題: 任意、記入時は50文字以上
-- 各項目は日本語で記入すること
+## 配信計画
+- 配信先: ${systemContext.notificationChannels.join(", ")}
+- 配信URL: ${systemContext.reportManagementSystemUrl}
+- 配信方法: メール + システム内通知
+- 期限: ${reportingDeadline}
 
-### 4. 配信後の監視
-- テンプレート配信完了をログに記録
-- 配信失敗時は管理者に通知
-- 配信から提出期限までの時間を監視
+## 妥当性検証ルール
+- すべてのセクションが入力可能な形式であること
+- 入力フィールドが明確に区別されていること
+- 文字数制限が適切に設定されていること
+- 必須項目と任意項目が明確に区別されていること
 
 ## 出力形式
-JSON形式で以下を返却してください:
+生成したテンプレートと配信計画を以下の構造で返してください:
 {
-  "templateContent": "生成されたテンプレートの内容",
+  "templateContent": "生成されたテンプレートのHTML/テキスト",
   "distributionPlan": {
-    "recipients": ["メールアドレス一覧"],
-    "sendTime": "ISO 8601形式の送信予定時刻",
-    "channels": ["配信チャネル一覧"]
+    "recipients": ["email1@example.com", "email2@example.com"],
+    "deliveryMethod": "email_and_system_notification",
+    "scheduledTime": "ISO8601形式の配信予定時刻"
   },
   "validationRules": [
     {
       "field": "フィールド名",
-      "required": true/false,
-      "constraints": ["制約条件"]
+      "rule": "検証ルール",
+      "errorMessage": "エラーメッセージ"
     }
   ]
 }`;
+
+  return prompt;
 }
