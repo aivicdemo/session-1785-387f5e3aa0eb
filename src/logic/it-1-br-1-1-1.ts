@@ -4369,7 +4369,7 @@ const __aivicBundle_59_aggregateDailyReportsForConfirmationEmail = (() => {
     confirmationEmailMessageId: string;
   }
   
-   async function aggregateDailyReportsForConfirmationEmail(
+  async function aggregateDailyReportsForConfirmationEmail(
     params: AggregateDailyReportsForConfirmationEmailParams
   ): Promise<AggregateDailyReportsForConfirmationEmailResult> {
     const {
