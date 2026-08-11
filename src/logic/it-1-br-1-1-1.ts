@@ -2136,7 +2136,7 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
         return true;
       }
 
-      return true;
+      return false;
     });
 
     const missingReportCount = missingReportEmployees.length;
@@ -10659,7 +10659,7 @@ export const validateAndApproveReport: (...args: any[]) => any = (...args: any[]
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsForReports exports=sendConfirmationEmailsForReports */
 const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
   function sendConfirmationEmailsForReports(
-    input: SendConfirmationEmailsInput
+    input: any
   ): {
     success: boolean;
     email_sent_count: number;

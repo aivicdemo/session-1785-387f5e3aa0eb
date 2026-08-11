@@ -2228,6 +2228,14 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
 const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
+  function isValidDateFormat(dateStr: string): boolean {
+    if (!dateStr) return false;
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateStr)) return false;
+    const date = new Date(dateStr);
+    return !isNaN(date.getTime());
+  }
+
   function validateDailyReportSubmission(
     formData: any
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
@@ -2239,20 +2247,23 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
     const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
-    if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+    if (!reportDate || !isValidDateFormat(reportDate)) {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
-    
-    if (!department || department.trim() === '') {
+
+    if (!department || (typeof department === 'string' && department.trim() === '')) {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
-    if (!yesterday || yesterday.trim() === '') {
+
+    if (!yesterday || (typeof yesterday === 'string' && yesterday.trim() === '')) {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
-    if (!today || today.trim() === '') {
+
+    if (!today || (typeof today === 'string' && today.trim() === '')) {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
-    if (!challenge || challenge.trim() === '') {
+
+    if (!challenge || (typeof challenge === 'string' && challenge.trim() === '')) {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
 
@@ -2267,6 +2278,7 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
       message: isValid ? '送信完了しました' : undefined
     };
   }
+
   return { validateDailyReportSubmission };
 })();
 export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_fixed.validateDailyReportSubmission;
@@ -5360,7 +5372,7 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       // Use snake_case if available (from test), otherwise camelCase (from plan)
       const id = ("member_id" in report ? report.member_id : undefined) ?? (report as any).employeeId;
       if (id) {
-        submittedIds.add(id);
+        submittedIds.add(id as string);
       }
     }
   
@@ -5371,10 +5383,10 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       const memberId = ("member_id" in member ? member.member_id : undefined) ?? (member as any).employeeId;
       const memberName = ("member_name" in member ? member.member_name : undefined) ?? (member as any).employeeName;
   
-      if (memberId && memberName && !submittedIds.has(memberId)) {
+      if (memberId && memberName && !submittedIds.has(memberId as string)) {
         unreported.push({
-          employeeId: memberId,
-          employeeName: memberName,
+          employeeId: memberId as string,
+          employeeName: memberName as string,
         });
       }
     }
