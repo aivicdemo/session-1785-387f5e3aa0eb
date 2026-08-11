@@ -2271,9 +2271,9 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
       const submissionSet = submissionStore.get(submissionKey)!;
       if (submissionSet.size > 0) {
         return {
-          isValid: true,
-          errors: [],
-          validationStatus: '妥当性確認: 完了',
+          isValid: false,
+          errors: [{ field: 'submission', message: '既に送信済みです' }],
+          validationStatus: '妥当性確認: 失敗',
           is_allowed: false,
           message: '既に送信済みです',
           shouldSendConfirmationEmail: false
@@ -2692,7 +2692,11 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
 
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8)}`;
-    const mailSendLogId = `LOG-${reportDate}-${randomUUID().substring(0, 8)}`;
+    
+    // メール送信ログ ID を YYYYMMDD-XXX 形式で生成
+    const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
+    const logSuffix = randomUUID().substring(0, 3).toUpperCase();
+    const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
 
     const userEmail = reportData.user_email || reportData.userEmail || "";
     const managerEmail = reportData.manager_email || "";
@@ -6229,6 +6233,7 @@ const __aivicBundle_runTx2Imp1Agent_fixed = (() => {
 
       return {
         success: true,
+        status: 'success',
         allSubmitted: completionStatus.allSubmitted,
         submittedCount: completionStatus.submittedCount,
         notSubmittedMembers: completionStatus.notSubmittedMembers,
