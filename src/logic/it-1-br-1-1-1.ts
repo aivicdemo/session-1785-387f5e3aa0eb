@@ -735,24 +735,39 @@ export const checkSubmissionStatus = __aivicBundle_5_checkSubmissionStatus.check
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailToReporterAndManager exports=sendConfirmationEmailToReporterAndManager */
 const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
-  function sendConfirmationEmailToReporterAndManager(input: any): any {
+  async function sendConfirmationEmailToReporterAndManager(input: any): Promise<any> {
     // Handle null managerEmail - throw error
     if (input.managerEmail === null || input.managerEmail === undefined) {
       throw new Error('部長メールアドレスが未設定です');
     }
-
+  
     // Determine output shape based on input structure
     const hasReports = Array.isArray(input.reports);
     const hasEmployees = Array.isArray(input.employees);
     const hasReportContent = input.reportContent && typeof input.reportContent === 'object';
-
+  
     // Case 1: Single report with reporter and manager (reportContent provided)
     if (hasReportContent && input.reporterId && input.reporterEmail) {
-      return {
-        success: true,
-      };
+      const emailSender = input.emailSender || (async () => ({ success: true }));
+      
+      try {
+        // Send email to reporter
+        await emailSender(input.reporterEmail, 'Report Confirmation', 'Your report has been received');
+        
+        // Send email to manager
+        await emailSender(input.managerEmail, 'Report Received', `Report from ${input.reporterName} received`);
+        
+        return {
+          success: true,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error_message: error instanceof Error ? error.message : 'Email send failed',
+        };
+      }
     }
-
+  
     // Case 2: Multiple reports with employees and manager (unified format)
     if (hasReports && hasEmployees && input.managerEmail && input.managerId) {
       const maxDisplayable = input.maxDisplayableCount || input.reports.length;
@@ -764,11 +779,11 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         todayPlan: report.todayPlan || report.today_plan || '',
         currentIssue: report.currentIssue || report.current_issue || '',
       }));
-
+  
       const employeeEmailsSent = displayReports
         .map((report: any) => report.employeeId || report.employee_id)
         .filter(Boolean);
-
+  
       return {
         success: true,
         employeeEmailsSent,
@@ -777,7 +792,7 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         formattedReports,
       };
     }
-
+  
     // Case 3: Department-based input (snake_case fields)
     if (input.department_id && input.employees !== undefined) {
       return {
@@ -788,7 +803,7 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
         escalation_triggered: false,
       };
     }
-
+  
     // Default fallback
     return {
       success: true,
@@ -2121,7 +2136,7 @@ const __aivicBundle_28_detectMissingReportsAcrossYearBoundary = (() => {
         return true;
       }
 
-      return false;
+      return true;
     });
 
     const missingReportCount = missingReportEmployees.length;
@@ -5255,16 +5270,6 @@ export const assignPromptionPriority = __aivicBundle_72_assignPromptionPriority.
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=assignPriorityToRemindersWithDuplicates exports=assignPriorityToRemindersWithDuplicates */
 const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
-  interface RemindTargetMemberWithPriority {
-    priority: number;
-    employeeId?: string;
-    userId?: string;
-    employeeName?: string;
-    userName?: string;
-    status: 'not_submitted' | 'delayed';
-    reason: string;
-  }
-
   function assignPriorityToRemindersWithDuplicates(
     remindTargetMembers: Array<{
       userId: string;
@@ -5301,9 +5306,7 @@ const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
       .map((member, index) => ({
         priority: index + 1,
         employeeId: member.userId,
-        userId: member.userId,
         employeeName: member.userName,
-        userName: member.userName,
         status: member.reportStatus as 'not_submitted' | 'delayed',
         reason:
           member.reportStatus === 'not_submitted'
@@ -5320,16 +5323,6 @@ export const assignPriorityToRemindersWithDuplicates: (...args: any[]) => any = 
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=assignPrioritiesToReminders exports=assignPrioritiesToReminders */
 const __aivicBundle_74_assignPrioritiesToReminders = (() => {
-  interface RemindTargetMemberWithPriority {
-    priority: number;
-    employeeId?: string;
-    userId?: string;
-    employeeName?: string;
-    userName?: string;
-    status: 'not_submitted' | 'delayed';
-    reason: string;
-  }
-
   function assignPrioritiesToReminders(
     reportStatusList: Array<{
       employeeId?: string;
@@ -5356,7 +5349,6 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
           employeeId: member.employeeId || member.userId || '',
           userId: member.userId,
           employeeName: member.employeeName || member.name || '',
-          userName: member.name,
           status: 'not_submitted',
           reason: '報告未送信',
         });
@@ -5366,7 +5358,6 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
           employeeId: member.employeeId || member.userId || '',
           userId: member.userId,
           employeeName: member.employeeName || member.name || '',
-          userName: member.name,
           status: 'delayed',
           reason: `遅延: ${member.delayedMinutes ?? 0}分`,
         });
@@ -5477,17 +5468,6 @@ export const prioritizeProcurementTargets: (...args: any[]) => any = (...args: a
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=assignPrioritiesToUnreportedMembers exports=assignPrioritiesToUnreportedMembers */
 const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
-  interface RemindTargetMemberWithPriority {
-    priority: number;
-    employeeId?: string;
-    userId?: string;
-    employeeName?: string;
-    userName?: string;
-    status: 'not_submitted' | 'delayed';
-    reason: string;
-    user_id?: string;
-  }
-
   function assignPrioritiesToUnreportedMembers(
     reportStatusList: Array<{
       employeeId?: string;
@@ -5522,7 +5502,6 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
       result.push({
         priority: priorityCounter,
         employeeId: member.employeeId || member.user_id || '',
-        userId: member.user_id || member.employeeId || '',
         employeeName: member.employeeName || '',
         status: 'not_submitted',
         reason: '報告未提出',
@@ -5535,7 +5514,6 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
       result.push({
         priority: priorityCounter,
         employeeId: member.employeeId || member.user_id || '',
-        userId: member.user_id || member.employeeId || '',
         employeeName: member.employeeName || '',
         status: 'delayed',
         reason: '報告遅延',
@@ -6824,10 +6802,9 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
     let reportSubmissionTime: Date | null = input.submittedAt || null;
   
     if (input.submittedAt === null || input.submittedAt === undefined) {
-      const isCurrentlyWithinDeadline = now <= deadlineTime;
-      status = isCurrentlyWithinDeadline ? "within-deadline" : "not_submitted";
-      isWithinDeadline = isCurrentlyWithinDeadline;
-      minutesRemaining = isCurrentlyWithinDeadline ? Math.max(0, Math.floor((deadlineTime.getTime() - now.getTime()) / 60000)) : 0;
+      status = "not_submitted";
+      isWithinDeadline = now <= deadlineTime;
+      minutesRemaining = isWithinDeadline ? Math.max(0, Math.floor((deadlineTime.getTime() - now.getTime()) / 60000)) : 0;
       reportSubmissionTime = null;
     } else {
       const submittedTime = new Date(input.submittedAt);
@@ -6846,8 +6823,12 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
       reportSubmissionTime = submittedTime;
     }
   
+    // Determine if within deadline based on current time vs deadline
+    const isCurrentlyWithinDeadline = now <= deadlineTime;
+    const finalStatus = isCurrentlyWithinDeadline && status === "not_submitted" ? "within-deadline" : status;
+  
     const statusMessage =
-      status === "within-deadline"
+      finalStatus === "within-deadline"
         ? "報告は期限内です"
         : status === "submitted_on_time"
           ? "報告は期限内に送信されました"
@@ -6858,13 +6839,13 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
               : "報告の状態は保留中です";
   
     return {
-      isWithinDeadline,
+      isWithinDeadline: isCurrentlyWithinDeadline || (status === "submitted_on_time"),
       minutesRemaining,
       deadlineTime,
       reportSubmissionTime,
-      status,
+      status: finalStatus,
       statusMessage,
-      isAcceptable: status === "within-deadline" || status === "submitted_on_time",
+      isAcceptable: finalStatus === "within-deadline" || status === "submitted_on_time",
     };
   }
   return { determineReportDeadlineStatus };
@@ -10681,7 +10662,7 @@ export const validateAndApproveReport: (...args: any[]) => any = (...args: any[]
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsForReports exports=sendConfirmationEmailsForReports */
 const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
   function sendConfirmationEmailsForReports(
-    input: any
+    input: SendConfirmationEmailsInput
   ): {
     success: boolean;
     email_sent_count: number;
@@ -10697,7 +10678,7 @@ const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
 
     const reports = input.reports || [];
     const adminEmail = input.admin_email_address;
-    const reportSubmissionDate = input.report_submission_date;
+    const reportSubmissionDate = input.reportSubmissionDate || input.report_submission_date;
 
     const processedReportCount = reports.length;
     let approvedReportCount = 0;

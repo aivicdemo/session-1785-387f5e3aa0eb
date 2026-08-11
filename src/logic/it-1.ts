@@ -1336,7 +1336,6 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       }
     }
 
-    const { randomUUID } = require("crypto");
     const submissionId = randomUUID();
     const submittedAt = new Date();
 
@@ -1436,26 +1435,24 @@ export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[])
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmission exports=validateReportSubmission */
-const __aivicBundle_validateReportSubmission_fixed = (() => {
+const __aivicBundle_13_validateReportSubmission = (() => {
   function validateReportSubmission(input: any): any {
     const yesterday =
-      input?.yesterday_accomplishment ??
-      input?.yesterday_result ??
-      input?.yesterday_achievement ??
-      input?.yesterday_work ??
-      input?.yesterdayAccomplishment ??
-      '';
+      input.yesterday_accomplishment ??
+      input.yesterday_result ??
+      input.yesterday_achievement ??
+      input.yesterday_work ??
+      input.yesterdayAccomplishment;
   
     const today =
-      input?.today_plan ?? input?.todayPlan ?? '';
+      input.today_plan ?? input.todayPlan;
   
     const issue =
-      input?.current_issues ??
-      input?.current_issue ??
-      input?.current_challenge ??
-      input?.challenge ??
-      input?.currentIssue ??
-      '';
+      input.current_issues ??
+      input.current_issue ??
+      input.current_challenge ??
+      input.challenge ??
+      input.currentIssue;
   
     const errors: Array<{ field: string; message: string }> = [];
   
@@ -1467,7 +1464,7 @@ const __aivicBundle_validateReportSubmission_fixed = (() => {
     }
   
     if (!today || (typeof today === 'string' && today.trim() === '')) {
-      if (input?.today_plan === '' || input?.todayPlan === '') {
+      if (input.today_plan === '' || input.todayPlan === '') {
         throw new Error('本日の予定は必須です');
       }
       errors.push({
@@ -1504,7 +1501,7 @@ const __aivicBundle_validateReportSubmission_fixed = (() => {
       }
     }
   
-    if (input?.reporterUserId && input?.userId && input?.userRole) {
+    if (input.reporterUserId && input.userId && input.userRole) {
       if (input.reporterUserId === input.userId && input.userRole === 'manager') {
         throw new Error('部長自身は報告者になることはできません');
       }
@@ -1513,17 +1510,17 @@ const __aivicBundle_validateReportSubmission_fixed = (() => {
     const isValid = errors.length === 0;
   
     const hasSnakeCaseFields =
-      'yesterday_accomplishment' in (input || {}) ||
-      'today_plan' in (input || {}) ||
-      'current_issues' in (input || {}) ||
-      'yesterday_result' in (input || {}) ||
-      'current_issue' in (input || {});
+      'yesterday_accomplishment' in input ||
+      'today_plan' in input ||
+      'current_issues' in input ||
+      'yesterday_result' in input ||
+      'current_issue' in input;
   
     const hasCamelCaseFields =
-      'yesterdayAccomplishment' in (input || {}) ||
-      'todayPlan' in (input || {}) ||
-      'currentIssue' in (input || {}) ||
-      'challenge' in (input || {});
+      'yesterdayAccomplishment' in input ||
+      'todayPlan' in input ||
+      'currentIssue' in input ||
+      'challenge' in input;
   
     if (hasSnakeCaseFields) {
       return {
@@ -1566,7 +1563,7 @@ const __aivicBundle_validateReportSubmission_fixed = (() => {
   }
   return { validateReportSubmission };
 })();
-export const validateReportSubmission = __aivicBundle_validateReportSubmission_fixed.validateReportSubmission;
+export const validateReportSubmission = __aivicBundle_13_validateReportSubmission.validateReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendMorningReport exports=validateAndSendMorningReport */
@@ -2231,14 +2228,6 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
 const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
-  function isValidDateFormat(dateStr: string): boolean {
-    if (!dateStr) return false;
-    const regex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!regex.test(dateStr)) return false;
-    const date = new Date(dateStr);
-    return !isNaN(date.getTime());
-  }
-
   function validateDailyReportSubmission(
     formData: any
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
@@ -2250,23 +2239,20 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
     const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
-    if (!reportDate || !isValidDateFormat(reportDate)) {
+    if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
-
-    if (!department || (typeof department === 'string' && department.trim() === '')) {
+    
+    if (!department || department.trim() === '') {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
-
-    if (!yesterday || (typeof yesterday === 'string' && yesterday.trim() === '')) {
+    if (!yesterday || yesterday.trim() === '') {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
-
-    if (!today || (typeof today === 'string' && today.trim() === '')) {
+    if (!today || today.trim() === '') {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
-
-    if (!challenge || (typeof challenge === 'string' && challenge.trim() === '')) {
+    if (!challenge || challenge.trim() === '') {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
 
@@ -2281,7 +2267,6 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
       message: isValid ? '送信完了しました' : undefined
     };
   }
-
   return { validateDailyReportSubmission };
 })();
 export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_fixed.validateDailyReportSubmission;
@@ -5375,7 +5360,7 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       // Use snake_case if available (from test), otherwise camelCase (from plan)
       const id = ("member_id" in report ? report.member_id : undefined) ?? (report as any).employeeId;
       if (id) {
-        submittedIds.add(id as string);
+        submittedIds.add(id);
       }
     }
   
@@ -5386,10 +5371,10 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       const memberId = ("member_id" in member ? member.member_id : undefined) ?? (member as any).employeeId;
       const memberName = ("member_name" in member ? member.member_name : undefined) ?? (member as any).employeeName;
   
-      if (memberId && memberName && !submittedIds.has(memberId as string)) {
+      if (memberId && memberName && !submittedIds.has(memberId)) {
         unreported.push({
-          employeeId: memberId as string,
-          employeeName: memberName as string,
+          employeeId: memberId,
+          employeeName: memberName,
         });
       }
     }
