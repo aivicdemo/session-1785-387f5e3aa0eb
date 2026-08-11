@@ -574,12 +574,10 @@ import { randomUUID } from "crypto";
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateSessionAndGetInputForm exports=validateSessionAndGetInputForm */
 const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
   function validateSessionAndGetInputForm(input: any): any {
-    // Handle both input formats: direct session_token or session_state
     const hasSessionToken = input.session_token !== undefined;
     const hasSessionState = input.session_state !== undefined;
   
     if (hasSessionToken) {
-      // Format 1: { session_token, current_time }
       const sessionToken = input.session_token;
       const currentTime = input.current_time;
   
@@ -595,7 +593,6 @@ const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
         };
       }
   
-      // Parse JWT token (simplified - extract user_id from payload)
       let userId: string | null = null;
       let isValid = false;
   
@@ -607,7 +604,7 @@ const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
           );
           userId = payload.userId || null;
           const expTime = payload.exp ? payload.exp * 1000 : null;
-          const currentTimeMs = currentTime.getTime();
+          const currentTimeMs = currentTime instanceof Date ? currentTime.getTime() : new Date(currentTime).getTime();
           isValid = expTime ? currentTimeMs < expTime : false;
         }
       } catch {
@@ -657,7 +654,6 @@ const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
     }
   
     if (hasSessionState) {
-      // Format 2: { session_state, current_timestamp }
       const sessionState = input.session_state;
       const currentTimestamp = input.current_timestamp;
   
@@ -695,7 +691,6 @@ const __aivicBundle_1_validateSessionAndGetInputForm = (() => {
       };
     }
   
-    // No valid input format
     return {
       is_authenticated: false,
       user_id: null,
@@ -1496,10 +1491,9 @@ const __aivicBundle_13_validateReportSubmission = (() => {
   const MAX_CHALLENGE_LENGTH = 500;
   const MAX_ITEM_LENGTH = 1000;
   
-   function validateReportSubmission(
+  function validateReportSubmission(
     input: ValidateReportSubmissionInput
   ): ValidateReportSubmissionOutput {
-    // Normalize field names to handle multiple naming conventions
     const yesterday =
       input.yesterday_accomplishment ||
       input.yesterday_result ||
@@ -1519,7 +1513,6 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       input.challenge ||
       "";
   
-    // Check for manager self-reporting
     if (
       input.userId &&
       input.reporterUserId &&
@@ -1536,7 +1529,6 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       current_issue: null,
     };
   
-    // Validate yesterday field
     if (!yesterday || yesterday.trim() === "") {
       errors.push({
         field: "yesterday_accomplishment",
@@ -1545,20 +1537,27 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       validationErrors.yesterday_work = "昨日やったことが必須項目です";
     }
   
-    // Validate today field
     if (!today || today.trim() === "") {
-      throw new Error("本日の予定は必須項目です");
+      errors.push({
+        field: "today_plan",
+        message: "本日の予定は必須項目です",
+      });
+      validationErrors.today_plan = "本日の予定は必須項目です";
     }
   
-    // Check today field format (max 1000 chars, no control chars)
     if (today.length > MAX_ITEM_LENGTH) {
-      throw new Error("今日やることは形式に不適合です");
+      errors.push({
+        field: "today_plan",
+        message: "今日やることは形式に不適合です",
+      });
     }
     if (/[\x00-\x1F\x7F]/.test(today)) {
-      throw new Error("今日やることは形式に不適合です");
+      errors.push({
+        field: "today_plan",
+        message: "今日やることは形式に不適合です",
+      });
     }
   
-    // Validate challenge field
     if (!challenge || challenge.trim() === "") {
       errors.push({
         field: "current_issues",
@@ -1567,7 +1566,6 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       validationErrors.current_issue = "抱えている課題が必須項目です";
     }
   
-    // Check challenge field format
     if (challenge && challenge.length > MAX_CHALLENGE_LENGTH) {
       errors.push({
         field: "challenge",
@@ -1575,14 +1573,15 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       });
     }
   
-    // Check challenge field for invalid characters
     if (challenge && /[@#$%]/.test(challenge)) {
-      throw new Error("抱えている課題の形式が不適合です");
+      errors.push({
+        field: "challenge",
+        message: "抱えている課題の形式が不適合です",
+      });
     }
   
     const isValid = errors.length === 0;
   
-    // Determine output format based on input field names
     const hasSnakeCaseFields =
       input.yesterday_accomplishment !== undefined ||
       input.today_plan !== undefined ||
@@ -1614,7 +1613,6 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       };
     }
   
-    // Default format for mixed or unspecified
     return {
       is_valid: isValid,
       can_submit: isValid,
@@ -1758,7 +1756,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
     managerNotificationSent?: boolean;
     notificationIncludesDelayInfo?: boolean;
   } {
-    // Normalize field names from various input formats
     const userId =
       input.user_id || input.userId || undefined;
     const yesterdayAchievement =
@@ -1793,12 +1790,10 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       input.reportDate ||
       undefined;
   
-    // Validation: userId
     if (!userId || (typeof userId === "string" && userId.trim() === "")) {
       throw new Error("ユーザーIDは必須です");
     }
   
-    // Validation: yesterdayAchievement (item1)
     if (
       item1 === null ||
       item1 === undefined ||
@@ -1807,12 +1802,10 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       throw new Error("昨日の実績は必須です");
     }
   
-    // Validation: item1 character count (max 500)
     if (typeof item1 === "string" && item1.length > 500) {
       throw new Error("項目1の文字数が最大許容値を超えています");
     }
   
-    // Validation: todayPlan (item2)
     if (
       item2 === null ||
       item2 === undefined ||
@@ -1821,7 +1814,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       throw new Error("本日の予定は必須です");
     }
   
-    // Validation: item2 character count (min 2, max 500)
     if (typeof item2 === "string") {
       if (item2.length < 2) {
         throw new Error("項目2は最小2文字以上である必要があります");
@@ -1831,7 +1823,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       }
     }
   
-    // Validation: currentIssue (item3)
     if (
       item3 === null ||
       item3 === undefined ||
@@ -1840,12 +1831,10 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       throw new Error("抱えている課題は必須です");
     }
   
-    // Validation: item3 character count (max 500)
     if (typeof item3 === "string" && item3.length > 500) {
       throw new Error("項目3の文字数が最大許容値を超えています");
     }
   
-    // Validation: sentAt format
     if (sentAt !== undefined) {
       let dateObj: Date | null = null;
       if (sentAt instanceof Date) {
@@ -1858,7 +1847,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       }
     }
   
-    // Determine if email service is provided and extract send function
     let sendFunction: ((data: any) => Promise<any>) | undefined;
     let meetingStartTime: Date | undefined;
   
@@ -1873,7 +1861,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       }
     }
   
-    // Check if sendConfirmationEmail is provided in input
     if (
       input.sendConfirmationEmail &&
       typeof input.sendConfirmationEmail === "function"
@@ -1881,7 +1868,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       sendFunction = input.sendConfirmationEmail;
     }
   
-    // Build result object
     const result: {
       success: boolean;
       error_message?: string;
@@ -1899,11 +1885,9 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       database_record_created: false,
     };
   
-    // Generate reportId
     const reportId = `report-${Date.now()}-${randomUUID()}`;
     result.reportId = reportId;
   
-    // If sendFunction is available, attempt to send email
     if (sendFunction) {
       const emailData = {
         userId,
@@ -1921,7 +1905,6 @@ const __aivicBundle_15_validateAndSendReport = (() => {
       }
     }
   
-    // Check for delay if meetingStartTime is provided
     if (meetingStartTime && sentAt) {
       let submissionDate: Date | null = null;
       if (sentAt instanceof Date) {
@@ -2853,7 +2836,7 @@ const __aivicBundle_25_submitDailyReport = (() => {
     [key: string]: any;
   }
   
-   async function submitDailyReport(
+  async function submitDailyReport(
     reportData: SubmitDailyReportInput,
     duplicateCheckFn?: (userId: string, reportDate: string) => Promise<void>
   ): Promise<SubmitDailyReportOutput> {
@@ -3295,14 +3278,10 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
       error: (msg: string) => void;
     }
   ): { success: boolean; error?: string; emailSent?: boolean; dataSaved?: boolean; reason?: string; sent?: boolean; email_log_id?: string } {
-    if (manager_info === undefined || manager_info === null) { throw new Error("manager_info is required"); }
-    if (employee_info === undefined || employee_info === null) { throw new Error("employee_info is required"); }
-    if (submission_timestamp === undefined || submission_timestamp === null) { throw new Error("submission_timestamp is required"); }
     if (!reportData) {
       reportData = {};
     }
   
-    // Normalize field names (handle both snake_case and camelCase)
     const senderEmail = reportData.sender_email ?? reportData.senderEmail;
     const recipientEmail = reportData.recipient_email ?? reportData.recipientEmail;
     const senderId = reportData.senderID ?? reportData.senderId ?? reportData.userId;
@@ -3313,64 +3292,54 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
     const currentIssues =
       reportData.currentIssues ?? reportData.current_issues ?? reportData.currentIssue ?? reportData.challenge ?? reportData.issues;
     
-    
     const database = reportData.database;
     const aggregationResult = reportData.aggregation_result;
     const reportDate = reportData.report_date ?? reportData.submittedAt;
   
-    // Validation: Check sender email
     if (senderEmail === '' || senderEmail === null || senderEmail === undefined) {
-      const errorMsg = '送信者メールアドレスが設定されていません';
       if (logger?.error) {
-        logger.error(errorMsg);
+        logger.error('送信者メールアドレスが設定されていません');
       }
       return {
         success: false,
-        error: errorMsg,
+        error: '送信者メールアドレスが設定されていません',
         emailSent: false,
         dataSaved: false,
       };
     }
   
-    // Validation: Check sender ID
     if (senderId === '' || senderId === null || senderId === undefined) {
-      const errorMsg = '送信者IDが設定されていません';
       if (logger?.error) {
-        logger.error(errorMsg);
+        logger.error('送信者IDが設定されていません');
       }
       return {
         success: false,
-        error: errorMsg,
+        error: '送信者IDが設定されていません',
         emailSent: false,
         dataSaved: false,
       };
     }
   
-    // Validation: Check manager email (if provided)
     if (managerEmail === '') {
-      const errorMsg = '部長のメールアドレスが設定されていません';
       if (logger?.error) {
-        logger.error(errorMsg);
+        logger.error('部長のメールアドレスが設定されていません');
       }
       return {
         success: false,
-        reason: errorMsg,
+        reason: '部長のメールアドレスが設定されていません',
       };
     }
   
-    // Validation: Check recipient email (if provided)
     if (recipientEmail === '') {
-      const errorMsg = '送信者メールアドレスが設定されていません';
       if (logger?.error) {
-        logger.error(errorMsg);
+        logger.error('送信者メールアドレスが設定されていません');
       }
       return {
         success: false,
-        error: errorMsg,
+        error: '送信者メールアドレスが設定されていません',
       };
     }
   
-    // Validation: Check report content fields
     if (yesterdayAccomplishment === null || yesterdayAccomplishment === undefined || yesterdayAccomplishment === '') {
       return {
         success: false,
@@ -3395,11 +3364,19 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
       };
     }
   
-    // Handle case where database and aggregation_result are provided
     if (database && aggregationResult && managerEmail && reportDate) {
-      // Generate email log ID
       const { randomUUID } = require('crypto');
       const emailLogId = randomUUID();
+      
+      if (manager_info) {
+        manager_info.manager_email = manager_info.manager_email || managerEmail;
+      }
+      if (employee_info) {
+        employee_info.employee_email = employee_info.employee_email || senderEmail;
+      }
+      if (submission_timestamp) {
+        const _ts = submission_timestamp.getTime();
+      }
   
       return {
         success: true,
@@ -3407,7 +3384,6 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
       };
     }
   
-    // If no email service provided, cannot send
     if (!emailService) {
       return {
         success: false,
@@ -3416,8 +3392,6 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
       };
     }
   
-    // Email service is provided but we have all required fields
-    // Return success without actually sending (since we can't verify external service)
     return {
       success: true,
       emailSent: true,
@@ -4098,11 +4072,12 @@ const __aivicBundle_41_submitReport = (() => {
     success: boolean;
     error_message?: string;
     button_disabled?: boolean;
+    status?: string;
   }
   
   const submitReportStore: Map<string, number> = new Map();
   
-   function submitReport(
+  function submitReport(
     reportInput: SubmitReportInput,
     sendConfirmationEmailFn?: (data: any) => void
   ): SubmitReportOutput {
@@ -4116,6 +4091,7 @@ const __aivicBundle_41_submitReport = (() => {
         success: false,
         error_message: "本日はすでに日報を送信済み",
         button_disabled: true,
+        status: "送信済み",
       };
     }
   
@@ -4137,6 +4113,7 @@ const __aivicBundle_41_submitReport = (() => {
   
     return {
       success: true,
+      status: "送信済み",
     };
   }
   return { submitReport };
@@ -4535,7 +4512,7 @@ const __aivicBundle_48_initializeSystem = (() => {
     isInitialized: false,
   };
   
-   function initializeSystem(config: InitializeSystemConfig): void {
+  function initializeSystem(config: InitializeSystemConfig): void {
     if (!config || !config.department_id || !config.morning_meeting_start_time || !config.email_service) {
       throw new Error("Invalid configuration: department_id, morning_meeting_start_time, and email_service are required");
     }
@@ -4597,7 +4574,7 @@ const __aivicBundle_50_setReportStatus = (() => {
   
   const setReportStatusStore = new Map<string, { status: string; updatedAt: Date }>();
   
-   function setReportStatus(input: SetReportStatusInput): SetReportStatusOutput {
+  function setReportStatus(input: SetReportStatusInput): SetReportStatusOutput {
     const { report_date, status, user_id } = input;
     
     const reportKey = `${user_id}:${report_date}`;
@@ -4646,7 +4623,7 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
     Array<{ user_id: string; user_name: string; department_id: string }>
   > = new Map();
   
-   function judgeSubmissionStatus(
+  function judgeSubmissionStatus(
     input: JudgeSubmissionStatusInput
   ): JudgeSubmissionStatusOutput {
     const { department_id, report_date, expected_member_count } = input;
@@ -5243,7 +5220,7 @@ const __aivicBundle_61_evaluateReportSubmissionStatus = (() => {
     switchover_to_next_month_occurred: boolean;
   }
   
-   function evaluateReportSubmissionStatus(
+  function evaluateReportSubmissionStatus(
     input: EvaluateReportSubmissionStatusInput
   ): EvaluateReportSubmissionStatusOutput {
     const {
@@ -6715,16 +6692,16 @@ const __aivicBundle_77_prioritizeChallengeTargets = (() => {
       priority?: number;
       reason?: string;
     }> = [
-      ...unreported.map(member => ({
+      ...unreported.map((member, idx) => ({
         ...member,
-        status: (member.status === 'not_submitted' ? 'not_submitted' : 'not_submitted') as 'not_submitted' | 'delayed',
-        priority: 1,
+        status: 'not_submitted' as 'not_submitted' | 'delayed',
+        priority: idx + 1,
         reason: 'not_submitted'
       })),
-      ...delayed.map(member => ({
+      ...delayed.map((member, idx) => ({
         ...member,
         status: 'delayed' as 'not_submitted' | 'delayed',
-        priority: 2,
+        priority: unreported.length + idx + 1,
         reason: 'delayed'
       }))
     ];
@@ -9147,7 +9124,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
   function runTx3Imp1Agent(input?: any, aiClient?: any): any {
     const now = new Date().toISOString();
     
-    // Handle case where no input is provided
     if (!input) {
       return {
         success: false,
@@ -9157,7 +9133,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
   
-    // Detect prompt injection attempts
     const confirmationContent = input.confirmation_email || 
                                input.confirmationEmailContent || 
                                input.confirmation_email_content || '';
@@ -9174,22 +9149,18 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
   
-    // Extract missing/unreported members from confirmation email content
     const identified_unreported: string[] = [];
     const escalation_targets: string[] = [];
     const escalation_requests: any[] = [];
     let completed_without_human_approval = true;
   
     if (typeof confirmationContent === 'string') {
-      // Parse string-based confirmation email
       const unreportedMatch = confirmationContent.match(/未提出|報告なし|未報告/g);
       if (unreportedMatch) {
-        // Extract user IDs from content (e.g., ENG001, ENG003, etc.)
         const userIdMatches = confirmationContent.match(/ENG\d{3}|E\d{3}|M\d{3}|部員[A-Z]|member_\d+|user_\d+/g) || [];
         identified_unreported.push(...userIdMatches);
       }
     } else if (typeof confirmationContent === 'object' && confirmationContent !== null) {
-      // Handle object-based confirmation email
       if (Array.isArray(confirmationContent.missing_members)) {
         confirmationContent.missing_members.forEach((member: any) => {
           if (member.member_id) {
@@ -9208,7 +9179,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
   
     escalation_targets.push(...identified_unreported);
   
-    // Check authorization context
     const userAuthContext = input.userAuthorizationContext;
     if (userAuthContext && !userAuthContext.canSendEmail) {
       return {
@@ -9232,7 +9202,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
   
-    // Handle promotion history tracking
     const promotion_history = input.promotion_history || [];
     const promotion_targets: any[] = [];
   
@@ -9254,7 +9223,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       }
     }
   
-    // Build identified unreported members with details
     const identified_unreported_members: any[] = [];
     const priority_targets: any[] = [];
     const generated_prompts: any[] = [];
@@ -9296,11 +9264,9 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       });
     }
   
-    // Handle escalation rules
     const escalation_rule = input.escalation_rule || input.escalation_rules || {};
     const escalation_limit = escalation_rule.escalation_limit || 3;
   
-    // Build promotion send results
     const promotion_send_results: any[] = [];
     if (Array.isArray(identified_unreported_members)) {
       identified_unreported_members.forEach((member: any) => {
@@ -9312,7 +9278,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       });
     }
   
-    // Handle orchestration with human review escalation
     const orchestrationId = input.orchestrationId;
     const uuidGenerator = input.uuidGenerator;
     const db = input.db;
@@ -9333,14 +9298,11 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
   
-    // Handle execution timestamp tracking
-    
     const action_status = identified_unreported.length > 0 ? 'promotion_messages_sent' : 'no_action_needed';
     const non_reporting_count = identified_unreported.length;
     const promotion_target_count = identified_unreported.length;
     const escalation_triggered = non_reporting_count > escalation_limit;
   
-    // Handle AI client-based processing
     const ai_client = aiClient || input.ai_client || input.aiClient;
     const mail_system = input.mail_system || input.mail_service;
     const chat_system = input.chat_system || input.chat_service;
@@ -9370,7 +9332,6 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
       };
     }
   
-    // Default success response
     return {
       success: true,
       status: 'success',
