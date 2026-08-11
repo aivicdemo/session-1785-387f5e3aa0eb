@@ -7,9 +7,12 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  submissionDeadline: string;
-  previousReportTemplate?: string;
-  systemName: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTime: string;
+  isLate: boolean;
+  daysOverdue: number;
 }
 
 export interface Action06PromptResult {
@@ -21,45 +24,35 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have exceeded the daily report submission deadline.
+  const systemPrompt = `You are an automated notification system for the morning report management workflow.
+Your role is to send confirmation emails to administrators after a report has been successfully submitted.
+You must generate professional, clear confirmation messages that include:
+- Engineer name and submission timestamp
+- Report content summary (accomplishments, plans, issues)
+- Confirmation of successful registration
+- Any relevant status information (on-time or overdue)
 
-Your role in the "Morning Meeting Report Management System" is to:
-1. Identify engineers who have not submitted their daily reports by the deadline
-2. Determine if a reminder notification should be sent based on the time elapsed since the deadline
-3. Compose and send reminder notifications via email and chat
-4. Log the sending results
+Maintain a formal tone appropriate for internal business communication.`;
 
-Key responsibilities:
-- Send reminders at appropriate intervals to avoid excessive notifications
-- Maintain a record of all reminder notifications sent
-- Handle escalation cases where multiple reminders have been sent without response
-- Ensure reminder messages are professional and clear
+  const userPrompt = `Generate a confirmation email for the following report submission:
 
-Constraints:
-- Do not send more than the configured maximum number of reminders per engineer per day
-- Respect quiet hours if configured
-- Include relevant context (deadline, submission instructions) in reminder messages
-- Log all actions for audit purposes`;
-
-  const userPrompt = `Process reminder notification for the following engineer:
-
-Engineer Name: ${context.engineerName}
-Engineer Email: ${context.engineerEmail}
+Engineer: ${context.engineerName}
+Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-System Name: ${context.systemName}
+Submission Time: ${context.submissionTime}
+Status: ${context.isLate ? `OVERDUE (${context.daysOverdue} days late)` : "ON TIME"}
 
-Task:
-1. Determine if a reminder should be sent based on current time and deadline
-2. If a reminder is appropriate, prepare the notification content
-3. Log the reminder action with timestamp and status
-4. Return the result indicating whether the reminder was sent or queued
+Report Content:
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
 
-Consider:
-- Time elapsed since the deadline
-- Number of previous reminders sent to this engineer
-- System configuration for reminder frequency
-- Engineer's submission history`;
+Create a confirmation email that:
+1. Acknowledges successful receipt and registration
+2. Summarizes the submitted content
+3. Notes the submission status (on-time or overdue)
+4. Provides next steps or relevant information for the administrator
+5. Maintains professional tone`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

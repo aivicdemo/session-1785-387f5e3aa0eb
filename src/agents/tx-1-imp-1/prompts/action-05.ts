@@ -7,110 +7,75 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent?: {
+  previousReportContent: {
     yesterday: string;
     today: string;
     issues: string;
   };
   submissionDeadline: string;
-  systemName: string;
+  managementSystemUrl: string;
+  adminEmails: string[];
 }
 
 export interface Action05PromptResult {
   version: string;
-  action: number;
-  purpose: string;
-  instructions: string;
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
   context: Action05Context;
-  expectedOutput: string;
-  validationRules: string[];
 }
 
-export function buildAction05Prompt(
-  context: Action05Context
-): Action05PromptResult {
-  const instructions = `
-You are an AI agent responsible for validating daily report input content.
+export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
+  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system and sending confirmation emails to administrators.
 
-Your task is to:
-1. Receive the engineer's input for yesterday's achievements, today's plans, and current issues
-2. Validate the completeness and appropriateness of the input
-3. Check for any anomalies or concerning patterns in the reported content
-4. Provide structured validation feedback
+Your role in the workflow:
+- Receive validated daily report input from the previous action
+- Register the report into the management system via API
+- Send confirmation emails to all administrators
+- Log the registration and email sending results
+- Handle any errors during registration or email sending
 
-Validation criteria:
-- Yesterday's achievements: Must contain at least one concrete accomplishment
-- Today's plans: Must contain at least one specific task or goal
-- Current issues: Should be clearly articulated if present; empty is acceptable if no blockers exist
-- Content length: Minimum 10 characters per field, maximum 2000 characters
-- Language: Must be in Japanese or English
-- No offensive or inappropriate content
-- No duplicate entries from previous reports
+You must:
+1. Validate that all required fields are present in the report
+2. Format the report data according to management system requirements
+3. Attempt registration with retry logic for transient failures
+4. Send confirmation emails with report summary to all administrators
+5. Record timestamps and status of all operations
+6. Escalate to human review if registration fails after retries or if email sending encounters critical errors
 
-Context information:
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
-- System Name: ${context.systemName}
+Do not:
+- Modify the report content beyond formatting
+- Send emails to addresses outside the admin list
+- Proceed with email sending if registration fails
+- Ignore error responses from the management system`;
 
-${
-  context.previousReportContent
-    ? `
-Previous report reference (for anomaly detection):
-- Yesterday's achievements: ${context.previousReportContent.yesterday}
-- Today's plans: ${context.previousReportContent.today}
-- Issues: ${context.previousReportContent.issues}
-`
-    : ""
-}
+  const userPrompt = `Register the following daily report and send confirmation emails:
 
-Output format:
-{
-  "isValid": boolean,
-  "validationStatus": "VALID" | "INVALID" | "WARNING",
-  "errors": string[],
-  "warnings": string[],
-  "normalizedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  },
-  "anomalyDetected": boolean,
-  "anomalyDescription": string | null
-}
-`;
+Engineer ID: ${context.engineerId}
+Engineer Name: ${context.engineerName}
+Report Date: ${context.reportDate}
+Submission Deadline: ${context.submissionDeadline}
 
-  const expectedOutput = `
-A JSON object containing:
-- isValid: true if all validation rules pass, false otherwise
-- validationStatus: Overall status of the validation
-- errors: Array of validation error messages
-- warnings: Array of non-critical warning messages
-- normalizedContent: Cleaned and formatted input content
-- anomalyDetected: true if unusual patterns are detected
-- anomalyDescription: Description of detected anomalies or null
-`;
+Report Content:
+- Yesterday's Achievements: ${context.previousReportContent.yesterday}
+- Today's Plan: ${context.previousReportContent.today}
+- Current Issues: ${context.previousReportContent.issues}
 
-  const validationRules = [
-    "Each field must not be empty",
-    "Each field must contain at least 10 characters",
-    "Each field must not exceed 2000 characters",
-    "Content must be in Japanese or English",
-    "No offensive or inappropriate language",
-    "No exact duplication from previous report",
-    "Issues field can be empty if no blockers exist",
-    "Detect repetitive or concerning patterns",
-  ];
+Management System URL: ${context.managementSystemUrl}
+Administrator Emails: ${context.adminEmails.join(", ")}
+
+Steps to execute:
+1. Register the report in the management system
+2. Confirm successful registration
+3. Send confirmation email to all administrators with the report summary
+4. Return the registration ID and email sending status
+5. If any step fails, provide detailed error information for escalation`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,
-    action: 5,
-    purpose:
-      "Validate daily report input content for completeness and appropriateness",
-    instructions,
+    action: "action-05",
+    systemPrompt,
+    userPrompt,
     context,
-    expectedOutput,
-    validationRules,
   };
 }

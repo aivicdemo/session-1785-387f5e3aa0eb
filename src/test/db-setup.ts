@@ -17,55 +17,46 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-interface InMemoryTable {
-  rows: TableRow[];
+const inMemoryTables: Map<TableName, TableRow[]> = new Map();
+
+function initializeTables(): void {
+  inMemoryTables.set("users", []);
+  inMemoryTables.set("daily_reports", []);
+  inMemoryTables.set("report_send_history", []);
+  inMemoryTables.set("audit_events", []);
 }
 
-interface InMemoryStore {
-  users: InMemoryTable;
-  daily_reports: InMemoryTable;
-  report_send_history: InMemoryTable;
-  audit_events: InMemoryTable;
-}
-
-function createInMemoryStore(): InMemoryStore {
+function createTableOperations(tableName: TableName): TableOperations {
   return {
-    users: { rows: [] },
-    daily_reports: { rows: [] },
-    report_send_history: { rows: [] },
-    audit_events: { rows: [] },
-  };
-}
+    async del(): Promise<number> {
+      const table = inMemoryTables.get(tableName) || [];
+      const count = table.length;
+      inMemoryTables.set(tableName, []);
+      return count;
+    },
 
-function matchesConditions(row: TableRow, conditions: Record<string, unknown>): boolean {
-  return Object.entries(conditions).every(([key, value]) => row[key] === value);
+    async insert(row: TableRow | TableRow[]): Promise<void> {
+      const table = inMemoryTables.get(tableName) || [];
+      const rows = Array.isArray(row) ? row : [row];
+      table.push(...rows);
+      inMemoryTables.set(tableName, table);
+    },
+
+    async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
+      const table = inMemoryTables.get(tableName) || [];
+      return table.filter((row) => {
+        return Object.entries(conditions).every(([key, value]) => row[key] === value);
+      });
+    },
+  };
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const store = createInMemoryStore();
+  initializeTables();
 
-  const testDb: TestDatabase = (tableName: TableName) => {
-    const table = store[tableName];
-
-    return {
-      async del(): Promise<number> {
-        const count = table.rows.length;
-        table.rows = [];
-        return count;
-      },
-
-      async insert(row: TableRow | TableRow[]): Promise<void> {
-        const rows = Array.isArray(row) ? row : [row];
-        table.rows.push(...rows);
-      },
-
-      async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-        return table.rows.filter((row) => matchesConditions(row, conditions));
-      },
-    };
+  return (tableName: TableName): TableOperations => {
+    return createTableOperations(tableName);
   };
-
-  return testDb;
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
@@ -79,4 +70,6 @@ export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
   for (const tableName of tableNames) {
     await db(tableName).del();
   }
+
+  inMemoryTables.clear();
 }

@@ -3,99 +3,84 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03Context {
+interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  oversightThresholdMinutes: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
+  overdueThresholdHours: number;
+  reminderFrequencyHours: number;
+  maxReminderAttempts: number;
+  escalationContactEmail: string;
+}
+
+interface Action03PromptOutput {
+  version: string;
+  systemPrompt: string;
+  userPromptTemplate: string;
+  expectedOutputFormat: {
+    overdueEngineers: Array<{
+      engineerId: string;
+      engineerName: string;
+      hoursOverdue: number;
+      reminderAttemptCount: number;
+      lastReminderSentAt: string | null;
+      shouldSendReminder: boolean;
+    }>;
+    escalationRequired: boolean;
+    escalationReason: string | null;
   };
 }
 
-interface Action03Input {
-  unsubmittedEngineers: Array<{
-    employeeId: string;
-    name: string;
-    department: string;
-    email: string;
-    lastReminderTime?: string;
-    reminderCount: number;
-  }>;
-  delayedEngineers: Array<{
-    employeeId: string;
-    name: string;
-    department: string;
-    email: string;
-    submissionTime: string;
-    delayMinutes: number;
-  }>;
-}
+function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for monitoring daily report submission status and identifying overdue submissions.
 
-interface Action03Output {
-  escalationDecisions: Array<{
-    employeeId: string;
-    action: "send_reminder" | "escalate_to_manager" | "no_action";
-    reason: string;
-    priority: "high" | "medium" | "low";
-  }>;
-  reminderContent: {
-    subject: string;
-    body: string;
-    channels: Array<"email" | "chat">;
+Your role is to:
+1. Check the current submission status of all engineers against the reporting deadline
+2. Identify engineers whose reports are overdue
+3. Determine which engineers require reminder notifications based on:
+   - Hours overdue (threshold: ${input.overdueThresholdHours} hours)
+   - Reminder frequency (maximum every ${input.reminderFrequencyHours} hours)
+   - Maximum reminder attempts (limit: ${input.maxReminderAttempts})
+4. Flag cases requiring escalation to ${input.escalationContactEmail}
+
+Escalation triggers:
+- Engineer is overdue by more than 24 hours
+- Engineer has received maximum reminder attempts without submitting
+- System errors prevent status verification`;
+
+  const userPromptTemplate = `Current time: {currentTime}
+Reporting deadline: ${input.reportingDeadline}
+
+Engineer submission status:
+{engineerStatusList}
+
+Previous reminder history:
+{reminderHistory}
+
+Based on the above information:
+1. Identify all engineers whose reports are overdue
+2. Calculate hours overdue for each
+3. Determine which engineers should receive reminders based on frequency and attempt limits
+4. Identify any cases requiring escalation
+5. Return results in the specified JSON format`;
+
+  return {
+    version: ACTION_03_PROMPT_VERSION,
+    systemPrompt,
+    userPromptTemplate,
+    expectedOutputFormat: {
+      overdueEngineers: [
+        {
+          engineerId: "string",
+          engineerName: "string",
+          hoursOverdue: 0,
+          reminderAttemptCount: 0,
+          lastReminderSentAt: null,
+          shouldSendReminder: false,
+        },
+      ],
+      escalationRequired: false,
+      escalationReason: null,
+    },
   };
-  escalationContent?: {
-    managerNotification: string;
-    escalationReason: string;
-  };
-}
-
-function buildAction03Prompt(context: Action03Context, input: Action03Input): string {
-  const unsubmittedList = input.unsubmittedEngineers
-    .map(
-      (eng) =>
-        `- ${eng.name} (${eng.employeeId}, ${eng.department}): ${eng.reminderCount} reminders sent`
-    )
-    .join("\n");
-
-  const delayedList = input.delayedEngineers
-    .map(
-      (eng) =>
-        `- ${eng.name} (${eng.employeeId}, ${eng.department}): ${eng.delayMinutes} minutes late`
-    )
-    .join("\n");
-
-  return `You are an AI agent responsible for determining escalation actions for unsubmitted and delayed daily reports.
-
-Current Context:
-- Reporting Deadline: ${context.reportingDeadline}
-- Current Time: ${context.currentTime}
-- Oversight Threshold: ${context.oversightThresholdMinutes} minutes
-- Max Reminders: ${context.escalationRules.maxReminders}
-- Reminder Interval: ${context.escalationRules.reminderIntervalMinutes} minutes
-
-Unsubmitted Engineers:
-${unsubmittedList || "None"}
-
-Delayed Engineers:
-${delayedList || "None"}
-
-Your task:
-1. Analyze each unsubmitted engineer's reminder history
-2. Determine if they should receive another reminder or be escalated to their manager
-3. For delayed engineers, assess if additional follow-up is needed
-4. Generate appropriate reminder content or escalation notifications
-5. Prioritize escalation decisions based on severity
-
-Decision Rules:
-- If reminder count < ${context.escalationRules.maxReminders}: send reminder
-- If reminder count >= ${context.escalationRules.maxReminders}: escalate to manager
-- If delay > 60 minutes: mark as high priority
-- If delay > 30 minutes: mark as medium priority
-- Otherwise: mark as low priority
-
-Output your analysis as a structured decision list with actions, reasons, and priorities.`;
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03Context, Action03Input, Action03Output };

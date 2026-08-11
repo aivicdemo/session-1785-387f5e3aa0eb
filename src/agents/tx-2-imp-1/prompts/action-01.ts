@@ -21,7 +21,7 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionPlan: {
     recipients: string[];
-    scheduledTime: string;
+    sendTime: string;
     channels: string[];
   };
   validationRules: Array<{
@@ -33,61 +33,63 @@ export interface Action01PromptOutput {
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
   const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelList = input.systemContext.notificationChannels.join("、");
+  const deadline = new Date(input.reportingDeadline).toLocaleString("ja-JP");
+  const targetDate = new Date(input.targetDate).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 
-  return `# 日報テンプレート自動生成・配信アクション
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-## 目的
-前日の日報テンプレートを自動生成してエンジニアに配信し、本日の日報入力を促進する。
+## 実行目的
+前日の日報テンプレートを自動生成し、対象エンジニア（${engineerNames}）に配信する。
 
-## 実行コンテキスト
-- 対象日付: ${input.targetDate}
-- 報告期限: ${input.reportingDeadline}
-- 対象エンジニア: ${engineerNames}
-- 配信チャネル: ${channelList}
+## 対象日付
+- 報告対象日: ${targetDate}
+- 提出期限: ${deadline}
 
-## 生成すべき日報テンプレート要素
-1. 昨日の実績セクション
-   - 完了したタスク
-   - 進捗状況
-   - 実績の詳細
+## 実行内容
 
-2. 本日の予定セクション
-   - 予定タスク
-   - 優先度
-   - 予想所要時間
+### 1. テンプレート生成
+以下の項目を含む日報テンプレートを生成してください：
+- 昨日の実績（具体的な成果・完了タスク）
+- 本日の予定（予定タスク・目標）
+- 抱えている課題（ブロッカー・リスク・懸念事項）
+- 備考（その他の報告事項）
 
-3. 抱えている課題セクション
-   - 課題内容
-   - 影響範囲
-   - 対応状況
+### 2. 配信計画
+- 配信先: ${input.engineerList.map((e) => e.email).join(", ")}
+- 配信チャネル: ${input.systemContext.notificationChannels.join("、")}
+- 配信システムURL: ${input.systemContext.reportManagementSystemUrl}
 
-## 配信計画
-- 配信先: 全対象エンジニア
-- 配信時刻: 朝会開始の30分前
-- 配信チャネル: ${channelList}
-- 期限: ${input.reportingDeadline}
-
-## 検証ルール
-- 全セクションの入力が必須
-- 各セクションは500文字以内
-- 課題がある場合は対応状況の記入が必須
+### 3. 入力妥当性検証ルール
+生成したテンプレートに対して、以下の検証ルールを適用してください：
+- 昨日の実績: 必須、100文字以上
+- 本日の予定: 必須、100文字以上
+- 抱えている課題: 任意、記入時は50文字以上
+- 各項目は日本語で記述されていること
 
 ## 出力形式
-JSON形式で以下を含める:
+JSON形式で以下の構造で返してください：
 {
   "templateContent": "生成されたテンプレート本文",
   "distributionPlan": {
-    "recipients": ["engineer1@example.com", ...],
-    "scheduledTime": "HH:MM",
-    "channels": ["email", "chat", ...]
+    "recipients": ["engineer1@example.com", "engineer2@example.com"],
+    "sendTime": "ISO8601形式の送信予定時刻",
+    "channels": ["email", "chat"]
   },
   "validationRules": [
     {
       "field": "フィールド名",
       "required": true/false,
-      "constraints": ["制約1", "制約2", ...]
+      "constraints": ["制約条件1", "制約条件2"]
     }
   ]
-}`;
+}
+
+## 注意事項
+- テンプレートは簡潔で入力しやすい形式にしてください
+- 配信時刻は営業開始30分前を推奨します
+- 提出期限を明記し、催促の基準を明確にしてください`;
 }

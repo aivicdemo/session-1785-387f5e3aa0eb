@@ -3,70 +3,59 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
-  reportDeadline: string;
-  targetDate: string;
-  engineerList: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  systemContext: {
-    reportSystemUrl: string;
-    managementSystemUrl: string;
-  };
+export interface Action01PromptContext {
+  reportDate: string;
+  engineerName: string;
+  engineerId: string;
+  departmentName: string;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
 }
 
-export interface Action01PromptOutput {
+export interface Action01PromptResult {
   templateContent: string;
-  distributionList: string[];
+  distributionChannels: string[];
   scheduledTime: string;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const { reportDeadline, targetDate, engineerList, systemContext } = input;
+export function buildAction01Prompt(context: Action01PromptContext): string {
+  const lines: string[] = [];
 
-  const engineerListText = engineerList
-    .map((eng) => `- ${eng.name} (${eng.email})`)
-    .join("\n");
+  lines.push("# 日報テンプレート自動生成・配信プロンプト");
+  lines.push("");
+  lines.push("## 実行目的");
+  lines.push("前日の日報テンプレートを自動生成して配信し、エンジニアの入力準備を整える");
+  lines.push("");
+  lines.push("## 対象者情報");
+  lines.push(`- エンジニア名: ${context.engineerName}`);
+  lines.push(`- エンジニアID: ${context.engineerId}`);
+  lines.push(`- 部門: ${context.departmentName}`);
+  lines.push("");
+  lines.push("## 日報提出期限");
+  lines.push(`- 提出期限: ${context.submissionDeadline}`);
+  lines.push(`- 対象日付: ${context.reportDate}`);
+  lines.push("");
+  lines.push("## テンプレート生成要件");
+  lines.push("1. 前日の日報テンプレートを参照し、本日の日報フォーマットを生成する");
+  lines.push("2. 以下の項目を含める:");
+  lines.push("   - 昨日の実績（前日の予定との対比）");
+  lines.push("   - 本日の予定（具体的なタスク・マイルストーン）");
+  lines.push("   - 抱えている課題（ブロッカー・リスク・懸念事項）");
+  lines.push("3. 前日の実績セクションに前日の予定を自動入力する");
+  lines.push("4. テンプレートは簡潔で、5分以内に入力完了できる形式にする");
+  lines.push("");
+  lines.push("## 配信方法");
+  lines.push("1. メール配信（メインチャネル）");
+  lines.push("2. チャットツール通知（サブチャネル）");
+  lines.push("3. 日報管理システムへの自動プッシュ通知");
+  lines.push("");
+  lines.push("## 前日テンプレート参照");
+  if (context.previousReportTemplate) {
+    lines.push("前日のテンプレート:");
+    lines.push(context.previousReportTemplate);
+  } else {
+    lines.push("前日のテンプレートは利用できません。標準フォーマットを使用してください。");
+  }
 
-  const prompt = `You are an AI agent responsible for generating and distributing daily report templates.
-
-## Task: Generate Daily Report Template for Distribution
-
-### Context
-- Target Date: ${targetDate}
-- Report Deadline: ${reportDeadline}
-- Report System URL: ${systemContext.reportSystemUrl}
-- Management System URL: ${systemContext.managementSystemUrl}
-
-### Target Engineers
-${engineerListText}
-
-### Requirements
-1. Generate a professional daily report template that includes:
-   - Yesterday's achievements and deliverables
-   - Today's planned tasks and objectives
-   - Current challenges and blockers
-   - Risk assessment and mitigation plans
-
-2. Create distribution instructions for sending to all engineers
-
-3. Ensure the template is clear, concise, and encourages complete information submission
-
-4. Include deadline reminder and submission instructions
-
-### Output Format
-Provide:
-1. Complete template content (ready to send)
-2. List of recipient email addresses
-3. Recommended distribution time
-
-### Constraints
-- Template must be in Japanese
-- Keep template length under 500 words
-- Include system links for easy access
-- Ensure compliance with company reporting standards`;
-
-  return prompt;
+  return lines.join("\n");
 }

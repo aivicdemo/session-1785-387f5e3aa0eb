@@ -4,113 +4,90 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
+  reportSummary: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    reportedBy: string;
-    reportDate: string;
+    category: string;
   }>;
-  priorityClassifications: Array<{
+  priorityAssignments: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
-    category: string;
   }>;
-  reportSummary: {
-    totalReports: number;
-    submittedCount: number;
-    overallProgress: string;
-    keyMetrics: Record<string, unknown>;
-  };
+  departmentHead: string;
+  reportingDate: string;
 }
 
 export interface Action06PromptInput {
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    reportedBy: string;
-    reportDate: string;
+  context: Action06Context;
+  previousActions: Array<{
+    actionNumber: number;
+    result: string;
   }>;
-  reportSummary: {
-    totalReports: number;
-    submittedCount: number;
-    overallProgress: string;
-    keyMetrics: Record<string, unknown>;
-  };
-  priorityJudgmentCriteria: {
-    criticalConditions: string[];
-    highConditions: string[];
-    mediumConditions: string[];
-    lowConditions: string[];
-  };
 }
 
 export interface Action06PromptOutput {
-  priorityClassifications: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-    category: string;
-  }>;
-  escalationRecommendations: Array<{
-    issueId: string;
-    escalationRequired: boolean;
-    reason: string;
-    suggestedAction: string;
-  }>;
-  reportReadiness: {
-    isReadyForPresentation: boolean;
-    missingElements: string[];
-    additionalNotesForManager: string;
-  };
+  version: string;
+  action: number;
+  systemPrompt: string;
+  userPrompt: string;
+  instructions: string[];
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): string {
-  const issuesSection = input.extractedIssues
-    .map(
-      (issue) =>
-        `Issue ID: ${issue.id}\nTitle: ${issue.title}\nDescription: ${issue.description}\nReported by: ${issue.reportedBy}\nDate: ${issue.reportDate}`
-    )
-    .join("\n\n");
+export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
+  const { context, previousActions } = input;
 
-  const criteriaSection = Object.entries(input.priorityJudgmentCriteria)
-    .map(([level, conditions]) => `${level}:\n${conditions.map((c) => `- ${c}`).join("\n")}`)
-    .join("\n\n");
+  const systemPrompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
+Your role is to present the organized report and prioritized issue list to the department head.
+You must ensure all information is clearly structured and actionable.
+You operate as part of the tx_4_imp_1 agent contract for automated daily report collection and issue prioritization.`;
 
-  const metricsSection = Object.entries(input.reportSummary.keyMetrics)
-    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+  const issuesFormatted = context.extractedIssues
+    .map((issue) => {
+      const priority = context.priorityAssignments.find(
+        (p) => p.issueId === issue.id
+      );
+      return `- [${priority?.priority.toUpperCase() || "UNASSIGNED"}] ${issue.title}: ${issue.description} (Category: ${issue.category})
+  Reasoning: ${priority?.reasoning || "No reasoning provided"}`;
+    })
     .join("\n");
 
-  return `You are an AI agent responsible for the final step of daily report processing: prioritizing and classifying extracted issues for management review.
+  const userPrompt = `Based on the daily report collection and analysis completed in previous actions, prepare a final report for the department head.
 
-## Current Report Summary
-Total Reports: ${input.reportSummary.totalReports}
-Submitted: ${input.reportSummary.submittedCount}
-Overall Progress: ${input.reportSummary.overallProgress}
+Report Summary:
+${context.reportSummary}
 
-Key Metrics:
-${metricsSection}
+Extracted Issues and Priorities:
+${issuesFormatted}
 
-## Extracted Issues to Prioritize
-${issuesSection}
+Department Head: ${context.departmentHead}
+Reporting Date: ${context.reportingDate}
 
-## Priority Judgment Criteria
-${criteriaSection}
+Please:
+1. Verify all issues are correctly prioritized
+2. Identify any critical issues that require immediate attention
+3. Group issues by priority level
+4. Prepare a concise executive summary
+5. Suggest next steps for issue resolution`;
 
-## Your Task
-1. Analyze each extracted issue against the priority judgment criteria
-2. Assign a priority level (critical, high, medium, low) to each issue
-3. Provide clear reasoning for each priority assignment
-4. Categorize issues by type (technical, resource, schedule, quality, other)
-5. Identify any issues requiring escalation
-6. Assess overall report readiness for management presentation
+  const instructions = [
+    "Review the extracted issues and their assigned priorities",
+    "Validate that priority assignments are consistent and justified",
+    "Identify any critical or high-priority issues requiring escalation",
+    "Group issues by priority level for clear presentation",
+    "Create an executive summary highlighting key findings",
+    "Prepare actionable recommendations for the department head",
+    "Format the output for easy consumption in the morning meeting",
+    "Flag any unusual patterns or systemic issues",
+  ];
 
-## Output Requirements
-- Ensure all issues are classified with consistent logic
-- Flag any issues that require immediate escalation
-- Identify any missing information that would affect priority judgment
-- Provide actionable recommendations for the manager
-- Maintain objectivity in priority assessment`;
+  return {
+    version: ACTION_06_PROMPT_VERSION,
+    action: 6,
+    systemPrompt,
+    userPrompt,
+    instructions,
+  };
 }

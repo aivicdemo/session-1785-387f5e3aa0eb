@@ -21,40 +21,40 @@ export interface Action03ValidationResult {
 export function buildAction03Prompt(input: Action03Input): string {
   const prompt = `You are a validation agent for daily report submissions in the morning meeting management system.
 
-Your task is to validate the following engineer's daily report input for completeness and appropriateness.
+Your task is to validate the following engineer's daily report submission:
 
-Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Time: ${input.submissionTimestamp}
+Engineer Name: ${input.engineerName}
+Engineer Email: ${input.engineerEmail}
+Submission Timestamp: ${input.submissionTimestamp}
 
-Report Content:
-- Yesterday's Accomplishment: ${input.yesterdayAccomplishment}
-- Today's Plan: ${input.todayPlan}
-- Current Issues: ${input.currentIssues}
+Yesterday's Accomplishment:
+${input.yesterdayAccomplishment}
 
-Validation Criteria:
-1. All fields must be filled (not empty or null)
+Today's Plan:
+${input.todayPlan}
+
+Current Issues:
+${input.currentIssues}
+
+Please validate the submission according to these criteria:
+1. All required fields must be filled (not empty or null)
 2. Yesterday's accomplishment should describe concrete work completed
-3. Today's plan should be specific and measurable
+3. Today's plan should be specific and actionable
 4. Current issues should be clearly articulated if any exist
-5. Content should be appropriate and professional
-6. No sensitive information should be exposed
-7. Text length should be reasonable (not too short, not excessively long)
+5. The submission should not contain obviously inappropriate content
+6. The submission should be coherent and professional in tone
 
-Please validate this report and respond with:
-- A validation status (valid/invalid)
-- List of any errors found
-- List of any warnings (non-blocking issues)
-- Brief reasoning for your assessment
-
-Format your response as JSON with the following structure:
+Respond with a JSON object containing:
 {
   "isValid": boolean,
   "errors": string[],
-  "warnings": string[],
-  "reasoning": string
-}`;
+  "warnings": string[]
+}
+
+Where:
+- isValid: true if all critical validations pass, false otherwise
+- errors: array of critical validation failures that prevent registration
+- warnings: array of non-critical issues that should be noted but don't block registration`;
 
   return prompt;
 }

@@ -4,118 +4,153 @@
 export const ACTION_05_PROMPT_VERSION = "1.0.0";
 
 export interface Action05Context {
-  confirmedReports: Array<{
+  confirmationEmailContent: string;
+  reportSubmissionDeadline: string;
+  currentTimestamp: string;
+  previousEscalations: Array<{
     employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
-    status: "submitted" | "pending" | "overdue";
+    escalationCount: number;
+    lastEscalationTime: string;
   }>;
-  extractedIssues: Array<{
-    issueId: string;
-    description: string;
-    relatedEmployees: string[];
-    category: string;
-    severity: "low" | "medium" | "high" | "critical";
-  }>;
-  priorityJudgmentCriteria: {
-    businessImpact: number;
-    urgency: number;
-    resourceRequirement: number;
-    dependencies: number;
+  escalationRules: {
+    maxEscalationCount: number;
+    escalationIntervalMinutes: number;
+    considerLateAfterMinutes: number;
   };
 }
 
-export interface Action05PromptInput {
-  context: Action05Context;
-  reportingPeriod: {
-    date: string;
-    startTime: string;
-    endTime: string;
-  };
-  departmentInfo: {
-    departmentId: string;
-    departmentName: string;
-    totalMembers: number;
-  };
-  escalationThresholds: {
+export interface ExtractedIssue {
+  issueId: string;
+  description: string;
+  affectedEmployees: string[];
+  severity: "critical" | "high" | "medium" | "low";
+  category: string;
+  detectedAt: string;
+}
+
+export interface PrioritizedIssue extends ExtractedIssue {
+  priority: number;
+  priorityReason: string;
+  recommendedAction: string;
+}
+
+export interface Action05Output {
+  extractedIssues: ExtractedIssue[];
+  prioritizedIssues: PrioritizedIssue[];
+  escalationRecommendations: Array<{
+    employeeId: string;
+    shouldEscalate: boolean;
+    reason: string;
+    recommendedAction: string;
+  }>;
+  summaryReport: {
+    totalIssuesFound: number;
     criticalIssueCount: number;
-    overallRiskLevel: string;
+    escalationCandidateCount: number;
+    generatedAt: string;
   };
 }
 
-export interface Action05PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  contextData: Action05Context;
+export function buildAction05Prompt(context: Action05Context): string {
+  const {
+    confirmationEmailContent,
+    reportSubmissionDeadline,
+    currentTimestamp,
+    previousEscalations,
+    escalationRules,
+  } = context;
+
+  const escalationHistory = previousEscalations
+    .map(
+      (e) =>
+        `- Employee ${e.employeeId}: ${e.escalationCount} escalations (last: ${e.lastEscalationTime})`
+    )
+    .join("\n");
+
+  const prompt = `You are an AI agent responsible for analyzing confirmation email content to extract issues, prioritize them, and determine escalation recommendations.
+
+## Current Context
+- Confirmation Email Content:
+${confirmationEmailContent}
+
+- Report Submission Deadline: ${reportSubmissionDeadline}
+- Current Timestamp: ${currentTimestamp}
+- Max Escalation Count: ${escalationRules.maxEscalationCount}
+- Escalation Interval: ${escalationRules.escalationIntervalMinutes} minutes
+- Consider Late After: ${escalationRules.considerLateAfterMinutes} minutes
+
+## Previous Escalation History
+${escalationHistory || "No previous escalations"}
+
+## Your Tasks
+
+1. **Extract Issues**: Analyze the confirmation email content and identify all issues, bottlenecks, or anomalies mentioned. For each issue:
+   - Assign a unique issue ID
+   - Provide a clear description
+   - Identify affected employees
+   - Determine severity (critical/high/medium/low)
+   - Categorize the issue
+
+2. **Prioritize Issues**: For each extracted issue, determine:
+   - Priority number (1 = highest)
+   - Reason for the priority
+   - Recommended action
+
+3. **Escalation Recommendations**: Based on the email content and escalation history:
+   - Identify employees who should receive escalation notifications
+   - Provide reasoning for each escalation decision
+   - Recommend specific actions (email/chat notification)
+   - Consider escalation count limits and intervals
+
+4. **Generate Summary Report**: Create a summary with:
+   - Total issues found
+   - Count of critical issues
+   - Count of escalation candidates
+   - Generation timestamp
+
+## Output Format
+Return a JSON object with the following structure:
+{
+  "extractedIssues": [
+    {
+      "issueId": "string",
+      "description": "string",
+      "affectedEmployees": ["string"],
+      "severity": "critical|high|medium|low",
+      "category": "string",
+      "detectedAt": "ISO timestamp"
+    }
+  ],
+  "prioritizedIssues": [
+    {
+      "issueId": "string",
+      "description": "string",
+      "affectedEmployees": ["string"],
+      "severity": "critical|high|medium|low",
+      "category": "string",
+      "detectedAt": "ISO timestamp",
+      "priority": number,
+      "priorityReason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "escalationRecommendations": [
+    {
+      "employeeId": "string",
+      "shouldEscalate": boolean,
+      "reason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "summaryReport": {
+    "totalIssuesFound": number,
+    "criticalIssueCount": number,
+    "escalationCandidateCount": number,
+    "generatedAt": "ISO timestamp"
+  }
 }
 
-export function buildAction05Prompt(
-  input: Action05PromptInput
-): Action05PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the daily report management workflow.
-Your task is to analyze confirmed reports and extracted issues, then provide a comprehensive priority-judged report to the department head.
+Ensure all timestamps are in ISO 8601 format. Be thorough in issue extraction and prioritization.`;
 
-Key responsibilities:
-1. Analyze all confirmed daily reports from team members
-2. Review extracted issues and bottlenecks
-3. Apply priority judgment criteria to categorize issues
-4. Identify critical risks and escalation-worthy items
-5. Generate a structured report with prioritized action items
-
-Priority judgment framework:
-- Critical: Business impact > ${input.escalationThresholds.criticalIssueCount}, immediate action required
-- High: Multiple dependencies or resource constraints
-- Medium: Standard operational issues
-- Low: Minor improvements or observations
-
-Output format must include:
-- Executive summary
-- Prioritized issue list with justification
-- Risk assessment
-- Recommended actions
-- Escalation flags for human review`;
-
-  const userPrompt = `Process the following daily report data for ${input.reportingPeriod.date}:
-
-Department: ${input.departmentInfo.departmentName} (${input.departmentInfo.totalMembers} members)
-Reporting Period: ${input.reportingPeriod.startTime} - ${input.reportingPeriod.endTime}
-
-Confirmed Reports Summary:
-${input.context.confirmedReports
-  .map(
-    (report) =>
-      `- ${report.employeeName} (${report.employeeId}): ${report.status} at ${report.submittedAt}`
-  )
-  .join("\n")}
-
-Extracted Issues:
-${input.context.extractedIssues
-  .map(
-    (issue) =>
-      `- [${issue.severity.toUpperCase()}] ${issue.description} (Category: ${issue.category}, Affected: ${issue.relatedEmployees.join(", ")})`
-  )
-  .join("\n")}
-
-Priority Judgment Criteria Weights:
-- Business Impact: ${input.context.priorityJudgmentCriteria.businessImpact}
-- Urgency: ${input.context.priorityJudgmentCriteria.urgency}
-- Resource Requirement: ${input.context.priorityJudgmentCriteria.resourceRequirement}
-- Dependencies: ${input.context.priorityJudgmentCriteria.dependencies}
-
-Escalation Threshold: ${input.escalationThresholds.overallRiskLevel}
-
-Please analyze this data and provide:
-1. A prioritized list of issues with clear justification
-2. Risk assessment for the department
-3. Recommended immediate actions
-4. Items requiring human review and escalation`;
-
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    contextData: input.context,
-  };
+  return prompt;
 }

@@ -3,43 +3,104 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
+export interface Action04PromptInput {
   reportingDeadline: string;
-  escalationThreshold: number;
-  systemErrorContext?: string;
-}
-
-export interface Action04PromptResult {
-  version: string;
-  action: string;
-  instructions: string;
-  context: Action04PromptContext;
-}
-
-export function buildAction04Prompt(
-  context: Action04PromptContext
-): Action04PromptResult {
-  const instructions = `
-You are an AI agent responsible for sending confirmation emails to managers after daily reports are submitted.
-
-Your task is to:
-1. Prepare confirmation email content summarizing the daily reports received
-2. Identify any missing or delayed reports based on the reporting deadline: ${context.reportingDeadline}
-3. Determine escalation actions if the number of missing reports exceeds the threshold: ${context.escalationThreshold}
-4. Format the confirmation email with:
-   - Total reports received
-   - List of submitted reports with timestamps
-   - List of missing/delayed reports with employee names
-   - Recommended actions for escalation
-5. ${context.systemErrorContext ? `Handle system error context: ${context.systemErrorContext}` : "Ensure no system errors occurred during report collection"}
-
-Output the confirmation email content in a structured format ready for delivery to managers.
-  `.trim();
-
-  return {
-    version: ACTION_04_PROMPT_VERSION,
-    action: "send-confirmation-email",
-    instructions,
-    context,
+  overdueThresholdHours: number;
+  escalationRules: {
+    firstReminderHours: number;
+    secondReminderHours: number;
+    maxReminders: number;
   };
+  targetMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+  }>;
+  submissionStatus: Array<{
+    memberId: string;
+    submitted: boolean;
+    submittedAt?: string;
+    daysOverdue?: number;
+  }>;
+  previousReminders: Array<{
+    memberId: string;
+    reminderCount: number;
+    lastReminderAt: string;
+  }>;
+}
+
+export interface Action04PromptOutput {
+  escalationDecisions: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    shouldEscalate: boolean;
+    escalationReason: string;
+    escalationType: "first_reminder" | "second_reminder" | "manager_notification" | "none";
+    priority: "high" | "medium" | "low";
+  }>;
+  summaryMetrics: {
+    totalMembers: number;
+    submittedCount: number;
+    overdueCount: number;
+    escalationCandidateCount: number;
+  };
+  recommendedActions: string[];
+}
+
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const submittedMembers = input.submissionStatus.filter((s) => s.submitted).length;
+  const overdueMembers = input.submissionStatus.filter((s) => !s.submitted).length;
+
+  const escalationCandidates = input.submissionStatus
+    .filter((status) => !status.submitted)
+    .map((status) => {
+      const member = input.targetMembers.find((m) => m.memberId === status.memberId);
+      const previousReminder = input.previousReminders.find((r) => r.memberId === status.memberId);
+      return {
+        ...member,
+        daysOverdue: status.daysOverdue || 0,
+        reminderCount: previousReminder?.reminderCount || 0,
+      };
+    })
+    .filter((candidate) => candidate !== undefined);
+
+  const systemPrompt = `You are an AI agent responsible for escalation decision-making in a daily report management system.
+
+Your task is to analyze the current submission status and determine which members require escalation actions based on the defined rules.
+
+Current Context:
+- Reporting Deadline: ${input.reportingDeadline}
+- Overdue Threshold: ${input.overdueThresholdHours} hours
+- Total Members: ${input.targetMembers.length}
+- Submitted Reports: ${submittedMembers}
+- Overdue Reports: ${overdueMembers}
+
+Escalation Rules:
+- First Reminder: After ${input.escalationRules.firstReminderHours} hours of deadline
+- Second Reminder: After ${input.escalationRules.secondReminderHours} hours of deadline
+- Maximum Reminders: ${input.escalationRules.maxReminders}
+
+Overdue Members Analysis:
+${escalationCandidates
+  .map(
+    (candidate) => `
+- ${candidate?.memberName} (ID: ${candidate?.memberId}, Department: ${candidate?.department})
+  Days Overdue: ${candidate?.daysOverdue}
+  Previous Reminders: ${candidate?.reminderCount}
+  Email: ${candidate?.email}
+`
+  )
+  .join("")}
+
+Your decision should:
+1. Determine which members should receive reminders based on their overdue duration and reminder history
+2. Identify members who need manager escalation (repeated non-submission)
+3. Prioritize escalation actions by urgency
+4. Provide clear reasoning for each escalation decision
+
+Return your analysis as a structured decision list with escalation type, priority, and recommended action for each overdue member.`;
+
+  return systemPrompt;
 }

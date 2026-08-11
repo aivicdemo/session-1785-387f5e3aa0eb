@@ -3,88 +3,47 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Context {
-  engineerInputData: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
-  };
+export interface Action02Input {
+  engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlan: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
 export interface Action02ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedData: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
-  };
 }
 
-export function buildAction02Prompt(context: Action02Context): string {
-  const {
-    engineerInputData: {
-      yesterdayAccomplishments,
-      todayPlans,
-      currentIssues,
-      engineerId,
-      engineerName,
-      submissionTimestamp,
-    },
-  } = context;
+export function buildAction02Prompt(input: Action02Input): string {
+  const prompt = `You are validating a daily report submission from an engineer.
 
-  const prompt = `You are a validation agent for daily report submissions in the morning meeting management system.
+Engineer: ${input.engineerName} (${input.engineerEmail})
+Submission Time: ${input.submissionTimestamp}
 
-Your task is to validate the engineer's input content for completeness and appropriateness.
+Yesterday's Accomplishments:
+${input.yesterdayAccomplishments}
 
-Engineer Information:
-- ID: ${engineerId}
-- Name: ${engineerName}
-- Submission Time: ${submissionTimestamp}
+Today's Plan:
+${input.todayPlan}
 
-Input Content to Validate:
-1. Yesterday's Accomplishments:
-${yesterdayAccomplishments}
+Current Issues:
+${input.currentIssues}
 
-2. Today's Plans:
-${todayPlans}
+Please validate the following:
+1. All three sections (yesterday's accomplishments, today's plan, current issues) are filled in
+2. Each section contains meaningful content (not empty or just whitespace)
+3. The content is appropriate and professional
+4. No obvious errors or inconsistencies
 
-3. Current Issues/Challenges:
-${currentIssues}
-
-Validation Criteria:
-1. Completeness: All three sections must have meaningful content (not empty or just whitespace)
-2. Appropriateness: Content should be relevant to work activities
-3. Length: Each section should have reasonable length (at least 10 characters, not excessively long)
-4. Format: Content should be clear and understandable
-5. No sensitive data: Ensure no confidential information is exposed
-
-Please validate the input and provide:
-1. Whether the input is valid (true/false)
-2. List of errors (if any)
-3. List of warnings (if any)
-4. The validated data
-
-Respond in JSON format with the following structure:
+Respond with a JSON object containing:
 {
   "isValid": boolean,
   "errors": string[],
-  "warnings": string[],
-  "validatedData": {
-    "yesterdayAccomplishments": string,
-    "todayPlans": string,
-    "currentIssues": string,
-    "engineerId": string,
-    "engineerName": string,
-    "submissionTimestamp": string
-  }
+  "warnings": string[]
 }`;
 
   return prompt;

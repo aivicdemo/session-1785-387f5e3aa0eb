@@ -3,46 +3,40 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01Context {
-  engineerId: string;
+export interface Action01PromptInput {
   engineerName: string;
-  previousDayReportDate: string;
-  reportDeadline: string;
-  systemName: string;
+  engineerEmail: string;
+  previousDayTemplate: string;
+  submissionDeadline: string;
 }
 
-export interface Action01PromptResult {
-  version: string;
-  action: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action01Context;
+export interface Action01PromptOutput {
+  templateId: string;
+  templateContent: string;
+  distributionTimestamp: string;
+  recipientEmail: string;
 }
 
-export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
-  const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
-Your role is to generate and distribute daily report templates to engineers.
-You must ensure the template is clear, includes all required fields, and is delivered on time.
-The template should include sections for: yesterday's achievements, today's plans, and current issues.
-Maintain a professional and encouraging tone to promote timely submission.`;
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const prompt = `You are an AI agent responsible for generating and distributing daily report templates.
 
-  const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
-The report is for ${context.previousDayReportDate}.
-The submission deadline is ${context.reportDeadline}.
-System name: ${context.systemName}.
+Engineer Information:
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Deadline: ${input.submissionDeadline}
 
-Please create a template that:
-1. Clearly states the engineer's name and report date
-2. Includes sections for yesterday's achievements, today's plans, and current issues
-3. Provides space for detailed descriptions
-4. Includes the submission deadline
-5. Is formatted for easy distribution via email`;
+Previous Day Template:
+${input.previousDayTemplate}
 
-  return {
-    version: ACTION_01_PROMPT_VERSION,
-    action: "action-01",
-    systemPrompt,
-    userPrompt,
-    context,
-  };
+Task:
+Generate a daily report template for ${input.engineerName} based on the previous day's template structure. The template should include sections for:
+1. Yesterday's Achievements (実績)
+2. Today's Plans (予定)
+3. Current Issues/Challenges (課題)
+
+The template should be clear, concise, and ready for distribution via email to ${input.engineerEmail}.
+
+Output the template in a structured format that can be easily filled in by the engineer.`;
+
+  return prompt;
 }

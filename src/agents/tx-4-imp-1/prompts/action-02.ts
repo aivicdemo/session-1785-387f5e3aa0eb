@@ -7,73 +7,54 @@ export interface Action02PromptInput {
   reportContent: string;
   engineerName: string;
   submissionDate: string;
-  validationRules?: {
-    minLength?: number;
-    maxLength?: number;
-    requiredFields?: string[];
-  };
+  reportId: string;
 }
 
 export interface Action02PromptOutput {
-  isValid: boolean;
-  validationErrors: string[];
-  sanitizedContent: string;
-  timestamp: string;
+  validationResult: {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
+  extractedData: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+  };
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
-  const {
-    reportContent,
-    engineerName,
-    submissionDate,
-    validationRules = {
-      minLength: 10,
-      maxLength: 5000,
-      requiredFields: ["yesterday", "today", "issues"],
-    },
-  } = input;
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-  const rulesDescription = validationRules.requiredFields
-    ? `必須フィールド: ${validationRules.requiredFields.join(", ")}`
-    : "";
+Task: Validate the submitted report content and extract key information.
 
-  const prompt = `
-# 日報入力内容の妥当性検証
+Report Details:
+- Engineer Name: ${input.engineerName}
+- Submission Date: ${input.submissionDate}
+- Report ID: ${input.reportId}
 
-## 検証対象
-- エンジニア名: ${engineerName}
-- 提出日時: ${submissionDate}
-- 入力内容:
-\`\`\`
-${reportContent}
-\`\`\`
+Report Content:
+${input.reportContent}
 
-## 検証ルール
-- 最小文字数: ${validationRules.minLength || 10}文字
-- 最大文字数: ${validationRules.maxLength || 5000}文字
-${rulesDescription}
+Please perform the following validations:
+1. Check if all required sections are present (yesterday's accomplishments, today's plans, current issues)
+2. Verify that the content is not empty or placeholder text
+3. Identify any incomplete or inappropriate content
+4. Extract structured data from each section
 
-## 検証項目
-1. 入力内容が空でないか確認
-2. 文字数が指定範囲内か確認
-3. 必須フィールドが含まれているか確認
-4. 不適切な表現や機密情報が含まれていないか確認
-5. 日本語として適切な文法か確認
-
-## 出力形式
-検証結果をJSON形式で以下の構造で返してください:
+Respond with a JSON object containing:
 {
-  "isValid": boolean,
-  "validationErrors": string[],
-  "sanitizedContent": string,
-  "timestamp": string
-}
-
-isValid: 全ての検証に合格した場合true
-validationErrors: 検出された問題の説明リスト
-sanitizedContent: 検証済みの入力内容（不適切な表現を修正）
-timestamp: 検証実行時刻（ISO 8601形式）
-`;
+  "validationResult": {
+    "isValid": boolean,
+    "errors": string[],
+    "warnings": string[]
+  },
+  "extractedData": {
+    "yesterdayAccomplishments": string,
+    "todayPlans": string,
+    "currentIssues": string
+  }
+}`;
 
   return prompt;
 }

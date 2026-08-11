@@ -4,148 +4,53 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportingDeadline: string;
-  overdueThresholdHours: number;
-  systemTime: string;
-  reportSubmissionStatuses: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    submittedAt: string | null;
-    isOverdue: boolean;
+  reportDate: string;
+  targetEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
   }>;
+  submissionDeadline: string;
+  systemContext: string;
 }
 
 export interface Action02PromptOutput {
-  nonSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    hoursOverdue: number;
-  }>;
-  delayedSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    submittedAt: string;
-    minutesLate: number;
-  }>;
-  summaryList: {
-    totalEmployees: number;
-    submittedCount: number;
-    nonSubmittedCount: number;
-    delayedCount: number;
-    onTimeCount: number;
+  prompt: string;
+  version: string;
+}
+
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+  const engineerList = input.targetEngineers
+    .map((eng) => `- ${eng.name} (${eng.email})`)
+    .join("\n");
+
+  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
+
+Context:
+- Report Date: ${input.reportDate}
+- Submission Deadline: ${input.submissionDeadline}
+- System Context: ${input.systemContext}
+
+Target Engineers:
+${engineerList}
+
+Task: Automatically determine which engineers have not submitted their daily reports and which have submitted late. Create a list of non-submitters and late submitters.
+
+Requirements:
+1. Check the submission status of each engineer
+2. Identify engineers who have not submitted by the deadline
+3. Identify engineers who submitted after the deadline
+4. Generate a comprehensive list with submission status for each engineer
+5. Prepare notification content for the department head
+
+Output Format:
+- Non-submitters: [list of engineer names and emails]
+- Late submitters: [list of engineer names, emails, and submission time]
+- Summary: [brief summary of submission status]
+- Recommended Actions: [suggested next steps]`;
+
+  return {
+    prompt,
+    version: ACTION_02_PROMPT_VERSION,
   };
-}
-
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const systemTimeDate = new Date(input.systemTime);
-  const deadlineDate = new Date(input.reportingDeadline);
-
-  const nonSubmitters = input.reportSubmissionStatuses.filter(
-    (status) => status.submittedAt === null
-  );
-
-  const delayedSubmitters = input.reportSubmissionStatuses.filter((status) => {
-    if (status.submittedAt === null) return false;
-    const submittedDate = new Date(status.submittedAt);
-    return submittedDate > deadlineDate;
-  });
-
-  const onTimeSubmitters = input.reportSubmissionStatuses.filter((status) => {
-    if (status.submittedAt === null) return false;
-    const submittedDate = new Date(status.submittedAt);
-    return submittedDate <= deadlineDate;
-  });
-
-  const nonSubmittersList = nonSubmitters
-    .map((submitter) => {
-      const hoursOverdue = Math.floor(
-        (systemTimeDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60)
-      );
-      return `- ${submitter.employeeName} (${submitter.departmentName}): ${hoursOverdue}時間超過`;
-    })
-    .join("\n");
-
-  const delayedSubmittersList = delayedSubmitters
-    .map((submitter) => {
-      const submittedDate = new Date(submitter.submittedAt);
-      const minutesLate = Math.floor(
-        (submittedDate.getTime() - deadlineDate.getTime()) / (1000 * 60)
-      );
-      return `- ${submitter.employeeName} (${submitter.departmentName}): ${minutesLate}分遅延`;
-    })
-    .join("\n");
-
-  const prompt = `あなたは朝会報告管理システムの自動判定エージェントです。
-
-【タスク】
-以下の日報提出状況から、未提出者と遅延者を自動判定し、部長への通知内容を作成してください。
-
-【提出期限】
-${input.reportingDeadline}
-
-【現在時刻】
-${input.systemTime}
-
-【提出状況サマリー】
-- 総従業員数: ${input.reportSubmissionStatuses.length}
-- 期限内提出: ${onTimeSubmitters.length}
-- 遅延提出: ${delayedSubmitters.length}
-- 未提出: ${nonSubmitters.length}
-
-【未提出者一覧】
-${nonSubmittersList || "なし"}
-
-【遅延提出者一覧】
-${delayedSubmittersList || "なし"}
-
-【出力形式】
-以下のJSON形式で結果を返してください:
-{
-  "nonSubmitters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "departmentId": "string",
-      "departmentName": "string",
-      "hoursOverdue": number
-    }
-  ],
-  "delayedSubmitters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "departmentId": "string",
-      "departmentName": "string",
-      "submittedAt": "string",
-      "minutesLate": number
-    }
-  ],
-  "summaryList": {
-    "totalEmployees": number,
-    "submittedCount": number,
-    "nonSubmittedCount": number,
-    "delayedCount": number,
-    "onTimeCount": number
-  }
-}
-
-【判定ルール】
-1. 未提出者: submittedAt が null のもの
-2. 遅延者: submittedAt が reportingDeadline より後のもの
-3. 期限内提出: submittedAt が reportingDeadline 以前のもの
-4. 超過時間: 現在時刻 - 提出期限 の差分を時間単位で計算
-5. 遅延分数: 提出時刻 - 提出期限 の差分を分単位で計算
-
-【注意事項】
-- 判定は客観的に行い、例外ケースは含めない
-- 時刻計算は正確に行う
-- 結果は必ずJSON形式で返す`;
-
-  return prompt;
 }

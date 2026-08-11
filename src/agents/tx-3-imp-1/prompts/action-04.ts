@@ -7,9 +7,15 @@ export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
   currentTimestamp: string;
-  escalationRules?: {
-    maxRetries?: number;
-    retryIntervalHours?: number;
+  previousReminders: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+  reminderRules: {
+    maxReminderCount: number;
+    reminderIntervalMinutes: number;
+    escalationThresholdCount: number;
   };
 }
 
@@ -17,124 +23,82 @@ export interface Action04PromptOutput {
   identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
-    status: "non-reported" | "delayed";
-    daysSinceDeadline: number;
+    reason: "not_submitted" | "delayed";
+    submissionTime?: string;
   }>;
-  escalationTargets: Array<{
+  remindersToSend: Array<{
+    employeeId: string;
+    employeeName: string;
+    channel: "email" | "chat";
+    message: string;
+    priority: "normal" | "high";
+  }>;
+  escalationCases: Array<{
     employeeId: string;
     employeeName: string;
     escalationReason: string;
-    priority: "high" | "medium" | "low";
-  }>;
-  communicationPlan: Array<{
-    targetEmployeeId: string;
-    communicationMethod: "email" | "chat" | "both";
-    messageTemplate: string;
-    scheduledTime?: string;
+    recommendedAction: string;
   }>;
   executionLog: {
     timestamp: string;
-    processedRecords: number;
-    escalatedCount: number;
-    errors: string[];
+    totalIdentified: number;
+    remindersScheduled: number;
+    escalationsDetected: number;
   };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const {
-    confirmationEmailContent,
-    reportingDeadline,
-    currentTimestamp,
-    escalationRules = {},
-  } = input;
+  const reminderHistoryText = input.previousReminders
+    .map(
+      (reminder) =>
+        `- Employee ID: ${reminder.employeeId}, Reminder Count: ${reminder.reminderCount}, Last Reminder: ${reminder.lastReminderTime}`
+    )
+    .join("\n");
 
-  const maxRetries = escalationRules.maxRetries ?? 3;
-  const retryIntervalHours = escalationRules.retryIntervalHours ?? 24;
+  const prompt = `You are an AI agent responsible for identifying non-reporting employees and sending automated reminders.
 
-  return `You are an AI agent responsible for identifying non-reporting and delayed employees from confirmation email content and executing escalation procedures.
+## Task: Identify Non-Reporters and Send Reminders
 
-## Task: Analyze Confirmation Email and Execute Escalation
+### Confirmation Email Content:
+${input.confirmationEmailContent}
 
-### Input Information:
-- Confirmation Email Content:
-${confirmationEmailContent}
+### Reporting Deadline:
+${input.reportingDeadline}
 
-- Reporting Deadline: ${reportingDeadline}
-- Current Timestamp: ${currentTimestamp}
+### Current Timestamp:
+${input.currentTimestamp}
 
-### Escalation Rules:
-- Maximum Retries: ${maxRetries}
-- Retry Interval: ${retryIntervalHours} hours
-- Escalation Conditions:
-  1. Employee has not submitted report by deadline
-  2. Employee has submitted but with significant delay (>2 hours past deadline)
-  3. Previous escalation attempts exist without resolution
+### Previous Reminder History:
+${reminderHistoryText || "No previous reminders sent"}
 
-### Your Responsibilities:
+### Reminder Rules:
+- Maximum reminders per employee: ${input.reminderRules.maxReminderCount}
+- Reminder interval: ${input.reminderRules.reminderIntervalMinutes} minutes
+- Escalation threshold: ${input.reminderRules.escalationThresholdCount} reminders
 
-1. **Identify Non-Reporters and Delayed Reporters**
-   - Parse confirmation email content to extract employee submission status
-   - Identify employees who have not reported
-   - Identify employees who reported late
-   - Calculate days/hours since deadline for each delayed reporter
+## Instructions:
 
-2. **Determine Escalation Targets**
-   - Apply escalation rules to determine which employees require escalation
-   - Assign priority levels (high/medium/low) based on:
-     - Time elapsed since deadline
-     - Number of previous escalation attempts
-     - Employee's historical reporting pattern
+1. **Identify Non-Reporters**: Parse the confirmation email content to identify employees who have not submitted their reports or submitted late.
 
-3. **Plan Communication**
-   - Determine appropriate communication method (email/chat/both)
-   - Select message template based on escalation reason
-   - Schedule communication timing if applicable
+2. **Determine Reminder Eligibility**: Check previous reminder history. Only send reminders if:
+   - The employee has not reached the maximum reminder count
+   - The interval since the last reminder has passed
+   - The employee is still in non-reporting status
 
-4. **Generate Execution Log**
-   - Record timestamp of analysis
-   - Count processed records
-   - Count escalated employees
-   - Document any errors or exceptions encountered
+3. **Generate Reminder Messages**: Create appropriate reminder messages for each eligible employee, considering:
+   - Professional tone
+   - Clear deadline information
+   - Channel preference (email or chat)
 
-### Output Format:
-Return a JSON object with the following structure:
-{
-  "identifiedNonReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "status": "non-reported" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "escalationTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "escalationReason": "string",
-      "priority": "high" | "medium" | "low"
-    }
-  ],
-  "communicationPlan": [
-    {
-      "targetEmployeeId": "string",
-      "communicationMethod": "email" | "chat" | "both",
-      "messageTemplate": "string",
-      "scheduledTime": "string (optional)"
-    }
-  ],
-  "executionLog": {
-    "timestamp": "string",
-    "processedRecords": number,
-    "escalatedCount": number,
-    "errors": ["string"]
-  }
-}
+4. **Identify Escalation Cases**: Flag employees who:
+   - Have reached or exceeded the escalation threshold
+   - Have repeated non-reporting patterns
+   - Require management intervention
 
-### Important Notes:
-- Ensure accuracy in identifying non-reporters vs. delayed reporters
-- Apply escalation rules consistently
-- Prioritize high-priority escalations
-- Document all errors for human review
-- Consider previous escalation attempts to avoid over-escalation`;
+5. **Output Format**: Return a structured response with identified non-reporters, reminders to send, escalation cases, and execution log.
+
+## Response Format:
+Return a JSON object matching the Action04PromptOutput interface with all required fields populated.`;
+
+  return prompt;
 }

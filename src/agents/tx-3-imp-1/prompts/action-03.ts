@@ -5,136 +5,78 @@ export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 export interface Action03PromptInput {
   confirmationEmailContent: string;
-  reportDeadline: string;
-  currentDateTime: string;
-  escalationRules?: {
-    maxReminders?: number;
-    reminderIntervalHours?: number;
-  };
+  reportingDeadline: string;
+  currentTimestamp: string;
+  escalationThreshold: number;
 }
 
 export interface Action03PromptOutput {
-  identifiedNonReporters: Array<{
+  missingReporters: Array<{
     employeeId: string;
     employeeName: string;
-    status: "non-reported" | "delayed";
-    daysSinceDeadline: number;
+    department: string;
+    lastReminderSentAt?: string;
+    reminderCount: number;
   }>;
-  escalationTargets: Array<{
+  delayedReporters: Array<{
     employeeId: string;
     employeeName: string;
-    escalationReason: string;
+    department: string;
+    submittedAt: string;
+    delayMinutes: number;
+  }>;
+  escalationCandidates: Array<{
+    employeeId: string;
+    employeeName: string;
+    department: string;
+    reason: string;
     priority: "high" | "medium" | "low";
   }>;
-  reminderContent: {
-    emailSubject: string;
-    emailBody: string;
-    chatMessage: string;
-  };
-  executionLog: {
-    timestamp: string;
-    processedCount: number;
-    escalatedCount: number;
-    errors: string[];
+  actionItems: Array<{
+    type: "send_reminder_email" | "send_reminder_chat" | "escalate" | "log";
+    targetEmployeeId: string;
+    targetEmployeeName: string;
+    message: string;
+    channel: "email" | "chat" | "system";
+  }>;
+  summary: {
+    totalMissingCount: number;
+    totalDelayedCount: number;
+    totalEscalationCount: number;
+    processingTimestamp: string;
   };
 }
 
 export function buildAction03Prompt(input: Action03PromptInput): string {
-  const {
-    confirmationEmailContent,
-    reportDeadline,
-    currentDateTime,
-    escalationRules = {},
-  } = input;
+  const systemPrompt = `You are an AI agent responsible for identifying missing and delayed daily reports from confirmation email content and determining escalation targets.
 
-  const maxReminders = escalationRules.maxReminders ?? 3;
-  const reminderIntervalHours = escalationRules.reminderIntervalHours ?? 24;
+Your task is to:
+1. Parse the confirmation email content to identify which employees have NOT submitted their reports
+2. Identify employees whose reports were submitted but are DELAYED (after the deadline)
+3. Determine which employees require escalation based on:
+   - Multiple previous reminders without submission
+   - Significant delay beyond the threshold (${input.escalationThreshold} minutes)
+   - Pattern of repeated non-compliance
+4. Generate appropriate action items for each category
 
-  const prompt = `You are an AI agent responsible for identifying non-reporters and delayed reporters from confirmation email content, and determining escalation targets for reminder notifications.
+Current deadline: ${input.reportingDeadline}
+Current timestamp: ${input.currentTimestamp}
+Escalation threshold: ${input.escalationThreshold} minutes
 
-## Task: Analyze Confirmation Email and Identify Non-Reporters
+Output must be valid JSON matching the Action03PromptOutput structure.`;
 
-### Input Information:
-- Confirmation Email Content:
-${confirmationEmailContent}
+  const userPrompt = `Please analyze the following confirmation email content and identify missing/delayed reporters:
 
-- Report Deadline: ${reportDeadline}
-- Current DateTime: ${currentDateTime}
-- Max Reminders per Employee: ${maxReminders}
-- Reminder Interval (hours): ${reminderIntervalHours}
+${input.confirmationEmailContent}
 
-### Your Responsibilities:
+Provide a structured analysis with:
+- List of employees who have NOT submitted reports (missingReporters)
+- List of employees whose reports are delayed (delayedReporters)
+- List of employees requiring escalation (escalationCandidates)
+- Specific action items to take for each category
+- Summary statistics
 
-1. **Parse Confirmation Email Content**
-   - Extract all employee records from the confirmation email
-   - Identify which employees have submitted reports
-   - Identify which employees have NOT submitted reports
-   - Determine which employees submitted reports AFTER the deadline
+Return as JSON.`;
 
-2. **Identify Non-Reporters and Delayed Reporters**
-   - Classify each employee as:
-     - "non-reported": No report submitted by current time
-     - "delayed": Report submitted after the deadline
-   - Calculate days since deadline for delayed reporters
-
-3. **Determine Escalation Targets**
-   - Apply escalation rules to determine which employees should receive reminders
-   - Consider:
-     - Time elapsed since deadline
-     - Number of previous reminders (if available in email content)
-     - Severity of delay
-   - Assign priority levels: "high" (>48 hours late), "medium" (24-48 hours), "low" (<24 hours)
-
-4. **Generate Reminder Content**
-   - Create professional email subject line
-   - Write concise email body for reminder
-   - Compose chat message for instant notification
-   - Keep tone professional but encouraging
-
-5. **Log Execution Details**
-   - Record timestamp of analysis
-   - Count total processed employees
-   - Count escalated employees
-   - Document any parsing errors or anomalies
-
-### Output Format:
-Return a JSON object with the following structure:
-{
-  "identifiedNonReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "status": "non-reported" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "escalationTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "escalationReason": "string",
-      "priority": "high" | "medium" | "low"
-    }
-  ],
-  "reminderContent": {
-    "emailSubject": "string",
-    "emailBody": "string",
-    "chatMessage": "string"
-  },
-  "executionLog": {
-    "timestamp": "ISO 8601 format",
-    "processedCount": number,
-    "escalatedCount": number,
-    "errors": ["string"]
-  }
-}
-
-### Constraints:
-- Only escalate employees who meet the escalation criteria
-- Ensure all employee IDs and names are accurately extracted
-- Calculate time differences precisely
-- Maintain professional communication tone
-- Do not make assumptions about missing data; document as errors if necessary`;
-
-  return prompt;
+  return `${systemPrompt}\n\n${userPrompt}`;
 }

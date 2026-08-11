@@ -7,87 +7,83 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
+  previousReportContent?: {
     yesterday: string;
     today: string;
     issues: string;
   };
   submissionDeadline: string;
-  managementSystemUrl: string;
+  systemTimestamp: string;
 }
 
 export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedContent: {
+  validatedContent?: {
     yesterday: string;
     today: string;
     issues: string;
   };
 }
 
-export interface Action04PromptInput {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
-  };
-}
+export function buildAction04Prompt(context: Action04Context): string {
+  const {
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
+  } = context;
 
-export interface Action04PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  expectedOutputFormat: string;
-}
+  const previousContentSection = previousReportContent
+    ? `
+前日の日報内容:
+- 昨日の実績: ${previousReportContent.yesterday}
+- 本日の予定: ${previousReportContent.today}
+- 抱えている課題: ${previousReportContent.issues}
+`
+    : "";
 
-export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
-  const { context, validationRules } = input;
+  const prompt = `# 日報入力内容の妥当性検証タスク
 
-  const systemPrompt = `You are a validation agent for the morning report management system.
-Your role is to validate engineer daily report submissions for completeness and appropriateness.
+## 対象エンジニア情報
+- エンジニアID: ${engineerId}
+- エンジニア名: ${engineerName}
+- 報告日: ${reportDate}
+- 提出期限: ${submissionDeadline}
+- システム時刻: ${systemTimestamp}
 
-Validation Rules:
-- Yesterday's accomplishments: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
-- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
-- Issues/concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
+## 前日の日報参照情報
+${previousContentSection}
 
-Check for:
-1. Content completeness (all required fields filled)
-2. Appropriate length (not too short, not too long)
-3. Logical consistency (today's plan relates to yesterday's work)
-4. Issue clarity (issues are specific and actionable)
-5. No offensive or inappropriate content
+## 検証タスク
+以下の項目について、入力内容の妥当性を検証してください:
 
-Respond with a JSON object containing:
-- isValid: boolean
-- errors: array of critical issues
-- warnings: array of non-critical issues
-- validatedContent: the cleaned/normalized content`;
+1. **昨日の実績の妥当性**
+   - 具体的な成果物や完了したタスクが記載されているか
+   - 前日の予定との整合性があるか
+   - 実績が空白でないか
 
-  const userPrompt = `Validate the following daily report submission:
+2. **本日の予定の妥当性**
+   - 具体的で実行可能な予定が記載されているか
+   - 優先度が明確か
+   - 予定が空白でないか
 
-Engineer: ${context.engineerName} (ID: ${context.engineerId})
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
+3. **抱えている課題の妥当性**
+   - 課題が具体的に記載されているか
+   - 課題の内容が理解可能か
+   - 課題がある場合、その対応方針が示唆されているか
 
-Yesterday's Accomplishments:
-${context.previousReportContent.yesterday}
+4. **全体的な整合性**
+   - 昨日の実績と本日の予定に矛盾がないか
+   - 課題が実績や予定に関連しているか
+   - 日報全体として一貫性があるか
 
-Today's Plan:
-${context.previousReportContent.today}
-
-Issues/Concerns:
-${context.previousReportContent.issues}
-
-Please validate this report and provide detailed feedback.`;
-
-  const expectedOutputFormat = `{
+## 出力形式
+以下のJSON形式で検証結果を返してください:
+{
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
@@ -96,12 +92,13 @@ Please validate this report and provide detailed feedback.`;
     "today": string,
     "issues": string
   }
-}`;
+}
 
-  return {
-    version: ACTION_04_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    expectedOutputFormat,
-  };
+- isValid: 全ての必須項目が適切に入力されている場合true
+- errors: 修正が必須な問題のリスト
+- warnings: 改善が推奨される問題のリスト
+- validatedContent: 検証済みの入力内容（正規化済み）
+`;
+
+  return prompt;
 }
