@@ -1336,6 +1336,7 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       }
     }
 
+    const { randomUUID } = require("crypto");
     const submissionId = randomUUID();
     const submittedAt = new Date();
 
@@ -1435,24 +1436,26 @@ export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[])
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmission exports=validateReportSubmission */
-const __aivicBundle_13_validateReportSubmission = (() => {
+const __aivicBundle_validateReportSubmission_fixed = (() => {
   function validateReportSubmission(input: any): any {
     const yesterday =
-      input.yesterday_accomplishment ??
-      input.yesterday_result ??
-      input.yesterday_achievement ??
-      input.yesterday_work ??
-      input.yesterdayAccomplishment;
+      input?.yesterday_accomplishment ??
+      input?.yesterday_result ??
+      input?.yesterday_achievement ??
+      input?.yesterday_work ??
+      input?.yesterdayAccomplishment ??
+      '';
   
     const today =
-      input.today_plan ?? input.todayPlan;
+      input?.today_plan ?? input?.todayPlan ?? '';
   
     const issue =
-      input.current_issues ??
-      input.current_issue ??
-      input.current_challenge ??
-      input.challenge ??
-      input.currentIssue;
+      input?.current_issues ??
+      input?.current_issue ??
+      input?.current_challenge ??
+      input?.challenge ??
+      input?.currentIssue ??
+      '';
   
     const errors: Array<{ field: string; message: string }> = [];
   
@@ -1464,7 +1467,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
     }
   
     if (!today || (typeof today === 'string' && today.trim() === '')) {
-      if (input.today_plan === '' || input.todayPlan === '') {
+      if (input?.today_plan === '' || input?.todayPlan === '') {
         throw new Error('本日の予定は必須です');
       }
       errors.push({
@@ -1501,7 +1504,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       }
     }
   
-    if (input.reporterUserId && input.userId && input.userRole) {
+    if (input?.reporterUserId && input?.userId && input?.userRole) {
       if (input.reporterUserId === input.userId && input.userRole === 'manager') {
         throw new Error('部長自身は報告者になることはできません');
       }
@@ -1510,17 +1513,17 @@ const __aivicBundle_13_validateReportSubmission = (() => {
     const isValid = errors.length === 0;
   
     const hasSnakeCaseFields =
-      'yesterday_accomplishment' in input ||
-      'today_plan' in input ||
-      'current_issues' in input ||
-      'yesterday_result' in input ||
-      'current_issue' in input;
+      'yesterday_accomplishment' in (input || {}) ||
+      'today_plan' in (input || {}) ||
+      'current_issues' in (input || {}) ||
+      'yesterday_result' in (input || {}) ||
+      'current_issue' in (input || {});
   
     const hasCamelCaseFields =
-      'yesterdayAccomplishment' in input ||
-      'todayPlan' in input ||
-      'currentIssue' in input ||
-      'challenge' in input;
+      'yesterdayAccomplishment' in (input || {}) ||
+      'todayPlan' in (input || {}) ||
+      'currentIssue' in (input || {}) ||
+      'challenge' in (input || {});
   
     if (hasSnakeCaseFields) {
       return {
@@ -1563,7 +1566,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
   }
   return { validateReportSubmission };
 })();
-export const validateReportSubmission = __aivicBundle_13_validateReportSubmission.validateReportSubmission;
+export const validateReportSubmission = __aivicBundle_validateReportSubmission_fixed.validateReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendMorningReport exports=validateAndSendMorningReport */
