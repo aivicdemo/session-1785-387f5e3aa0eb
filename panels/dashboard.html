@@ -20,7 +20,7 @@
             margin: 0 auto;
         }
         .header {
-            background-color: white;
+            background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
@@ -28,8 +28,8 @@
         }
         h1 {
             color: #333;
-            margin-bottom: 20px;
             font-size: 28px;
+            margin-bottom: 20px;
         }
         .deadline-section {
             background-color: #fff3cd;
@@ -38,124 +38,96 @@
             border-radius: 4px;
             margin-bottom: 20px;
         }
-        .deadline-section p {
+        .deadline-label {
             color: #856404;
+            font-weight: 500;
             font-size: 14px;
-            margin-bottom: 5px;
         }
-        .deadline-section .deadline-time {
-            font-size: 18px;
-            font-weight: 600;
+        .deadline-time {
             color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
         }
-        .nav-button {
+        .nav-link {
             display: inline-block;
-            background-color: #3498db;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #007bff;
             color: white;
-            padding: 12px 24px;
-            border-radius: 4px;
             text-decoration: none;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
-            border: none;
-            cursor: pointer;
+            border-radius: 4px;
             font-size: 14px;
+            transition: background-color 0.3s;
         }
-        .nav-button:hover {
-            background-color: #2980b9;
+        .nav-link:hover {
+            background-color: #0056b3;
         }
         .summary-section {
-            background-color: white;
+            background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
         }
-        h2 {
+        .summary-title {
+            font-size: 20px;
             color: #333;
             margin-bottom: 20px;
-            font-size: 20px;
+            font-weight: 600;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .summary-table thead {
-            background-color: #ecf0f1;
         }
         .summary-table th {
+            background-color: #f8f9fa;
+            color: #333;
             padding: 12px;
             text-align: left;
             font-weight: 600;
-            color: #333;
-            border-bottom: 2px solid #bdc3c7;
-            font-size: 14px;
+            border-bottom: 2px solid #dee2e6;
         }
         .summary-table td {
             padding: 12px;
-            border-bottom: 1px solid #ecf0f1;
+            border-bottom: 1px solid #dee2e6;
             color: #666;
-            font-size: 14px;
         }
-        .summary-table tbody tr:hover {
+        .summary-table tr:hover {
             background-color: #f9f9f9;
         }
         .progress-bar {
             width: 100%;
-            height: 24px;
-            background-color: #ecf0f1;
-            border-radius: 4px;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
             overflow: hidden;
-            display: flex;
-            align-items: center;
+            margin-top: 5px;
         }
         .progress-fill {
             height: 100%;
-            background-color: #27ae60;
+            background-color: #28a745;
+            transition: width 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-size: 12px;
-            font-weight: 600;
-            transition: width 0.3s ease;
+            font-weight: bold;
         }
         .status-badge {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
+            padding: 4px 8px;
+            border-radius: 3px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 500;
         }
         .status-submitted {
-            background-color: #d5f4e6;
-            color: #27ae60;
+            background-color: #d4edda;
+            color: #155724;
         }
         .status-pending {
-            background-color: #fdeaa8;
-            color: #d68910;
-        }
-        .logout-button {
-            display: inline-block;
-            background-color: #e74c3c;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 20px;
-        }
-        .logout-button:hover {
-            background-color: #c0392b;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            background-color: #fff3cd;
+            color: #856404;
         }
     </style>
 </head>
@@ -165,18 +137,15 @@
             <h1>日報提出状況ダッシュボード</h1>
             
             <div class="deadline-section">
-                <p>提出期限:</p>
-                <div class="deadline-time" id="deadlineTime">本日 18:00</div>
+                <div class="deadline-label">提出期限</div>
+                <div class="deadline-time" id="deadlineTime">2025年1月31日 17:00</div>
             </div>
             
-            <div class="button-group">
-                <a href="./daily-report.html" class="nav-button">日報を入力・送信</a>
-                <button class="logout-button" id="logoutBtn">ログアウト</button>
-            </div>
+            <a href="./daily-report.html" class="nav-link">日報を入力・送信する</a>
         </div>
         
         <div class="summary-section">
-            <h2>部門別提出状況サマリー</h2>
+            <div class="summary-title">部門別提出状況サマリー</div>
             <table class="summary-table">
                 <thead>
                     <tr>
@@ -187,9 +156,50 @@
                         <th>ステータス</th>
                     </tr>
                 </thead>
-                <tbody id="summaryTableBody">
+                <tbody id="summaryBody">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #999;">読み込み中...</td>
+                        <td>営業部</td>
+                        <td>8</td>
+                        <td>2</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 80%;">80%</div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-submitted">進行中</span></td>
+                    </tr>
+                    <tr>
+                        <td>企画部</td>
+                        <td>5</td>
+                        <td>1</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 83.33%;">83%</div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-submitted">進行中</span></td>
+                    </tr>
+                    <tr>
+                        <td>技術部</td>
+                        <td>10</td>
+                        <td>0</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%;">100%</div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-submitted">完了</span></td>
+                    </tr>
+                    <tr>
+                        <td>管理部</td>
+                        <td>4</td>
+                        <td>2</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 66.67%;">67%</div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge status-pending">未提出あり</span></td>
                     </tr>
                 </tbody>
             </table>
@@ -197,67 +207,23 @@
     </div>
     
     <script>
-        async function loadDashboard() {
-            try {
-                const response = await fetch('/api/dashboard/summary');
-                if (response.ok) {
-                    const data = await response.json();
-                    renderSummary(data);
-                }
-            } catch (error) {
-                console.error('Failed to load dashboard:', error);
-            }
-        }
-        
-        function renderSummary(data) {
-            const tbody = document.getElementById('summaryTableBody');
+        document.addEventListener('DOMContentLoaded', function() {
+            // 提出期限を動的に設定（現在日時から3日後の17:00）
+            const deadline = new Date();
+            deadline.setDate(deadline.getDate() + 3);
+            deadline.setHours(17, 0, 0, 0);
             
-            if (!data.departments || data.departments.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">データがありません</td></tr>';
-                return;
-            }
+            const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            };
             
-            tbody.innerHTML = data.departments.map(dept => {
-                const total = dept.submitted + dept.pending;
-                const rate = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
-                const status = rate === 100 ? '完了' : '進行中';
-                const statusClass = rate === 100 ? 'status-submitted' : 'status-pending';
-                
-                return `
-                    <tr>
-                        <td>${dept.name}</td>
-                        <td>${dept.submitted}</td>
-                        <td>${dept.pending}</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge ${statusClass}">${status}</span></td>
-                    </tr>
-                `;
-            }).join('');
-        }
-        
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            window.location.href = './login.html';
+            document.getElementById('deadlineTime').textContent = deadline.toLocaleString('ja-JP', options);
         });
-        
-        // Set deadline
-        const now = new Date();
-        const deadline = new Date(now);
-        deadline.setHours(18, 0, 0, 0);
-        
-        const deadlineStr = deadline.toLocaleString('ja-JP', {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        document.getElementById('deadlineTime').textContent = `本日 ${deadlineStr.split(' ')[1]}`;
-        
-        loadDashboard();
     </script>
 </body>
 </html>

@@ -1045,13 +1045,6 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
     skipped?: boolean;
     reason?: string;
     reminder_emails_sent_count?: number;
-    should_continue_retry_loop?: boolean;
-    confirmation_emails_sent?: number;
-    recipient_list?: Array<{
-      recipient_email: string;
-      recipient_type: string;
-      recipient_name?: string;
-    }>;
   } {
     const logs: string[] = [];
 
