@@ -4,107 +4,150 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
-  reportSummary: string;
+  reportSummaries: Array<{
+    employeeId: string;
+    employeeName: string;
+    submittedAt: string;
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    issues: string;
+  }>;
   extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  priorityAssignments: Array<{
     issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
+    description: string;
+    affectedEmployees: string[];
+    category: string;
+    severity: "low" | "medium" | "high" | "critical";
   }>;
-  departmentHead: string;
-  reportingDate: string;
-}
-
-export interface Action06PromptInput {
-  context: Action06Context;
-  previousActionResults: Record<string, unknown>;
-  systemInstructions: string;
-}
-
-export interface Action06PromptOutput {
-  prompt: string;
-  metadata: {
-    version: string;
-    actionNumber: 6;
-    timestamp: string;
+  priorityJudgmentCriteria: {
+    businessImpact: number;
+    urgency: number;
+    resourceRequirement: number;
+    dependencies: number;
   };
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
-  const {
-    context,
-    previousActionResults,
-    systemInstructions,
-  } = input;
+export interface Action06Result {
+  prioritizedIssues: Array<{
+    issueId: string;
+    description: string;
+    priority: number;
+    classification: string;
+    recommendedAction: string;
+    assignedOwner?: string;
+    targetResolutionDate?: string;
+  }>;
+  reportSummary: {
+    totalSubmitted: number;
+    totalEmployees: number;
+    submissionRate: number;
+    overallProgressStatus: string;
+  };
+  escalationFlags: Array<{
+    flagType: "critical_issue" | "unusual_pattern" | "high_risk" | "dependency_blocker";
+    description: string;
+    requiresHumanReview: boolean;
+  }>;
+}
 
-  const issuesSection = context.extractedIssues
-    .map((issue, index) => {
-      const priority = context.priorityAssignments.find(
-        (p) => p.issueId === issue.id
-      );
-      return `
-Issue ${index + 1}: ${issue.title}
-Category: ${issue.category}
-Description: ${issue.description}
-Priority Level: ${priority?.priority || "unassigned"}
-Priority Reasoning: ${priority?.reasoning || ""}
-`;
-    })
+export function buildAction06Prompt(context: Action06Context): string {
+  const reportCount = context.reportSummaries.length;
+  const issueCount = context.extractedIssues.length;
+
+  const reportDetails = context.reportSummaries
+    .map(
+      (report) =>
+        `- ${report.employeeName} (ID: ${report.employeeId})\n` +
+        `  昨日の実績: ${report.yesterdayAccomplishments}\n` +
+        `  本日の予定: ${report.todayPlans}\n` +
+        `  課題: ${report.issues}`
+    )
     .join("\n");
 
-  const prompt = `${systemInstructions}
+  const issueDetails = context.extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.category}] ${issue.description}\n` +
+        `  重要度: ${issue.severity}\n` +
+        `  影響範囲: ${issue.affectedEmployees.join(", ")}`
+    )
+    .join("\n");
 
-## Action 6: Generate Final Report and Present to Department Head
+  const criteriaDescription = Object.entries(context.priorityJudgmentCriteria)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(", ");
 
-You are completing the final step of the daily report processing workflow for the morning meeting preparation system.
-
-### Context Information
-- Reporting Date: ${context.reportingDate}
-- Department Head: ${context.departmentHead}
-- Overall Report Summary: ${context.reportSummary}
-
-### Extracted Issues and Priority Assignments
-${issuesSection}
-
-### Previous Action Results
-${JSON.stringify(previousActionResults, null, 2)}
-
-### Task
-Based on the extracted issues and their assigned priorities, generate a comprehensive final report that:
-
-1. Presents the overall progress status in a clear, structured format
-2. Lists all identified issues organized by priority level (Critical → High → Medium → Low)
-3. Highlights critical and high-priority issues that require immediate attention
-4. Provides actionable recommendations for each priority tier
-5. Includes a summary suitable for presentation at the morning meeting
-
-### Output Requirements
-- Format the report in a professional, easy-to-read structure
-- Use clear headings and bullet points for readability
-- Ensure all critical issues are prominently displayed
-- Include specific action items for the department head
-- Provide estimated impact and effort for each issue resolution
-
-### Escalation Triggers
-Flag for human review if:
-- Any critical-priority issues are detected
-- Multiple high-priority issues exist simultaneously
-- Unusual patterns or anomalies are detected in the report data
-- The report contains conflicting or inconsistent information
-
-Generate the final report now.`;
-
-  return {
-    prompt,
-    metadata: {
-      version: ACTION_06_PROMPT_VERSION,
-      actionNumber: 6,
-      timestamp: new Date().toISOString(),
-    },
-  };
+  return (
+    `# Action 06: 課題の優先度判定・分類と最終レポート作成\n\n` +
+    `## 目的\n` +
+    `収集した日報から抽出された課題に対して、優先度を自動判定・分類し、部長に提示する整理済みレポートを作成します。\n\n` +
+    `## 入力情報\n\n` +
+    `### 日報サマリー (${reportCount}件)\n` +
+    `${reportDetails}\n\n` +
+    `### 抽出済み課題 (${issueCount}件)\n` +
+    `${issueDetails}\n\n` +
+    `### 優先度判定基準\n` +
+    `${criteriaDescription}\n\n` +
+    `## 実行タスク\n\n` +
+    `1. **課題の優先度スコア計算**\n` +
+    `   - 各課題について、以下の要素を総合的に評価してください:\n` +
+    `     * ビジネスへの影響度 (1-10)\n` +
+    `     * 緊急度 (1-10)\n` +
+    `     * 必要なリソース量 (1-10)\n` +
+    `     * 他の課題への依存度 (1-10)\n` +
+    `   - 総合スコア = (ビジネス影響度 × 0.4) + (緊急度 × 0.3) + (リソース × 0.15) + (依存度 × 0.15)\n\n` +
+    `2. **課題の分類**\n` +
+    `   - 優先度スコアに基づいて以下に分類してください:\n` +
+    `     * Critical (スコア 8.5-10): 即座の対応が必要\n` +
+    `     * High (スコア 7-8.4): 本日中の対応が必要\n` +
+    `     * Medium (スコア 5-6.9): 今週中の対応が必要\n` +
+    `     * Low (スコア 0-4.9): 計画的な対応\n\n` +
+    `3. **推奨アクションの提示**\n` +
+    `   - 各課題に対して、具体的な推奨アクションを記述してください\n` +
+    `   - 必要に応じて担当者を指定してください\n` +
+    `   - 目標解決日を設定してください\n\n` +
+    `4. **エスカレーション判定**\n` +
+    `   - 以下の場合はエスカレーションフラグを立ててください:\n` +
+    `     * Critical課題が検出された場合\n` +
+    `     * 通常と異なるパターンが検出された場合\n` +
+    `     * 高リスク課題が検出された場合\n` +
+    `     * 複数課題の依存関係が複雑な場合\n\n` +
+    `5. **最終レポート作成**\n` +
+    `   - 優先度順に整理されたレポートを作成してください\n` +
+    `   - 全体の進捗状況サマリーを含めてください\n` +
+    `   - 部長が朝会で即座に活用できる形式にしてください\n\n` +
+    `## 出力形式\n` +
+    `JSON形式で以下の構造で返してください:\n` +
+    `{\n` +
+    `  "prioritizedIssues": [\n` +
+    `    {\n` +
+    `      "issueId": "string",\n` +
+    `      "description": "string",\n` +
+    `      "priority": number (0-10),\n` +
+    `      "classification": "Critical|High|Medium|Low",\n` +
+    `      "recommendedAction": "string",\n` +
+    `      "assignedOwner": "string (optional)",\n` +
+    `      "targetResolutionDate": "YYYY-MM-DD (optional)"\n` +
+    `    }\n` +
+    `  ],\n` +
+    `  "reportSummary": {\n` +
+    `    "totalSubmitted": number,\n` +
+    `    "totalEmployees": number,\n` +
+    `    "submissionRate": number (0-100),\n` +
+    `    "overallProgressStatus": "string"\n` +
+    `  },\n` +
+    `  "escalationFlags": [\n` +
+    `    {\n` +
+    `      "flagType": "critical_issue|unusual_pattern|high_risk|dependency_blocker",\n` +
+    `      "description": "string",\n` +
+    `      "requiresHumanReview": boolean\n` +
+    `    }\n` +
+    `  ]\n` +
+    `}\n\n` +
+    `## 注意事項\n` +
+    `- 優先度判定は客観的な基準に基づいてください\n` +
+    `- 同等の優先度の課題がある場合は、ビジネス影響度を最優先としてください\n` +
+    `- 部長の最終確認が必要な案件は明確にマークしてください\n` +
+    `- 判定ロジックは定期的に検証・改善されることを想定してください`
+  );
 }

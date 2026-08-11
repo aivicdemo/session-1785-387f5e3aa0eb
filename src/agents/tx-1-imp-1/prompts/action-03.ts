@@ -3,74 +3,63 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Input {
   engineerName: string;
   engineerEmail: string;
   yesterdayAccomplishments: string;
   todayPlans: string;
   currentIssues: string;
-  submissionDeadline: string;
-  systemName: string;
+  submissionTimestamp: string;
 }
 
-export interface Action03PromptOutput {
-  validationStatus: "valid" | "invalid";
-  validationErrors: string[];
-  registrationPayload: {
-    engineerName: string;
-    engineerEmail: string;
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    submittedAt: string;
-  };
-  nextAction: "register" | "request_correction" | "escalate";
+export interface Action03ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
-export function buildAction03Prompt(input: Action03PromptInput): string {
-  const prompt = `You are an AI agent responsible for validating daily report input content.
+export interface Action03RegistrationPayload {
+  engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
+  validationStatus: "valid" | "warning";
+}
 
-System: ${input.systemName}
-Engineer: ${input.engineerName} (${input.engineerEmail})
-Submission Deadline: ${input.submissionDeadline}
+export function buildAction03Prompt(input: Action03Input): string {
+  const prompt = `You are validating a daily report submission from an engineer.
 
-The engineer has submitted the following daily report:
+Engineer Information:
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Time: ${input.submissionTimestamp}
 
-Yesterday's Accomplishments:
-${input.yesterdayAccomplishments}
+Report Content:
+- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
+- Today's Plans: ${input.todayPlans}
+- Current Issues: ${input.currentIssues}
 
-Today's Plans:
-${input.todayPlans}
+Task: Validate the input content for completeness and appropriateness.
 
-Current Issues:
-${input.currentIssues}
-
-Your task is to:
-1. Validate that all required fields are filled and contain meaningful content
-2. Check for completeness and appropriateness of the input
-3. Identify any validation errors or concerns
-4. Determine if the report is ready for registration or requires correction
-
-Validation criteria:
-- Yesterday's Accomplishments: Must not be empty, should describe concrete work completed
-- Today's Plans: Must not be empty, should describe specific tasks planned
-- Current Issues: Can be empty if no issues, but if present should be clearly described
-- All fields should be professional and relevant to work context
+Validation Criteria:
+1. All fields must be filled (not empty or null)
+2. Yesterday's accomplishments should describe concrete work completed
+3. Today's plans should be specific and actionable
+4. Current issues should be clearly articulated if any exist
+5. Content should be professional and relevant to work
 
 Respond with a JSON object containing:
 {
-  "validationStatus": "valid" | "invalid",
-  "validationErrors": [list of error messages if invalid],
-  "registrationPayload": {
-    "engineerName": "${input.engineerName}",
-    "engineerEmail": "${input.engineerEmail}",
-    "yesterdayAccomplishments": [validated content],
-    "todayPlans": [validated content],
-    "currentIssues": [validated content],
-    "submittedAt": [current ISO timestamp]
-  },
-  "nextAction": "register" | "request_correction" | "escalate"
-}`;
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "summary": string
+}
+
+Errors are blocking issues that prevent registration.
+Warnings are non-blocking concerns that should be noted.`;
 
   return prompt;
 }

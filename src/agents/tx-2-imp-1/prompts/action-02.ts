@@ -4,75 +4,145 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportingDeadline: string;
-  overdueThresholdMinutes: number;
-  notificationChannels: string[];
-  escalationRules: {
-    repeatOffenderThreshold: number;
-    systemErrorHandling: string;
-  };
+  submissionDeadline: string;
+  reportingMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+  }>;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
+  currentTime: string;
 }
 
 export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: string;
-    contract: string;
-    purpose: string;
+  unsubmittedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+    status: "not_submitted" | "delayed";
+    hoursOverdue?: number;
+  }>;
+  summaryList: {
+    totalMembers: number;
+    submittedCount: number;
+    unsubmittedCount: number;
+    delayedCount: number;
+    onTimeCount: number;
+  };
+  notificationContent: {
+    recipientEmail: string;
+    subject: string;
+    body: string;
   };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdMinutes,
-    notificationChannels,
-    escalationRules,
-  } = input;
+export function buildAction02Prompt(input: Action02PromptInput): string {
+  const deadlineDate = new Date(input.submissionDeadline);
+  const currentDate = new Date(input.currentTime);
 
-  const channelsList = notificationChannels.join(", ");
+  const submittedMemberIds = new Set(
+    input.submittedReports.map((r) => r.memberId)
+  );
 
-  const prompt = `You are an AI agent responsible for Action 2 of the Daily Report Management System (tx_2_imp_1).
+  const unsubmittedMembers = input.reportingMembers.filter(
+    (member) => !submittedMemberIds.has(member.memberId)
+  );
 
-## Your Task
-Identify unreported and delayed team members from the daily report submission status, and notify the department head.
+  const delayedMembers = input.submittedReports
+    .filter((report) => new Date(report.submittedAt) > deadlineDate)
+    .map((report) => {
+      const member = input.reportingMembers.find(
+        (m) => m.memberId === report.memberId
+      );
+      return member;
+    })
+    .filter((m): m is (typeof input.reportingMembers)[0] => m !== undefined);
 
-## Context
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdMinutes} minutes
-- Notification Channels: ${channelsList}
-- Repeat Offender Threshold: ${escalationRules.repeatOffenderThreshold} occurrences
-- System Error Handling: ${escalationRules.systemErrorHandling}
+  const onTimeCount = input.submittedReports.filter(
+    (report) => new Date(report.submittedAt) <= deadlineDate
+  ).length;
 
-## Autonomous Actions to Execute
-1. Check the submission status of all team members at the configured time
-2. Automatically identify unreported and delayed members
-3. Create a list of unreported and delayed members
-4. Send notification email to the department head
+  const summarySection = `
+## 日報提出状況サマリー
+- 対象者数: ${input.reportingMembers.length}名
+- 提出済み: ${input.submittedReports.length}件
+- 未提出: ${unsubmittedMembers.length}件
+- 遅延: ${delayedMembers.length}件
+- 期限内提出: ${onTimeCount}件
+- 提出期限: ${deadlineDate.toISOString()}
+- 現在時刻: ${currentDate.toISOString()}
+`;
 
-## Escalation Conditions
-- System failure preventing report submission status verification
-- Repeated reporting failures by specific team members requiring intervention decision
+  const unsubmittedSection =
+    unsubmittedMembers.length > 0
+      ? `
+## 未提出者一覧
+${unsubmittedMembers
+  .map(
+    (m) =>
+      `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`
+  )
+  .join("\n")}
+`
+      : "";
 
-## Output Requirements
-- Provide a structured list of unreported members with timestamps
-- Provide a structured list of delayed members with submission times
-- Include recommendation for escalation if applicable
-- Log all actions taken with timestamps
+  const delayedSection =
+    delayedMembers.length > 0
+      ? `
+## 遅延者一覧
+${delayedMembers
+  .map(
+    (m) =>
+      `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`
+  )
+  .join("\n")}
+`
+      : "";
 
-## Constraints
-- Do not make assumptions about member availability
-- Verify data integrity before reporting
-- Maintain audit trail of all notifications sent`;
+  const prompt = `あなたは朝会報告管理システムのAIエージェントです。
+以下の日報提出状況を分析し、未提出者と遅延者を特定してください。
 
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
-    metadata: {
-      action: "action-02",
-      contract: "tx_2_imp_1",
-      purpose: "Identify unreported and delayed team members and notify department head",
-    },
-  };
+${summarySection}
+${unsubmittedSection}
+${delayedSection}
+
+## タスク
+1. 未提出者と遅延者を正確に特定する
+2. 報告漏れ・遅延部員の一覧を作成する
+3. 部長への通知メール内容を作成する
+
+## 出力形式
+以下のJSON形式で結果を返してください:
+{
+  "unsubmittedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "email": "string",
+      "department": "string",
+      "status": "not_submitted" | "delayed",
+      "hoursOverdue": number (遅延の場合のみ)
+    }
+  ],
+  "summaryList": {
+    "totalMembers": number,
+    "submittedCount": number,
+    "unsubmittedCount": number,
+    "delayedCount": number,
+    "onTimeCount": number
+  },
+  "notificationContent": {
+    "recipientEmail": "string",
+    "subject": "string",
+    "body": "string"
+  }
+}`;
+
+  return prompt;
 }

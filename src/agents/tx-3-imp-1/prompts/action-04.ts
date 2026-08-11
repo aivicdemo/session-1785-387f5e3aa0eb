@@ -3,67 +3,134 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
+export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  escalationThreshold: number;
-  previousEscalationCount: Record<string, number>;
+  currentTimestamp: string;
+  previousReminders?: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+  reminderRules?: {
+    maxReminderCount: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
-export interface Action04PromptResult {
-  missingReporters: Array<{
+export interface Action04PromptOutput {
+  identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
     reason: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
+    submissionTime?: string;
   }>;
-  escalationTargets: Array<{
+  remindersToSend: Array<{
     employeeId: string;
     employeeName: string;
-    escalationLevel: number;
-    recommendedAction: "email" | "chat" | "both" | "escalate_to_manager";
+    reminderType: "email" | "chat" | "both";
+    message: string;
+    shouldRemind: boolean;
+    reminderCount: number;
   }>;
-  timestamp: string;
-  processedCount: number;
+  escalationCases: Array<{
+    employeeId: string;
+    employeeName: string;
+    escalationReason: string;
+    requiresHumanReview: boolean;
+  }>;
+  executionLog: {
+    processedAt: string;
+    totalIdentified: number;
+    remindersScheduled: number;
+    escalationsDetected: number;
+  };
 }
 
-export function buildAction04Prompt(context: Action04PromptContext): string {
-  const systemPrompt = `You are an AI agent responsible for identifying missing reports and determining escalation targets based on confirmation email content.
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const reminderRules = input.reminderRules || {
+    maxReminderCount: 3,
+    reminderIntervalMinutes: 30,
+  };
 
-Your task is to:
-1. Parse the confirmation email content to identify employees who have not submitted their reports
-2. Determine which employees are delayed (submitted after deadline)
-3. Evaluate escalation necessity based on the escalation threshold and previous escalation history
-4. Recommend appropriate escalation actions (email, chat, both, or escalate to manager)
+  const previousRemindersInfo =
+    input.previousReminders && input.previousReminders.length > 0
+      ? input.previousReminders
+          .map(
+            (r) =>
+              `- Employee ${r.employeeId}: ${r.reminderCount} reminder(s) sent, last at ${r.lastReminderTime}`
+          )
+          .join("\n")
+      : "No previous reminders recorded";
 
-Confirmation Email Content:
-${context.confirmationEmailContent}
+  const prompt = `You are an AI agent responsible for identifying non-reporting employees and determining whether to send reminders.
 
-Reporting Deadline: ${context.reportingDeadline}
-Escalation Threshold (days): ${context.escalationThreshold}
-Previous Escalation Count: ${JSON.stringify(context.previousEscalationCount)}
+## Current Context
+- Confirmation Email Content: ${input.confirmationEmailContent}
+- Reporting Deadline: ${input.reportingDeadline}
+- Current Timestamp: ${input.currentTimestamp}
+- Reminder Rules:
+  - Maximum reminders per employee: ${reminderRules.maxReminderCount}
+  - Minimum interval between reminders: ${reminderRules.reminderIntervalMinutes} minutes
 
-Output the result as a JSON object with the following structure:
+## Previous Reminder History
+${previousRemindersInfo}
+
+## Task
+1. Analyze the confirmation email content to identify employees who have NOT submitted their reports
+2. Classify each non-reporter as either "not_submitted" or "delayed" based on the deadline
+3. Determine which employees should receive reminders based on:
+   - Current reminder count vs. maximum allowed
+   - Time elapsed since last reminder
+   - Escalation rules for repeated non-submission
+4. Identify escalation cases that require human review:
+   - Employees who have already received the maximum number of reminders
+   - System errors preventing reminder delivery
+   - Special cases outside normal reminder rules
+
+## Output Format
+Return a JSON object with the following structure:
 {
-  "missingReporters": [
+  "identifiedNonReporters": [
     {
       "employeeId": "string",
       "employeeName": "string",
       "reason": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
+      "submissionTime": "ISO8601 timestamp or null"
     }
   ],
-  "escalationTargets": [
+  "remindersToSend": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "escalationLevel": number,
-      "recommendedAction": "email" | "chat" | "both" | "escalate_to_manager"
+      "reminderType": "email" | "chat" | "both",
+      "message": "personalized reminder message",
+      "shouldRemind": boolean,
+      "reminderCount": number
     }
   ],
-  "timestamp": "ISO8601 string",
-  "processedCount": number
-}`;
+  "escalationCases": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationReason": "string",
+      "requiresHumanReview": boolean
+    }
+  ],
+  "executionLog": {
+    "processedAt": "ISO8601 timestamp",
+    "totalIdentified": number,
+    "remindersScheduled": number,
+    "escalationsDetected": number
+  }
+}
 
-  return systemPrompt;
+## Important Rules
+- Only identify employees who are actually missing from the confirmation email
+- Do not send reminders to employees who have already submitted
+- Respect the maximum reminder count limit
+- Flag any system errors or special cases for human review
+- Ensure all timestamps are in ISO8601 format`;
+
+  return prompt;
 }

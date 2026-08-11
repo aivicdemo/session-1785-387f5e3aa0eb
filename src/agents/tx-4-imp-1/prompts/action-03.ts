@@ -5,114 +5,97 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
-  }>;
-  priorityFramework?: {
-    urgency: string[];
-    impact: string[];
-    effort: string[];
-  };
+  submissionDeadline: string;
+  escalationThreshold: number;
 }
 
 interface Action03PromptOutput {
-  version: string;
   prompt: string;
-  instructions: {
-    objective: string;
-    steps: string[];
-    constraints: string[];
-  };
+  version: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const {
-    reportContent,
-    extractedIssues,
-    teamMembers,
-    priorityFramework = {
-      urgency: ["Critical", "High", "Medium", "Low"],
-      impact: ["Organization-wide", "Team-level", "Individual", "Minor"],
-      effort: ["Quick-fix", "Short-term", "Medium-term", "Long-term"],
-    },
-  } = input;
+  const { reportContent, submissionDeadline, escalationThreshold } = input;
 
-  const issuesText = extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
-    )
-    .join("\n");
+  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily reports and determining their priority levels.
 
-  const teamText = teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
+## Task: Extract Issues and Determine Priority
 
-  const priorityFrameworkText = `
-Urgency Levels: ${priorityFramework.urgency.join(", ")}
-Impact Levels: ${priorityFramework.impact.join(", ")}
-Effort Levels: ${priorityFramework.effort.join(", ")}
-`;
-
-  const prompt = `You are an AI agent responsible for prioritizing and classifying extracted issues from daily reports.
-
-## Report Content Summary
+### Input Report Content:
 ${reportContent}
 
-## Extracted Issues
-${issuesText}
+### Submission Deadline:
+${submissionDeadline}
 
-## Team Members
-${teamText}
+### Escalation Threshold (days):
+${escalationThreshold}
 
-## Priority Framework
-${priorityFrameworkText}
+## Instructions:
 
-## Task
-Analyze each extracted issue and assign:
-1. Priority level (Critical, High, Medium, Low)
-2. Impact scope (Organization-wide, Team-level, Individual, Minor)
-3. Required effort (Quick-fix, Short-term, Medium-term, Long-term)
-4. Recommended action owner from the team
-5. Dependencies or related issues
-6. Risk assessment if not addressed
+1. **Analyze Report Content**: Review the provided daily report content to identify:
+   - Current progress status
+   - Completed tasks
+   - Ongoing work
+   - Blockers and obstacles
+   - Resource constraints
+   - Technical challenges
 
-## Output Format
-For each issue, provide a structured assessment with clear reasoning for priority assignment.`;
+2. **Extract Issues and Bottlenecks**: Identify all issues, risks, and bottlenecks mentioned or implied in the report:
+   - Technical issues
+   - Resource constraints
+   - Schedule delays
+   - Dependency problems
+   - Communication gaps
+   - Quality concerns
 
-  const instructions = {
-    objective:
-      "Automatically prioritize and classify extracted issues from daily reports to provide management with actionable insights",
-    steps: [
-      "Parse and understand the report content context",
-      "Analyze each extracted issue against the priority framework",
-      "Assess urgency based on business impact and timeline",
-      "Evaluate effort required for resolution",
-      "Identify appropriate team member for ownership",
-      "Generate priority classification with justification",
-      "Compile prioritized issue list for management review",
-    ],
-    constraints: [
-      "Must use only the provided priority framework",
-      "Cannot assign priority without documented reasoning",
-      "Must consider team capacity and current workload",
-      "Cannot recommend action owners not in the team list",
-      "Must flag any issues requiring escalation",
-    ],
-  };
+3. **Classify Issues**: Categorize each extracted issue by type:
+   - Technical
+   - Resource
+   - Schedule
+   - Dependency
+   - Other
+
+4. **Determine Priority**: Assign priority levels (Critical, High, Medium, Low) based on:
+   - Impact on project timeline
+   - Impact on team productivity
+   - Resource availability
+   - Dependency on other tasks
+   - Risk level
+
+5. **Generate Output**: Provide a structured list of:
+   - Issue description
+   - Category
+   - Priority level
+   - Recommended action
+   - Owner/Responsible party (if identifiable)
+
+## Output Format:
+Return a JSON object with the following structure:
+{
+  "issues": [
+    {
+      "id": "string",
+      "description": "string",
+      "category": "Technical|Resource|Schedule|Dependency|Other",
+      "priority": "Critical|High|Medium|Low",
+      "impact": "string",
+      "recommendedAction": "string",
+      "owner": "string"
+    }
+  ],
+  "summary": {
+    "totalIssues": number,
+    "criticalCount": number,
+    "highCount": number,
+    "mediumCount": number,
+    "lowCount": number
+  },
+  "overallStatus": "string"
+}`;
 
   return {
-    version: ACTION_03_PROMPT_VERSION,
     prompt,
-    instructions,
+    version: ACTION_03_PROMPT_VERSION,
   };
 }
 

@@ -5,98 +5,77 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  escalationThreshold: number;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
-    department: string;
-    email: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
-  currentTime: string;
+  overdueThresholdHours: number;
+  reminderFrequencyHours: number;
+  escalationContactEmail: string;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPrompt: string;
-  context: {
-    deadline: string;
-    threshold: number;
-    totalMembers: number;
-    submittedCount: number;
-    overdueCount: number;
-  };
+  userPromptTemplate: string;
+  expectedOutputFormat: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
-  const nonSubmittedMembers = input.reportingMembers.filter(
-    m => !submittedMemberIds.has(m.memberId)
-  );
+  const systemPrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have not submitted their daily reports.
 
-  const deadlineTime = new Date(input.reportingDeadline).getTime();
-  const currentTime = new Date(input.currentTime).getTime();
-  const isOverdue = currentTime > deadlineTime;
+Your role:
+- Identify engineers who have exceeded the reporting deadline
+- Determine if a reminder should be sent based on the overdue threshold and reminder frequency
+- Compose professional reminder messages
+- Log all reminder actions for audit purposes
 
-  const overdueMembers = nonSubmittedMembers.filter(member => {
-    const memberSubmission = input.submittedReports.find(r => r.memberId === member.memberId);
-    if (!memberSubmission) return isOverdue;
-    const submissionTime = new Date(memberSubmission.submittedAt).getTime();
-    return submissionTime > deadlineTime;
-  });
+Key constraints:
+- Do not send reminders more frequently than ${input.reminderFrequencyHours} hours
+- Only send reminders if the report is overdue by at least ${input.overdueThresholdHours} hours
+- Escalate to ${input.escalationContactEmail} if an engineer has received multiple reminders without submitting
+- Maintain a record of all reminder attempts`;
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitted and overdue daily reports.
-Your task is to:
-1. Analyze the submission status of all team members
-2. Identify members who have not submitted their reports
-3. Determine which members are overdue based on the deadline
-4. Classify members by escalation priority
-5. Generate a notification list for the department manager
+  const userPromptTemplate = `Current timestamp: {currentTimestamp}
+Reporting deadline: ${input.reportingDeadline}
 
-Be precise and factual in your analysis. Only report actual non-submissions and actual overdue cases.`;
+Engineers with pending reports:
+{pendingEngineers}
 
-  const userPrompt = `Analyze the following daily report submission status:
+Previous reminder history:
+{reminderHistory}
 
-Reporting Deadline: ${input.reportingDeadline}
-Current Time: ${input.currentTime}
-Escalation Threshold (hours): ${input.escalationThreshold}
+Task:
+1. Identify which engineers are overdue for submission
+2. Check if they have already received a reminder within the last ${input.reminderFrequencyHours} hours
+3. For those who need a reminder, compose a professional notification
+4. If any engineer has received more than 2 reminders, flag for escalation
+5. Return the list of reminders to send and any escalation actions needed`;
 
-Total Team Members: ${input.reportingMembers.length}
-Reports Submitted: ${input.submittedReports.length}
-Reports Not Submitted: ${nonSubmittedMembers.length}
-Overdue Reports: ${overdueMembers.length}
-
-Non-Submitted Members:
-${nonSubmittedMembers.map(m => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join('\n')}
-
-Overdue Members:
-${overdueMembers.map(m => `- ${m.memberName} (${m.memberId}) - ${m.department} - ${m.email}`).join('\n')}
-
-Submitted Reports Summary:
-${input.submittedReports.map(r => `- Member ${r.memberId}: submitted at ${r.submittedAt}`).join('\n')}
-
-Please provide:
-1. A list of members who have not submitted their reports
-2. A list of members whose reports are overdue
-3. Priority classification for manager notification
-4. Recommended action for each category`;
+  const expectedOutputFormat = `{
+  "remindersToSend": [
+    {
+      "engineerId": "string",
+      "engineerEmail": "string",
+      "overdueHours": number,
+      "reminderCount": number,
+      "message": "string",
+      "priority": "normal" | "high"
+    }
+  ],
+  "escalations": [
+    {
+      "engineerId": "string",
+      "engineerEmail": "string",
+      "reason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "timestamp": "ISO8601 string",
+  "summary": "string"
+}`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPrompt,
-    context: {
-      deadline: input.reportingDeadline,
-      threshold: input.escalationThreshold,
-      totalMembers: input.reportingMembers.length,
-      submittedCount: input.submittedReports.length,
-      overdueCount: overdueMembers.length,
-    },
+    userPromptTemplate,
+    expectedOutputFormat,
   };
 }
 

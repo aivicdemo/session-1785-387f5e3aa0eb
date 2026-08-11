@@ -7,74 +7,78 @@ export interface Action01PromptInput {
   reportDate: string;
   engineerName: string;
   engineerId: string;
-  departmentName: string;
-  submissionDeadline: string;
+  previousReportContent?: string;
+  systemContext?: Record<string, unknown>;
 }
 
 export interface Action01PromptOutput {
-  templateId: string;
-  templateContent: string;
-  distributionChannels: string[];
-  scheduledTime: string;
+  prompt: string;
+  version: string;
+  metadata: {
+    timestamp: string;
+    engineerId: string;
+    reportDate: string;
+  };
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
+export function buildAction01Prompt(input: Action01PromptInput): Action01PromptOutput {
   const {
     reportDate,
     engineerName,
     engineerId,
-    departmentName,
-    submissionDeadline,
+    previousReportContent = "",
+    systemContext = {},
   } = input;
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  const basePrompt = `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、エンジニアの日報テンプレートを自動生成して配信する準備を行ってください。
 
-## 実行日時
-${new Date().toISOString()}
-
-## 対象エンジニア情報
+【対象エンジニア情報】
 - 名前: ${engineerName}
 - ID: ${engineerId}
-- 部門: ${departmentName}
+- 報告日: ${reportDate}
 
-## 日報対象日
-${reportDate}
+【前日の日報内容】
+${previousReportContent || "（初回または前日の日報がありません）"}
 
-## 提出期限
-${submissionDeadline}
+【システムコンテキスト】
+${JSON.stringify(systemContext, null, 2)}
 
-## タスク
-以下の手順に従い、前日の日報テンプレートを自動生成して配信してください:
+【実行タスク】
+1. 前日の日報テンプレートを参考に、本日の日報テンプレートを自動生成してください
+2. テンプレートには以下のセクションを含めてください：
+   - 昨日の実績（前日の予定との比較）
+   - 本日の予定
+   - 抱えている課題
+   - その他の連絡事項
+3. エンジニアが入力しやすいように、具体的な記入例を示してください
+4. 生成したテンプレートをJSON形式で出力してください
 
-1. **テンプレート生成**
-   - 昨日の実績入力セクション
-   - 本日の予定入力セクション
-   - 抱えている課題入力セクション
-   - 備考欄
-   を含むテンプレートを生成
+【出力形式】
+\`\`\`json
+{
+  "templateId": "string",
+  "engineerId": "${engineerId}",
+  "reportDate": "${reportDate}",
+  "sections": [
+    {
+      "name": "string",
+      "label": "string",
+      "placeholder": "string",
+      "example": "string",
+      "required": boolean
+    }
+  ],
+  "readyForDistribution": boolean
+}
+\`\`\``;
 
-2. **配信チャネル決定**
-   - メール
-   - チャットツール
-   - 日報管理システム内通知
-   から適切なチャネルを選択
-
-3. **配信スケジュール**
-   - 提出期限の24時間前に配信
-   - リマインダーを提出期限の1時間前に送信
-
-4. **出力形式**
-   以下の JSON 形式で結果を返却:
-   {
-     "templateId": "生成されたテンプレートの一意識別子",
-     "templateContent": "テンプレートの本文内容",
-     "distributionChannels": ["配信チャネルのリスト"],
-     "scheduledTime": "配信予定時刻 (ISO 8601形式)"
-   }
-
-## 制約条件
-- テンプレートは日本語で作成
-- 入力項目は明確で簡潔に
-- 提出期限を明記
-- エンジニアの負担を最小化するよう設計`;
+  return {
+    prompt: basePrompt,
+    version: ACTION_01_PROMPT_VERSION,
+    metadata: {
+      timestamp: new Date().toISOString(),
+      engineerId,
+      reportDate,
+    },
+  };
 }

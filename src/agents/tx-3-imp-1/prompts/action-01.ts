@@ -14,28 +14,27 @@ export interface Action01PromptOutput {
   unreportedMembers: Array<{
     memberId: string;
     memberName: string;
-    reason: "not_submitted" | "delayed";
-    submissionTime?: string;
+    reason: string;
+  }>;
+  delayedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    hoursLate: number;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
     escalationLevel: number;
-    shouldEscalate: boolean;
+    recommendedAction: string;
   }>;
   analysisTimestamp: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    confirmationEmailContent,
-    reportDeadline,
-    currentTimestamp,
-    previousEscalationCount = {},
-  } = input;
+  const { confirmationEmailContent, reportDeadline, currentTimestamp, previousEscalationCount = {} } = input;
 
-  const escalationCountSummary = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `${memberId}: ${count}回`)
+  const escalationContext = Object.entries(previousEscalationCount)
+    .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
     .join("\n");
 
   return `# 報告漏れ・遅延部員特定プロンプト (Action 01)
@@ -50,55 +49,72 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
 ${confirmationEmailContent}
 \`\`\`
 
-### システム情報
-- 報告期限: ${reportDeadline}
-- 現在時刻: ${currentTimestamp}
-- 前回までの催促回数:
-${escalationCountSummary || "なし"}
+### 報告期限
+${reportDeadline}
 
-## 判定ルール
+### 現在時刻
+${currentTimestamp}
 
-1. **報告漏れの定義**
-   - 期限時刻までに日報が提出されていない
-   - 確認メール内で「未提出」と明記されている
+### 過去の催促履歴
+${escalationContext || "なし"}
 
-2. **遅延の定義**
-   - 期限を超過して提出されている
-   - 期限から1時間以上の遅延
+## 実行タスク
+
+1. **報告漏れ部員の特定**
+   - 確認メール内容から未提出者を抽出
+   - 各部員の提出状況を確認
+   - 報告漏れの理由を分類（未提出、システムエラー、その他）
+
+2. **遅延部員の特定**
+   - 報告期限を超過した部員を抽出
+   - 超過時間を計算
+   - 遅延の程度を分類
 
 3. **催促対象の判定**
-   - 初回催促: 報告漏れまたは遅延が確認された時点
-   - 2回目以降: 前回催促から2時間以上経過し、未提出のまま
-   - 上限: 同一部員への催促は最大3回まで
+   - 報告漏れ部員を催促対象に含める
+   - 遅延時間が30分以上の部員を催促対象に含める
+   - 過去の催促履歴を考慮し、催促レベルを判定
+   - 催促レベル: 1=初回催促, 2=2回目催促, 3=管理者エスカレーション
+
+4. **推奨アクション**
+   - 催促レベルに応じた対応を提案
+   - レベル1: メール催促
+   - レベル2: チャット+メール催促
+   - レベル3: 管理者への報告
 
 ## 出力形式
 
-JSON形式で以下の構造で返却してください:
-
+JSON形式で以下の構造で返却:
 \`\`\`json
 {
   "unreportedMembers": [
     {
       "memberId": "string",
       "memberName": "string",
-      "reason": "not_submitted" | "delayed",
-      "submissionTime": "ISO8601形式またはnull"
+      "reason": "string"
+    }
+  ],
+  "delayedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "hoursLate": number
     }
   ],
   "escalationTargets": [
     {
       "memberId": "string",
       "memberName": "string",
-      "escalationLevel": "number",
-      "shouldEscalate": "boolean"
+      "escalationLevel": number,
+      "recommendedAction": "string"
     }
   ],
-  "analysisTimestamp": "ISO8601形式"
+  "analysisTimestamp": "string"
 }
 \`\`\`
 
-## 注意事項
-- 誤検知を防ぐため、確認メール内容から明確に判定できる情報のみを抽出
-- 催促上限に達した部員は shouldEscalate を false に設定
-- 分析タイムスタンプは現在時刻を使用`;
+## 制約条件
+- 同一部員への催促は1日3回まで
+- 催促レベル3は管理者の最終確認が必須
+- 誤検知を防ぐため、確認メール内容から明確に判定できる情報のみを使用`;
 }

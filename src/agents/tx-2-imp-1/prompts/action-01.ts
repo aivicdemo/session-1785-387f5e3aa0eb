@@ -18,55 +18,69 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
-  templateId: string;
   templateContent: string;
-  distributionList: string[];
-  scheduledTime: string;
+  distributionPlan: {
+    recipients: string[];
+    deliveryMethod: string;
+    scheduledTime: string;
+  };
+  validationRules: Array<{
+    field: string;
+    requirement: string;
+    errorMessage: string;
+  }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelInfo = input.systemContext.notificationChannels.join("、");
+  const engineerNames = input.engineerList.map((e) => e.name).join(", ");
+  const engineerEmails = input.engineerList.map((e) => e.email).join("; ");
 
-  return `# 日報テンプレート自動生成・配信タスク
+  const prompt = `You are an AI agent responsible for the first action in the daily report management workflow.
 
-## タスク概要
-前日の日報テンプレートを自動生成して、全エンジニアに配信してください。
+## Task: Generate and distribute the daily report template
 
-## 対象情報
-- 対象日付: ${input.targetDate}
-- 報告期限: ${input.reportingDeadline}
-- 対象エンジニア: ${engineerNames}
-- 配信チャネル: ${channelInfo}
+### Context
+- Target Date: ${input.targetDate}
+- Reporting Deadline: ${input.reportingDeadline}
+- Target Engineers: ${engineerNames}
+- Engineer Emails: ${engineerEmails}
+- Report Management System URL: ${input.systemContext.reportManagementSystemUrl}
+- Notification Channels: ${input.systemContext.notificationChannels.join(", ")}
 
-## 生成すべきテンプレート内容
-1. 昨日の実績セクション
-   - 完了したタスク
-   - 実績の詳細
-   - 時間配分
+### Objectives
+1. Generate a standardized daily report template for the target date
+2. Plan the distribution to all engineers
+3. Define validation rules for report submission
+4. Ensure the template is clear and easy to complete
 
-2. 本日の予定セクション
-   - 予定タスク
-   - 優先度
-   - 予想時間
+### Template Requirements
+The template must include sections for:
+- Yesterday's achievements and results
+- Today's planned tasks and objectives
+- Current challenges and blockers
+- Risk assessment and mitigation plans
+- Time estimates for planned tasks
 
-3. 抱えている課題セクション
-   - 課題内容
-   - 影響範囲
-   - 必要なサポート
+### Distribution Plan
+- Ensure all engineers receive the template before the deadline
+- Use multiple notification channels for reliability
+- Include clear deadline and submission instructions
+- Provide a direct link to the report management system
 
-## 配信要件
-- 全エンジニアに同時配信
-- 報告期限を明記
-- 回答フォーマットを統一
-- 管理システムURL: ${input.systemContext.reportManagementSystemUrl}
+### Validation Rules
+Define rules to validate:
+- All required fields are completed
+- Text content meets minimum quality standards
+- No duplicate or conflicting information
+- Proper formatting and structure
 
-## 出力形式
-JSON形式で以下を返してください:
-{
-  "templateId": "生成されたテンプレートID",
-  "templateContent": "テンプレートの完全な内容",
-  "distributionList": ["engineer1@example.com", "engineer2@example.com"],
-  "scheduledTime": "配信予定時刻"
-}`;
+### Output Format
+Provide your response as a structured JSON object with:
+- templateContent: The complete template text
+- distributionPlan: Details of how and when to distribute
+- validationRules: Array of validation rules to apply
+
+Ensure the template is professional, clear, and encourages complete and honest reporting.`;
+
+  return prompt;
 }

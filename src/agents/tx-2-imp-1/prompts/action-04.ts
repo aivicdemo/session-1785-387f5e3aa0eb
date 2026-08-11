@@ -33,8 +33,8 @@ export interface Action04PromptOutput {
     department: string;
     hoursOverdue: number;
     reminderCount: number;
-    shouldEscalate: boolean;
-    escalationReason: string;
+    escalationLevel: "first_reminder" | "second_reminder" | "escalate_to_manager";
+    reason: string;
   }>;
   summary: {
     totalMembers: number;
@@ -46,97 +46,60 @@ export interface Action04PromptOutput {
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const submittedMemberIds = new Set(
-    input.submittedReports.map((r) => r.memberId)
-  );
-
+  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
   const currentDate = new Date(input.currentTime);
   const deadlineDate = new Date(input.reportingDeadline);
   const timeDiffMs = currentDate.getTime() - deadlineDate.getTime();
-  const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+  const hoursOverdue = Math.max(0, timeDiffMs / (1000 * 60 * 60));
 
-  const nonSubmittedMembers = input.departmentMembers.filter(
-    (member) => !submittedMemberIds.has(member.id)
+  const overdueMembers = input.departmentMembers.filter(
+    member => !submittedMemberIds.has(member.id)
   );
 
-  const overdueMembers = nonSubmittedMembers.filter(
-    () => timeDiffHours > input.overdueThresholdHours
-  );
+  const escalationCandidates = overdueMembers
+    .filter(member => hoursOverdue >= input.overdueThresholdHours)
+    .map(member => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      department: member.department,
+      hoursOverdue: Math.round(hoursOverdue * 10) / 10,
+    }));
 
-  const escalationCandidates = overdueMembers.filter((member) => {
-    const hoursOverdue = timeDiffHours - input.overdueThresholdHours;
-    return hoursOverdue > input.escalationRules.firstReminderHours;
-  });
-
-  const memberList = input.departmentMembers
-    .map(
-      (m) =>
-        `- ${m.name} (${m.id}): ${m.email} [${m.department}]`
-    )
-    .join("\n");
-
-  const submittedList = input.submittedReports
-    .map((r) => {
-      const member = input.departmentMembers.find((m) => m.id === r.memberId);
-      return `- ${member?.name || r.memberId}: submitted at ${r.submittedAt}`;
-    })
-    .join("\n");
-
-  const nonSubmittedList = nonSubmittedMembers
-    .map((m) => `- ${m.name} (${m.id}): ${m.email}`)
-    .join("\n");
-
-  const overdueList = overdueMembers
-    .map((m) => {
-      const hoursOverdue = timeDiffHours - input.overdueThresholdHours;
-      return `- ${m.name} (${m.id}): ${hoursOverdue.toFixed(1)} hours overdue`;
-    })
-    .join("\n");
-
-  const escalationList = escalationCandidates
-    .map((m) => {
-      const hoursOverdue = timeDiffHours - input.overdueThresholdHours;
-      return `- ${m.name} (${m.id}): ${hoursOverdue.toFixed(1)} hours overdue, escalation required`;
-    })
-    .join("\n");
-
-  const prompt = `You are an AI agent responsible for identifying reporting delays and escalation candidates.
+  const systemPrompt = `You are an escalation management assistant for a daily report collection system.
+Your task is to analyze overdue report submissions and determine appropriate escalation actions.
 
 Current Time: ${input.currentTime}
 Reporting Deadline: ${input.reportingDeadline}
-Overdue Threshold: ${input.overdueThresholdHours} hours
-Current Time Difference from Deadline: ${timeDiffHours.toFixed(1)} hours
+Hours Overdue Threshold: ${input.overdueThresholdHours}
 
 Escalation Rules:
-- First Reminder Threshold: ${input.escalationRules.firstReminderHours} hours after deadline
-- Second Reminder Threshold: ${input.escalationRules.secondReminderHours} hours after deadline
-- Maximum Reminders: ${input.escalationRules.maxReminders}
+- First Reminder: After ${input.escalationRules.firstReminderHours} hours overdue
+- Second Reminder: After ${input.escalationRules.secondReminderHours} hours overdue
+- Escalate to Manager: After ${input.escalationRules.maxReminders} reminders or ${input.escalationRules.secondReminderHours * 2} hours overdue
 
-Department Members (Total: ${input.departmentMembers.length}):
-${memberList}
+Total Department Members: ${input.departmentMembers.length}
+Reports Submitted: ${input.submittedReports.length}
+Overdue Members: ${overdueMembers.length}
 
-Submitted Reports (Count: ${input.submittedReports.length}):
-${submittedList || "None"}
+Overdue Members Requiring Escalation:
+${escalationCandidates
+  .map(
+    candidate => `
+- ${candidate.name} (${candidate.email})
+  Department: ${candidate.department}
+  Hours Overdue: ${candidate.hoursOverdue}
+  Status: Requires escalation action
+`
+  )
+  .join("")}
 
-Non-Submitted Members (Count: ${nonSubmittedMembers.length}):
-${nonSubmittedList || "All members have submitted"}
+For each overdue member, determine:
+1. The appropriate escalation level (first_reminder, second_reminder, or escalate_to_manager)
+2. The specific reason for escalation
+3. Recommended action (send reminder email, notify manager, etc.)
 
-Overdue Members (Count: ${overdueMembers.length}):
-${overdueList || "No overdue members"}
+Provide a structured analysis that can be used to automatically send notifications and escalate to management if necessary.`;
 
-Escalation Candidates (Count: ${escalationCandidates.length}):
-${escalationList || "No escalation candidates"}
-
-Task: Analyze the reporting status and determine which members require escalation action.
-
-For each escalation candidate, provide:
-1. Member ID and Name
-2. Hours overdue
-3. Current reminder count (assume 0 if not tracked)
-4. Whether escalation should proceed
-5. Reason for escalation decision
-
-Return a structured analysis with escalation recommendations.`;
-
-  return prompt;
+  return systemPrompt;
 }

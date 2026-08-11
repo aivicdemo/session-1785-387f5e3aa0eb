@@ -7,12 +7,10 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedContent: {
-    yesterdayAccomplishments: string;
-    todayPlan: string;
-    issues: string;
-  };
-  submissionTimestamp: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp?: string;
 }
 
 export interface Action04ValidationResult {
@@ -21,96 +19,128 @@ export interface Action04ValidationResult {
   warnings: string[];
 }
 
-export interface Action04RegistrationResult {
-  success: boolean;
-  reportId: string;
-  registeredAt: string;
-  message: string;
-}
-
 export interface Action04PromptInput {
   context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
+  validationRules?: {
+    minAccomplishmentsLength?: number;
+    minPlansLength?: number;
+    minIssuesLength?: number;
+    requireAllFields?: boolean;
   };
 }
 
 export interface Action04PromptOutput {
-  action: "register" | "reject" | "escalate";
-  validation: Action04ValidationResult;
-  registration?: Action04RegistrationResult;
-  escalationReason?: string;
-  nextAction: string;
+  prompt: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
+    contextId: string;
+  };
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
+export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
   const {
     context,
-    validationRules,
+    validationRules = {
+      minAccomplishmentsLength: 10,
+      minPlansLength: 10,
+      minIssuesLength: 5,
+      requireAllFields: true,
+    },
   } = input;
 
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
+  const timestamp = new Date().toISOString();
+  const contextId = `${context.engineerId}-${context.reportDate}-${Date.now()}`;
 
-## Current Task: Validate and Register Daily Report (Action 04)
+  const validationInstructions = buildValidationInstructions(validationRules);
+  const contextDescription = buildContextDescription(context);
+  const systemPrompt = buildSystemPrompt();
 
-### Engineer Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
+  const fullPrompt = `${systemPrompt}
+
+${contextDescription}
+
+${validationInstructions}
+
+Please validate the following daily report submission and provide detailed feedback:
+
+Engineer ID: ${context.engineerId}
+Engineer Name: ${context.engineerName}
+Report Date: ${context.reportDate}
+
+Yesterday's Accomplishments:
+${context.yesterdayAccomplishments}
+
+Today's Plans:
+${context.todayPlans}
+
+Current Issues:
+${context.currentIssues}
+
+Submission Timestamp: ${context.submissionTimestamp || "Not provided"}
+
+Perform comprehensive validation and return:
+1. Overall validity status
+2. Specific validation errors (if any)
+3. Warnings or suggestions for improvement
+4. Readiness for system registration`;
+
+  return {
+    prompt: fullPrompt,
+    metadata: {
+      version: ACTION_04_PROMPT_VERSION,
+      generatedAt: timestamp,
+      contextId,
+    },
+  };
+}
+
+function buildSystemPrompt(): string {
+  return `You are an AI validation agent for a daily report management system.
+Your role is to validate daily report submissions from engineers.
+You must ensure data quality, completeness, and appropriateness before registration.
+Apply strict but fair validation standards.
+Provide constructive feedback to help engineers improve their submissions.`;
+}
+
+function buildContextDescription(context: Action04Context): string {
+  return `Context Information:
+- Engineer: ${context.engineerName} (ID: ${context.engineerId})
 - Report Date: ${context.reportDate}
-- Submission Time: ${context.submissionTimestamp}
+- Submission includes: accomplishments, plans, and current issues`;
+}
 
-### Submitted Content
-**Yesterday's Accomplishments:**
-${context.submittedContent.yesterdayAccomplishments}
+function buildValidationInstructions(rules: {
+  minAccomplishmentsLength?: number;
+  minPlansLength?: number;
+  minIssuesLength?: number;
+  requireAllFields?: boolean;
+}): string {
+  const instructions: string[] = [];
 
-**Today's Plan:**
-${context.submittedContent.todayPlan}
+  instructions.push("Validation Rules:");
 
-**Issues/Challenges:**
-${context.submittedContent.issues}
+  if (rules.requireAllFields) {
+    instructions.push("- All fields (accomplishments, plans, issues) must be provided");
+  }
 
-### Validation Rules
-- Minimum length for yesterday's accomplishments: ${validationRules.minYesterdayLength} characters
-- Minimum length for today's plan: ${validationRules.minTodayLength} characters
-- Minimum length for issues: ${validationRules.minIssuesLength} characters
-- Maximum length for yesterday's accomplishments: ${validationRules.maxYesterdayLength} characters
-- Maximum length for today's plan: ${validationRules.maxTodayLength} characters
-- Maximum length for issues: ${validationRules.maxIssuesLength} characters
+  if (rules.minAccomplishmentsLength) {
+    instructions.push(
+      `- Accomplishments section must be at least ${rules.minAccomplishmentsLength} characters`
+    );
+  }
 
-### Your Tasks
-1. Validate the submitted content against the validation rules
-2. Check for completeness and appropriateness of the report
-3. Identify any errors or warnings
-4. Determine if the report should be registered, rejected, or escalated
-5. If valid, prepare for registration in the management system
-6. If invalid or problematic, provide clear escalation reasons
+  if (rules.minPlansLength) {
+    instructions.push(`- Plans section must be at least ${rules.minPlansLength} characters`);
+  }
 
-### Validation Criteria
-- All fields must be filled with content meeting length requirements
-- Content should be coherent and relevant to daily report context
-- No obvious spam, inappropriate content, or placeholder text
-- Report should demonstrate meaningful work activities and planning
+  if (rules.minIssuesLength) {
+    instructions.push(`- Issues section must be at least ${rules.minIssuesLength} characters`);
+  }
 
-### Output Format
-Provide your analysis in the following structure:
-- Validation Status (valid/invalid)
-- List of any errors found
-- List of any warnings
-- Recommended Action (register/reject/escalate)
-- If registering: Generate a report ID and confirm registration details
-- If escalating: Provide clear reason for escalation
-- Next action to be taken
+  instructions.push("- Content must be professional and relevant to work");
+  instructions.push("- No placeholder or template text should remain");
+  instructions.push("- Information should be specific and actionable");
 
-### Important Notes
-- Incomplete or inappropriate reports should be escalated for human review
-- Escalation conditions include: incomplete content, suspicious patterns, or system errors
-- Maintain professional standards in validation
-- Ensure all decisions are logged for audit purposes`;
-
-  return prompt;
+  return instructions.join("\n");
 }
