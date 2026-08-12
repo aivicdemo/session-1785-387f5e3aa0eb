@@ -5270,6 +5270,16 @@ export const assignPromptionPriority = __aivicBundle_72_assignPromptionPriority.
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=assignPriorityToRemindersWithDuplicates exports=assignPriorityToRemindersWithDuplicates */
 const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
+  interface RemindTargetMemberWithPriority {
+    priority: number;
+    employeeId?: string;
+    userId?: string;
+    employeeName?: string;
+    userName?: string;
+    status: 'not_submitted' | 'delayed';
+    reason: string;
+  }
+
   function assignPriorityToRemindersWithDuplicates(
     remindTargetMembers: Array<{
       userId: string;
@@ -5306,7 +5316,9 @@ const __aivicBundle_73_assignPriorityToRemindersWithDuplicates = (() => {
       .map((member, index) => ({
         priority: index + 1,
         employeeId: member.userId,
+        userId: member.userId,
         employeeName: member.userName,
+        userName: member.userName,
         status: member.reportStatus as 'not_submitted' | 'delayed',
         reason:
           member.reportStatus === 'not_submitted'
@@ -5323,6 +5335,16 @@ export const assignPriorityToRemindersWithDuplicates: (...args: any[]) => any = 
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=assignPrioritiesToReminders exports=assignPrioritiesToReminders */
 const __aivicBundle_74_assignPrioritiesToReminders = (() => {
+  interface RemindTargetMemberWithPriority {
+    priority: number;
+    employeeId?: string;
+    userId?: string;
+    employeeName?: string;
+    userName?: string;
+    status: 'not_submitted' | 'delayed';
+    reason: string;
+  }
+
   function assignPrioritiesToReminders(
     reportStatusList: Array<{
       employeeId?: string;
@@ -5349,6 +5371,7 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
           employeeId: member.employeeId || member.userId || '',
           userId: member.userId,
           employeeName: member.employeeName || member.name || '',
+          userName: member.name,
           status: 'not_submitted',
           reason: '報告未送信',
         });
@@ -5358,6 +5381,7 @@ const __aivicBundle_74_assignPrioritiesToReminders = (() => {
           employeeId: member.employeeId || member.userId || '',
           userId: member.userId,
           employeeName: member.employeeName || member.name || '',
+          userName: member.name,
           status: 'delayed',
           reason: `遅延: ${member.delayedMinutes ?? 0}分`,
         });
@@ -5468,6 +5492,17 @@ export const prioritizeProcurementTargets: (...args: any[]) => any = (...args: a
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=assignPrioritiesToUnreportedMembers exports=assignPrioritiesToUnreportedMembers */
 const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
+  interface RemindTargetMemberWithPriority {
+    priority: number;
+    employeeId?: string;
+    userId?: string;
+    employeeName?: string;
+    userName?: string;
+    status: 'not_submitted' | 'delayed';
+    reason: string;
+    user_id?: string;
+  }
+
   function assignPrioritiesToUnreportedMembers(
     reportStatusList: Array<{
       employeeId?: string;
@@ -5502,10 +5537,11 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
       result.push({
         priority: priorityCounter,
         employeeId: member.employeeId || member.user_id || '',
+        userId: member.user_id || member.employeeId || '',
+        user_id: member.user_id || member.employeeId || '',
         employeeName: member.employeeName || '',
         status: 'not_submitted',
         reason: '報告未提出',
-        user_id: member.user_id || member.employeeId || '',
       });
       priorityCounter++;
     }
@@ -5514,10 +5550,11 @@ const __aivicBundle_76_assignPrioritiesToUnreportedMembers = (() => {
       result.push({
         priority: priorityCounter,
         employeeId: member.employeeId || member.user_id || '',
+        userId: member.user_id || member.employeeId || '',
+        user_id: member.user_id || member.employeeId || '',
         employeeName: member.employeeName || '',
         status: 'delayed',
         reason: '報告遅延',
-        user_id: member.user_id || member.employeeId || '',
       });
       priorityCounter++;
     }
@@ -7783,7 +7820,7 @@ export const validateReminderLimit = __aivicBundle_110_validateReminderLimit.val
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndInitializePromptTimeout exports=validateAndInitializePromptTimeout */
 const __aivicBundle_111_validateAndInitializePromptTimeout = (() => {
   function validateAndInitializePromptTimeout(
-    promptConfig: PromptTimeoutConfig | null
+    promptConfig: any | null
   ): {
     isValid: boolean;
     timeoutMinutes: number;
@@ -10662,7 +10699,7 @@ export const validateAndApproveReport: (...args: any[]) => any = (...args: any[]
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsForReports exports=sendConfirmationEmailsForReports */
 const __aivicBundle_152_sendConfirmationEmailsForReports = (() => {
   function sendConfirmationEmailsForReports(
-    input: SendConfirmationEmailsInput
+    input: any
   ): {
     success: boolean;
     email_sent_count: number;

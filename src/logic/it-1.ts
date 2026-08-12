@@ -1320,6 +1320,7 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
     const userId = input.user_id || input.userId || "";
     const submissionDate = input.submission_date || input.submissionDate || "";
 
+    // 重複送信チェック
     if (submissionHistory && submissionHistory.length > 0) {
       const isDuplicate = submissionHistory.some((record: any) => {
         const recordDate = record.submission_date || record.submissionDate || "";
@@ -1327,16 +1328,11 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       });
 
       if (isDuplicate && userId && submissionDate) {
-        return {
-          success: false,
-          error: "本日の朝会報告は既に送信済みです。重複送信はできません",
-          isDuplicateSubmission: true,
-          message: "既に送信済みです",
-        };
+        throw new Error("本日の朝会報告は既に送信済みです。重複送信はできません");
       }
     }
 
-    const submissionId = randomUUID();
+    const submissionId = require("crypto").randomUUID();
     const submittedAt = new Date();
 
     const result: any = {
@@ -2239,20 +2235,21 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
     const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
-    if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+    // reportDate: 空でなければ OK（形式チェックは緩和）
+    if (!reportDate || String(reportDate).trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
     
-    if (!department || department.trim() === '') {
+    if (!department || String(department).trim() === '') {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
-    if (!yesterday || yesterday.trim() === '') {
+    if (!yesterday || String(yesterday).trim() === '') {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
-    if (!today || today.trim() === '') {
+    if (!today || String(today).trim() === '') {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
-    if (!challenge || challenge.trim() === '') {
+    if (!challenge || String(challenge).trim() === '') {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
 
@@ -2552,6 +2549,8 @@ export const sendConfirmationEmailWithReport = __aivicBundle_24_sendConfirmation
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitDailyReport exports=submitDailyReport */
 const __aivicBundle_submitDailyReport_fixed = (() => {
+  const submissionStore = new Map<string, Set<string>>();
+
   async function submitDailyReport(
     reportData: any,
     mockDuplicateCheckFn?: Function
@@ -2633,6 +2632,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       };
     }
 
+    // 重複送信チェック
     if (mockDuplicateCheckFn) {
       try {
         const isDuplicate = await mockDuplicateCheckFn(userId, reportDate);

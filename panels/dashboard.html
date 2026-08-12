@@ -16,24 +16,27 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
+        }
+        header {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
+            margin-bottom: 30px;
         }
         h1 {
             color: #333;
-            margin-bottom: 30px;
-            font-size: 24px;
+            margin-bottom: 20px;
+            font-size: 28px;
         }
         .deadline-section {
             background-color: #fff3cd;
-            border: 1px solid #ffc107;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
             border-radius: 4px;
-            padding: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         .deadline-section h2 {
             color: #856404;
@@ -42,45 +45,63 @@
         }
         .deadline-text {
             color: #856404;
-            font-size: 18px;
+            font-size: 14px;
+        }
+        .deadline-time {
             font-weight: bold;
+            color: #d39e00;
+            font-size: 18px;
+            margin-top: 5px;
+        }
+        .nav-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .nav-link:hover {
+            background-color: #0056b3;
         }
         .summary-section {
-            margin-bottom: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
         }
         .summary-section h2 {
             color: #333;
-            font-size: 18px;
             margin-bottom: 20px;
+            font-size: 20px;
         }
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            background-color: #f9f9f9;
+            margin-bottom: 20px;
         }
-        .summary-table th {
-            background-color: #007bff;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            border: 1px solid #ddd;
-        }
+        .summary-table th,
         .summary-table td {
             padding: 12px;
-            border: 1px solid #ddd;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .summary-table tr:nth-child(even) {
-            background-color: #f9f9f9;
+        .summary-table th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: 600;
         }
         .summary-table tr:hover {
-            background-color: #f0f0f0;
+            background-color: #f9f9f9;
         }
         .progress-bar {
             width: 100%;
             height: 20px;
             background-color: #e9ecef;
-            border-radius: 4px;
+            border-radius: 10px;
             overflow: hidden;
             margin-top: 5px;
         }
@@ -94,34 +115,36 @@
             font-size: 12px;
             font-weight: bold;
         }
-        .nav-buttons {
-            margin-top: 30px;
-            display: flex;
-            gap: 10px;
-        }
-        .nav-buttons a {
+        .status-badge {
             display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: background-color 0.3s;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
         }
-        .nav-buttons a:hover {
-            background-color: #0056b3;
+        .status-submitted {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>日報提出状況ダッシュボード</h1>
-        
-        <div class="deadline-section">
-            <h2>提出期限</h2>
-            <div class="deadline-text" id="deadlineText">本日 17:00 まで</div>
-        </div>
+        <header>
+            <h1>日報提出状況ダッシュボード</h1>
+            
+            <div class="deadline-section">
+                <h2>提出期限</h2>
+                <div class="deadline-text">本日の日報提出期限:</div>
+                <div class="deadline-time" id="deadlineTime">18:00</div>
+            </div>
+            
+            <a href="./daily-report.html" class="nav-link">日報を入力・送信する</a>
+        </header>
         
         <div class="summary-section">
             <h2>部門別提出状況サマリー</h2>
@@ -137,69 +160,68 @@
                 <tbody id="summaryTableBody">
                     <tr>
                         <td>営業部</td>
-                        <td>8</td>
-                        <td>2</td>
+                        <td><span class="status-badge status-submitted">8名</span></td>
+                        <td><span class="status-badge status-pending">2名</span></td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 80%;">80%</div>
-                                </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>企画部</td>
-                        <td>6</td>
-                        <td>1</td>
+                        <td><span class="status-badge status-submitted">5名</span></td>
+                        <td><span class="status-badge status-pending">1名</span></td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 85.7%;">85.7%</div>
-                                </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 83.33%;">83%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
-                        <td>開発部</td>
-                        <td>10</td>
-                        <td>0</td>
+                        <td>技術部</td>
+                        <td><span class="status-badge status-submitted">10名</span></td>
+                        <td><span class="status-badge status-pending">0名</span></td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 100%;">100%</div>
-                                </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%;">100%</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td>管理部</td>
-                        <td>5</td>
-                        <td>1</td>
+                        <td><span class="status-badge status-submitted">4名</span></td>
+                        <td><span class="status-badge status-pending">1名</span></td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 83.3%;">83.3%</div>
-                                </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 80%;">80%</div>
                             </div>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        
-        <div class="nav-buttons">
-            <a href="./daily-report.html">日報入力・送信へ</a>
-        </div>
     </div>
     
     <script>
-        // Initialize dashboard
-        function init() {
-            // Deadline is already set in HTML
-            // Summary data is already populated in HTML
+        // ページロード時に提出期限を設定
+        function initDeadline() {
+            const deadlineElement = document.getElementById('deadlineTime');
+            // 本日の18:00を表示
+            const today = new Date();
+            const deadline = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 18, 0, 0);
+            const timeString = deadline.toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            deadlineElement.textContent = timeString;
         }
         
-        init();
+        // 初期化
+        initDeadline();
     </script>
 </body>
 </html>
