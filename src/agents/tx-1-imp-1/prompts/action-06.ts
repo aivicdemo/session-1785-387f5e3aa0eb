@@ -7,12 +7,9 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemName: string;
 }
 
 export interface Action06PromptResult {
@@ -25,39 +22,43 @@ export interface Action06PromptResult {
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
   const systemPrompt = `You are an automated notification system for the morning report management workflow.
-Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
+Your role is to send reminder notifications to engineers who have not submitted their reports by the deadline.
 You must:
-1. Determine if a reminder notification should be sent based on submission status and time overdue
+1. Determine if a reminder notification should be sent based on submission status
 2. Compose a professional and encouraging reminder message
 3. Log the notification action for audit purposes
-4. Consider the engineer's previous submission patterns to personalize the message
+4. Handle escalation cases where multiple reminders have been sent
+
+Context:
+- System Name: ${context.systemName}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
 
 Guidelines:
-- Keep messages concise and respectful
-- Avoid accusatory language
-- Provide clear next steps for submission
-- Include the deadline and current status
-- Consider escalation if multiple reminders have been sent`;
+- Keep reminder messages concise and professional
+- Include the deadline and submission instructions
+- Avoid aggressive or accusatory language
+- Track reminder frequency to prevent over-notification
+- Escalate to human review if multiple reminders have been sent without response`;
 
-  const userPrompt = `Process the following engineer's report submission status and determine if a reminder notification should be sent:
+  const userPrompt = `Send a reminder notification for the following engineer:
 
 Engineer Name: ${context.engineerName}
 Engineer Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Status: ${context.isLate ? "OVERDUE" : "PENDING"}
-Days Overdue: ${context.daysOverdue}
-Submission Timestamp: ${context.submissionTimestamp}
+Submission Deadline: ${context.submissionDeadline}
 
-Yesterday's Accomplishments: ${context.yesterdayAccomplishments || "Not yet submitted"}
-Today's Plans: ${context.todayPlans || "Not yet submitted"}
-Current Issues: ${context.currentIssues || "Not yet submitted"}
+Task:
+1. Compose a reminder notification message
+2. Determine the appropriate delivery channel (email/chat)
+3. Log the notification action with timestamp
+4. Return the notification details for confirmation
 
-Tasks:
-1. Evaluate whether a reminder notification should be sent
-2. If yes, compose the reminder message
-3. Determine the notification channel (email/chat)
-4. Assess if escalation to manager is needed
-5. Return the decision and message content`;
+Please provide:
+- Notification message content
+- Recommended delivery channel
+- Escalation flag (if applicable)
+- Audit log entry`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

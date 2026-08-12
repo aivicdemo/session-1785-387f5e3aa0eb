@@ -109,7 +109,7 @@ class InMemoryDatabase implements DatabaseConnection {
 
   private handleSelect(sql: string, params: unknown[]): Promise<QueryResult[]> {
     const match = sql.match(
-      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER BY\s+(.+?))?$/i
+      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER BY|$)/i
     );
     if (!match) return Promise.resolve([]);
 
@@ -120,39 +120,30 @@ class InMemoryDatabase implements DatabaseConnection {
 
     if (!table) return Promise.resolve([]);
 
-    let results: QueryResult[] = [];
+    const results: QueryResult[] = [];
 
     table.forEach((row) => {
-      if (!whereClause || this.evaluateWhere(whereClause, row, params)) {
+      if (whereClause && !this.evaluateWhere(whereClause, row, params)) {
+        return;
+      }
+
+      if (selectClause === '*') {
         results.push(row);
+      } else if (selectClause.includes('COUNT(*)')) {
+        results.push({ cnt: table.size });
+      } else {
+        const columns = selectClause
+          .split(',')
+          .map((c) => c.trim().toLowerCase());
+        const result: QueryResult = {};
+        columns.forEach((col) => {
+          result[col] = row[col];
+        });
+        results.push(result);
       }
     });
 
-    if (selectClause === '*') {
-      return Promise.resolve(results);
-    }
-
-    const columns = selectClause
-      .split(',')
-      .map((c) => c.trim().toLowerCase());
-    const projectedResults = results.map((row) => {
-      const projected: QueryResult = {};
-      columns.forEach((col) => {
-        if (col === 'count(*)') {
-          projected['cnt'] = results.length;
-        } else if (col.startsWith('count(')) {
-          const field = col.match(/count\((\w+)\)/i)?.[1]?.toLowerCase();
-          if (field) {
-            projected['cnt'] = results.length;
-          }
-        } else {
-          projected[col] = row[col];
-        }
-      });
-      return projected;
-    });
-
-    return Promise.resolve(projectedResults);
+    return Promise.resolve(results);
   }
 
   private evaluateWhere(
@@ -160,18 +151,12 @@ class InMemoryDatabase implements DatabaseConnection {
     row: QueryResult,
     params: unknown[]
   ): boolean {
-    const conditions = whereClause.split(/\s+AND\s+/i);
-
-    return conditions.every((condition) => {
-      const eqMatch = condition.match(/(\w+)\s*=\s*\?/i);
-      if (eqMatch) {
-        const column = eqMatch[1].toLowerCase();
-        const paramValue = params[0];
-        return row[column] === paramValue;
-      }
-
-      return true;
-    });
+    const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/i);
+    if (eqMatch) {
+      const column = eqMatch[1].toLowerCase();
+      return row[column] === params[0];
+    }
+    return true;
   }
 }
 

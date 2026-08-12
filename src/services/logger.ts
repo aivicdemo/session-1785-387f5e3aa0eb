@@ -11,26 +11,22 @@ interface LogEntry {
 
 const logs: LogEntry[] = [];
 
-function formatTimestamp(): string {
-  return new Date().toISOString();
-}
-
-export function warn(message: string): void {
+function warn(message: string): void {
   const entry: LogEntry = {
     level: 'warn',
     message,
-    timestamp: formatTimestamp(),
+    timestamp: new Date().toISOString(),
   };
   logs.push(entry);
-  console.warn(`[${entry.timestamp}] WARN: ${message}`);
 }
 
-export function info(message: string): void {
+function info(message: string): void {
   const entry: LogEntry = {
     level: 'info',
     message,
-    timestamp: formatTimestamp(),
+    timestamp: new Date().toISOString(),
   };
   logs.push(entry);
-  console.info(`[${entry.timestamp}] INFO: ${message}`);
 }
+
+export { warn, info };

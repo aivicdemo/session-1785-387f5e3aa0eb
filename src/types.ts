@@ -6,7 +6,7 @@ export interface User {
   name: string;
   email: string;
   departmentId: string;
-  role: "manager" | "engineer";
+  role: "manager" | "engineer" | "admin";
   status: "active" | "inactive";
   createdAt: Date;
   updatedAt: Date;
@@ -52,7 +52,6 @@ export interface AuditLog {
     | "failed"
     | "step_in_progress"
     | "step_completed"
-    | "step_failed"
     | "handoff";
   stepName?: string;
   timestamp: Date;

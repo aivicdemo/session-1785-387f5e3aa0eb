@@ -3,142 +3,83 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Tx2Imp1PromptContext {
+export interface Action02PromptInput {
   reportingDeadline: string;
-  checkTime: string;
-  departmentMembers: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
+  overdueThresholdHours: number;
+  escalationContext?: string;
 }
 
-export interface Tx2Imp1Action02Input {
-  context: Tx2Imp1PromptContext;
+export interface Action02PromptOutput {
+  prompt: string;
+  version: string;
 }
 
-export interface Tx2Imp1Action02Output {
-  nonSubmitters: Array<{
-    memberId: string;
-    name: string;
-    email: string;
-  }>;
-  delayedSubmitters: Array<{
-    memberId: string;
-    name: string;
-    email: string;
-    submittedAt: string;
-  }>;
-  summaryList: {
-    totalMembers: number;
-    submitted: number;
-    nonSubmitted: number;
-    delayed: number;
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationContext = "",
+  } = input;
+
+  const systemInstructions = `You are an AI agent responsible for identifying unreported and delayed team members in the morning report management system.
+
+Your task is to:
+1. Analyze the confirmation email content to identify which team members have not submitted their daily reports
+2. Determine which team members have submitted reports but are past the deadline
+3. Create a comprehensive list of unreported and delayed members
+4. Prepare notification content for the department head
+
+Reporting Deadline: ${reportingDeadline}
+Overdue Threshold: ${overdueThresholdHours} hours past deadline
+${escalationContext ? `Additional Context: ${escalationContext}` : ""}
+
+Classification Rules:
+- Unreported: No submission received by the deadline
+- Delayed: Submission received but after the deadline
+- On-time: Submission received before or at the deadline
+
+Output Format:
+Provide your analysis in the following JSON structure:
+{
+  "unreportedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "hoursOverdue": number
+    }
+  ],
+  "delayedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "submissionTime": "ISO8601 timestamp",
+      "hoursLate": number
+    }
+  ],
+  "onTimeMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "submissionTime": "ISO8601 timestamp"
+    }
+  ],
+  "summary": {
+    "totalMembers": number,
+    "unreportedCount": number,
+    "delayedCount": number,
+    "onTimeCount": number,
+    "complianceRate": number
+  },
+  "notificationContent": "string for department head notification"
+}`;
+
+  const userPrompt = `Please analyze the current report submission status and identify unreported and delayed team members. 
+Ensure accuracy in classification and provide clear, actionable information for the department head.`;
+
+  const fullPrompt = `${systemInstructions}\n\n${userPrompt}`;
+
+  return {
+    prompt: fullPrompt,
+    version: ACTION_02_PROMPT_VERSION,
   };
-}
-
-export function buildAction02Prompt(
-  input: Tx2Imp1Action02Input
-): string {
-  const { context } = input;
-
-  const submittedMemberIds = new Set(
-    context.submittedReports.map((r) => r.memberId)
-  );
-
-  const nonSubmitters = context.departmentMembers.filter(
-    (member) => !submittedMemberIds.has(member.id)
-  );
-
-  const delayedSubmitters = context.submittedReports
-    .map((report) => {
-      const member = context.departmentMembers.find(
-        (m) => m.id === report.memberId
-      );
-      if (!member) return null;
-
-      const submittedTime = new Date(report.submittedAt);
-      const deadlineTime = new Date(context.reportingDeadline);
-
-      if (submittedTime > deadlineTime) {
-        return {
-          memberId: member.id,
-          name: member.name,
-          email: member.email,
-          submittedAt: report.submittedAt,
-        };
-      }
-      return null;
-    })
-    .filter((item) => item !== null) as Array<{
-    memberId: string;
-    name: string;
-    email: string;
-    submittedAt: string;
-  }>;
-
-  const summaryList = {
-    totalMembers: context.departmentMembers.length,
-    submitted: context.submittedReports.length,
-    nonSubmitted: nonSubmitters.length,
-    delayed: delayedSubmitters.length,
-  };
-
-  const prompt = `
-# 日報未提出者・遅延者の自動判定
-
-## 実行時刻
-${context.checkTime}
-
-## 提出期限
-${context.reportingDeadline}
-
-## 部員一覧
-${context.departmentMembers
-  .map((m) => `- ${m.name} (ID: ${m.id}, Email: ${m.email})`)
-  .join("\n")}
-
-## 提出済み日報
-${context.submittedReports
-  .map((r) => {
-    const member = context.departmentMembers.find((m) => m.id === r.memberId);
-    return `- ${member?.name || "Unknown"}: ${r.submittedAt}`;
-  })
-  .join("\n")}
-
-## 判定結果
-
-### 未提出者 (${nonSubmitters.length}名)
-${
-  nonSubmitters.length > 0
-    ? nonSubmitters.map((m) => `- ${m.name} (${m.email})`).join("\n")
-    : "なし"
-}
-
-### 遅延者 (${delayedSubmitters.length}名)
-${
-  delayedSubmitters.length > 0
-    ? delayedSubmitters
-        .map((m) => `- ${m.name} (提出時刻: ${m.submittedAt})`)
-        .join("\n")
-    : "なし"
-}
-
-## 集計
-- 総部員数: ${summaryList.totalMembers}
-- 提出済み: ${summaryList.submitted}
-- 未提出: ${summaryList.nonSubmitted}
-- 遅延: ${summaryList.delayed}
-
-## 指示
-上記の判定結果に基づいて、部長への通知メール内容を作成してください。
-未提出者と遅延者の一覧を明確に記載し、対応が必要な部員を強調してください。
-`;
-
-  return prompt;
 }

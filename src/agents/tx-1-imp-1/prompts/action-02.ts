@@ -33,35 +33,20 @@ Input Content to Validate:
 - Today's Plans: ${context.engineerInput.todayPlans}
 - Current Issues: ${context.engineerInput.currentIssues}
 
-Your task is to validate the input content according to the following criteria:
+Your task is to validate the input content according to these criteria:
+1. Completeness: All three fields must have meaningful content (not empty or just whitespace)
+2. Appropriateness: Content should be work-related and relevant to daily reporting
+3. Clarity: Content should be clear and understandable
+4. Length: Each field should have reasonable length (not too short, not excessively long)
 
-1. Completeness Check:
-   - All three fields (yesterday's accomplishments, today's plans, current issues) must be filled
-   - Each field must contain at least 10 characters
-   - No field should be empty or contain only whitespace
-
-2. Appropriateness Check:
-   - Content should be work-related and relevant to daily reporting
-   - Language should be professional and clear
-   - No offensive, discriminatory, or inappropriate content
-
-3. Consistency Check:
-   - Today's plans should logically follow from yesterday's accomplishments
-   - Current issues should be relevant to the work context
-   - No contradictory statements between fields
-
-4. Format Check:
-   - Content should be properly formatted and readable
-   - No excessive special characters or formatting issues
-
-Provide validation result in the following JSON format:
+Provide validation results in the following JSON format:
 {
   "isValid": boolean,
-  "errors": string[],
-  "warnings": string[]
+  "errors": [list of critical validation errors],
+  "warnings": [list of non-critical warnings]
 }
 
-Return ONLY the JSON object, no additional text.`;
+Only respond with valid JSON, no additional text.`;
 
   return prompt;
 }

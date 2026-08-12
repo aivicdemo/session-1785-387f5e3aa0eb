@@ -5,90 +5,70 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  nonSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    lastSubmissionTime?: string;
-  }>;
-  delayedSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    submissionTime: string;
-    delayMinutes: number;
-  }>;
-  escalationThreshold: number;
+  overdueThresholdHours: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPrompt: string;
-  context: {
-    nonSubmitterCount: number;
-    delayedSubmitterCount: number;
-    totalAffectedCount: number;
-    escalationRequired: boolean;
+  userPromptTemplate: string;
+  expectedOutputFormat: {
+    overdueEmployees: Array<{
+      employeeId: string;
+      employeeName: string;
+      hoursOverdue: number;
+      reminderCount: number;
+    }>;
+    escalationActions: Array<{
+      employeeId: string;
+      action: "send_reminder" | "escalate_to_manager" | "no_action";
+      reason: string;
+    }>;
   };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const nonSubmitterCount = input.nonSubmitters.length;
-  const delayedSubmitterCount = input.delayedSubmitters.length;
-  const totalAffectedCount = nonSubmitterCount + delayedSubmitterCount;
-  const escalationRequired = totalAffectedCount > input.escalationThreshold;
+  const systemPrompt = `You are an AI agent responsible for identifying overdue daily reports and determining escalation actions.
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed submitters of daily reports.
-Your task is to:
-1. Analyze the list of employees who have not submitted their reports
-2. Analyze the list of employees whose reports were submitted late
-3. Determine which employees require escalation based on the escalation threshold
-4. Generate a structured notification for the department head
+Your role:
+1. Analyze the current time against the reporting deadline: ${input.reportingDeadline}
+2. Identify employees whose reports are overdue by more than ${input.overdueThresholdHours} hours
+3. Check the reminder count for each overdue employee
+4. Determine appropriate escalation actions based on the rules:
+   - Maximum reminders allowed: ${input.escalationRules.maxReminders}
+   - Reminder interval: ${input.escalationRules.reminderIntervalMinutes} minutes
 
-You must provide clear, actionable information about reporting status.
-Be precise in identifying patterns and provide recommendations for follow-up actions.`;
+Escalation Logic:
+- If reminder count < max reminders: send_reminder
+- If reminder count >= max reminders: escalate_to_manager
+- If no overdue: no_action
 
-  const nonSubmittersList = input.nonSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`
-    )
-    .join("\n");
+Output must be valid JSON matching the expected format.`;
 
-  const delayedSubmittersList = input.delayedSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted at: ${emp.submissionTime}, Delay: ${emp.delayMinutes} minutes)`
-    )
-    .join("\n");
+  const userPromptTemplate = `Current timestamp: {currentTimestamp}
+Reporting deadline: ${input.reportingDeadline}
 
-  const userPrompt = `Current Time: ${input.currentTime}
-Reporting Deadline: ${input.reportingDeadline}
-Escalation Threshold: ${input.escalationThreshold} employees
+Employee report status:
+{employeeReportStatus}
 
-Non-Submitters (${nonSubmitterCount}):
-${nonSubmittersList || "None"}
+For each overdue employee, determine:
+1. Hours overdue (current time - deadline)
+2. Current reminder count from the system
+3. Appropriate escalation action
 
-Delayed Submitters (${delayedSubmitterCount}):
-${delayedSubmittersList || "None"}
-
-Please analyze this reporting status and provide:
-1. A summary of the current situation
-2. Identification of employees requiring immediate follow-up
-3. Recommended actions for the department head
-4. Any patterns or concerns that should be escalated`;
+Return the analysis as JSON with overdueEmployees array and escalationActions array.`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPrompt,
-    context: {
-      nonSubmitterCount,
-      delayedSubmitterCount,
-      totalAffectedCount,
-      escalationRequired,
+    userPromptTemplate,
+    expectedOutputFormat: {
+      overdueEmployees: [],
+      escalationActions: [],
     },
   };
 }

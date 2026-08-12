@@ -15,62 +15,44 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
-  metadata: {
-    version: string;
-    generatedAt: string;
-    targetAudience: string;
-  };
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportDate,
-    engineerName,
-    engineerId,
-    previousReportContent = "",
-    systemContext = {},
-  } = input;
+  const { reportDate, engineerName, engineerId, previousReportContent, systemContext } = input;
 
-  const basePrompt = `You are an AI agent responsible for generating and distributing daily report templates.
+  const previousContext = previousReportContent
+    ? `\n前日の日報内容:\n${previousReportContent}`
+    : "";
 
-Task: Generate a daily report template for the following engineer and prepare it for distribution.
+  const systemInfo = systemContext
+    ? `\nシステムコンテキスト: ${JSON.stringify(systemContext)}`
+    : "";
 
-Engineer Information:
-- Name: ${engineerName}
-- ID: ${engineerId}
-- Report Date: ${reportDate}
+  return `あなたは朝会報告管理システムのAIエージェントです。
 
-${previousReportContent ? `Previous Report Reference:\n${previousReportContent}\n` : ""}
+【タスク】
+エンジニア「${engineerName}」(ID: ${engineerId})に対して、${reportDate}の日報テンプレートを自動生成して配信してください。
 
-${Object.keys(systemContext).length > 0 ? `System Context:\n${JSON.stringify(systemContext, null, 2)}\n` : ""}
+【日報テンプレートの構成要素】
+1. 昨日の実績（前日の進捗状況、完了したタスク）
+2. 本日の予定（本日実施予定のタスク、目標）
+3. 抱えている課題（現在の課題、ボトルネック、懸念事項）
 
-Requirements:
-1. Create a structured daily report template with the following sections:
-   - Yesterday's Achievements (実績)
-   - Today's Plans (予定)
-   - Current Issues/Challenges (課題)
-   - Blockers or Dependencies (阻害要因)
-
-2. Ensure the template is clear, concise, and easy to fill out
-
-3. Determine the appropriate distribution channels (email, chat, web form, etc.)
-
-4. Specify the optimal time for distribution to maximize completion rate
-
-5. Include metadata about the template generation
-
-Output Format:
-Provide a JSON response with the following structure:
+【出力形式】
+以下のJSON形式で返してください:
 {
-  "templateContent": "string containing the formatted template",
-  "distributionChannels": ["array", "of", "channels"],
-  "scheduledTime": "ISO 8601 timestamp",
-  "metadata": {
-    "version": "${ACTION_01_PROMPT_VERSION}",
-    "generatedAt": "ISO 8601 timestamp",
-    "targetAudience": "engineer name or group"
-  }
-}`;
+  "templateContent": "生成されたテンプレート本文",
+  "distributionChannels": ["email", "chat"],
+  "scheduledTime": "配信予定時刻（HH:MM形式）"
+}
 
-  return basePrompt;
+【前提条件】
+- テンプレートは簡潔で、エンジニアが5分以内に入力完了できる分量にしてください
+- 前日の内容がある場合は参考にしてください${previousContext}
+${systemInfo}
+
+【制約】
+- テンプレートは日本語で作成してください
+- 配信チャネルはメール、チャットツール、または両方を指定してください
+- 配信時刻は営業開始時刻の30分前を推奨してください`;
 }

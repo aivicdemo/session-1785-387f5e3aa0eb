@@ -3,97 +3,131 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
+export interface Action04PromptInput {
+  reportContent: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    reportedBy: string;
-    reportDate: string;
+    category: string;
   }>;
-  priorityClassifications: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>;
+  priorityFramework: {
+    criteria: string[];
+    levels: string[];
+  };
+}
+
+export interface Action04PromptOutput {
+  prioritizedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    priorityScore: number;
     reasoning: string;
+    affectedMembers: string[];
+    recommendedAction: string;
   }>;
-  departmentName: string;
-  reportingPeriod: {
-    startDate: string;
-    endDate: string;
+  criticalIssues: Array<{
+    id: string;
+    title: string;
+    severity: string;
+    escalationRequired: boolean;
+  }>;
+  issueClassification: {
+    blocking: string[];
+    highPriority: string[];
+    medium: string[];
+    low: string[];
   };
+  summary: string;
 }
 
-export interface Action04PromptResult {
-  systemPrompt: string;
-  userPrompt: string;
-  version: string;
-}
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const priorityLevels = input.priorityFramework.levels.join(", ");
+  const criteria = input.priorityFramework.criteria
+    .map((c, i) => `${i + 1}. ${c}`)
+    .join("\n");
 
-export function buildAction04Prompt(
-  context: Action04PromptContext
-): Action04PromptResult {
-  const systemPrompt = `You are an AI agent responsible for the final step of the daily report management system.
-Your task is to review extracted issues and their priority classifications, then provide a comprehensive summary report.
+  const issuesText = input.extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
+    )
+    .join("\n");
 
-You must:
-1. Validate the priority classifications assigned to each issue
-2. Identify any issues that may require escalation
-3. Provide reasoning for priority adjustments if needed
-4. Generate a structured report for the department manager
-5. Flag any unusual patterns or concerning trends
+  const teamText = input.teamMembers
+    .map((member) => `- ${member.name} (${member.department})`)
+    .join("\n");
 
-Output format must be JSON with the following structure:
+  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
+
+## Task: Prioritize and Classify Extracted Issues
+
+### Input Report Content:
+${input.reportContent}
+
+### Extracted Issues to Prioritize:
+${issuesText}
+
+### Team Members:
+${teamText}
+
+### Priority Framework:
+Priority Levels: ${priorityLevels}
+
+Prioritization Criteria:
+${criteria}
+
+### Instructions:
+1. Analyze each extracted issue against the prioritization criteria
+2. Assign a priority level (${priorityLevels}) to each issue
+3. Provide a numerical priority score (1-100, where 100 is highest priority)
+4. Classify issues into categories: blocking, highPriority, medium, low
+5. Identify any critical issues requiring immediate escalation
+6. Provide reasoning for each priority assignment
+7. Identify affected team members for each issue
+8. Recommend specific actions for high-priority issues
+9. Generate a summary of the prioritization results
+
+### Output Format:
+Return a JSON object with the following structure:
 {
-  "validatedPriorities": [
+  "prioritizedIssues": [
     {
-      "issueId": string,
-      "priority": "critical" | "high" | "medium" | "low",
-      "validated": boolean,
-      "adjustmentReasoning": string | null
+      "id": "issue_id",
+      "title": "issue_title",
+      "description": "issue_description",
+      "category": "issue_category",
+      "priority": "priority_level",
+      "priorityScore": number,
+      "reasoning": "explanation_of_priority",
+      "affectedMembers": ["member_id"],
+      "recommendedAction": "specific_action"
     }
   ],
-  "escalationFlags": [
+  "criticalIssues": [
     {
-      "issueId": string,
-      "reason": string,
-      "recommendedAction": string
+      "id": "issue_id",
+      "title": "issue_title",
+      "severity": "severity_level",
+      "escalationRequired": boolean
     }
   ],
-  "reportSummary": {
-    "totalIssuesExtracted": number,
-    "criticalCount": number,
-    "highCount": number,
-    "mediumCount": number,
-    "lowCount": number,
-    "trends": string[]
+  "issueClassification": {
+    "blocking": ["issue_id"],
+    "highPriority": ["issue_id"],
+    "medium": ["issue_id"],
+    "low": ["issue_id"]
   },
-  "managerNotification": {
-    "subject": string,
-    "body": string,
-    "priority": "urgent" | "normal"
-  }
-}`;
+  "summary": "overall_summary_of_prioritization"
+}
 
-  const issuesJson = JSON.stringify(context.extractedIssues, null, 2);
-  const prioritiesJson = JSON.stringify(
-    context.priorityClassifications,
-    null,
-    2
-  );
-
-  const userPrompt = `Review and validate the following issue priorities for ${context.departmentName} (${context.reportingPeriod.startDate} to ${context.reportingPeriod.endDate}):
-
-Extracted Issues:
-${issuesJson}
-
-Current Priority Classifications:
-${prioritiesJson}
-
-Please validate these classifications, identify any escalation needs, and generate a manager notification.`;
-
-  return {
-    systemPrompt,
-    userPrompt,
-    version: ACTION_04_PROMPT_VERSION,
-  };
+Ensure all issues are classified and prioritized based on the provided framework.`;
 }

@@ -7,148 +7,79 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
+  submittedContent: {
+    yesterdayAccomplishment: string;
+    todayPlan: string;
     issues: string;
   };
-  submissionDeadline: string;
-  systemTimestamp: string;
+  submissionTimestamp: string;
 }
 
 export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  sanitizedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
 }
 
-export interface Action04PromptConfig {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    maxYesterdayLength: number;
-    minTodayLength: number;
-    maxTodayLength: number;
-    minIssuesLength: number;
-    maxIssuesLength: number;
-    requiredFields: string[];
-  };
-  tone: "formal" | "casual" | "neutral";
-  language: "ja" | "en";
+export interface Action04RegistrationResult {
+  success: boolean;
+  reportId: string;
+  registeredAt: string;
+  message: string;
 }
 
-export function buildAction04Prompt(config: Action04PromptConfig): string {
-  const {
-    context,
-    validationRules,
-    tone = "neutral",
-    language = "ja",
-  } = config;
+export function buildAction04Prompt(context: Action04Context): string {
+  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
 
-  const toneDescriptions: Record<string, Record<string, string>> = {
-    ja: {
-      formal: "敬語を使用した丁寧な表現",
-      casual: "親しみやすい日常的な表現",
-      neutral: "中立的で客観的な表現",
-    },
-    en: {
-      formal: "Use formal and polite expressions",
-      casual: "Use friendly and conversational expressions",
-      neutral: "Use neutral and objective expressions",
-    },
-  };
+## Task: Validate and Register Daily Report (Action 04)
 
-  const systemPrompts: Record<string, string> = {
-    ja: `あなたは日報入力内容の妥当性を検証するAIアシスタントです。
-エンジニア「${context.engineerName}」(ID: ${context.engineerId})の日報入力内容を以下のルールに基づいて検証してください。
+### Input Information
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Timestamp: ${context.submissionTimestamp}
 
-【検証対象】
-- 昨日の実績: ${validationRules.minYesterdayLength}文字以上${validationRules.maxYesterdayLength}文字以下
-- 本日の予定: ${validationRules.minTodayLength}文字以上${validationRules.maxTodayLength}文字以下
-- 抱えている課題: ${validationRules.minIssuesLength}文字以上${validationRules.maxIssuesLength}文字以下
-- 必須項目: ${validationRules.requiredFields.join(", ")}
+### Submitted Content
+**Yesterday's Accomplishment:**
+${context.submittedContent.yesterdayAccomplishment}
 
-【検証方針】
-${toneDescriptions.ja[tone]}で、以下の観点から検証してください:
-1. 必須項目の完全性
-2. 文字数の適切性
-3. 内容の妥当性と具体性
-4. 不適切な表現や機密情報の有無
-5. 日本語の正確性
+**Today's Plan:**
+${context.submittedContent.todayPlan}
 
-【出力形式】
-JSON形式で以下の構造で返してください:
+**Issues/Concerns:**
+${context.submittedContent.issues}
+
+### Validation Requirements
+1. Check that all three sections (yesterday's accomplishment, today's plan, issues) are filled in
+2. Verify that content is not empty or contains only whitespace
+3. Validate that content length is reasonable (not too short, not excessively long)
+4. Check for any inappropriate or suspicious content
+5. Ensure submission timestamp is within acceptable range
+
+### Registration Requirements
+Upon successful validation:
+1. Generate a unique report ID
+2. Record the submission timestamp
+3. Store all content in the management system
+4. Prepare for confirmation email dispatch
+
+### Output Format
+Provide your response as a JSON object with the following structure:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "sanitizedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
-}`,
-    en: `You are an AI assistant responsible for validating daily report input content.
-Validate the daily report input from engineer "${context.engineerName}" (ID: ${context.engineerId}) based on the following rules.
+  "reportId": string (if valid),
+  "registeredAt": string (ISO 8601 timestamp if valid),
+  "message": string
+}
 
-【Validation Targets】
-- Yesterday's Results: ${validationRules.minYesterdayLength} to ${validationRules.maxYesterdayLength} characters
-- Today's Plans: ${validationRules.minTodayLength} to ${validationRules.maxTodayLength} characters
-- Current Issues: ${validationRules.minIssuesLength} to ${validationRules.maxIssuesLength} characters
-- Required Fields: ${validationRules.requiredFields.join(", ")}
+### Escalation Triggers
+- If content is incomplete or inappropriate, mark as invalid with clear error messages
+- If submission is significantly delayed, add warning but allow registration
+- If system error occurs during registration, return error status
 
-【Validation Approach】
-${toneDescriptions.en[tone]}, and validate from the following perspectives:
-1. Completeness of required fields
-2. Appropriateness of character count
-3. Validity and specificity of content
-4. Presence of inappropriate expressions or confidential information
-5. Accuracy of language
+Proceed with validation and registration.`;
 
-【Output Format】
-Return in JSON format with the following structure:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "sanitizedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
-}`,
-  };
-
-  const userPrompts: Record<string, string> = {
-    ja: `【報告日】${context.reportDate}
-【提出期限】${context.submissionDeadline}
-【システム時刻】${context.systemTimestamp}
-
-【入力内容】
-昨日の実績: ${context.previousReportContent.yesterday}
-本日の予定: ${context.previousReportContent.today}
-抱えている課題: ${context.previousReportContent.issues}
-
-上記の入力内容を検証してください。`,
-    en: `【Report Date】${context.reportDate}
-【Submission Deadline】${context.submissionDeadline}
-【System Time】${context.systemTimestamp}
-
-【Input Content】
-Yesterday's Results: ${context.previousReportContent.yesterday}
-Today's Plans: ${context.previousReportContent.today}
-Current Issues: ${context.previousReportContent.issues}
-
-Please validate the above input content.`,
-  };
-
-  const systemMessage = systemPrompts[language] || systemPrompts.ja;
-  const userMessage = userPrompts[language] || userPrompts.ja;
-
-  return `${systemMessage}\n\n${userMessage}`;
+  return prompt;
 }

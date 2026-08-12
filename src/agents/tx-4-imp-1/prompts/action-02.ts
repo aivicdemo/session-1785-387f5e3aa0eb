@@ -5,153 +5,63 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportContent: string;
-  engineerName: string;
-  submissionDate: string;
-  validationRules?: {
-    minLength?: number;
-    maxLength?: number;
-    requiredFields?: string[];
-  };
+  submissionDeadline: string;
+  escalationThreshold: number;
+  previousEscalationCount: number;
 }
 
 export interface Action02PromptOutput {
-  isValid: boolean;
-  validationErrors: string[];
-  sanitizedContent: string;
-  severity: "critical" | "warning" | "info";
+  shouldEscalate: boolean;
+  escalationReason: string;
+  recommendedAction: string;
+  riskLevel: "low" | "medium" | "high";
+  nextSteps: string[];
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
   const {
     reportContent,
-    engineerName,
-    submissionDate,
-    validationRules = {},
+    submissionDeadline,
+    escalationThreshold,
+    previousEscalationCount,
   } = input;
 
-  const {
-    minLength = 10,
-    maxLength = 5000,
-    requiredFields = ["yesterday", "today", "issues"],
-  } = validationRules;
+  const escalationStatus =
+    previousEscalationCount >= escalationThreshold ? "exceeded" : "within";
 
-  const requiredFieldsText = requiredFields.join(", ");
+  return `You are an AI agent responsible for analyzing daily report submissions and determining escalation conditions.
 
-  return `You are a validation agent for the morning report management system.
+## Current Context
+- Report Content: ${reportContent}
+- Submission Deadline: ${submissionDeadline}
+- Escalation Threshold: ${escalationThreshold}
+- Previous Escalation Count: ${previousEscalationCount}
+- Escalation Status: ${escalationStatus}
 
-Your task is to validate the daily report submission from engineer: ${engineerName}
-Submission Date: ${submissionDate}
+## Your Task
+Analyze the report content and submission status to determine if escalation is required.
 
-Report Content:
-${reportContent}
+### Escalation Conditions to Check:
+1. Incomplete or inappropriate input content
+2. Submission deadline significantly exceeded
+3. System errors preventing registration
+4. Multiple escalations for the same engineer
+5. Unusual patterns or risk indicators in report content
 
-Validation Rules:
-- Minimum content length: ${minLength} characters
-- Maximum content length: ${maxLength} characters
-- Required sections: ${requiredFieldsText}
-- Content must be in Japanese or English
-- No offensive or inappropriate language
-- Must contain specific, actionable information (not generic placeholders)
+### Analysis Requirements:
+- Evaluate report completeness and appropriateness
+- Assess deadline compliance
+- Determine risk level (low/medium/high)
+- Recommend specific actions if escalation is needed
+- Provide clear reasoning for your decision
 
-Please perform the following validations:
-1. Check if all required sections are present
-2. Verify content length is within acceptable range
-3. Assess content quality and specificity
-4. Identify any missing or incomplete information
-5. Check for any inappropriate content
+### Output Format:
+Provide your analysis as a structured decision with:
+- shouldEscalate: boolean
+- escalationReason: string (detailed explanation)
+- recommendedAction: string (specific action to take)
+- riskLevel: "low" | "medium" | "high"
+- nextSteps: array of strings (ordered action items)
 
-Respond with a JSON object containing:
-{
-  "isValid": boolean,
-  "validationErrors": string[],
-  "sanitizedContent": string,
-  "severity": "critical" | "warning" | "info"
-}
-
-If validation fails, provide specific, actionable error messages in the validationErrors array.
-If validation passes, return empty validationErrors array.
-The sanitizedContent should be the cleaned version of the report ready for system registration.`;
-}
-
-export function validateAction02Input(
-  input: Action02PromptInput
-): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!input.reportContent || input.reportContent.trim().length === 0) {
-    errors.push("Report content is required");
-  }
-
-  if (!input.engineerName || input.engineerName.trim().length === 0) {
-    errors.push("Engineer name is required");
-  }
-
-  if (!input.submissionDate || input.submissionDate.trim().length === 0) {
-    errors.push("Submission date is required");
-  }
-
-  if (
-    input.validationRules?.minLength &&
-    input.reportContent.length < input.validationRules.minLength
-  ) {
-    errors.push(
-      `Report content is too short (minimum: ${input.validationRules.minLength} characters)`
-    );
-  }
-
-  if (
-    input.validationRules?.maxLength &&
-    input.reportContent.length > input.validationRules.maxLength
-  ) {
-    errors.push(
-      `Report content is too long (maximum: ${input.validationRules.maxLength} characters)`
-    );
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
-}
-
-export function parseAction02Response(
-  responseText: string
-): Action02PromptOutput {
-  try {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return {
-        isValid: false,
-        validationErrors: ["Failed to parse validation response"],
-        sanitizedContent: "",
-        severity: "critical",
-      };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    return {
-      isValid: parsed.isValid === true,
-      validationErrors: Array.isArray(parsed.validationErrors)
-        ? parsed.validationErrors
-        : [],
-      sanitizedContent:
-        typeof parsed.sanitizedContent === "string"
-          ? parsed.sanitizedContent
-          : "",
-      severity:
-        parsed.severity === "critical" ||
-        parsed.severity === "warning" ||
-        parsed.severity === "info"
-          ? parsed.severity
-          : "info",
-    };
-  } catch {
-    return {
-      isValid: false,
-      validationErrors: ["Invalid response format from validation agent"],
-      sanitizedContent: "",
-      severity: "critical",
-    };
-  }
+Ensure your response is actionable and provides clear guidance for human review.`;
 }

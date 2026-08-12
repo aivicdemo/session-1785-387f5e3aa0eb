@@ -7,182 +7,126 @@ export interface Action05Context {
   confirmationEmailContent: string;
   reportSubmissionDeadline: string;
   currentTimestamp: string;
-  previousExtractedIssues?: ExtractedIssue[];
-  teamMembers: TeamMember[];
+  previousEscalationHistory?: Array<{
+    employeeId: string;
+    escalationCount: number;
+    lastEscalationTime: string;
+  }>;
 }
 
 export interface ExtractedIssue {
   id: string;
   title: string;
   description: string;
-  reportedBy: string;
+  affectedEmployees: string[];
   severity: "critical" | "high" | "medium" | "low";
   category: string;
-  relatedTasks?: string[];
+  relatedReports: string[];
 }
 
-export interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  role: string;
+export interface PrioritizedIssue extends ExtractedIssue {
+  priority: number;
+  priorityReason: string;
+  recommendedAction: string;
 }
 
-export interface IssueExtractionResult {
+export interface Action05Output {
   extractedIssues: ExtractedIssue[];
-  priorityClassification: PriorityClassification;
-  summaryReport: string;
-  analysisMetadata: AnalysisMetadata;
-}
-
-export interface PriorityClassification {
-  critical: ExtractedIssue[];
-  high: ExtractedIssue[];
-  medium: ExtractedIssue[];
-  low: ExtractedIssue[];
-  unclassified: ExtractedIssue[];
-}
-
-export interface AnalysisMetadata {
-  totalIssuesExtracted: number;
-  analysisTimestamp: string;
-  confidenceScore: number;
-  processingDurationMs: number;
-  dataSourcesUsed: string[];
+  prioritizedIssues: PrioritizedIssue[];
+  overallProgressSummary: string;
+  bottlenecks: Array<{
+    description: string;
+    impactLevel: "high" | "medium" | "low";
+    affectedTeams: string[];
+  }>;
+  escalationRecommendations: Array<{
+    employeeId: string;
+    reason: string;
+    recommendedAction: string;
+  }>;
+  reportGenerationTimestamp: string;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const timestamp = new Date().toISOString();
-  
-  const teamMembersList = context.teamMembers
-    .map(member => `- ${member.name} (${member.department}/${member.role}): ${member.email}`)
-    .join("\n");
+  const basePrompt = `You are an AI agent responsible for extracting issues and determining priorities from daily report confirmation emails.
 
-  const previousIssuesContext = context.previousExtractedIssues && context.previousExtractedIssues.length > 0
-    ? `\n\n## 前回抽出された課題（参考）:\n${context.previousExtractedIssues
-        .map(issue => `- [${issue.severity.toUpperCase()}] ${issue.title}: ${issue.description}`)
-        .join("\n")}`
-    : "";
+## Context
+- Confirmation Email Content: ${context.confirmationEmailContent}
+- Report Submission Deadline: ${context.reportSubmissionDeadline}
+- Current Timestamp: ${context.currentTimestamp}
+${
+  context.previousEscalationHistory && context.previousEscalationHistory.length > 0
+    ? `- Previous Escalation History: ${JSON.stringify(context.previousEscalationHistory)}`
+    : ""
+}
 
-  const prompt = `# 日報からの課題抽出・優先度判定プロンプト
+## Your Tasks
+1. Extract all issues and bottlenecks mentioned in the confirmation email content
+2. Classify each issue by category and severity
+3. Determine priority ranking based on impact and urgency
+4. Identify affected employees and teams
+5. Recommend escalation actions for critical issues
+6. Generate a comprehensive progress summary
 
-## 実行時刻
-${timestamp}
-
-## 目的
-確認メール内容から日報の課題・ボトルネックを自動抽出し、優先度を判定・分類する。
-
-## 入力情報
-
-### 確認メール内容
-\`\`\`
-${context.confirmationEmailContent}
-\`\`\`
-
-### 報告期限
-${context.reportSubmissionDeadline}
-
-### 現在時刻
-${context.currentTimestamp}
-
-### チームメンバー一覧
-${teamMembersList}
-
-${previousIssuesContext}
-
-## 実行タスク
-
-### タスク1: 課題の自動抽出
-確認メール内容から以下の情報を抽出してください:
-- 課題のタイトル
-- 詳細な説明
-- 報告者
-- 課題のカテゴリ（技術的課題、プロセス課題、リソース課題、その他）
-- 関連するタスク・プロジェクト
-
-### タスク2: 優先度の自動判定
-抽出された各課題に対して以下の基準で優先度を判定してください:
-
-**Critical（緊急）**:
-- システム停止・重大障害
-- セキュリティ脅威
-- 本日中の対応が必須
-- 複数チームに影響
-
-**High（高）**:
-- 機能障害・パフォーマンス低下
-- 本週中の対応が必須
-- 1チーム以上に影響
-- 顧客対応に関連
-
-**Medium（中）**:
-- 改善提案・最適化
-- 本月中の対応が望ましい
-- 限定的な影響
-
-**Low（低）**:
-- 軽微な問題・提案
-- 対応時期に余裕あり
-- 影響が限定的
-
-### タスク3: 課題の分類
-優先度ごとに課題を分類し、以下の構造で整理してください:
-- Critical: 最優先対応が必要な課題
-- High: 今週中に対応すべき課題
-- Medium: 今月中に対応すべき課題
-- Low: 余裕があれば対応する課題
-
-### タスク4: サマリーレポート生成
-以下を含むサマリーレポートを生成してください:
-- 抽出された課題の総数
-- 優先度別の課題数
-- 最も重要な3つの課題
-- 推奨される対応順序
-- リスク評価
-
-## 出力形式
-
-JSON形式で以下の構造で返してください:
-
-\`\`\`json
+## Output Requirements
+Return a JSON object with the following structure:
 {
   "extractedIssues": [
     {
-      "id": "ISSUE-001",
-      "title": "課題のタイトル",
-      "description": "詳細な説明",
-      "reportedBy": "報告者名",
+      "id": "string (unique identifier)",
+      "title": "string",
+      "description": "string",
+      "affectedEmployees": ["string"],
       "severity": "critical|high|medium|low",
-      "category": "技術的課題|プロセス課題|リソース課題|その他",
-      "relatedTasks": ["タスク1", "タスク2"]
+      "category": "string",
+      "relatedReports": ["string"]
     }
   ],
-  "priorityClassification": {
-    "critical": [/* Critical課題の配列 */],
-    "high": [/* High課題の配列 */],
-    "medium": [/* Medium課題の配列 */],
-    "low": [/* Low課題の配列 */],
-    "unclassified": [/* 分類不可の課題 */]
-  },
-  "summaryReport": "サマリーレポートのテキスト",
-  "analysisMetadata": {
-    "totalIssuesExtracted": 0,
-    "analysisTimestamp": "ISO8601形式のタイムスタンプ",
-    "confidenceScore": 0.85,
-    "processingDurationMs": 0,
-    "dataSourcesUsed": ["confirmationEmail", "previousIssues"]
-  }
+  "prioritizedIssues": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "affectedEmployees": ["string"],
+      "severity": "critical|high|medium|low",
+      "category": "string",
+      "relatedReports": ["string"],
+      "priority": number (1 = highest),
+      "priorityReason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "overallProgressSummary": "string",
+  "bottlenecks": [
+    {
+      "description": "string",
+      "impactLevel": "high|medium|low",
+      "affectedTeams": ["string"]
+    }
+  ],
+  "escalationRecommendations": [
+    {
+      "employeeId": "string",
+      "reason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "reportGenerationTimestamp": "string (ISO 8601 format)"
 }
-\`\`\`
 
-## 注意事項
-- 重複する課題は統合してください
-- 前回抽出された課題との関連性を考慮してください
-- 優先度判定は客観的な基準に基づいてください
-- 不明確な課題は"unclassified"に分類してください
-- 信頼度スコア（0-1）を含めてください
-`;
+## Priority Determination Rules
+- Critical issues affecting project timeline or team safety: Priority 1-2
+- High-impact issues affecting multiple teams or deliverables: Priority 3-4
+- Medium-impact issues affecting individual tasks: Priority 5-6
+- Low-impact issues or informational items: Priority 7+
 
-  return prompt;
+## Escalation Criteria
+- Issues blocking other teams' work
+- Repeated issues from the same employee
+- Issues exceeding scope or requiring management intervention
+- Safety or compliance concerns
+
+Analyze the confirmation email content thoroughly and provide comprehensive issue extraction and prioritization.`;
+
+  return basePrompt;
 }

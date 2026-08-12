@@ -17,9 +17,7 @@ export interface Action06Context {
     reasoning: string;
   }>;
   departmentHead: string;
-  reportDate: string;
-  totalReportsCollected: number;
-  reportingRate: number;
+  reportingDate: string;
 }
 
 export interface Action06PromptInput {
@@ -28,135 +26,72 @@ export interface Action06PromptInput {
     actionNumber: number;
     result: string;
   }>;
-  systemInstructions: string;
 }
 
 export interface Action06PromptOutput {
   version: string;
-  actionNumber: 6;
-  prompt: string;
-  expectedOutputFormat: {
-    type: "structured";
-    schema: {
-      reportPresentation: string;
-      prioritizedIssuesList: Array<{
-        rank: number;
-        issueId: string;
-        title: string;
-        priority: string;
-        actionItems: string[];
-      }>;
-      recommendedNextSteps: string[];
-      escalationFlags: Array<{
-        flag: string;
-        severity: "low" | "medium" | "high" | "critical";
-        description: string;
-      }>;
-    };
+  systemPrompt: string;
+  userPrompt: string;
+  metadata: {
+    actionNumber: 6;
+    contractId: "tx_4_imp_1";
+    purpose: string;
   };
 }
 
-export function buildAction06Prompt(
-  input: Action06PromptInput
-): Action06PromptOutput {
-  const {
-    context,
-    previousActions,
-    systemInstructions,
-  } = input;
+export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for the final step of the morning report processing workflow.
+Your role is to present the organized report and prioritized issue list to the department head.
+You must ensure all extracted issues are properly categorized and prioritized based on business impact and urgency.
+Provide clear, actionable recommendations for issue resolution.`;
 
-  const previousActionsSummary = previousActions
-    .map(
-      (action) =>
-        `Action ${action.actionNumber}: ${action.result}`
-    )
-    .join("\n");
+  const userPrompt = `Based on the following morning report summary and extracted issues, prepare a final report for the department head:
 
-  const issuesListFormatted = context.extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title} (${issue.category}): ${issue.description}`
-    )
-    .join("\n");
+Report Summary:
+${input.context.reportSummary}
 
-  const priorityAssignmentsFormatted = context.priorityAssignments
-    .map(
-      (assignment) =>
-        `- Issue ${assignment.issueId}: ${assignment.priority.toUpperCase()} - ${assignment.reasoning}`
-    )
-    .join("\n");
+Extracted Issues:
+${input.context.extractedIssues
+  .map(
+    (issue) => `
+- ID: ${issue.id}
+  Title: ${issue.title}
+  Description: ${issue.description}
+  Category: ${issue.category}
+`
+  )
+  .join("")}
 
-  const prompt = `${systemInstructions}
+Priority Assignments:
+${input.context.priorityAssignments
+  .map(
+    (assignment) => `
+- Issue ID: ${assignment.issueId}
+  Priority: ${assignment.priority}
+  Reasoning: ${assignment.reasoning}
+`
+  )
+  .join("")}
 
-## Current Context
-- Report Date: ${context.reportDate}
-- Department Head: ${context.departmentHead}
-- Total Reports Collected: ${context.totalReportsCollected}
-- Reporting Rate: ${(context.reportingRate * 100).toFixed(1)}%
+Department Head: ${input.context.departmentHead}
+Reporting Date: ${input.context.reportingDate}
 
-## Report Summary
-${context.reportSummary}
-
-## Extracted Issues
-${issuesListFormatted}
-
-## Current Priority Assignments
-${priorityAssignmentsFormatted}
-
-## Previous Actions Completed
-${previousActionsSummary}
-
-## Task for Action 6: Final Report Presentation and Escalation Determination
-
-You are now at the final stage of the daily report processing workflow. Your task is to:
-
-1. **Present the organized report** to the department head in a clear, executive-friendly format
-2. **Validate and finalize the priority classification** of all extracted issues
-3. **Identify escalation flags** for issues that require immediate attention or fall outside normal parameters
-4. **Recommend next steps** based on the prioritized issues and current status
-
-### Requirements:
-- Ensure all issues are properly ranked by priority
-- Flag any issues that require escalation (critical blockers, repeated problems, resource constraints, etc.)
-- Provide actionable recommendations for each high-priority issue
-- Maintain consistency with priority assignments from previous actions
-- Consider the reporting rate and any patterns in report submissions
-
-### Output Format:
-Provide your response as a structured JSON object with the following schema:
-{
-  "reportPresentation": "Executive summary of today's progress and status",
-  "prioritizedIssuesList": [
-    {
-      "rank": 1,
-      "issueId": "issue identifier",
-      "title": "Issue title",
-      "priority": "CRITICAL|HIGH|MEDIUM|LOW",
-      "actionItems": ["specific action to address this issue"]
-    }
-  ],
-  "recommendedNextSteps": ["step 1", "step 2", ...],
-  "escalationFlags": [
-    {
-      "flag": "flag name",
-      "severity": "low|medium|high|critical",
-      "description": "detailed description of why this requires escalation"
-    }
-  ]
-}`;
+Please:
+1. Validate all priority assignments
+2. Identify any critical issues requiring immediate attention
+3. Group issues by category and priority level
+4. Provide a concise executive summary
+5. Recommend next steps for each priority level`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,
-    actionNumber: 6,
-    prompt,
-    expectedOutputFormat: {
-      type: "structured",
-      schema: {
-        reportPresentation: "",
-        prioritizedIssuesList: [],
-        recommendedNextSteps: [],
-        escalationFlags: [],
-      },
+    systemPrompt,
+    userPrompt,
+    metadata: {
+      actionNumber: 6,
+      contractId: "tx_4_imp_1",
+      purpose:
+        "Present organized report and prioritized issue list to department head for morning meeting",
     },
   };
 }

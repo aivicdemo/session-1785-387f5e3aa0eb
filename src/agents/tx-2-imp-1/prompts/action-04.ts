@@ -4,96 +4,68 @@
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
-  unreportedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    department: string;
-    lastReportTime?: string;
-  }>;
-  delayedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    department: string;
-    submittedAt: string;
-    deadline: string;
-  }>;
   reportingDeadline: string;
-  currentTime: string;
-  escalationThreshold: number;
+  overdueThresholdHours: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Action04PromptOutput {
-  urgencyLevel: "critical" | "high" | "medium" | "low";
-  notificationContent: string;
-  recommendedActions: string[];
-  escalationRequired: boolean;
-  escalationReason?: string;
+  prompt: string;
+  version: string;
+  metadata: {
+    action: number;
+    contract: string;
+    purpose: string;
+  };
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const unreportedCount = input.unreportedMembers.length;
-  const delayedCount = input.delayedMembers.length;
-  const totalIssues = unreportedCount + delayedCount;
+export function buildAction04Prompt(
+  input: Action04PromptInput
+): Action04PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
+  } = input;
 
-  const unreportedSection =
-    unreportedCount > 0
-      ? `
-## 未提出者 (${unreportedCount}名)
-${input.unreportedMembers
-  .map(
-    (member) =>
-      `- ${member.memberName} (${member.department}) - ID: ${member.memberId}`
-  )
-  .join("\n")}
-`
-      : "";
+  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (Contract: tx_2_imp_1).
 
-  const delayedSection =
-    delayedCount > 0
-      ? `
-## 遅延者 (${delayedCount}名)
-${input.delayedMembers
-  .map(
-    (member) =>
-      `- ${member.memberName} (${member.department}) - 提出: ${member.submittedAt}, 期限: ${member.deadline}`
-  )
-  .join("\n")}
-`
-      : "";
+Your task is to send reminder notifications to members who have not submitted their daily reports.
 
-  const urgencyAssessment =
-    totalIssues >= input.escalationThreshold
-      ? "このレベルの報告漏れ・遅延は重大な状況です。エスカレーションが必要です。"
-      : "通常の対応で対応可能です。";
+Context:
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- Maximum Reminders per Member: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-  return `# 日報報告状況の自動判定と通知プロンプト
+Instructions:
+1. Identify members who have exceeded the overdue threshold
+2. Check the reminder history to ensure the maximum reminder limit has not been exceeded
+3. Compose and send reminder notifications via email and chat
+4. Log all reminder activities with timestamps
+5. Escalate to department head if a member has received maximum reminders without submitting
 
-## 現在の状況
-- 現在時刻: ${input.currentTime}
-- 報告期限: ${input.reportingDeadline}
-- 未提出者数: ${unreportedCount}名
-- 遅延者数: ${delayedCount}名
-- 合計問題件数: ${totalIssues}件
-- エスカレーション閾値: ${input.escalationThreshold}件
+Output Format:
+- List of members notified
+- Notification method (email/chat)
+- Timestamp of each notification
+- Any escalation actions taken
 
-${unreportedSection}${delayedSection}
+Escalation Conditions:
+- Same member receives multiple reminders without submitting
+- System error during notification sending
+- Special cases not covered by standard reminder rules`;
 
-## 判定基準
-${urgencyAssessment}
-
-## 実行タスク
-1. 上記の報告漏れ・遅延状況を分析し、緊急度レベルを判定してください
-2. 部長への通知内容を作成してください
-3. 推奨される対応アクションを列挙してください
-4. エスカレーション判定を実施してください
-
-## 出力形式
-以下の JSON 形式で結果を返してください:
-{
-  "urgencyLevel": "critical" | "high" | "medium" | "low",
-  "notificationContent": "部長への通知メール本文",
-  "recommendedActions": ["アクション1", "アクション2", ...],
-  "escalationRequired": boolean,
-  "escalationReason": "エスカレーション理由（必要な場合のみ）"
-}`;
+  return {
+    prompt,
+    version: ACTION_04_PROMPT_VERSION,
+    metadata: {
+      action: 4,
+      contract: "tx_2_imp_1",
+      purpose: "Send reminder notifications to non-submitting members",
+    },
+  };
 }

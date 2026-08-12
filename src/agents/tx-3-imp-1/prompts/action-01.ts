@@ -7,75 +7,71 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  engineersList: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
+  previousEscalationCount?: Record<string, number>;
 }
 
 export interface Action01PromptOutput {
-  unreportedEngineers: Array<{
-    id: string;
-    name: string;
-    email: string;
-    reason: string;
+  unreportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    reason: "not_submitted" | "delayed";
+    submissionTime?: string;
   }>;
-  delayedEngineers: Array<{
-    id: string;
-    name: string;
-    email: string;
-    delayMinutes: number;
+  escalationTargets: Array<{
+    memberId: string;
+    memberName: string;
+    escalationLevel: number;
+    recommendedAction: "first_reminder" | "second_reminder" | "manager_escalation";
   }>;
-  identificationTimestamp: string;
+  analysisTimestamp: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineersListStr = input.engineersList
-    .map((e) => `- ${e.name} (${e.id}): ${e.email}`)
+  const escalationHistory = input.previousEscalationCount || {};
+  
+  const escalationSummary = Object.entries(escalationHistory)
+    .map(([memberId, count]) => `- Member ${memberId}: ${count} previous reminders`)
     .join("\n");
 
-  return `# 報告漏れ・遅延部員の自動特定
+  return `You are an AI agent responsible for identifying unreported members and determining escalation targets from confirmation email content.
 
-## 確認メール内容
+## Task: Analyze Unreported Members and Determine Escalation Actions
+
+### Input Information:
+- Confirmation Email Content:
 ${input.confirmationEmailContent}
 
-## 対象エンジニア一覧
-${engineersListStr}
+- Report Deadline: ${input.reportDeadline}
+- Current Timestamp: ${input.currentTimestamp}
 
-## 提出期限
-${input.reportDeadline}
+### Previous Escalation History:
+${escalationSummary || "No previous escalations"}
 
-## 現在時刻
-${input.currentTimestamp}
+### Your Responsibilities:
 
-## タスク
-以下の手順で報告漏れ・遅延部員を特定してください：
+1. **Identify Unreported Members**: Parse the confirmation email content to identify:
+   - Members who have not submitted reports (status: "not_submitted")
+   - Members whose reports are delayed past the deadline (status: "delayed")
+   - Extract member ID and member name for each unreported member
 
-1. 確認メール内容から、実際に日報を提出したエンジニアを抽出する
-2. 対象エンジニア一覧と比較して、未提出者を特定する
-3. 提出期限と現在時刻を比較して、遅延者を特定する
-4. 各未提出者・遅延者について、理由と遅延時間を記録する
+2. **Determine Escalation Targets**: For each unreported member, determine:
+   - Current escalation level (0 = first time, 1+ = repeat offender)
+   - Recommended action based on escalation level:
+     * Level 0: "first_reminder" (send initial reminder)
+     * Level 1: "second_reminder" (send second reminder with urgency)
+     * Level 2+: "manager_escalation" (escalate to manager for intervention)
 
-## 出力形式
-JSON形式で以下の構造で返してください：
-{
-  "unreportedEngineers": [
-    {
-      "id": "engineer_id",
-      "name": "engineer_name",
-      "email": "engineer_email",
-      "reason": "報告がない理由の推測"
-    }
-  ],
-  "delayedEngineers": [
-    {
-      "id": "engineer_id",
-      "name": "engineer_name",
-      "email": "engineer_email",
-      "delayMinutes": 遅延分数
-    }
-  ],
-  "identificationTimestamp": "特定時刻"
-}`;
+3. **Output Structure**: Return a JSON object with:
+   - unreportedMembers: Array of unreported member objects
+   - escalationTargets: Array of escalation target objects with recommended actions
+   - analysisTimestamp: ISO 8601 timestamp of analysis
+
+### Constraints:
+- Only identify members explicitly mentioned in the confirmation email as unreported or delayed
+- Escalation level should not exceed 3 (prevent excessive reminders)
+- Ensure member IDs and names are accurately extracted
+- Timestamp should be in ISO 8601 format
+
+### Output Format:
+Return ONLY valid JSON matching the expected structure. No additional text or explanation.`;
 }

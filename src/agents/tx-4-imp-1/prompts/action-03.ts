@@ -3,56 +3,86 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03Context {
+interface Action03PromptInput {
   reportContent: string;
   submissionDeadline: string;
-  departmentId: string;
-  reportingPeriod: string;
+  escalationThreshold: number;
 }
 
-interface Action03Result {
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    severity: "high" | "medium" | "low";
-    affectedMembers: string[];
-  }>;
-  progressSummary: string;
-  bottlenecks: string[];
-  validationStatus: "valid" | "invalid" | "partial";
-  escalationRequired: boolean;
+interface Action03PromptOutput {
+  prompt: string;
+  version: string;
 }
 
-function buildAction03Prompt(context: Action03Context): string {
-  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily report content.
+function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const { reportContent, submissionDeadline, escalationThreshold } = input;
 
-Report Content:
-${context.reportContent}
+  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily reports and determining their priority levels.
 
-Submission Deadline: ${context.submissionDeadline}
-Department ID: ${context.departmentId}
-Reporting Period: ${context.reportingPeriod}
+## Task: Extract Issues and Determine Priority
 
-Your tasks:
-1. Extract all identified issues and bottlenecks from the report content
-2. Classify each issue by severity (high/medium/low)
-3. Identify affected team members for each issue
-4. Summarize overall progress status
-5. Determine if escalation is required based on severity and impact
-6. Validate the completeness and appropriateness of the report content
+### Input Report Content:
+${reportContent}
 
-Return a structured analysis with:
-- List of extracted issues with severity levels
-- Progress summary
-- Identified bottlenecks
-- Validation status
-- Escalation requirement flag
+### Submission Deadline:
+${submissionDeadline}
 
-Ensure accuracy and completeness in issue extraction.`;
+### Escalation Threshold (days):
+${escalationThreshold}
 
-  return prompt;
+## Instructions:
+
+1. **Analyze Report Content**: Review the provided report content to identify any mentioned issues, blockers, or bottlenecks.
+
+2. **Extract Issues**: List all identified issues with:
+   - Issue description
+   - Affected team member or area
+   - Current status
+   - Impact assessment
+
+3. **Determine Priority**: Classify each issue into priority levels:
+   - CRITICAL: Blocks multiple team members or critical path
+   - HIGH: Significant impact on project timeline
+   - MEDIUM: Moderate impact, can be addressed in current sprint
+   - LOW: Minor issues, can be deferred
+
+4. **Identify Escalation Needs**: Flag issues that require immediate escalation based on:
+   - Severity level
+   - Duration (exceeding ${escalationThreshold} days)
+   - Cross-team impact
+
+5. **Generate Structured Output**: Provide a prioritized list of issues with recommended actions.
+
+## Output Format:
+
+Return a JSON object with the following structure:
+{
+  "issues": [
+    {
+      "id": "string",
+      "description": "string",
+      "affectedArea": "string",
+      "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+      "status": "string",
+      "impactAssessment": "string",
+      "requiresEscalation": boolean,
+      "recommendedAction": "string"
+    }
+  ],
+  "summary": {
+    "totalIssues": number,
+    "criticalCount": number,
+    "highCount": number,
+    "mediumCount": number,
+    "lowCount": number,
+    "escalationRequired": boolean
+  }
+}`;
+
+  return {
+    prompt,
+    version: ACTION_03_PROMPT_VERSION,
+  };
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03Context, Action03Result };
