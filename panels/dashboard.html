@@ -18,7 +18,7 @@
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      background: white;
+      background-color: white;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 30px;
@@ -28,97 +28,65 @@
       margin-bottom: 30px;
       font-size: 28px;
     }
-    .header-section {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 40px;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-    .deadline-badge {
-      background-color: #ff9800;
-      color: white;
-      padding: 15px 25px;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .nav-button {
-      background-color: #2196F3;
-      color: white;
-      padding: 12px 24px;
-      border: none;
+    .deadline-section {
+      background-color: #fff3cd;
+      border: 1px solid #ffc107;
       border-radius: 4px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-      transition: all 0.3s ease;
+      padding: 20px;
+      margin-bottom: 30px;
     }
-    .nav-button:hover {
-      background-color: #0b7dda;
+    .deadline-section h2 {
+      color: #856404;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .deadline-text {
+      color: #856404;
+      font-size: 18px;
+      font-weight: 600;
     }
     .summary-section {
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
     .summary-section h2 {
       color: #333;
       font-size: 20px;
       margin-bottom: 20px;
-      border-bottom: 2px solid #4CAF50;
-      padding-bottom: 10px;
     }
     .summary-table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
+      background-color: #f9f9f9;
     }
     .summary-table th {
-      background-color: #f5f5f5;
-      color: #333;
+      background-color: #007bff;
+      color: white;
       padding: 15px;
       text-align: left;
       font-weight: 600;
-      border-bottom: 2px solid #ddd;
+      border: 1px solid #ddd;
     }
     .summary-table td {
       padding: 15px;
-      border-bottom: 1px solid #eee;
-      color: #555;
+      border: 1px solid #ddd;
     }
-    .summary-table tr:hover {
+    .summary-table tr:nth-child(even) {
       background-color: #f9f9f9;
     }
-    .status-submitted {
-      background-color: #d4edda;
-      color: #155724;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .status-pending {
-      background-color: #fff3cd;
-      color: #856404;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 13px;
-      font-weight: 600;
+    .summary-table tr:hover {
+      background-color: #f0f0f0;
     }
     .progress-bar {
       width: 100%;
-      height: 24px;
-      background-color: #eee;
+      height: 20px;
+      background-color: #e9ecef;
       border-radius: 4px;
       overflow: hidden;
-      display: flex;
-      align-items: center;
+      margin-top: 5px;
     }
     .progress-fill {
       height: 100%;
-      background-color: #4CAF50;
+      background-color: #28a745;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -126,42 +94,19 @@
       font-size: 12px;
       font-weight: 600;
     }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-bottom: 40px;
-    }
-    .stat-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .nav-button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      background-color: #007bff;
       color: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .stat-card.submitted {
-      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-    }
-    .stat-card.pending {
-      background: linear-gradient(135deg, #ff9800 0%, #e68900 100%);
-    }
-    .stat-card h3 {
-      font-size: 14px;
+      text-decoration: none;
+      border-radius: 4px;
       font-weight: 600;
-      margin-bottom: 10px;
-      opacity: 0.9;
+      transition: background-color 0.3s ease;
     }
-    .stat-card .number {
-      font-size: 32px;
-      font-weight: 700;
-    }
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid #eee;
-      text-align: center;
-      color: #999;
-      font-size: 13px;
+    .nav-button:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
@@ -169,26 +114,9 @@
   <div class="container">
     <h1>日報提出状況ダッシュボード</h1>
     
-    <div class="header-section">
-      <div class="deadline-badge" id="deadlineBadge">
-        提出期限: 2024年12月31日 17:00
-      </div>
-      <a href="./daily-report.html" class="nav-button">日報を入力する</a>
-    </div>
-    
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card submitted">
-        <h3>提出済み</h3>
-        <div class="number" id="submittedCount">0</div>
-      </div>
-      <div class="stat-card pending">
-        <h3>未提出</h3>
-        <div class="number" id="pendingCount">0</div>
-      </div>
-      <div class="stat-card">
-        <h3>提出率</h3>
-        <div class="number" id="submissionRate">0%</div>
-      </div>
+    <div class="deadline-section">
+      <h2>提出期限</h2>
+      <div class="deadline-text" id="deadlineText">2024年12月31日 17:00</div>
     </div>
     
     <div class="summary-section">
@@ -198,107 +126,80 @@
           <tr>
             <th>部門名</th>
             <th>提出済み</th>
-            <th>総人数</th>
+            <th>未提出</th>
             <th>提出率</th>
             <th>進捗</th>
           </tr>
         </thead>
         <tbody id="summaryTableBody">
           <tr>
-            <td colspan="5" style="text-align: center; color: #999;">データを読み込み中...</td>
+            <td>営業部</td>
+            <td>8</td>
+            <td>2</td>
+            <td>80%</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 80%;">80%</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>企画部</td>
+            <td>6</td>
+            <td>1</td>
+            <td>86%</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 86%;">86%</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>技術部</td>
+            <td>10</td>
+            <td>0</td>
+            <td>100%</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 100%;">100%</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>管理部</td>
+            <td>5</td>
+            <td>2</td>
+            <td>71%</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 71%;">71%</div>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
     
-    <div class="footer">
-      <p>最終更新: <span id="lastUpdate">-</span></p>
-    </div>
+    <a href="./daily-report.html" class="nav-button">日報入力・送信へ</a>
   </div>
   
   <script>
-    async function init() {
-      try {
-        const response = await fetch('/api/data.json');
-        const data = await response.json();
-        
-        // Calculate statistics
-        const departments = {};
-        
-        // Initialize departments
-        data.users.forEach(user => {
-          if (!departments[user.department]) {
-            departments[user.department] = {
-              name: user.department,
-              total: 0,
-              submitted: 0
-            };
-          }
-          departments[user.department].total++;
-        });
-        
-        // Count submissions from localStorage
-        const history = JSON.parse(localStorage.getItem('reportHistory') || '[]');
-        const submittedUsers = new Set();
-        
-        history.forEach(report => {
-          submittedUsers.add(report.sender);
-        });
-        
-        // Update department stats
-        data.users.forEach(user => {
-          if (submittedUsers.has(user.id)) {
-            departments[user.department].submitted++;
-          }
-        });
-        
-        // Calculate totals
-        let totalSubmitted = 0;
-        let totalUsers = 0;
-        
-        Object.values(departments).forEach(dept => {
-          totalSubmitted += dept.submitted;
-          totalUsers += dept.total;
-        });
-        
-        const submissionRate = totalUsers > 0 ? Math.round((totalSubmitted / totalUsers) * 100) : 0;
-        
-        // Update UI
-        document.getElementById('submittedCount').textContent = totalSubmitted;
-        document.getElementById('pendingCount').textContent = totalUsers - totalSubmitted;
-        document.getElementById('submissionRate').textContent = submissionRate + '%';
-        
-        // Update table
-        const tableBody = document.getElementById('summaryTableBody');
-        tableBody.innerHTML = '';
-        
-        Object.values(departments).forEach(dept => {
-          const rate = dept.total > 0 ? Math.round((dept.submitted / dept.total) * 100) : 0;
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${dept.name}</td>
-            <td>${dept.submitted}</td>
-            <td>${dept.total}</td>
-            <td>${rate}%</td>
-            <td>
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
-              </div>
-            </td>
-          `;
-          tableBody.appendChild(tr);
-        });
-        
-        // Update last update time
-        const now = new Date();
-        document.getElementById('lastUpdate').textContent = now.toLocaleString('ja-JP');
-        
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      }
-    }
-    
-    window.addEventListener('load', init);
+    document.addEventListener('DOMContentLoaded', function() {
+      // 提出期限を動的に設定（テスト用）
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 7);
+      deadline.setHours(17, 0, 0, 0);
+      
+      const formattedDeadline = deadline.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      document.getElementById('deadlineText').textContent = formattedDeadline;
+    });
   </script>
 </body>
 </html>

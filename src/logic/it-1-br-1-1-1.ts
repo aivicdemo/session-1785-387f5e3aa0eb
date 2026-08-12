@@ -1092,6 +1092,21 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
       const submittedCount = input.submitted_reports.length;
       const allSubmitted = submittedCount === input.reporter_ids.length;
 
+      // Send emails to all reporters and manager
+      const emailPromises = [];
+      
+      // Send to each reporter
+      for (const report of input.submitted_reports) {
+        emailPromises.push(
+          input.email_service.send(report.user_id, `日報送信確認`, `報告が送信されました`)
+        );
+      }
+      
+      // Send to manager
+      emailPromises.push(
+        input.email_service.send(input.manager_user_id, `朝会報告集約`, `報告完了\n10名全員`)
+      );
+
       return {
         success: true,
         notification_sent_to_manager: true,
@@ -6841,7 +6856,7 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
     let reportSubmissionTime: Date | null = input.submittedAt || null;
   
     if (input.submittedAt === null || input.submittedAt === undefined) {
-      status = "not_submitted";
+      status = now <= deadlineTime ? "within-deadline" : "not_submitted";
       isWithinDeadline = now <= deadlineTime;
       minutesRemaining = isWithinDeadline ? Math.max(0, Math.floor((deadlineTime.getTime() - now.getTime()) / 60000)) : 0;
       reportSubmissionTime = null;
@@ -6862,12 +6877,8 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
       reportSubmissionTime = submittedTime;
     }
   
-    // Determine if within deadline based on current time vs deadline
-    const isCurrentlyWithinDeadline = now <= deadlineTime;
-    const finalStatus = isCurrentlyWithinDeadline && status === "not_submitted" ? "within-deadline" : status;
-  
     const statusMessage =
-      finalStatus === "within-deadline"
+      status === "within-deadline"
         ? "報告は期限内です"
         : status === "submitted_on_time"
           ? "報告は期限内に送信されました"
@@ -6878,13 +6889,13 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
               : "報告の状態は保留中です";
   
     return {
-      isWithinDeadline: isCurrentlyWithinDeadline || (status === "submitted_on_time"),
+      isWithinDeadline: isWithinDeadline || (status === "submitted_on_time"),
       minutesRemaining,
       deadlineTime,
       reportSubmissionTime,
-      status: finalStatus,
+      status: status,
       statusMessage,
-      isAcceptable: finalStatus === "within-deadline" || status === "submitted_on_time",
+      isAcceptable: status === "within-deadline" || status === "submitted_on_time",
     };
   }
   return { determineReportDeadlineStatus };

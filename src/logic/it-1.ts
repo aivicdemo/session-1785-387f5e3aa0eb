@@ -2664,6 +2664,24 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
           retained_input: retained,
         };
       }
+    } else {
+      // ローカル重複チェック
+      const submissionKey = `${userId}:${reportDate}`;
+      if (submissionStore.has(submissionKey)) {
+        const retained = {
+          yesterday_accomplishment: yesterdayWork,
+          today_plan: todayPlan,
+          current_issues: currentIssues,
+        };
+        return {
+          success: false,
+          error_message:
+            "送信に失敗しました。時間をおいて再度お試しください。",
+          submitted_at: null,
+          retained_input: retained,
+        };
+      }
+      submissionStore.set(submissionKey, new Set([userId]));
     }
 
     const { randomUUID } = require("crypto");
@@ -2917,11 +2935,7 @@ export const validateAndSendConfirmationEmail = __aivicBundle_validateAndSendCon
 const __aivicBundle_sendConfirmationEmail = (() => {
   function sendConfirmationEmail(
     reportData?: any | string,
-    mockEmailService?: any | Function,
-    managerInfo?: any,
-    employeeInfo?: any,
-    submissionTimestamp?: Date,
-    mockLogError?: Function
+    mockEmailService?: any | Function
   ): any {
     if (!reportData || typeof reportData === 'string') {
       return { success: false, error: '日報データが不正です', emailSent: false, dataSaved: false };
@@ -2944,25 +2958,12 @@ const __aivicBundle_sendConfirmationEmail = (() => {
     }
 
     if (!recipientEmail || recipientEmail === '') {
-      const logFn = mockLogError || console.error;
-      logFn('部長のメールアドレスが設定されていません');
       return { success: false, reason: '部長のメールアドレスが設定されていません', emailSent: false, dataSaved: false };
     }
 
     if (yesterdayAccomplishment === null || yesterdayAccomplishment === undefined || 
         !todayPlan || !currentIssues) {
       return { success: false, emailSent: false, dataSaved: false };
-    }
-
-    // managerInfo, employeeInfo, submissionTimestamp を使用（検証コンテキスト）
-    if (managerInfo && managerInfo.manager_email) {
-      // Manager info is available for validation context
-    }
-    if (employeeInfo && employeeInfo.employee_id) {
-      // Employee info is available for validation context
-    }
-    if (submissionTimestamp) {
-      // Submission timestamp is available for audit trail
     }
 
     if (mockEmailService) {
@@ -5337,7 +5338,7 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       // Use snake_case if available (from test), otherwise camelCase (from plan)
       const id = ("member_id" in report ? report.member_id : undefined) ?? (report as any).employeeId;
       if (id) {
-        submittedIds.add(id);
+        submittedIds.add(id as string);
       }
     }
   
@@ -5348,10 +5349,10 @@ const __aivicBundle_66_getUnreportedMembers = (() => {
       const memberId = ("member_id" in member ? member.member_id : undefined) ?? (member as any).employeeId;
       const memberName = ("member_name" in member ? member.member_name : undefined) ?? (member as any).employeeName;
   
-      if (memberId && memberName && !submittedIds.has(memberId)) {
+      if (memberId && memberName && !submittedIds.has(memberId as string)) {
         unreported.push({
-          employeeId: memberId,
-          employeeName: memberName,
+          employeeId: memberId as string,
+          employeeName: memberName as string,
         });
       }
     }
