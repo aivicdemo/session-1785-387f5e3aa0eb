@@ -1259,31 +1259,9 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
   const submissionStore = new Map<string, Set<string>>();
 
   function validateAndSubmitReport(input: ValidateAndSubmitReportInput): any {
-    const yesterday =
-      input.yesterday_work ||
-      input.yesterday ||
-      input.yesterdayAccomplishment ||
-      input.yesterday_achievement ||
-      input.item1_yesterday ||
-      "";
-    const today =
-      input.today_plan ||
-      input.today ||
-      input.todayPlan ||
-      input.todays_plan ||
-      input.item2_today ||
-      "";
-    const issue =
-      input.current_issue ||
-      input.issue ||
-      input.currentIssue ||
-      input.challenges ||
-      input.currentChallenges ||
-      input.challenge ||
-      input.currentChallenge ||
-      input.issues ||
-      input.item3_issue ||
-      "";
+    const yesterday = (input.yesterday_work) || (input.yesterday) || (input.yesterdayAccomplishment) || (input.yesterday_achievement) || (input.item1_yesterday) || "";
+    const today = (input.today_plan) || (input.today) || (input.todayPlan) || (input.todays_plan) || (input.item2_today) || "";
+    const issue = (input.current_issue) || (input.issue) || (input.currentIssue) || (input.challenges) || (input.currentChallenges) || (input.challenge) || (input.currentChallenge) || (input.issues) || (input.item3_issue) || "";
 
     const yesterdayEmpty = !yesterday || yesterday.trim() === "";
     const todayEmpty = !today || today.trim() === "";
@@ -1317,13 +1295,12 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
     }
 
     const submissionHistory = input.submissionHistory || [];
-    const userId = input.user_id || input.userId || "";
-    const submissionDate = input.submission_date || input.submissionDate || "";
+    const userId = (input.user_id) || (input.userId) || "";
+    const submissionDate = (input.submission_date) || (input.submissionDate) || "";
 
-    // 重複送信チェック
     if (submissionHistory && submissionHistory.length > 0) {
       const isDuplicate = submissionHistory.some((record: any) => {
-        const recordDate = record.submission_date || record.submissionDate || "";
+        const recordDate = (record.submission_date) || (record.submissionDate) || "";
         return recordDate === submissionDate && userId;
       });
 
@@ -1666,65 +1643,45 @@ const __aivicBundle_15_validateAndSendReport = (() => {
     input: any,
     emailService?: any
   ): any {
-    const userId = input.user_id ?? input.userId ?? "";
-    const yesterdayAchievement =
-      input.yesterday_achievement ??
-      input.yesterdayAccomplishment ??
-      input.yesterday ??
-      "";
-    const todayPlan =
-      input.today_plan ?? input.todays_plan ?? input.todayPlan ?? input.today ?? "";
-    const currentIssue =
-      input.current_issue ??
-      input.current_issues ??
-      input.currentChallenge ??
-      input.challenge ??
-      input.issues ??
-      input.item3CurrentChallenge ?? "";
-    const sentAt =
-      input.sent_at ?? input.sentAt ?? input.submittedAt ?? input.submitted_at;
-    const item1 = input.item1YesterdayAccomplishment ?? yesterdayAchievement;
-    const item2 = input.item2TodayPlan ?? todayPlan;
-    const item3 = input.item3CurrentChallenge ?? currentIssue;
+    const userId = (input.user_id) ?? (input.userId) ?? "";
+    const yesterdayAchievement = (input.yesterday_achievement) ?? (input.yesterdayAccomplishment) ?? (input.yesterday) ?? "";
+    const todayPlan = (input.today_plan) ?? (input.todays_plan) ?? (input.todayPlan) ?? (input.today) ?? "";
+    const currentIssue = (input.current_issue) ?? (input.current_issues) ?? (input.currentChallenge) ?? (input.challenge) ?? (input.issues) ?? (input.item3CurrentChallenge) ?? "";
+    const sentAt = (input.sent_at) ?? (input.sentAt) ?? (input.submittedAt) ?? (input.submitted_at);
+    const item1 = (input.item1YesterdayAccomplishment) ?? (yesterdayAchievement);
+    const item2 = (input.item2TodayPlan) ?? (todayPlan);
+    const item3 = (input.item3CurrentChallenge) ?? (currentIssue);
   
     if (!userId || userId === "") {
       throw new Error("ユーザーIDは必須です");
     }
   
-    if (
-      item1 === null ||
-      item1 === undefined ||
-      (typeof item1 === "string" && item1.trim() === "")
-    ) {
+    if ((item1 === null) || (item1 === undefined) || ((typeof item1 === "string") && (item1.trim() === ""))) {
       throw new Error("昨日の実績は必須です");
     }
   
-    if (item2 === null || item2 === undefined || (typeof item2 === "string" && item2.trim() === "")) {
+    if ((item2 === null) || (item2 === undefined) || ((typeof item2 === "string") && (item2.trim() === ""))) {
       throw new Error("本日の予定は必須です");
     }
   
-    if (
-      item3 === null ||
-      item3 === undefined ||
-      (typeof item3 === "string" && item3.trim() === "")
-    ) {
+    if ((item3 === null) || (item3 === undefined) || ((typeof item3 === "string") && (item3.trim() === ""))) {
       throw new Error("抱えている課題は必須です");
     }
   
     const maxCharLimit = 500;
-    if (typeof item1 === "string" && item1.length > maxCharLimit) {
+    if ((typeof item1 === "string") && (item1.length > maxCharLimit)) {
       throw new Error("昨日の実績の文字数が上限を超えています");
     }
   
-    if (typeof item2 === "string" && item2.length > maxCharLimit) {
+    if ((typeof item2 === "string") && (item2.length > maxCharLimit)) {
       throw new Error("本日の予定の文字数が上限を超えています");
     }
   
-    if (typeof item3 === "string" && item3.length > maxCharLimit) {
+    if ((typeof item3 === "string") && (item3.length > maxCharLimit)) {
       throw new Error("抱えている課題の文字数が上限を超えています");
     }
   
-    if (sentAt !== undefined && sentAt !== null) {
+    if ((sentAt !== undefined) && (sentAt !== null)) {
       if (typeof sentAt === "string") {
         const dateObj = new Date(sentAt);
         if (isNaN(dateObj.getTime())) {
@@ -1761,9 +1718,7 @@ const __aivicBundle_15_validateAndSendReport = (() => {
   
       if (submissionTime > meetingStartTime) {
         isDelayed = true;
-        delayMinutes = Math.floor(
-          (submissionTime.getTime() - meetingStartTime.getTime()) / (1000 * 60)
-        );
+        delayMinutes = Math.floor((submissionTime.getTime() - meetingStartTime.getTime()) / (1000 * 60));
         submissionConfirmed = true;
         managerNotificationSent = true;
         notificationIncludesDelayInfo = true;
@@ -1803,36 +1758,13 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
   ): any {
     const errors: Array<{ field: string; message: string }> = [];
   
-    const yesterday =
-      input?.yesterday_accomplishment ??
-      input?.yesterdayAccomplishment ??
-      input?.yesterday_activity ??
-      input?.yesterdayActivity ??
-      input?.yesterday_achievement ??
-      '';
+    const yesterday = (input?.yesterday_accomplishment) ?? (input?.yesterdayAccomplishment) ?? (input?.yesterday_activity) ?? (input?.yesterdayActivity) ?? (input?.yesterday_achievement) ?? '';
   
-    const today =
-      input?.today_plan ??
-      input?.todayPlan ??
-      input?.today ??
-      '';
+    const today = (input?.today_plan) ?? (input?.todayPlan) ?? (input?.today) ?? '';
   
-    const challenges =
-      input?.current_issue ??
-      input?.currentIssue ??
-      input?.current_challenges ??
-      input?.currentChallenges ??
-      input?.challenges ??
-      input?.challengesFaced ??
-      '';
+    const challenges = (input?.current_issue) ?? (input?.currentIssue) ?? (input?.current_challenges) ?? (input?.currentChallenges) ?? (input?.challenges) ?? (input?.challengesFaced) ?? '';
   
-    if (
-      input?.challenges === null ||
-      input?.current_issue === null ||
-      input?.currentChallenges === null ||
-      input?.currentIssue === null ||
-      input?.challengesFaced === null
-    ) {
+    if ((input?.challenges === null) || (input?.current_issue === null) || (input?.currentChallenges === null) || (input?.currentIssue === null) || (input?.challengesFaced === null)) {
       throw new Error('抱えている課題は必須です');
     }
   
@@ -1888,7 +1820,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
     if (emailService && typeof emailService === 'function') {
       try {
         emailService({
-          to: input?.userId || input?.user_id || 'user@example.com',
+          to: (input?.userId) || (input?.user_id) || 'user@example.com',
           subject: '朝会報告確認メール',
           body: `昨日: ${yesterday}\n本日: ${today}\n課題: ${challenges}`,
         });
@@ -2229,11 +2161,11 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
     const errors: Array<{ field: string; message: string }> = [];
 
-    const reportDate = formData?.reportDate || formData?.report_date || '';
-    const department = formData?.department || formData?.department_id || '';
-    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
-    const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
-    const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
+    const reportDate = (formData?.reportDate) || (formData?.report_date) || '';
+    const department = (formData?.department) || (formData?.department_id) || '';
+    const yesterday = (formData?.yesterday) || (formData?.yesterdayAccomplishment) || (formData?.yesterday_achievement) || (formData?.yesterday_work) || '';
+    const today = (formData?.today) || (formData?.todayPlan) || (formData?.today_plan) || '';
+    const challenge = (formData?.challenge) || (formData?.currentChallenge) || (formData?.current_issue) || (formData?.challenges) || '';
 
     if (!reportDate || String(reportDate).trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
@@ -2242,12 +2174,15 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     if (!department || String(department).trim() === '') {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
+    
     if (!yesterday || String(yesterday).trim() === '') {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
+    
     if (!today || String(today).trim() === '') {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
+    
     if (!challenge || String(challenge).trim() === '') {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
@@ -2554,33 +2489,10 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
     reportData: any,
     mockDuplicateCheckFn?: Function
   ): Promise<any> {
-    const userId =
-      reportData?.user_id ||
-      reportData?.userId ||
-      reportData?.staff_id ||
-      "";
-    const yesterdayWork =
-      reportData?.yesterday_achievement ||
-      reportData?.yesterday_accomplished ||
-      reportData?.yesterday ||
-      reportData?.yesterdayAccomplishment ||
-      "";
-    const todayPlan =
-      reportData?.today_plan ||
-      reportData?.today ||
-      reportData?.todayPlan ||
-      "";
-    const currentIssues =
-      reportData?.current_issues ||
-      reportData?.current_issue ||
-      reportData?.currentIssues ||
-      reportData?.currentChallenge ||
-      reportData?.current_challenges ||
-      reportData?.issues ||
-      reportData?.issue ||
-      reportData?.issue_held ||
-      reportData?.openIssues ||
-      "";
+    const userId = (reportData?.user_id) || (reportData?.userId) || (reportData?.staff_id) || "";
+    const yesterdayWork = (reportData?.yesterday_achievement) || (reportData?.yesterdayAccomplishment) || (reportData?.yesterday) || (reportData?.yesterdayAccomplishment) || "";
+    const todayPlan = (reportData?.today_plan) || (reportData?.todays_plan) || (reportData?.todayPlan) || (reportData?.today) || "";
+    const currentIssues = (reportData?.current_issues) || (reportData?.current_issue) || (reportData?.currentIssues) || (reportData?.currentChallenge) || (reportData?.current_challenges) || (reportData?.issues) || (reportData?.issue) || (reportData?.issue_held) || (reportData?.openIssues) || "";
 
     let submittedAt: Date | null = null;
     if (reportData?.submitted_at) {
@@ -2603,12 +2515,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       submittedAt = new Date();
     }
 
-    const reportDate =
-      reportData?.report_date ||
-      reportData?.reportDate ||
-      reportData?.submission_date ||
-      reportData?.submissionDate ||
-      (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
+    const reportDate = (reportData?.report_date) || (reportData?.reportDate) || (reportData?.submission_date) || (reportData?.submissionDate) || (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {
       const retained = {
@@ -2632,7 +2539,6 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       };
     }
 
-    // 重複送信チェック
     if (mockDuplicateCheckFn) {
       try {
         const isDuplicate = await mockDuplicateCheckFn(userId, reportDate);
@@ -2644,8 +2550,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
           };
           return {
             success: false,
-            error_message:
-              "送信に失敗しました。時間をおいて再度お試しください。",
+            error_message: "送信に失敗しました。時間をおいて再度お試しください。",
             submitted_at: null,
             retained_input: retained,
           };
@@ -2658,14 +2563,12 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
         };
         return {
           success: false,
-          error_message:
-            "送信に失敗しました。時間をおいて再度お試しください。",
+          error_message: "送信に失敗しました。時間をおいて再度お試しください。",
           submitted_at: null,
           retained_input: retained,
         };
       }
     } else {
-      // ローカル重複チェック
       const submissionKey = `${userId}:${reportDate}`;
       if (submissionStore.has(submissionKey)) {
         const retained = {
@@ -2675,8 +2578,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
         };
         return {
           success: false,
-          error_message:
-            "送信に失敗しました。時間をおいて再度お試しください。",
+          error_message: "送信に失敗しました。時間をおいて再度お試しください。",
           submitted_at: null,
           retained_input: retained,
         };
@@ -5866,13 +5768,13 @@ const __aivicBundle_runTx2Imp1Agent_fixed = (() => {
         }
       }
 
-      const managerEmail = config.managerEmail || config.manager_email || config.chiefEmail;
-      const departmentId = config.departmentId || config.department_id;
-      const checkTime = config.checkTime || config.scheduledCheckTime || config.check_time || config.checkTimeUtc || config.check_execution_time || config.currentDate || new Date();
-      const deadline = config.mandatorySubmissionDeadline || config.submissionDeadline || config.submission_deadline || config.deadline_timestamp || config.report_deadline;
-      const allUsers = config.allUsers || config.staff_list || config.all_users || [];
-      const submittedReports = config.submittedReports || config.submitted_reports || config.reports || [];
-      const allMembersCount = config.allMembersCount || allUsers.length || 0;
+      const managerEmail = (config.managerEmail) || (config.manager_email) || (config.chiefEmail);
+      const departmentId = (config.departmentId) || (config.department_id);
+      const checkTime = (config.checkTime) || (config.scheduledCheckTime) || (config.check_time) || (config.checkTimeUtc) || (config.check_execution_time) || (config.currentDate) || (new Date());
+      const deadline = (config.mandatorySubmissionDeadline) || (config.submissionDeadline) || (config.submission_deadline) || (config.deadline_timestamp) || (config.report_deadline);
+      const allUsers = (config.allUsers) || (config.staff_list) || (config.all_users) || [];
+      const submittedReports = (config.submittedReports) || (config.submitted_reports) || (config.reports) || [];
+      const allMembersCount = (config.allMembersCount) || (allUsers.length) || 0;
 
       if (config.reportId === null) {
         return {
@@ -5949,8 +5851,8 @@ const __aivicBundle_runTx2Imp1Agent_fixed = (() => {
       };
 
       if (aiClientToUse && typeof aiClientToUse.checkReportCompletionStatus === 'function') {
-        const scheduledMeetingTime = config.scheduledMeetingTime || config.morningMeetingScheduledTime || config.meeting_start_time || config.meetingStartTime || checkTime;
-        const teamMemberIds = config.teamMemberIds || config.allUserIds || allUsers.map((u: any) => u.userId || u.user_id || u.employeeId || u.employee_id);
+        const scheduledMeetingTime = (config.scheduledMeetingTime) || (config.morningMeetingScheduledTime) || (config.meeting_start_time) || (config.meetingStartTime) || (checkTime);
+        const teamMemberIds = (config.teamMemberIds) || (config.allUserIds) || (allUsers.map((u: any) => u.userId || u.user_id || u.employeeId || u.employee_id));
 
         completionStatus = await aiClientToUse.checkReportCompletionStatus({
           scheduledMeetingTime,
@@ -8042,7 +7944,7 @@ const __aivicBundle_105_classifyReportArrivalStatus = (() => {
   }
   return { classifyReportArrivalStatus };
 })();
-export const classifyReportArrivalStatus: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_105_classifyReportArrivalStatus.classifyReportArrivalStatus as (...args: any[]) => any)(...args);
+export const classifyReportArrivalStatus = __aivicBundle_105_classifyReportArrivalStatus.classifyReportArrivalStatus;
 /* AIVIC_FUNCTION_BUNDLE_END owner=classifyReportArrivalStatus */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportContent exports=validateReportContent */
@@ -8427,27 +8329,13 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       normalizedContext.escalationNotifier = escalationNotifier;
     }
 
-    const engineerId =
-      normalizedInput.engineerId ||
-      normalizedInput.engineer_id ||
-      normalizedInput.reportInput?.engineerId;
-    const engineerEmail =
-      normalizedInput.engineerEmail || normalizedInput.reportInput?.engineerEmail;
+    const engineerId = (normalizedInput.engineerId) || (normalizedInput.engineer_id) || (normalizedInput.reportInput?.engineerId);
+    const engineerEmail = (normalizedInput.engineerEmail) || (normalizedInput.reportInput?.engineerEmail);
 
-    const yesterdayWork =
-      normalizedInput.yesterdayWork ||
-      normalizedInput.yesterday_accomplishment ||
-      normalizedInput.yesterdayAccomplishment ||
-      normalizedInput.reportInput?.yesterdayWork;
-    const todayPlan =
-      normalizedInput.todayPlan ||
-      normalizedInput.today_plan ||
-      normalizedInput.reportInput?.todayPlan;
+    const yesterdayWork = (normalizedInput.yesterdayWork) || (normalizedInput.yesterday_accomplishment) || (normalizedInput.yesterdayAccomplishment) || (normalizedInput.reportInput?.yesterdayWork);
+    const todayPlan = (normalizedInput.todayPlan) || (normalizedInput.today_plan) || (normalizedInput.reportInput?.todayPlan);
 
-    const submissionTimestamp =
-      normalizedInput.submissionTimestamp ||
-      normalizedInput.submission_timestamp ||
-      normalizedInput.reportInput?.submissionTimestamp;
+    const submissionTimestamp = (normalizedInput.submissionTimestamp) || (normalizedInput.submission_timestamp) || (normalizedInput.reportInput?.submissionTimestamp);
     const submissionDeadline = normalizedInput.submissionDeadline;
     const currentTime = normalizedInput.currentTime;
     const systemConfig = normalizedInput.systemConfig;
@@ -8502,7 +8390,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: "completed",
     });
 
-    // escalation check: 提出期限を大幅に超過
     if (submissionDeadline && currentTime && submissionTimestamp) {
       const deadlineTime = submissionDeadline.getTime();
       const submissionTime = submissionTimestamp.getTime();
@@ -8526,12 +8413,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       }
     }
 
-    // escalation check: 不正・曖昧・低確信度
-    if (
-      normalizedInput.reportInput &&
-      normalizedInput.reportInput.confidence !== undefined &&
-      normalizedInput.reportInput.confidence < 0.7
-    ) {
+    if ((normalizedInput.reportInput) && (normalizedInput.reportInput.confidence !== undefined) && (normalizedInput.reportInput.confidence < 0.7)) {
       result.success = false;
       result.status = "escalated";
       result.escalationTriggered = true;
@@ -8547,11 +8429,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // escalation check: 入力不完全
-    if (
-      (!yesterdayWork || (yesterdayWork as string).trim().length === 0) &&
-      (!todayPlan || (todayPlan as string).trim().length === 0)
-    ) {
+    if ((!yesterdayWork || (yesterdayWork as string).trim().length === 0) && (!todayPlan || (todayPlan as string).trim().length === 0)) {
       result.success = false;
       result.status = "escalation_pending";
       result.escalationReason = "input_incomplete";
@@ -8568,7 +8446,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // escalation check: 日報登録システムエラー
     if (normalizedContext.onRegistrationError && normalizedInput.reportInput?.systemError) {
       result.escalationTriggered = true;
       result.escalationReason = "日報登録システムエラー";
@@ -8584,7 +8461,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // escalation check: メール配信失敗によるロールバック
     if (normalizedContext.onEmailSend && normalizedInput.reportInput?.emailDeliveryFailed) {
       result.success = false;
       result.status = "escalated";
@@ -8655,21 +8531,12 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: "completed",
     });
 
-    if (
-      submissionDeadline &&
-      currentTime &&
-      engineerStatuses &&
-      systemConfig &&
-      aiClient
-    ) {
+    if (submissionDeadline && currentTime && engineerStatuses && systemConfig && aiClient) {
       const overdueEngineers: string[] = [];
       let notificationCount = 0;
 
       (engineerStatuses as Map<string, any>).forEach((status: any, engId: string) => {
-        if (
-          !status.hasSubmittedReport &&
-          currentTime.getTime() > submissionDeadline.getTime()
-        ) {
+        if (!status.hasSubmittedReport && currentTime.getTime() > submissionDeadline.getTime()) {
           overdueEngineers.push(engId);
           notificationCount++;
         }
@@ -8678,10 +8545,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       if (overdueEngineers.length > 0) {
         result.identifiedOverdueCount = overdueEngineers.length;
         result.overdueEngineerIds = overdueEngineers;
-        result.notificationsSent = Math.min(
-          notificationCount,
-          systemConfig.maxNotificationTargetCount || notificationCount
-        );
+        result.notificationsSent = Math.min(notificationCount, systemConfig.maxNotificationTargetCount || notificationCount);
         result.status = "completed";
         result.auditLogged = true;
         result.completed_actions!.push("identify_overdue_engineers");
@@ -8723,7 +8587,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
 
   return { runTx1Imp1Agent };
 })();
-export const runTx1Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx1Imp1Agent_fixed.runTx1Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx1Imp1Agent = __aivicBundle_runTx1Imp1Agent_fixed.runTx1Imp1Agent;
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx1Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx3Imp1Agent exports=runTx3Imp1Agent */
@@ -9049,7 +8913,7 @@ const __aivicBundle_runTx3Imp1Agent_fixed = (() => {
 
   return { runTx3Imp1Agent };
 })();
-export const runTx3Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx3Imp1Agent_fixed.runTx3Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx3Imp1Agent = __aivicBundle_runTx3Imp1Agent_fixed.runTx3Imp1Agent;
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx3Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx4Imp1Agent exports=runTx4Imp1Agent */
@@ -9073,14 +8937,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
     let normalizedInput = input;
     let normalizedAiClient = aiClient;
 
-    if (
-      input &&
-      typeof input === "object" &&
-      input.extractChallenges &&
-      !input.reportSubmissions &&
-      !input.reports &&
-      !input.agentId
-    ) {
+    if ((input) && (typeof input === "object") && (input.extractChallenges) && (!input.reportSubmissions) && (!input.reports) && (!input.agentId)) {
       normalizedAiClient = input;
       normalizedInput = aiClient || {};
     }
@@ -9122,13 +8979,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
 
     const escalationHandlerFn = escalationHandler?.createEscalationNotification;
 
-    if (
-      user_context &&
-      user_context.role &&
-      user_context.role !== 'manager' &&
-      user_context.role !== 'director' &&
-      user_context.role !== 'admin'
-    ) {
+    if ((user_context) && (user_context.role) && (user_context.role !== 'manager') && (user_context.role !== 'director') && (user_context.role !== 'admin')) {
       const authError = {
         message: 'AUTHORIZATION_DENIED: 権限がありません',
         status: 'authorization_failed',
@@ -9148,11 +8999,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
     }
 
     const isAgentConfig = !!agentConfig;
-    const isReportCollection = !!(
-      reports ||
-      reportingItems ||
-      reportSubmissions
-    );
+    const isReportCollection = !!(reports || reportingItems || reportSubmissions);
     const isSimpleExecution = !!(exec_id && managerId && report_deadline);
     const isDbExecution = !!(db && aiClientToUse);
 
@@ -9178,8 +9025,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
       const submittedCount = (reportList as any[]).length;
       const totalCount = (teamMembers as any[]).length;
       const unsubmittedCount = Math.max(0, totalCount - submittedCount);
-      const submissionRate =
-        totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
+      const submissionRate = (totalCount > 0) ? Math.round((submittedCount / totalCount) * 100) : 0;
 
       let extractedChallenges: any[] = [];
       let anomaliesDetected = false;
@@ -9214,9 +9060,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
         }
       }
 
-      const hasCritical = extractedChallenges.some(
-        (c: any) => c.severity === 'critical'
-      );
+      const hasCritical = extractedChallenges.some((c: any) => c.severity === 'critical');
       if (hasCritical) {
         escalationDetected = true;
         escalationType = 'critical_issue_detected';
@@ -9224,10 +9068,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
       }
 
       const shouldExecutePriorityJudgment = !anomaliesDetected;
-      if (
-        shouldExecutePriorityJudgment &&
-        aiClientToUse.classifyChallengePriority
-      ) {
+      if (shouldExecutePriorityJudgment && aiClientToUse.classifyChallengePriority) {
         try {
           aiClientToUse.classifyChallengePriority(extractedChallenges);
           completedSteps.push('judge_task_priority');
@@ -9259,8 +9100,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
       if (escalationDetected && escalationHandlerFn) {
         escalationHandlerFn({
           severity: hasCritical ? 'critical' : 'high',
-          issueDescription:
-            extractedChallenges[0]?.description || '課題が検出されました',
+          issueDescription: (extractedChallenges[0]?.description) || '課題が検出されました',
           detectionReason: escalationType,
           recommendedAction: '部長による確認と優先度判定',
         });
@@ -9295,15 +9135,13 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
             },
           ],
           manager_report: {
-            message:
-              '判定スコア同等の課題が存在するため、最終優先度判定は部長の確認が必要',
+            message: '判定スコア同等の課題が存在するため、最終優先度判定は部長の確認が必要',
           },
           agent_state: 'AWAITING_HUMAN_REVIEW',
           next_action_required: 'manager_priority_confirmation',
           escalatedIssue: {
             severity: hasCritical ? 'critical' : 'high',
-            issueDescription:
-              extractedChallenges[0]?.description || '課題が検出されました',
+            issueDescription: (extractedChallenges[0]?.description) || '課題が検出されました',
             detectionReason: escalationType,
             recommendedAction: '部長による確認と優先度判定',
           },
@@ -9394,7 +9232,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
 
   return { runTx4Imp1Agent };
 })();
-export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx4Imp1Agent_fixed.runTx4Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx4Imp1Agent = __aivicBundle_runTx4Imp1Agent_fixed.runTx4Imp1Agent;
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx4Imp1Agent */
 
 

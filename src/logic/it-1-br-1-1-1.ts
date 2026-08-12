@@ -774,14 +774,17 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
       const displayReports = input.reports.slice(0, maxDisplayable);
       
       const formattedReports = displayReports.map((report: any) => ({
+        report_id: report.report_id || report.reportId,
         employeeName: report.employeeName || report.employee_name || '',
         yesterdayAccomplishment: report.yesterdayAccomplishment || report.yesterday_achievement || '',
         todayPlan: report.todayPlan || report.today_plan || '',
         currentIssue: report.currentIssue || report.current_issue || '',
+        submittedAt: report.submitted_at || report.submittedAt,
+        status: 'submitted',
       }));
   
       const employeeEmailsSent = displayReports
-        .map((report: any) => report.employeeId || report.employee_id)
+        .map((report: any) => report.employeeId || report.user_id)
         .filter(Boolean);
   
       return {
