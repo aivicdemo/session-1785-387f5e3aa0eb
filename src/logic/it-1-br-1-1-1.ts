@@ -4321,10 +4321,12 @@ const __aivicBundle_60_sendConfirmationEmailsWithAggregation = (() => {
   interface SendConfirmationEmailsWithAggregationInput {
     manager_user_id: string;
     all_reports: Array<{
-      user_id: string;
-      yesterday_achievement: string;
-      today_plan: string;
-      issues: string;
+      user_id?: string;
+      yesterday_achievement?: string;
+      yesterday?: string;
+      today_plan?: string;
+      today?: string;
+      issues?: string;
       submitted_at?: string;
     }>;
     submitted_count: number;

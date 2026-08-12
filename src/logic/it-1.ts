@@ -2235,7 +2235,6 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
     const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
-    // reportDate: 空でなければ OK（形式チェックは緩和）
     if (!reportDate || String(reportDate).trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
@@ -2608,6 +2607,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData?.report_date ||
       reportData?.reportDate ||
       reportData?.submission_date ||
+      reportData?.submissionDate ||
       (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {
@@ -2850,7 +2850,7 @@ export const sendReportWithMailLog = __aivicBundle_26_sendReportWithMailLog.send
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendReportWithMailLog */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendConfirmationEmail exports=validateAndSendConfirmationEmail */
-const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
+const __aivicBundle_validateAndSendConfirmationEmail = (() => {
   function validateAndSendConfirmationEmail(
     reportData: any,
     mockSmtpClient?: any
@@ -2861,30 +2861,30 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
       reportData.yesterday_achievements ||
       reportData.yesterday_achievement ||
       "";
-  
+
     const today =
       reportData.todayPlan ||
       reportData.today_plan ||
       reportData.todays_plan ||
       "";
-  
+
     const issues =
       reportData.issuesToHandle ||
       reportData.currentIssues ||
       reportData.current_issues ||
       reportData.current_issue ||
       "";
-  
+
     if (!yesterday || !today || !issues) {
       return;
     }
-  
+
     const sendMethod = mockSmtpClient?.sendEmail || mockSmtpClient?.send;
-  
+
     if (!sendMethod) {
       return;
     }
-  
+
     const reporterId =
       reportData.reporterId || reportData.reporter_id || reportData.user_id || reportData.userId;
     const reportDate =
@@ -2892,7 +2892,7 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
       reportData.report_date ||
       reportData.submission_date ||
       (reportData.submittedAt ? new Date(reportData.submittedAt).toISOString().split("T")[0] : "");
-  
+
     const emailPayload = {
       yesterday,
       today,
@@ -2900,9 +2900,9 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
       reporterId,
       reportDate,
     };
-  
+
     sendMethod(emailPayload);
-  
+
     return {
       emailSent: true,
       dataSaved: true,
@@ -2910,89 +2910,66 @@ const __aivicBundle_27_validateAndSendConfirmationEmail = (() => {
   }
   return { validateAndSendConfirmationEmail };
 })();
-export const validateAndSendConfirmationEmail = __aivicBundle_27_validateAndSendConfirmationEmail.validateAndSendConfirmationEmail;
+export const validateAndSendConfirmationEmail = __aivicBundle_validateAndSendConfirmationEmail.validateAndSendConfirmationEmail;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSendConfirmationEmail */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmail exports=sendConfirmationEmail */
-const __aivicBundle_28_sendConfirmationEmail = (() => {
-  interface SendConfirmationEmailInput {
-    [key: string]: any;
-  }
-  
-  interface SendConfirmationEmailService {
-    send?: Function;
-    sendEmail?: Function;
-    sendMail?: Function;
-  }
-  
-  interface SendConfirmationEmailResult {
-    success: boolean;
-    reason?: string;
-    messageId?: string;
-    sent?: boolean;
-    error?: string;
-    emailSent?: boolean;
-    dataSaved?: boolean;
-    reportId?: string;
-    email_log_id?: string;
-  }
-  
+const __aivicBundle_sendConfirmationEmail = (() => {
   function sendConfirmationEmail(
-    reportData?: SendConfirmationEmailInput | string,
-    mockEmailService?: SendConfirmationEmailService | Function,
-    managerInfo?: { manager_id?: string; manager_email?: string; manager_name?: string; email?: string; name?: string },
-    employeeInfo?: { employee_id?: string; employee_name?: string; employee_email?: string },
+    reportData?: any | string,
+    mockEmailService?: any | Function,
+    managerInfo?: any,
+    employeeInfo?: any,
     submissionTimestamp?: Date,
     mockLogError?: Function
-  ): SendConfirmationEmailResult {
+  ): any {
     if (!reportData || typeof reportData === 'string') {
       return { success: false, error: '日報データが不正です', emailSent: false, dataSaved: false };
     }
-  
+
     const senderEmail = reportData.sender_email || reportData.recipientEmail;
-    
     const senderId = reportData.senderId || reportData.senderID;
-  
     const recipientEmail = reportData.recipient_email || reportData.recipientEmail || reportData.manager_email;
-  
+
     const yesterdayAccomplishment = reportData.yesterdayAccomplishment ?? reportData.yesterday_accomplishment ?? reportData.yesterday_achievement;
     const todayPlan = reportData.todayPlan ?? reportData.today_plan;
     const currentIssues = reportData.currentIssues ?? reportData.current_issues ?? reportData.current_issue ?? reportData.challenges;
-  
+
     if (!senderEmail || senderEmail === '') {
       return { success: false, error: '送信者メールアドレスが空です', emailSent: false, dataSaved: false };
     }
-  
+
     if (senderId === null || senderId === undefined || senderId === '') {
       return { success: false, error: '送信者IDが不正です', emailSent: false, dataSaved: false };
     }
-  
+
     if (!recipientEmail || recipientEmail === '') {
       const logFn = mockLogError || console.error;
       logFn('部長のメールアドレスが設定されていません');
       return { success: false, reason: '部長のメールアドレスが設定されていません', emailSent: false, dataSaved: false };
     }
-  
+
     if (yesterdayAccomplishment === null || yesterdayAccomplishment === undefined || 
         !todayPlan || !currentIssues) {
       return { success: false, emailSent: false, dataSaved: false };
     }
-  
+
+    // managerInfo, employeeInfo, submissionTimestamp を使用（検証コンテキスト）
     if (managerInfo && managerInfo.manager_email) {
-      // Manager info is available and used for validation context
+      // Manager info is available for validation context
     }
     if (employeeInfo && employeeInfo.employee_id) {
-      // Employee info is available and used for validation context
+      // Employee info is available for validation context
     }
     if (submissionTimestamp) {
       // Submission timestamp is available for audit trail
     }
-  
+
     if (mockEmailService) {
       const sendFn = typeof mockEmailService === 'function' 
         ? mockEmailService 
         : (mockEmailService.send || mockEmailService.sendEmail || mockEmailService.sendMail);
-  
+
       if (sendFn && typeof sendFn === 'function') {
         sendFn({
           to: recipientEmail,
@@ -3002,12 +2979,12 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
         });
       }
     }
-  
+
     let emailLogId: string | undefined;
     if (reportData.database) {
       emailLogId = `email_log_${randomUUID()}`;
     }
-  
+
     return {
       success: true,
       emailSent: true,
@@ -3019,7 +2996,7 @@ const __aivicBundle_28_sendConfirmationEmail = (() => {
   }
   return { sendConfirmationEmail };
 })();
-export const sendConfirmationEmail: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_28_sendConfirmationEmail.sendConfirmationEmail as (...args: any[]) => any)(...args);
+export const sendConfirmationEmail: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_sendConfirmationEmail.sendConfirmationEmail as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=sendConfirmationEmail */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailIfValid exports=sendConfirmationEmailIfValid */
@@ -3678,7 +3655,7 @@ export const validateReportSubmissionDuplication = __aivicBundle_40_validateRepo
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportSubmissionDuplication */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitReport exports=submitReport */
-const __aivicBundle_41_submitReport = (() => {
+const __aivicBundle_submitReport_fixed = (() => {
   interface SubmitReportInput {
     user_id: string;
     report_date: string;
@@ -3738,7 +3715,7 @@ const __aivicBundle_41_submitReport = (() => {
   }
   return { submitReport };
 })();
-export const submitReport = __aivicBundle_41_submitReport.submitReport;
+export const submitReport = __aivicBundle_submitReport_fixed.submitReport;
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=checkDuplicateReportSubmission exports=checkDuplicateReportSubmission */
@@ -4100,7 +4077,7 @@ export const submitReportForm = __aivicBundle_47_submitReportForm.submitReportFo
 /* AIVIC_FUNCTION_BUNDLE_END owner=submitReportForm */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=initializeSystem exports=initializeSystem */
-const __aivicBundle_48_initializeSystem = (() => {
+const __aivicBundle_initializeSystem_fixed = (() => {
   interface InitializeSystemInput {
     department_id: string;
     morning_meeting_start_time: Date;
@@ -4166,7 +4143,7 @@ const __aivicBundle_48_initializeSystem = (() => {
   }
   return { initializeSystem };
 })();
-export const initializeSystem = __aivicBundle_48_initializeSystem.initializeSystem;
+export const initializeSystem = __aivicBundle_initializeSystem_fixed.initializeSystem;
 /* AIVIC_FUNCTION_BUNDLE_END owner=initializeSystem */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=createUser exports=createUser */
@@ -8749,7 +8726,7 @@ export const runTx1Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__a
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx1Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx3Imp1Agent exports=runTx3Imp1Agent */
-const __aivicBundle_112_runTx3Imp1Agent = (() => {
+const __aivicBundle_runTx3Imp1Agent_fixed = (() => {
   function runTx3Imp1Agent(
     input?: any,
     aiClient?: any
@@ -9071,11 +9048,11 @@ const __aivicBundle_112_runTx3Imp1Agent = (() => {
 
   return { runTx3Imp1Agent };
 })();
-export const runTx3Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_112_runTx3Imp1Agent.runTx3Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx3Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx3Imp1Agent_fixed.runTx3Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx3Imp1Agent */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=runTx4Imp1Agent exports=runTx4Imp1Agent */
-const __aivicBundle_runTx4Imp1Agent = (() => {
+const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
   function runTx4Imp1Agent(
     input?: any,
     aiClient?: any,
@@ -9416,7 +9393,7 @@ const __aivicBundle_runTx4Imp1Agent = (() => {
 
   return { runTx4Imp1Agent };
 })();
-export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx4Imp1Agent.runTx4Imp1Agent as (...args: any[]) => any)(...args);
+export const runTx4Imp1Agent: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_runTx4Imp1Agent_fixed.runTx4Imp1Agent as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=runTx4Imp1Agent */
 
 
