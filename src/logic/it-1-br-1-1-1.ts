@@ -735,7 +735,7 @@ export const checkSubmissionStatus = __aivicBundle_5_checkSubmissionStatus.check
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailToReporterAndManager exports=sendConfirmationEmailToReporterAndManager */
 const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
-  async function sendConfirmationEmailToReporterAndManager(input: any): Promise<any> {
+  function sendConfirmationEmailToReporterAndManager(input: any): any {
     // Handle null managerEmail - throw error
     if (input.managerEmail === null || input.managerEmail === undefined) {
       throw new Error('部長メールアドレスが未設定です');
@@ -748,14 +748,14 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
   
     // Case 1: Single report with reporter and manager (reportContent provided)
     if (hasReportContent && input.reporterId && input.reporterEmail) {
-      const emailSender = input.emailSender || (async () => ({ success: true }));
+      const emailSender = input.emailSender || ((to: string, subject: string, body: string) => ({ success: true }));
       
       try {
         // Send email to reporter
-        await emailSender(input.reporterEmail, 'Report Confirmation', 'Your report has been received');
+        emailSender(input.reporterEmail, 'Report Confirmation', 'Your report has been received');
         
         // Send email to manager
-        await emailSender(input.managerEmail, 'Report Received', `Report from ${input.reporterName} received`);
+        emailSender(input.managerEmail, 'Report Received', `Report from ${input.reporterName} received`);
         
         return {
           success: true,
@@ -774,6 +774,7 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
       const displayReports = input.reports.slice(0, maxDisplayable);
       
       const formattedReports = displayReports.map((report: any) => ({
+        report_id: report.report_id,
         employeeName: report.employeeName || report.employee_name || '',
         yesterdayAccomplishment: report.yesterdayAccomplishment || report.yesterday_achievement || '',
         todayPlan: report.todayPlan || report.today_plan || '',
