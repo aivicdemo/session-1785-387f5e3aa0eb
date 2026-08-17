@@ -72,25 +72,21 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
     reportSubmission: ConfirmationEmailRequest,
     config?: any
   ): ConfirmationEmailResponse {
-    // Determine sender email from submission or config
     const senderEmail =
       reportSubmission.sender_email ||
       reportSubmission.user_email ||
       config?.sender_email;
-  
-    // Validate sender email is present and not null/undefined
+
     if (!senderEmail) {
       throw new Error("送信者メールアドレスが必要です");
     }
-  
-    // Validate manager email is present
+
     const managerEmail =
       reportSubmission.manager_email || reportSubmission.manager_email;
     if (!managerEmail) {
       throw new Error("部長メールアドレスが必要です");
     }
-  
-    // Validate report content fields - at least one must be present
+
     const hasYesterdayContent =
       reportSubmission.yesterday_achievement ||
       reportSubmission.yesterday_results ||
@@ -104,27 +100,24 @@ const __aivicBundle_1_sendConfirmationEmailOnReportSubmit = (() => {
       reportSubmission.current_issue ||
       reportSubmission.challengeIssue ||
       reportSubmission.issues;
-  
+
     if (!hasYesterdayContent || !hasTodayContent || !hasIssueContent) {
       throw new Error("報告内容が不正です");
     }
-  
-    // Validate submission timestamp
+
     const submittedAt =
       reportSubmission.submitted_at || reportSubmission.submittedAt;
     if (!submittedAt) {
       throw new Error("送信日時が必要です");
     }
-  
-    // Simulate email sending - in real implementation would call email service
-    // For this test case, we return failure when email service fails
-    const emailSendResult = {
+
+    const emailSendResult: ConfirmationEmailResponse = {
       success: false,
       error_code: "確認メール配信エラー",
       error_message: "管理者への確認メール送信に失敗しました",
       report_saved: true,
     };
-  
+
     return emailSendResult;
   }
   return { sendConfirmationEmailOnReportSubmit };
@@ -137,30 +130,26 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
   interface SendConfirmationEmailResult {
     success: boolean;
     error_message?: string;
-    email_sent?: boolean;
   }
-  
+
   function sendConfirmationEmail(
     request: ConfirmationEmailRequest | any,
     report?: any,
     managerEmail?: string
   ): SendConfirmationEmailResult | Promise<void> {
-    // 3引数形式の場合
     if (report !== undefined && managerEmail !== undefined) {
       return handleThreeArgumentForm(request, report, managerEmail);
     }
-  
-    // 1引数形式の場合
+
     return handleSingleArgumentForm(request);
   }
-  
+
   function handleThreeArgumentForm(
     sender: any,
     report: any,
     managerEmail: string
   ): Promise<void> {
     return Promise.resolve().then(() => {
-      // 部門情報の検証
       const department = sender.department;
       if (department === null || department === undefined) {
         throw new Error("送信者の部門情報が null のため、メール送信を中断します");
@@ -168,25 +157,20 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
       if (department === "") {
         throw new Error("送信者の部門情報が空文字のため、メール送信を中断します");
       }
-  
-      // メール送信処理（実装は省略、実際の送信ロジックはここに入る）
     });
   }
-  
+
   function handleSingleArgumentForm(request: any): SendConfirmationEmailResult {
-    // report_content フィールドの検証
     const reportContent = request.report_content;
     if (reportContent === null || reportContent === undefined) {
       throw new Error("朝会報告内容が null のため、メール送信を中断します");
     }
 
-    // sendDateTime フィールドの検証
     const sendDateTime = request.sendDateTime;
     if (sendDateTime === null || sendDateTime === undefined) {
       throw new Error("送信日時が null のため、メール送信を中断します");
     }
-  
-    // 部門情報の検証
+
     const department = request.department;
     if (department === null || department === undefined) {
       throw new Error("送信者の部門情報が null のため、メール送信を中断します");
@@ -194,32 +178,26 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
     if (department === "") {
       throw new Error("送信者の部門情報が空文字のため、メール送信を中断します");
     }
-  
-    // sender_email フィールドの検証
+
     const senderEmail = request.sender_email;
     if (senderEmail === null || senderEmail === undefined || senderEmail === "") {
       console.error("送信者メールアドレスが空文字のため、メール送信を中断します");
       return {
         success: false,
         error_message: "送信者メールアドレスが空文字のため、メール送信を中断します",
-        email_sent: false,
       };
     }
-  
-    // recipient_email フィールドの検証
+
     const recipientEmail = request.recipient_email;
     if (!recipientEmail || recipientEmail === "") {
       return {
         success: false,
         error_message: "受信者メールアドレスが空文字のため、メール送信を中断します",
-        email_sent: false,
       };
     }
-  
-    // メール送信処理（実装は省略、実際の送信ロジックはここに入る）
+
     return {
       success: true,
-      email_sent: true,
     };
   }
   return { sendConfirmationEmail };
@@ -236,19 +214,19 @@ const __aivicBundle_3_sendConfirmationEmailOnSubmission = (() => {
     if (managerInfo.manager_email === null || managerInfo.manager_email === undefined) {
       throw new Error('部長のメールアドレスが設定されていません');
     }
-  
+
     const yesterday =
       reportSubmissionData.yesterday_achievement ||
       reportSubmissionData.yesterdayAccomplishment ||
       reportSubmissionData.yesterday_results ||
       reportSubmissionData.previousAchievements;
-  
+
     const today =
       reportSubmissionData.today_plan ||
       reportSubmissionData.todayPlan ||
       reportSubmissionData.today_plans ||
       reportSubmissionData.todayPlans;
-  
+
     const issue =
       reportSubmissionData.current_issue ||
       reportSubmissionData.current_issues ||
@@ -256,15 +234,15 @@ const __aivicBundle_3_sendConfirmationEmailOnSubmission = (() => {
       reportSubmissionData.challengeIssue ||
       reportSubmissionData.issues ||
       reportSubmissionData.challenges;
-  
+
     if (!yesterday) {
       throw new Error('昨日の実績が不完全です');
     }
-  
+
     if (!today) {
       throw new Error('今日の予定が不完全です');
     }
-  
+
     if (!issue) {
       throw new Error('抱えている課題が不完全です');
     }
@@ -283,19 +261,19 @@ const __aivicBundle_4_sendConfirmationEmailToManager = (() => {
     if (!managerEmail || managerEmail.trim() === '') {
       throw new Error('部長のメールアドレスが指定されていません');
     }
-  
+
     const yesterday =
       reportContent.yesterday_achievement ||
       reportContent.yesterdayAccomplishment ||
       reportContent.yesterday ||
       '';
-  
+
     const today =
       reportContent.today_plan ||
       reportContent.todayPlan ||
       reportContent.today ||
       '';
-  
+
     const issues =
       reportContent.current_issue ||
       reportContent.current_issues ||
@@ -303,7 +281,7 @@ const __aivicBundle_4_sendConfirmationEmailToManager = (() => {
       reportContent.issues ||
       reportContent.challengeIssue ||
       '';
-  
+
     if (!yesterday && !today && !issues) {
       throw new Error('報告内容が空です');
     }
@@ -321,28 +299,28 @@ const __aivicBundle_5_notifyConfirmationEmailOnSubmit = (() => {
   ): void {
     const managerEmail =
       departmentMaster?.manager_email ?? departmentMaster?.managerEmail;
-  
+
     if (!managerEmail) {
       throw new Error("部長のメールアドレスが未定義です");
     }
-  
+
     const yesterdayAccomplishment =
       submissionData.yesterday_accomplishment ??
       submissionData.yesterdayAccomplishment ??
       submissionData.yesterday_achievement ??
       submissionData.yesterday;
-  
+
     const todayPlan =
       submissionData.today_plan ??
       submissionData.todayPlan ??
       submissionData.today;
-  
+
     const issues =
       submissionData.issues ??
       submissionData.challengeIssue ??
       submissionData.current_issues ??
       submissionData.currentIssues;
-  
+
     if (!yesterdayAccomplishment || !todayPlan || !issues) {
       throw new Error("報告内容が不完全です（昨日の実績、今日の予定、課題は必須）");
     }
@@ -359,13 +337,13 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
     manager_email?: string;
     manager_name?: string;
   }
-  
+
   interface SendConfirmationEmailOnSubmitReportContent {
     yesterday_achievement?: string;
     today_plan?: string;
     current_issues?: string;
   }
-  
+
   interface SendConfirmationEmailOnSubmitInput {
     report_id?: string;
     employee_id?: string;
@@ -374,33 +352,33 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
     report_content?: SendConfirmationEmailOnSubmitReportContent;
     [key: string]: any;
   }
-  
+
   const sendConfirmationEmailOnSubmitManagerStore: Map<string, SendConfirmationEmailOnSubmitManagerRecord> = new Map();
-  
+
   async function sendConfirmationEmailOnSubmit(
     reportData: SendConfirmationEmailOnSubmitInput
   ): Promise<ConfirmationEmailResponse> {
     const managerId = reportData.manager_id;
     const reportId = reportData.report_id;
     const employeeId = reportData.employee_id;
-    
+
     const reportContent = reportData.report_content;
-  
+
     if (!managerId) {
       throw new Error("部長情報が指定されていません");
     }
-  
+
     const managerRecord = sendConfirmationEmailOnSubmitManagerStore.get(managerId);
     if (!managerRecord) {
       throw new Error(
         `部長ID: ${managerId}の部長情報がデータベースに存在しません`
       );
     }
-  
+
     if (!reportContent) {
       throw new Error("報告内容が指定されていません");
     }
-  
+
     if (
       reportContent.yesterday_achievement === undefined ||
       reportContent.today_plan === undefined ||
@@ -408,9 +386,9 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
     ) {
       throw new Error("報告内容に必須項目が不足しています");
     }
-  
+
     const sentTimestamp = new Date();
-  
+
     const response: ConfirmationEmailResponse = {
       success: true,
       email_sent: true,
@@ -427,7 +405,7 @@ const __aivicBundle_6_sendConfirmationEmailOnSubmit = (() => {
         errorCode: ""
       }
     };
-  
+
     return response;
   }
   return { sendConfirmationEmailOnSubmit };
@@ -446,32 +424,32 @@ const __aivicBundle_7_validateAndSendConfirmationEmail = (() => {
       reportData.yesterday_achievement ||
       reportData.yesterday ||
       reportData.yesterdayWork;
-  
+
     const today =
       reportData.todayPlan ||
       reportData.today_plan ||
       reportData.today ||
       reportData.todayWork;
-  
+
     const issues =
       reportData.currentIssues ||
       reportData.current_issues ||
       reportData.challengeIssue ||
       reportData.issues ||
       reportData.current_issue;
-  
+
     if (!yesterday || yesterday.trim() === '') {
       throw new Error('昨日やったことが入力されていません');
     }
-  
+
     if (!today || today.trim() === '') {
       throw new Error('今日やることが入力されていません');
     }
-  
+
     if (!issues || issues.trim() === '') {
       throw new Error('抱えている課題が入力されていません');
     }
-  
+
     emailService.send({
       userId: reportData.userId,
       reportData: reportData,
@@ -503,11 +481,11 @@ const __aivicBundle_9_sendReportWithConfirmationEmail = (() => {
     },
   ): Promise<void> {
     const { history_repository, email_service, user_id, yesterday, today, issue, sent_at } = payload;
-  
+
     if (!history_repository || !history_repository.save) {
       throw new Error('history_repository.save is required');
     }
-  
+
     const reportHistoryRecord = {
       user_id,
       yesterday,
@@ -515,9 +493,9 @@ const __aivicBundle_9_sendReportWithConfirmationEmail = (() => {
       issue,
       sent_at,
     };
-  
+
     await history_repository.save(reportHistoryRecord);
-  
+
     if (email_service && email_service.sendConfirmationEmail) {
       await email_service.sendConfirmationEmail(payload);
     }
@@ -552,11 +530,11 @@ const __aivicBundle_10_sendConfirmationEmailsForDailyReport = (() => {
     }
   ): Promise<void> {
     const { sendEmail, logError, saveDailyReport } = services;
-  
+
     if (!sendEmail) {
       throw new Error('sendEmail service is required');
     }
-  
+
     const engineerEmail = dailyReportData.engineer_email;
     const managerEmail = dailyReportData.manager_email;
     const engineerName = dailyReportData.engineer_name || 'エンジニア';
@@ -565,13 +543,13 @@ const __aivicBundle_10_sendConfirmationEmailsForDailyReport = (() => {
     const yesterdayAchievement = dailyReportData.yesterday_achievement || '';
     const todayPlan = dailyReportData.today_plan || '';
     const currentIssue = dailyReportData.current_issue || '';
-  
+
     const engineerSubject = `日報確認: ${reportDate}`;
     const engineerBody = `${engineerName}様\n\n以下の内容で日報が送信されました。\n\n【昨日の実績】\n${yesterdayAchievement}\n\n【本日の予定】\n${todayPlan}\n\n【課題・懸念事項】\n${currentIssue}`;
-  
+
     const managerSubject = `日報確認: ${engineerName} - ${reportDate}`;
     const managerBody = `${managerName}様\n\n${engineerName}から以下の日報が提出されました。\n\n【昨日の実績】\n${yesterdayAchievement}\n\n【本日の予定】\n${todayPlan}\n\n【課題・懸念事項】\n${currentIssue}`;
-  
+
     try {
       if (engineerEmail) {
         await sendEmail(engineerEmail, engineerSubject, engineerBody);
@@ -581,7 +559,7 @@ const __aivicBundle_10_sendConfirmationEmailsForDailyReport = (() => {
         logError('エンジニアへのメール送信失敗', { email: engineerEmail, error });
       }
     }
-  
+
     try {
       if (managerEmail) {
         await sendEmail(managerEmail, managerSubject, managerBody);
@@ -618,21 +596,19 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
       report_date,
       sent_at,
     } = input;
-  
-    // Validate required fields
+
     if (!user_email) {
       throw new Error('送信者メールアドレスが必要です');
     }
-  
+
     if (!manager_email) {
       throw new Error('部長メールアドレスが必要です');
     }
-  
+
     if (!user_id) {
       throw new Error('ユーザーIDが必要です');
     }
-  
-    // Build email content
+
     const emailContent = buildEmailContent({
       user_name,
       yesterday_work,
@@ -640,20 +616,17 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
       current_issue,
       report_date,
     });
-  
-    // Send confirmation email to user
+
     const userEmailResponse = await sendEmailViaApi(user_email, emailContent);
     if (!userEmailResponse.success) {
       throw new Error(`ユーザーへのメール送信に失敗しました: ${userEmailResponse.error}`);
     }
-  
-    // Send confirmation email to manager
+
     const managerEmailResponse = await sendEmailViaApi(manager_email, emailContent);
     if (!managerEmailResponse.success) {
       throw new Error(`部長へのメール送信に失敗しました: ${managerEmailResponse.error}`);
     }
-  
-    // Log email send record to database
+
     const logRecord = {
       user_id,
       user_email,
@@ -664,18 +637,18 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
       status: 'sent',
       created_at: new Date().toISOString(),
     };
-  
+
     const logResponse = await saveEmailLogViaApi(logRecord);
     if (!logResponse.success) {
       throw new Error(`メール送信ログの保存に失敗しました: ${logResponse.error}`);
     }
   }
-  
+
   interface EmailContent {
     subject: string;
     body: string;
   }
-  
+
   function buildEmailContent(params: {
     user_name?: string;
     yesterday_work?: string;
@@ -685,9 +658,9 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
   }): EmailContent {
     const { user_name, yesterday_work, today_plan, current_issue, report_date } =
       params;
-  
+
     const subject = `日報確認メール - ${report_date || new Date().toISOString().split('T')[0]}`;
-  
+
     const body = `
   日報が送信されました。
   
@@ -703,10 +676,10 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
   【現在の課題】
   ${current_issue || 'なし'}
     `.trim();
-  
+
     return { subject, body };
   }
-  
+
   async function sendEmailViaApi(
     to: string,
     content: EmailContent
@@ -721,7 +694,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
           body: content.body,
         }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         return {
@@ -729,7 +702,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
           error: errorData.error || `HTTP ${response.status}`,
         };
       }
-  
+
       return { success: true };
     } catch (err) {
       return {
@@ -738,7 +711,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
       };
     }
   }
-  
+
   async function saveEmailLogViaApi(record: {
     user_id: string;
     user_email: string;
@@ -755,7 +728,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(record),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         return {
@@ -763,7 +736,7 @@ const __aivicBundle_11_sendConfirmationEmailAndLogFailure = (() => {
           error: errorData.error || `HTTP ${response.status}`,
         };
       }
-  
+
       return { success: true };
     } catch (err) {
       return {
@@ -783,25 +756,25 @@ const __aivicBundle_12_sendMorningReportWithNotification = (() => {
     if (!sendEmailMock) {
       return;
     }
-  
+
     const userEmail = reportData.email || reportData.user_email;
     if (!userEmail) {
       return;
     }
-  
+
     const yesterdayAccomplishment =
       reportData.yesterday_accomplishment ||
       reportData.yesterdayAccomplishment ||
       reportData.yesterday_achievement ||
       reportData.yesterday ||
       '';
-  
+
     const todayPlan =
       reportData.today_plan ||
       reportData.todayPlan ||
       reportData.today ||
       '';
-  
+
     const currentIssue =
       reportData.current_issue ||
       reportData.currentIssues ||
@@ -809,9 +782,9 @@ const __aivicBundle_12_sendMorningReportWithNotification = (() => {
       reportData.challengeIssue ||
       reportData.issues ||
       '';
-  
+
     const subject = '朝会報告';
-  
+
     const body = [
       '朝会報告をお送りします。',
       '',
@@ -824,7 +797,7 @@ const __aivicBundle_12_sendMorningReportWithNotification = (() => {
       '【抱えている課題】',
       currentIssue,
     ].join('\n');
-  
+
     sendEmailMock.send?.({
       to: userEmail,
       subject: subject,
@@ -852,7 +825,7 @@ const __aivicBundle_13_sendReportWithNotification = (() => {
       role?: string;
     };
   }
-  
+
   interface SendReportWithNotificationReportData {
     reporter_user_id?: string;
     yesterday_accomplishment?: string;
@@ -861,9 +834,9 @@ const __aivicBundle_13_sendReportWithNotification = (() => {
     sent_at?: Date;
     department_head_email?: string;
   }
-  
+
   let mockSendMailToDepartmentHead: jest.Mock;
-  
+
   function sendReportWithNotification(
     reportingEngineer: SendReportWithNotificationInput,
     morningReportData: SendReportWithNotificationReportData
@@ -871,17 +844,17 @@ const __aivicBundle_13_sendReportWithNotification = (() => {
     const departmentHeadEmail =
       morningReportData.department_head_email ||
       reportingEngineer.department_head_user?.email;
-  
+
     if (!departmentHeadEmail) {
       return;
     }
-  
+
     const reporterName = reportingEngineer.user_name || "";
     const yesterdayAccomplishment =
       morningReportData.yesterday_accomplishment || "";
     const todayPlan = morningReportData.today_plan || "";
     const issuesHeld = morningReportData.issues_held || "";
-  
+
     mockSendMailToDepartmentHead({
       to_email: departmentHeadEmail,
       reporter_name: reporterName,
@@ -899,9 +872,7 @@ export const sendReportWithNotification = __aivicBundle_13_sendReportWithNotific
 const __aivicBundle_14_validateAndAggregateReport = (() => {
   function validateAndAggregateReport(reportData: ConfirmationEmailRequest): AggregationResult {
     const auditTimestamp = new Date();
-  
-    // 確認メール受信記録の存在を検証
-    // confirmationMailReceivedAt が null または undefined の場合、受信記録が欠落している
+
     if (reportData.confirmationMailReceivedAt === null || reportData.confirmationMailReceivedAt === undefined) {
       return {
         success: false,
@@ -921,8 +892,7 @@ const __aivicBundle_14_validateAndAggregateReport = (() => {
         },
       };
     }
-  
-    // 確認メール受信記録が存在する場合は成功
+
     return {
       success: true,
       reportId: reportData.reportId,

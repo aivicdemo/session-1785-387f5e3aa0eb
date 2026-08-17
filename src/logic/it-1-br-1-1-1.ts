@@ -3944,7 +3944,7 @@ export const sendConfirmationEmail = __aivicBundle_sendConfirmationEmail.sendCon
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsToManagerAndSender exports=sendConfirmationEmailsToManagerAndSender */
 const __aivicBundle_56_sendConfirmationEmailsToManagerAndSender = (() => {
-  async function sendConfirmationEmailsToManagerAndSender(params: {
+  function sendConfirmationEmailsToManagerAndSender(params: {
     submitted_members: Array<any>;
     manager_user: {
       user_id: string;
@@ -3957,7 +3957,7 @@ const __aivicBundle_56_sendConfirmationEmailsToManagerAndSender = (() => {
     email_service: {
       send: (data: any) => Promise<{ success: boolean; message_id: string }>;
     };
-  }): Promise<{ emails_sent: number; status: 'early_return' | 'success'; reason?: string }> {
+  }): { emails_sent: number; status: 'early_return' | 'success'; reason?: string } {
     const { submitted_members, manager_user, morning_meeting_time, email_service } = params;
   
     if (!submitted_members || submitted_members.length === 0) {
@@ -3978,7 +3978,7 @@ const __aivicBundle_56_sendConfirmationEmailsToManagerAndSender = (() => {
     };
   
     try {
-      await email_service.send(emailPayload);
+      email_service.send(emailPayload);
       return {
         emails_sent: 1,
         status: 'success',
@@ -5008,10 +5008,14 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     }
 
     const submittedUserIds = new Set<string>();
+    const delayedUserIds = new Set<string>();
 
     for (const record of submissionHistory) {
       if (record.user_id) {
         submittedUserIds.add(record.user_id);
+        if (record.submission_time && new Date(record.submission_time) > deadline) {
+          delayedUserIds.add(record.user_id);
+        }
       }
     }
 
@@ -5046,6 +5050,14 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
           followup_priority: 1,
           followup_category: 'critical_unreported',
           recommended_followup_method: 'phone',
+        });
+      } else if (delayedUserIds.has(userId)) {
+        delayedMembersResult.push({
+          member_id: userId,
+          member_name: userName,
+          followup_priority: 2,
+          followup_category: 'delayed',
+          recommended_followup_method: 'email',
         });
       }
     }
