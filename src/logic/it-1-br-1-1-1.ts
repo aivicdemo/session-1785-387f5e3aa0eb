@@ -774,6 +774,7 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
       const displayReports = input.reports.slice(0, maxDisplayable);
       
       const formattedReports = displayReports.map((report: any) => ({
+        reportId: report.report_id || report.reportId,
         employeeName: report.employeeName || report.employee_name || '',
         yesterdayAccomplishment: report.yesterdayAccomplishment || report.yesterday_achievement || '',
         todayPlan: report.todayPlan || report.today_plan || '',
@@ -3315,25 +3316,15 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
     const shouldContinueRetryLoop =
       maxRetryAttempts > 0 && currentAttemptCount < maxRetryAttempts;
 
-    if (retryConfig) {
-      return {
-        success: true,
-        status: '送信完了',
-        reportId: normalizedData.reportId,
-        dbRecordStatus: '送信成功',
-        managerNotified: true,
-        should_continue_retry_loop: shouldContinueRetryLoop,
-        confirmation_emails_sent: recipientList.length,
-        recipient_list: recipientList,
-      };
-    }
-
     return {
       success: true,
       status: '送信完了',
       reportId: normalizedData.reportId,
       dbRecordStatus: '送信成功',
       managerNotified: true,
+      should_continue_retry_loop: shouldContinueRetryLoop,
+      confirmation_emails_sent: recipientList.length,
+      recipient_list: recipientList,
     };
   }
   return { sendConfirmationEmailsToSenderAndManager };
@@ -3433,7 +3424,6 @@ const __aivicBundle_validateReportSubmissionTime = (() => {
     const jstSeconds = String(jstDateTime.getSeconds()).padStart(2, '0');
     const jstTime = `${targetDate}T${jstHours}:${jstMinutes}:${jstSeconds}+09:00`;
 
-    // JST to UTC: subtract 9 hours
     const utcTimeMs = jstDateTime.getTime() - 9 * 60 * 60 * 1000;
     const utcTimeObj = new Date(utcTimeMs);
     const utcYear = utcTimeObj.getUTCFullYear();
@@ -6816,7 +6806,6 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
   }): any {
     const now = input.currentDateTime || new Date();
   
-    // Parse morning meeting start time
     let meetingTime: Date;
     if (typeof input.morningMeetingStartTime === "string") {
       const [hours, minutes] = input.morningMeetingStartTime.split(":").map(Number);
@@ -6829,7 +6818,6 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
       meetingTime.setHours(9, 0, 0, 0);
     }
   
-    // Calculate deadline time
     let deadlineTime: Date;
     if (input.reportDeadlineDay) {
       deadlineTime = new Date(input.reportDeadlineDay);
@@ -6849,7 +6837,6 @@ const __aivicBundle_98_determineReportDeadlineStatus = (() => {
       deadlineTime.setMinutes(deadlineTime.getMinutes() - 15);
     }
   
-    // Determine submission status
     let status: "pending" | "submitted_on_time" | "submitted_late" | "not_submitted" | "within-deadline";
     let isWithinDeadline: boolean;
     let minutesRemaining: number;
@@ -12795,7 +12782,7 @@ export const sendUnreportedMemberNotification = __aivicBundle_176_sendUnreported
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendReportMissingReminderNotification exports=sendReportMissingReminderNotification */
 const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
-  async function sendReportMissingReminderNotification(
+  function sendReportMissingReminderNotification(
     non_reported_members: Array<{
       user_id: string;
       member_name: string;
@@ -12812,8 +12799,7 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     emailService?: {
       send: (to: string, subject: string, body: string) => Promise<{ success: boolean; messageId: string; sentAt: Date }>;
     }
-  ): Promise<any> {
-    // 重複を除外して一意な部員を抽出
+  ): any {
     const uniqueMembersMap = new Map<string, { user_id: string; member_name: string; email: string }>();
     for (const member of non_reported_members) {
       if (!uniqueMembersMap.has(member.user_id)) {
@@ -12826,14 +12812,11 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     }
     const uniqueMembers = Array.from(uniqueMembersMap.values());
 
-    // 部員名リストを作成（「、」で区切る）
     const memberNameList = uniqueMembers.map((m) => m.member_name).join('、');
 
-    // メール本文を構築
     const subject = `【朝会報告】未報告部員のお知らせ`;
     let body = `部長殿\n\n以下の部員から朝会報告がまだ提出されていません。\n\n未報告部員: ${memberNameList}\n\n`;
     
-    // managerName, reportDate, reportDeadline, maxNotificationAttempts を使用して通知ロジックに組み込む
     if (reportDate) {
       body += `報告日: ${reportDate}\n`;
     }
@@ -12849,45 +12832,30 @@ const __aivicBundle_177_sendReportMissingReminderNotification = (() => {
     
     body += `\nお手数ですが、ご確認ください。`;
 
-    // emailService が提供されている場合はそれを使用、そうでなければ fetch を使用
-    let result: { success: boolean; message?: string };
-
     if (emailService && emailService.send) {
-      try {
-        const sendResult = await emailService.send(department_head_email, subject, body);
-        result = {
+      return emailService.send(department_head_email, subject, body).then(
+        (sendResult: any) => ({
           success: sendResult.success,
           message: sendResult.success ? 'Email sent successfully' : 'Email send failed',
-        };
-      } catch (error) {
-        result = {
-          success: false,
-          message: 'Email send failed',
-        };
-      }
+        })
+      ).catch((error: any) => ({
+        success: false,
+        message: 'Email send failed',
+      }));
     } else {
-      // fetch を使用してメール送信
-      try {
-        const response = await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: department_head_email,
-            subject: subject,
-            body: body,
-          }),
-        });
-
-        result = await response.json();
-      } catch (error) {
-        result = {
-          success: false,
-          message: 'Email send failed',
-        };
-      }
+      return fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: department_head_email,
+          subject: subject,
+          body: body,
+        }),
+      }).then((response: any) => response.json()).catch((error: any) => ({
+        success: false,
+        message: 'Email send failed',
+      }));
     }
-
-    return result;
   }
   return { sendReportMissingReminderNotification };
 })();

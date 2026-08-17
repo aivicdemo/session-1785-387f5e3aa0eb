@@ -1218,76 +1218,39 @@ export const validateSessionAndProvideForm = __aivicBundle_11_validateSessionAnd
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateSessionAndProvideForm */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSubmitReport exports=validateAndSubmitReport */
-const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
-  interface ValidateAndSubmitReportInput {
-    yesterday_work?: string;
-    yesterday?: string;
-    yesterdayAccomplishment?: string;
-    yesterday_achievement?: string;
-    today_plan?: string;
-    today?: string;
-    todayPlan?: string;
-    todays_plan?: string;
-    current_issue?: string;
-    issue?: string;
-    currentIssue?: string;
-    challenges?: string;
-    currentChallenges?: string;
-    challenge?: string;
-    currentChallenge?: string;
-    user_id?: string;
-    userId?: string;
-    department_id?: string;
-    departmentId?: string;
-    submission_date?: string;
-    submissionDate?: string;
-    submitted_at?: Date | string;
-    submittedAt?: Date;
-    send_timestamp?: Date;
-    submissionHistory?: Array<any>;
-    reporter_name?: string;
-    reporter_email?: string;
-    manager_email?: string;
-    scheduled_assembly_time?: Date;
-    emailSender?: any;
-    item1_yesterday?: string;
-    item2_today?: string;
-    item3_issue?: string;
-    issues?: string;
-  }
-
+const __aivicBundle_validateAndSubmitReport_fixed = (() => {
   const submissionStore = new Map<string, Set<string>>();
 
-  function validateAndSubmitReport(input: ValidateAndSubmitReportInput): any {
+  function validateAndSubmitReport(input: any): any {
     const yesterday =
-      input.yesterday_work ||
-      input.yesterday ||
-      input.yesterdayAccomplishment ||
-      input.yesterday_achievement ||
-      input.item1_yesterday ||
+      input?.yesterday_work ||
+      input?.yesterday ||
+      input?.yesterdayAccomplishment ||
+      input?.yesterday_achievement ||
+      input?.item1_yesterday ||
       "";
     const today =
-      input.today_plan ||
-      input.today ||
-      input.todayPlan ||
-      input.todays_plan ||
-      input.item2_today ||
+      input?.today_plan ||
+      input?.today ||
+      input?.todayPlan ||
+      input?.todays_plan ||
+      input?.item2_today ||
       "";
     const issue =
-      input.current_issue ||
-      input.issue ||
-      input.currentIssue ||
-      input.challenges ||
-      input.currentChallenges ||
-      input.challenge ||
-      input.currentChallenge ||
-      input.issues ||
-      input.item3_issue ||
+      input?.current_issue ||
+      input?.issue ||
+      input?.currentIssue ||
+      input?.challenges ||
+      input?.currentChallenges ||
+      input?.challenge ||
+      input?.currentChallenge ||
+      input?.issues ||
+      input?.item3_issue ||
       "";
 
-    const yesterdayEmpty = !yesterday || yesterday.trim() === "";
-    const todayEmpty = !today || today.trim() === "";
-    const issueEmpty = !issue || issue.trim() === "";
+    const yesterdayEmpty = !yesterday || String(yesterday).trim() === "";
+    const todayEmpty = !today || String(today).trim() === "";
+    const issueEmpty = !issue || String(issue).trim() === "";
 
     if (yesterdayEmpty || todayEmpty || issueEmpty) {
       const errors = [];
@@ -1316,9 +1279,9 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       };
     }
 
-    const submissionHistory = input.submissionHistory || [];
-    const userId = input.user_id || input.userId || "";
-    const submissionDate = input.submission_date || input.submissionDate || "";
+    const submissionHistory = input?.submissionHistory || [];
+    const userId = input?.user_id || input?.userId || "";
+    const submissionDate = input?.submission_date || input?.submissionDate || "";
 
     // 重複送信チェック
     if (submissionHistory && submissionHistory.length > 0) {
@@ -1328,11 +1291,24 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       });
 
       if (isDuplicate && userId && submissionDate) {
-        throw new Error("本日の朝会報告は既に送信済みです。重複送信はできません");
+        return {
+          isValid: false,
+          is_valid: false,
+          errorMessage: "本日の朝会報告は既に送信済みです。重複送信はできません",
+          error_message: "本日の朝会報告は既に送信済みです。重複送信はできません",
+          mailSent: false,
+          email_sent: false,
+          retainedTodayPlan: today,
+          retainedCurrentIssue: issue,
+          errors: [{ field: "submission", message: "重複送信" }],
+          shouldSendConfirmationEmail: false,
+          message: "本日の朝会報告は既に送信済みです。重複送信はできません",
+        };
       }
     }
 
-    const submissionId = require("crypto").randomUUID();
+    const { randomUUID } = require("crypto");
+    const submissionId = randomUUID();
     const submittedAt = new Date();
 
     const result: any = {
@@ -1380,7 +1356,7 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       submission_history: submissionHistory,
       mail_send_log_id: `mail_${submissionId}`,
       sender_user_id: userId,
-      recipient_email: input.reporter_email || "",
+      recipient_email: input?.reporter_email || "",
       email_type: "confirmation",
       send_status: "sent",
       sent_at: submittedAt.toISOString(),
@@ -1390,7 +1366,7 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
         id: `mail_${submissionId}`,
         sent_at: submittedAt.toISOString(),
         status: "sent",
-        recipient_email: input.reporter_email || "",
+        recipient_email: input?.reporter_email || "",
       },
       report_sent: true,
       isOnTime: true,
@@ -1427,7 +1403,7 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
   }
   return { validateAndSubmitReport };
 })();
-export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_12_validateAndSubmitReport_fixed.validateAndSubmitReport as (...args: any[]) => any)(...args);
+export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateAndSubmitReport_fixed.validateAndSubmitReport as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmission exports=validateReportSubmission */
@@ -1661,31 +1637,31 @@ export const validateAndSendMorningReport = __aivicBundle_14_validateAndSendMorn
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSendMorningReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendReport exports=validateAndSendReport */
-const __aivicBundle_15_validateAndSendReport = (() => {
+const __aivicBundle_validateAndSendReport_fixed = (() => {
   function validateAndSendReport(
     input: any,
     emailService?: any
   ): any {
-    const userId = input.user_id ?? input.userId ?? "";
+    const userId = input?.user_id ?? input?.userId ?? "";
     const yesterdayAchievement =
-      input.yesterday_achievement ??
-      input.yesterdayAccomplishment ??
-      input.yesterday ??
+      input?.yesterday_achievement ??
+      input?.yesterdayAccomplishment ??
+      input?.yesterday ??
       "";
     const todayPlan =
-      input.today_plan ?? input.todays_plan ?? input.todayPlan ?? input.today ?? "";
+      input?.today_plan ?? input?.todays_plan ?? input?.todayPlan ?? input?.today ?? "";
     const currentIssue =
-      input.current_issue ??
-      input.current_issues ??
-      input.currentChallenge ??
-      input.challenge ??
-      input.issues ??
-      input.item3CurrentChallenge ?? "";
+      input?.current_issue ??
+      input?.current_issues ??
+      input?.currentChallenge ??
+      input?.challenge ??
+      input?.issues ??
+      input?.item3CurrentChallenge ?? "";
     const sentAt =
-      input.sent_at ?? input.sentAt ?? input.submittedAt ?? input.submitted_at;
-    const item1 = input.item1YesterdayAccomplishment ?? yesterdayAchievement;
-    const item2 = input.item2TodayPlan ?? todayPlan;
-    const item3 = input.item3CurrentChallenge ?? currentIssue;
+      input?.sent_at ?? input?.sentAt ?? input?.submittedAt ?? input?.submitted_at;
+    const item1 = input?.item1YesterdayAccomplishment ?? yesterdayAchievement;
+    const item2 = input?.item2TodayPlan ?? todayPlan;
+    const item3 = input?.item3CurrentChallenge ?? currentIssue;
   
     if (!userId || userId === "") {
       throw new Error("ユーザーIDは必須です");
@@ -1792,11 +1768,11 @@ const __aivicBundle_15_validateAndSendReport = (() => {
   }
   return { validateAndSendReport };
 })();
-export const validateAndSendReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_15_validateAndSendReport.validateAndSendReport as (...args: any[]) => any)(...args);
+export const validateAndSendReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateAndSendReport_fixed.validateAndSendReport as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSendReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSubmitDailyReport exports=validateAndSubmitDailyReport */
-const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
+const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
   function validateAndSubmitDailyReport(
     input: any,
     emailService?: any
@@ -1840,21 +1816,21 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
       throw new Error('第1項目に使用できない文字が含まれています');
     }
   
-    if (!yesterday || yesterday.trim() === '') {
+    if (!yesterday || String(yesterday).trim() === '') {
       errors.push({
         field: 'yesterdayAccomplishment',
         message: '昨日やったことは必須です',
       });
     }
   
-    if (!today || today.trim() === '') {
+    if (!today || String(today).trim() === '') {
       errors.push({
         field: 'todayPlan',
         message: '本日の予定は必須です',
       });
     }
   
-    if (!challenges || challenges.trim() === '') {
+    if (!challenges || String(challenges).trim() === '') {
       errors.push({
         field: 'currentChallenges',
         message: '抱えている課題は必須です',
@@ -1923,7 +1899,7 @@ const __aivicBundle_16_validateAndSubmitDailyReport = (() => {
   }
   return { validateAndSubmitDailyReport };
 })();
-export const validateAndSubmitDailyReport = __aivicBundle_16_validateAndSubmitDailyReport.validateAndSubmitDailyReport;
+export const validateAndSubmitDailyReport = __aivicBundle_validateAndSubmitDailyReport_fixed.validateAndSubmitDailyReport;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateMorningReportSubmission exports=validateMorningReportSubmission */

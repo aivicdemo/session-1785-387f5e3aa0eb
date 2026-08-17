@@ -16,9 +16,9 @@
       padding: 20px;
     }
     .container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
-      background-color: white;
+      background: white;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 30px;
@@ -30,9 +30,9 @@
     }
     .deadline-section {
       background-color: #fff3cd;
-      border: 1px solid #ffc107;
-      border-radius: 4px;
+      border-left: 4px solid #ffc107;
       padding: 20px;
+      border-radius: 4px;
       margin-bottom: 30px;
     }
     .deadline-section h2 {
@@ -46,7 +46,7 @@
       font-weight: 600;
     }
     .summary-section {
-      margin-bottom: 30px;
+      margin-top: 30px;
     }
     .summary-section h2 {
       color: #333;
@@ -56,37 +56,34 @@
     .summary-table {
       width: 100%;
       border-collapse: collapse;
-      background-color: #f9f9f9;
+      margin-bottom: 20px;
     }
-    .summary-table th {
-      background-color: #007bff;
-      color: white;
-      padding: 15px;
-      text-align: left;
-      font-weight: 600;
-      border: 1px solid #ddd;
-    }
+    .summary-table th,
     .summary-table td {
       padding: 15px;
-      border: 1px solid #ddd;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
     }
-    .summary-table tr:nth-child(even) {
+    .summary-table th {
       background-color: #f9f9f9;
+      font-weight: 600;
+      color: #333;
     }
     .summary-table tr:hover {
-      background-color: #f0f0f0;
+      background-color: #f5f5f5;
     }
     .progress-bar {
       width: 100%;
-      height: 20px;
-      background-color: #e9ecef;
+      height: 24px;
+      background-color: #e0e0e0;
       border-radius: 4px;
       overflow: hidden;
-      margin-top: 5px;
+      display: flex;
+      align-items: center;
     }
     .progress-fill {
       height: 100%;
-      background-color: #28a745;
+      background-color: #4CAF50;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -94,19 +91,48 @@
       font-size: 12px;
       font-weight: 600;
     }
-    .nav-button {
+    .status-badge {
       display: inline-block;
-      margin-top: 20px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-submitted {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .nav-buttons {
+      margin-top: 30px;
+      display: flex;
+      gap: 10px;
+    }
+    .nav-buttons a,
+    .nav-buttons button {
       padding: 12px 24px;
-      background-color: #007bff;
+      background-color: #2196F3;
       color: white;
       text-decoration: none;
+      border: none;
       border-radius: 4px;
+      font-size: 14px;
       font-weight: 600;
-      transition: background-color 0.3s ease;
+      cursor: pointer;
+      transition: background-color 0.3s;
     }
-    .nav-button:hover {
-      background-color: #0056b3;
+    .nav-buttons a:hover,
+    .nav-buttons button:hover {
+      background-color: #0b7dda;
+    }
+    .nav-buttons .logout {
+      background-color: #666;
+    }
+    .nav-buttons .logout:hover {
+      background-color: #555;
     }
   </style>
 </head>
@@ -116,7 +142,7 @@
     
     <div class="deadline-section">
       <h2>提出期限</h2>
-      <div class="deadline-text" id="deadlineText">2024年12月31日 17:00</div>
+      <div class="deadline-text" id="deadlineText">本日 18:00 まで</div>
     </div>
     
     <div class="summary-section">
@@ -125,81 +151,75 @@
         <thead>
           <tr>
             <th>部門名</th>
-            <th>提出済み</th>
-            <th>未提出</th>
+            <th>提出済み / 総人数</th>
             <th>提出率</th>
-            <th>進捗</th>
+            <th>ステータス</th>
           </tr>
         </thead>
-        <tbody id="summaryTableBody">
+        <tbody id="summaryBody">
           <tr>
             <td>営業部</td>
-            <td>8</td>
-            <td>2</td>
-            <td>80%</td>
+            <td><span id="sales-count">8 / 10</span></td>
             <td>
               <div class="progress-bar">
                 <div class="progress-fill" style="width: 80%;">80%</div>
               </div>
             </td>
+            <td><span class="status-badge status-pending">進行中</span></td>
           </tr>
           <tr>
             <td>企画部</td>
-            <td>6</td>
-            <td>1</td>
-            <td>86%</td>
+            <td><span id="planning-count">5 / 6</span></td>
             <td>
               <div class="progress-bar">
-                <div class="progress-fill" style="width: 86%;">86%</div>
+                <div class="progress-fill" style="width: 83.33%;">83%</div>
               </div>
             </td>
+            <td><span class="status-badge status-pending">進行中</span></td>
           </tr>
           <tr>
             <td>技術部</td>
-            <td>10</td>
-            <td>0</td>
-            <td>100%</td>
+            <td><span id="tech-count">12 / 12</span></td>
             <td>
               <div class="progress-bar">
                 <div class="progress-fill" style="width: 100%;">100%</div>
               </div>
             </td>
+            <td><span class="status-badge status-submitted">完了</span></td>
           </tr>
           <tr>
             <td>管理部</td>
-            <td>5</td>
-            <td>2</td>
-            <td>71%</td>
+            <td><span id="admin-count">3 / 4</span></td>
             <td>
               <div class="progress-bar">
-                <div class="progress-fill" style="width: 71%;">71%</div>
+                <div class="progress-fill" style="width: 75%;">75%</div>
               </div>
             </td>
+            <td><span class="status-badge status-pending">進行中</span></td>
           </tr>
         </tbody>
       </table>
     </div>
     
-    <a href="./daily-report.html" class="nav-button">日報入力・送信へ</a>
+    <div class="nav-buttons">
+      <a href="./daily-report.html">日報入力に戻る</a>
+      <a href="./login.html" class="logout">ログアウト</a>
+    </div>
   </div>
   
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // 提出期限を動的に設定（テスト用）
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + 7);
-      deadline.setHours(17, 0, 0, 0);
+    // Initialize dashboard
+    function init() {
+      // Set deadline
+      const today = new Date();
+      const deadline = new Date(today);
+      deadline.setHours(18, 0, 0, 0);
       
-      const formattedDeadline = deadline.toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-      document.getElementById('deadlineText').textContent = formattedDeadline;
-    });
+      const deadlineText = document.getElementById('deadlineText');
+      deadlineText.textContent = `本日 ${deadline.getHours()}:${String(deadline.getMinutes()).padStart(2, '0')} まで`;
+    }
+    
+    window.addEventListener('load', init);
   </script>
 </body>
 </html>
