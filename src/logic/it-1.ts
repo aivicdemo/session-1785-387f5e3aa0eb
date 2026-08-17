@@ -1283,7 +1283,6 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
     const userId = input?.user_id || input?.userId || '';
     const submissionDate = input?.submission_date || input?.submissionDate || '';
 
-    // 重複送信チェック
     if (submissionHistory && submissionHistory.length > 0) {
       const isDuplicate = submissionHistory.some((record: any) => {
         const recordDate = record.submission_date || record.submissionDate || '';
@@ -1786,10 +1785,15 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
       input?.yesterday_activity ??
       input?.yesterdayActivity ??
       input?.yesterday_achievement ??
+      input?.yesterdayWork ??
+      input?.yesterday ??
       '';
 
     const today =
-      input?.today_plan ?? input?.todayPlan ?? input?.today ?? '';
+      input?.today_plan ?? 
+      input?.todayPlan ?? 
+      input?.today ?? 
+      '';
 
     const challenges =
       input?.current_issue ??
@@ -1798,6 +1802,7 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
       input?.currentChallenges ??
       input?.challenges ??
       input?.challengesFaced ??
+      input?.currentChallenge ??
       '';
 
     if (
@@ -2609,7 +2614,6 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       };
     }
 
-    // 重複送信チェック
     if (mockDuplicateCheckFn) {
       try {
         const isDuplicate = await mockDuplicateCheckFn(userId, reportDate);
@@ -2640,7 +2644,6 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
         };
       }
     } else {
-      // ローカル重複チェック
       const submissionKey = `${userId}:${reportDate}`;
       if (submissionStore.has(submissionKey)) {
         const retained = {
@@ -2957,9 +2960,11 @@ const __aivicBundle_sendConfirmationEmail = (() => {
 
     let emailLogId: string | undefined;
     if (reportData.database) {
+      const { randomUUID } = require('crypto');
       emailLogId = `email_log_${randomUUID()}`;
     }
 
+    const { randomUUID } = require('crypto');
     return {
       success: true,
       emailSent: true,
@@ -8066,11 +8071,7 @@ const __aivicBundle_106_validateReportContent = (() => {
       "";
   
     if (!todayValue || (todayValue as string).trim() === "") {
-      return {
-        employeeId: entry.employeeId || entry.user_id,
-        isValid: false,
-        validationMessage: "今日やることが必須です",
-      };
+      throw new Error("今日やることが必須です");
     }
   
     const challengesValue =
@@ -8476,7 +8477,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       status: 'completed',
     });
 
-    // escalation check: 提出期限を大幅に超過
     if (submissionDeadline && currentTime && submissionTimestamp) {
       const deadlineTime = submissionDeadline.getTime();
       const submissionTime = submissionTimestamp.getTime();
@@ -8500,7 +8500,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       }
     }
 
-    // escalation check: 不正・曖昧・低確信度
     if (
       normalizedInput.reportInput &&
       normalizedInput.reportInput.confidence !== undefined &&
@@ -8521,7 +8520,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // escalation check: 入力不完全
     if (
       (!yesterdayWork || (yesterdayWork as string).trim().length === 0) &&
       (!todayPlan || (todayPlan as string).trim().length === 0)
@@ -8542,7 +8540,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // escalation check: 日報登録システムエラー
     if (normalizedContext.onRegistrationError && normalizedInput.reportInput?.systemError) {
       result.escalationTriggered = true;
       result.escalationReason = '日報登録システムエラー';
@@ -8558,7 +8555,6 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    // escalation check: メール配信失敗によるロールバック
     if (normalizedContext.onEmailSend && normalizedInput.reportInput?.emailDeliveryFailed) {
       result.success = false;
       result.status = 'escalated';

@@ -16,7 +16,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 8px;
@@ -32,8 +32,25 @@
             padding-bottom: 15px;
         }
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
             color: #333;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .nav-buttons a {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .nav-buttons a:hover {
+            background-color: #0056b3;
         }
         .deadline-section {
             background-color: #fff3cd;
@@ -52,7 +69,7 @@
             background-color: #ffc107;
             color: #333;
             padding: 8px 16px;
-            border-radius: 4px;
+            border-radius: 20px;
             font-weight: 600;
             font-size: 14px;
         }
@@ -60,9 +77,11 @@
             margin-bottom: 30px;
         }
         .summary-section h2 {
-            font-size: 18px;
+            font-size: 20px;
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
         }
         .summary-table {
             width: 100%;
@@ -72,29 +91,27 @@
         .summary-table th {
             background-color: #007bff;
             color: white;
-            padding: 12px;
+            padding: 15px;
             text-align: left;
             font-weight: 600;
-            border: 1px solid #ddd;
+            font-size: 14px;
         }
         .summary-table td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-        .summary-table tr:nth-child(even) {
-            background-color: #f0f0f0;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
         }
         .summary-table tr:hover {
-            background-color: #e8f4f8;
+            background-color: #f0f0f0;
         }
         .progress-bar {
             width: 100%;
-            height: 20px;
-            background-color: #e9ecef;
+            height: 24px;
+            background-color: #e0e0e0;
             border-radius: 4px;
             overflow: hidden;
-            margin: 5px 0;
+            display: flex;
+            align-items: center;
         }
         .progress-fill {
             height: 100%;
@@ -106,24 +123,13 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
-            justify-content: center;
-        }
-        .nav-buttons a {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 14px;
+        .status-submitted {
+            color: #28a745;
             font-weight: 600;
-            transition: all 0.3s ease;
         }
-        .nav-buttons a:hover {
-            background-color: #0056b3;
+        .status-pending {
+            color: #dc3545;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -131,13 +137,14 @@
     <div class="container">
         <div class="header">
             <h1>日報提出状況ダッシュボード</h1>
+            <div class="nav-buttons">
+                <a href="./daily-report.html">日報入力へ</a>
+            </div>
         </div>
 
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <div class="deadline-badge" id="deadlineDisplay">
-                本日 18:00 まで
-            </div>
+            <div class="deadline-badge" id="deadlineDisplay">本日 18:00</div>
         </div>
 
         <div class="summary-section">
@@ -154,86 +161,60 @@
                 </thead>
                 <tbody id="summaryTableBody">
                     <tr>
-                        <td>営業部</td>
-                        <td>8</td>
-                        <td>2</td>
-                        <td>80%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 80%;">80%</div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>企画部</td>
-                        <td>5</td>
-                        <td>1</td>
-                        <td>83%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 83%;">83%</div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>技術部</td>
-                        <td>12</td>
-                        <td>3</td>
-                        <td>80%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 80%;">80%</div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>管理部</td>
-                        <td>4</td>
-                        <td>1</td>
-                        <td>80%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 80%;">80%</div>
-                            </div>
-                        </td>
+                        <td colspan="5" style="text-align: center; color: #999;">読み込み中...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-
-        <div class="nav-buttons">
-            <a href="./daily-report.html">日報入力・送信に戻る</a>
-        </div>
     </div>
 
     <script>
-        // Initialize dashboard
-        function init() {
-            loadDeadline();
-            loadSummary();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadDashboardData();
+        });
+
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderSummary(data.departments);
+                    updateDeadline(data.deadline);
+                } else {
+                    console.error('Failed to load dashboard data');
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
         }
 
-        function loadDeadline() {
-            const today = new Date();
-            const deadline = new Date(today);
-            deadline.setHours(18, 0, 0, 0);
-            
+        function renderSummary(departments) {
+            const tbody = document.getElementById('summaryTableBody');
+            tbody.innerHTML = departments.map(dept => {
+                const total = dept.submitted + dept.pending;
+                const rate = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
+                return `
+                    <tr>
+                        <td>${dept.name}</td>
+                        <td><span class="status-submitted">${dept.submitted}</span></td>
+                        <td><span class="status-pending">${dept.pending}</span></td>
+                        <td>${rate}%</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateDeadline(deadline) {
             const deadlineDisplay = document.getElementById('deadlineDisplay');
-            const year = deadline.getFullYear();
-            const month = String(deadline.getMonth() + 1).padStart(2, '0');
-            const day = String(deadline.getDate()).padStart(2, '0');
-            const hours = String(deadline.getHours()).padStart(2, '0');
-            const minutes = String(deadline.getMinutes()).padStart(2, '0');
-            
-            deadlineDisplay.textContent = `${year}年${month}月${day}日 ${hours}:${minutes} まで`;
+            if (deadline) {
+                deadlineDisplay.textContent = deadline;
+            }
         }
-
-        function loadSummary() {
-            // This is a static summary for now
-            // In a real application, this would be fetched from the backend
-        }
-
-        init();
     </script>
 </body>
 </html>

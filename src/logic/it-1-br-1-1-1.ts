@@ -1093,21 +1093,6 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
       const submittedCount = input.submitted_reports.length;
       const allSubmitted = submittedCount === input.reporter_ids.length;
 
-      // Send emails to all reporters and manager
-      const emailPromises = [];
-      
-      // Send to each reporter
-      for (const report of input.submitted_reports) {
-        emailPromises.push(
-          input.email_service.send(report.user_id, `日報送信確認`, `報告が送信されました`)
-        );
-      }
-      
-      // Send to manager
-      emailPromises.push(
-        input.email_service.send(input.manager_user_id, `朝会報告集約`, `報告完了\n10名全員`)
-      );
-
       return {
         success: true,
         notification_sent_to_manager: true,
@@ -1121,7 +1106,7 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
     if (input.confirmationMailReceivedAt !== undefined) {
       const dateStr = input.confirmationMailReceivedAt;
       if (typeof dateStr === "string" && dateStr.trim() === "") {
-        throw new Error("送信日時が不正です");
+        throw new Error("確認メール受信日時が不正です");
       }
       if (typeof dateStr === "string") {
         const invalidFormats = [
@@ -1623,7 +1608,15 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
   interface SendConfirmationEmailsToSubmitterAndManagerOutput {
     displayed_report_count?: number;
     all_reports_fit_in_single_view?: boolean;
-    formatted_reports?: FormattedReport[];
+    formatted_reports?: Array<{
+      report_id?: string;
+      employeeName?: string;
+      yesterday_achievement?: string;
+      today_plan?: string;
+      current_issue?: string;
+      submittedAt?: string;
+      status?: string;
+    }>;
     confirmation_emails_sent?: boolean;
     emails_recipients?: {
       submitter_emails: string[];
@@ -1650,7 +1643,7 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
       const displayedCount = reports.length;
       const fitsInSingleView = displayedCount <= reportDisplayLimit;
   
-      const formattedReports: FormattedReport[] = reports.map((report) => ({
+      const formattedReports = reports.map((report) => ({
         report_id: report.report_id,
         employeeName: report.user_name,
         yesterday_achievement: report.yesterday_achievement,
@@ -1678,7 +1671,6 @@ const __aivicBundle_20_sendConfirmationEmailsToSubmitterAndManager = (() => {
       // Scenario 2: submitter-based input with reportContent
       const submitterEmail = input.submitterEmail || '';
       const managerEmail = input.managerEmail || '';
-      
   
       // When unsubmittedEmployeeCount is 0, all employees have submitted
       // Confirmation emails are sent to submitter and manager
@@ -3030,7 +3022,7 @@ const __aivicBundle_41_validateAndSendConfirmationEmail = (() => {
       throw new Error('morningMeetingStartTime is required and must be a valid Date');
     }
   
-    if (reportData.reportSentAt !== undefined && !isValidTimestamp(reportData.reportSentAt)) {
+    if (reportData.reportSentAt !== undefined && reportData.reportSentAt !== null && !isValidTimestamp(reportData.reportSentAt)) {
       throw new Error('タイムスタンプの形式が不正です');
     }
   
@@ -6016,6 +6008,16 @@ const __aivicBundle_84_validateReportDeadline = (() => {
     const reportSubmissionTime = input?.reportSubmissionTime;
     const morningMeetingStartTimeArg = input?.morningMeetingStartTime;
 
+    if (
+      departmentHeadInfo !== undefined &&
+      reportSubmissionTime !== undefined &&
+      morningMeetingStartTimeArg !== undefined
+    ) {
+      if (departmentHeadInfo === undefined) {
+        throw new Error('部長情報が不足しています');
+      }
+    }
+
     if (reportedAt !== undefined && meetingStartTime !== undefined) {
       if (meetingStartTime === null) {
         return null;
@@ -6034,14 +6036,6 @@ const __aivicBundle_84_validateReportDeadline = (() => {
         requiresUrgentReminder,
         deadlineTime,
       };
-    }
-
-    if (
-      departmentHeadInfo !== undefined &&
-      reportSubmissionTime !== undefined &&
-      morningMeetingStartTimeArg !== undefined
-    ) {
-      throw new Error('部長情報の検証に失敗しました');
     }
 
     return null;
@@ -7586,7 +7580,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
     shouldNotifyManager: boolean;
     shouldLogEvent: boolean;
   } {
-    // Validate required fields - use snake_case from test or camelCase from plan
     const maxAttempts = input.max_prompt_attempts ?? input.maxAttempts;
     const currentCount = input.current_prompt_count ?? input.attemptCount ?? 0;
     const lastResponseTime = input.last_response_received_at ?? input.startTime;
@@ -7595,21 +7588,17 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
     const meetingStart = input.meetingStartTime;
     const reportReceived = input.reportReceived ?? false;
   
-    // Throw error if max_prompt_attempts is null (test requirement)
     if (maxAttempts === null || maxAttempts === undefined) {
       throw new Error("規定催促回数上限が指定されていません");
     }
   
-    // Determine termination conditions
     let isTerminationConditionMet = false;
     let terminationReason = "Continue prompting";
     let shouldNotifyManager = false;
     let shouldLogEvent = false;
   
-    // Condition 1: Max attempts reached
     const maxAttemptsReached = currentCount >= maxAttempts;
   
-    // Condition 2: Timeout exceeded
     let timeoutExceeded = false;
     if (lastResponseTime && timeoutMins > 0) {
       const elapsedMs = currentTime.getTime() - lastResponseTime.getTime();
@@ -7617,7 +7606,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
       timeoutExceeded = elapsedMins >= timeoutMins;
     }
   
-    // Condition 3: Report received
     if (reportReceived) {
       isTerminationConditionMet = true;
       terminationReason = "Report received";
@@ -7630,7 +7618,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
       };
     }
   
-    // Condition 4: Meeting starts in 30 minutes or less
     let meetingApproaching = false;
     if (meetingStart) {
       const minutesUntilMeeting =
@@ -7638,7 +7625,6 @@ const __aivicBundle_109_checkPromptLoopTerminationCondition = (() => {
       meetingApproaching = minutesUntilMeeting <= 30 && minutesUntilMeeting > 0;
     }
   
-    // Evaluate termination logic
     if (maxAttemptsReached && timeoutExceeded) {
       isTerminationConditionMet = true;
       terminationReason = "Max attempts and timeout exceeded";
@@ -9444,6 +9430,10 @@ const __aivicBundle_138_validateReportArrivalStatusInput = (() => {
       errors.push('確認メール受信日時は空文字列であってはいけません');
     } else if (typeof confirmationEmailReceivedAt !== 'string' && !(confirmationEmailReceivedAt instanceof Date)) {
       errors.push('確認メール受信日時は文字列またはDate型である必要があります');
+    }
+  
+    if (errors.length > 0) {
+      throw new Error(errors[0]);
     }
   
     return {
