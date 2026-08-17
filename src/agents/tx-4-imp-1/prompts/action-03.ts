@@ -5,84 +5,132 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  submissionDeadline: string;
-  escalationThreshold: number;
+  employeeId: string;
+  employeeName: string;
+  departmentId: string;
+  departmentName: string;
+  reportDate: string;
+  extractedIssues?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>;
+  previousPriorities?: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>;
 }
 
 interface Action03PromptOutput {
-  prompt: string;
   version: string;
+  prompt: string;
+  systemRole: string;
+  instructions: string[];
+  context: {
+    action: string;
+    step: number;
+    totalSteps: number;
+    workflow: string;
+  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const { reportContent, submissionDeadline, escalationThreshold } = input;
+  const systemRole =
+    "You are an AI agent responsible for extracting and prioritizing issues from daily reports in an automated morning meeting preparation system.";
 
-  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily reports and determining their priority levels.
+  const instructions = [
+    "Analyze the provided report content to identify all issues, blockers, and bottlenecks mentioned by the employee.",
+    "Categorize each identified issue by type (technical, process, resource, dependency, other).",
+    "Assess the impact and urgency of each issue based on the report context and department goals.",
+    "Assign priority levels (critical, high, medium, low) to each issue using consistent criteria.",
+    "Consider dependencies between issues when determining priorities.",
+    "Flag any critical or high-priority issues that require immediate escalation.",
+    "Provide clear reasoning for each priority assignment.",
+    "Format the output as a structured list with issue ID, title, category, priority, and reasoning.",
+  ];
 
-## Task: Extract Issues and Determine Priority
+  const context = {
+    action: "Extract and prioritize issues from daily report",
+    step: 3,
+    totalSteps: 6,
+    workflow: "tx_4_imp_1",
+  };
 
-### Input Report Content:
-${reportContent}
+  const reportSection = input.extractedIssues
+    ? `Previously extracted issues:\n${input.extractedIssues
+        .map(
+          (issue) =>
+            `- [${issue.id}] ${issue.title} (${issue.category}): ${issue.description}`
+        )
+        .join("\n")}`
+    : "";
 
-### Submission Deadline:
-${submissionDeadline}
+  const priorityHistorySection = input.previousPriorities
+    ? `Previous priority assignments for reference:\n${input.previousPriorities
+        .map(
+          (p) =>
+            `- Issue ${p.issueId}: ${p.priority} (${p.reasoning})`
+        )
+        .join("\n")}`
+    : "";
 
-### Escalation Threshold (days):
-${escalationThreshold}
+  const prompt = `You are processing a daily report for automated morning meeting preparation.
 
-## Instructions:
+Employee: ${input.employeeName} (ID: ${input.employeeId})
+Department: ${input.departmentName} (ID: ${input.departmentId})
+Report Date: ${input.reportDate}
 
-1. **Analyze Report Content**: Review the provided report content to identify any mentioned issues, blockers, or bottlenecks.
+REPORT CONTENT:
+${input.reportContent}
 
-2. **Extract Issues**: List all identified issues with:
-   - Issue description
-   - Affected team member or area
-   - Current status
-   - Impact assessment
+${reportSection}
 
-3. **Determine Priority**: Classify each issue into priority levels:
-   - CRITICAL: Blocks multiple team members or critical path
-   - HIGH: Significant impact on project timeline
-   - MEDIUM: Moderate impact, can be addressed in current sprint
-   - LOW: Minor issues, can be deferred
+${priorityHistorySection}
 
-4. **Identify Escalation Needs**: Flag issues that require immediate escalation based on:
-   - Severity level
-   - Duration (exceeding ${escalationThreshold} days)
-   - Cross-team impact
+TASK:
+1. Extract all issues, blockers, and bottlenecks from the report
+2. Categorize each issue
+3. Determine priority level for each issue
+4. Provide reasoning for priority assignments
+5. Identify any critical issues requiring immediate escalation
 
-5. **Generate Structured Output**: Provide a prioritized list of issues with recommended actions.
-
-## Output Format:
-
+OUTPUT FORMAT:
 Return a JSON object with the following structure:
 {
   "issues": [
     {
-      "id": "string",
+      "id": "string (unique identifier)",
+      "title": "string",
       "description": "string",
-      "affectedArea": "string",
-      "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-      "status": "string",
-      "impactAssessment": "string",
+      "category": "technical|process|resource|dependency|other",
+      "priority": "critical|high|medium|low",
+      "reasoning": "string",
       "requiresEscalation": boolean,
-      "recommendedAction": "string"
+      "affectedTeamMembers": ["string"],
+      "suggestedActions": ["string"]
     }
   ],
   "summary": {
-    "totalIssues": number,
+    "totalIssuesIdentified": number,
     "criticalCount": number,
     "highCount": number,
     "mediumCount": number,
     "lowCount": number,
-    "escalationRequired": boolean
+    "escalationRequired": boolean,
+    "overallRiskLevel": "critical|high|medium|low"
   }
 }`;
 
   return {
-    prompt,
     version: ACTION_03_PROMPT_VERSION,
+    prompt,
+    systemRole,
+    instructions,
+    context,
   };
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03PromptInput, Action03PromptOutput };

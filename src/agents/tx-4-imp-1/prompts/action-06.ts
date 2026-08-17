@@ -4,94 +4,97 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
-  reportSummary: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    category: string;
+    reportedBy: string;
+    reportedDate: string;
   }>;
-  priorityAssignments: Array<{
+  priorityClassifications: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  departmentHead: string;
-  reportingDate: string;
+  reportSummary: {
+    totalReports: number;
+    submittedReports: number;
+    pendingReports: number;
+    overallProgress: string;
+  };
 }
 
 export interface Action06PromptInput {
   context: Action06Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
-  }>;
+  departmentHeadEmail: string;
+  reportingPeriod: string;
 }
 
 export interface Action06PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  metadata: {
-    actionNumber: 6;
-    contractId: "tx_4_imp_1";
-    purpose: string;
-  };
+  reportContent: string;
+  priorityListContent: string;
+  escalationFlags: Array<{
+    type: "unusual_issue" | "conflicting_priority" | "critical_risk" | "missing_report";
+    description: string;
+    requiresReview: boolean;
+  }>;
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the morning report processing workflow.
-Your role is to present the organized report and prioritized issue list to the department head.
-You must ensure all extracted issues are properly categorized and prioritized based on business impact and urgency.
-Provide clear, actionable recommendations for issue resolution.`;
+export function buildAction06Prompt(input: Action06PromptInput): string {
+  const {
+    context,
+    departmentHeadEmail,
+    reportingPeriod,
+  } = input;
 
-  const userPrompt = `Based on the following morning report summary and extracted issues, prepare a final report for the department head:
+  const issuesSection = context.extractedIssues
+    .map((issue) => {
+      const classification = context.priorityClassifications.find(
+        (pc) => pc.issueId === issue.id
+      );
+      return `
+Issue ID: ${issue.id}
+Title: ${issue.title}
+Description: ${issue.description}
+Reported By: ${issue.reportedBy}
+Reported Date: ${issue.reportedDate}
+Priority: ${classification?.priority || "unclassified"}
+Reasoning: ${classification?.reasoning || "pending classification"}
+`;
+    })
+    .join("\n---\n");
 
-Report Summary:
-${input.context.reportSummary}
+  const reportSummarySection = `
+Total Reports: ${context.reportSummary.totalReports}
+Submitted Reports: ${context.reportSummary.submittedReports}
+Pending Reports: ${context.reportSummary.pendingReports}
+Overall Progress: ${context.reportSummary.overallProgress}
+`;
 
-Extracted Issues:
-${input.context.extractedIssues
-  .map(
-    (issue) => `
-- ID: ${issue.id}
-  Title: ${issue.title}
-  Description: ${issue.description}
-  Category: ${issue.category}
-`
-  )
-  .join("")}
+  const prompt = `You are an AI assistant responsible for generating a comprehensive daily report summary and priority-classified issue list for department management.
 
-Priority Assignments:
-${input.context.priorityAssignments
-  .map(
-    (assignment) => `
-- Issue ID: ${assignment.issueId}
-  Priority: ${assignment.priority}
-  Reasoning: ${assignment.reasoning}
-`
-  )
-  .join("")}
+Reporting Period: ${reportingPeriod}
+Department Head Email: ${departmentHeadEmail}
 
-Department Head: ${input.context.departmentHead}
-Reporting Date: ${input.context.reportingDate}
+REPORT SUMMARY:
+${reportSummarySection}
 
-Please:
-1. Validate all priority assignments
-2. Identify any critical issues requiring immediate attention
-3. Group issues by category and priority level
-4. Provide a concise executive summary
-5. Recommend next steps for each priority level`;
+EXTRACTED ISSUES AND CLASSIFICATIONS:
+${issuesSection}
 
-  return {
-    version: ACTION_06_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    metadata: {
-      actionNumber: 6,
-      contractId: "tx_4_imp_1",
-      purpose:
-        "Present organized report and prioritized issue list to department head for morning meeting",
-    },
-  };
+Your task is to:
+1. Generate a professional report content that summarizes the overall progress and status
+2. Create a priority-classified issue list organized by priority level (critical, high, medium, low)
+3. Identify any escalation flags that require human review:
+   - Unusual or unexpected issues
+   - Conflicting priority classifications
+   - Critical risk issues
+   - Missing or incomplete reports
+
+Format your response as a structured analysis that can be directly presented to the department head.
+Include specific recommendations for addressing critical and high-priority issues.
+Highlight any patterns or trends in the reported issues.
+`;
+
+  return prompt;
 }

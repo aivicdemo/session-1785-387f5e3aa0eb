@@ -89,7 +89,7 @@ class InMemoryDatabase implements DatabaseConnection {
       row[col] = params[idx];
     });
 
-    const key = `${tableName}_${Date.now()}_${Math.random()}`;
+    const key = this.generateKey(tableName, row);
     table.set(key, row);
 
     const returningClause = match[4];
@@ -123,25 +123,27 @@ class InMemoryDatabase implements DatabaseConnection {
     const results: QueryResult[] = [];
 
     table.forEach((row) => {
-      if (whereClause && !this.evaluateWhere(whereClause, row, params)) {
-        return;
-      }
-
-      if (selectClause === '*') {
-        results.push(row);
-      } else if (selectClause.includes('COUNT(*)')) {
-        results.push({ cnt: table.size });
-      } else {
-        const columns = selectClause
-          .split(',')
-          .map((c) => c.trim().toLowerCase());
-        const result: QueryResult = {};
-        columns.forEach((col) => {
-          result[col] = row[col];
-        });
-        results.push(result);
+      if (!whereClause || this.evaluateWhere(whereClause, row, params)) {
+        if (selectClause === '*') {
+          results.push(row);
+        } else if (selectClause.includes('COUNT(*)')) {
+          results.push({ cnt: results.length + 1 });
+        } else {
+          const columns = selectClause
+            .split(',')
+            .map((c) => c.trim().toLowerCase());
+          const selectedRow: QueryResult = {};
+          columns.forEach((col) => {
+            selectedRow[col] = row[col];
+          });
+          results.push(selectedRow);
+        }
       }
     });
+
+    if (selectClause.includes('COUNT(*)')) {
+      return Promise.resolve([{ cnt: results.length }]);
+    }
 
     return Promise.resolve(results);
   }
@@ -156,7 +158,30 @@ class InMemoryDatabase implements DatabaseConnection {
       const column = eqMatch[1].toLowerCase();
       return row[column] === params[0];
     }
+
     return true;
+  }
+
+  private generateKey(tableName: string, row: QueryResult): string {
+    if (tableName === 'departments' && row.department_id) {
+      return String(row.department_id);
+    }
+    if (tableName === 'users' && row.user_id) {
+      return String(row.user_id);
+    }
+    if (tableName === 'unreported_members' && row.list_id) {
+      return String(row.list_id);
+    }
+    if (tableName === 'mail_queue' && row.queue_id) {
+      return String(row.queue_id);
+    }
+    if (tableName === 'audit_log' && row.log_id) {
+      return String(row.log_id);
+    }
+
+    const seq = this.sequences.get(tableName) || 0;
+    this.sequences.set(tableName, seq + 1);
+    return `${tableName}_${seq}`;
   }
 }
 

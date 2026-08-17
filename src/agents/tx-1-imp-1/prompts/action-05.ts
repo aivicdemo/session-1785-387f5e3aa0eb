@@ -7,85 +7,84 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedAt: string;
+  registrationStatus: "pending" | "success" | "failed";
+  registrationTimestamp?: string;
+  errorMessage?: string;
+}
+
+export interface Action05Input {
+  context: Action05Context;
   reportContent: {
     yesterdayAccomplishments: string;
-    todayPlan: string;
+    todayPlans: string;
     issues: string;
   };
-  managementSystemId: string;
-}
-
-export interface Action05PromptResult {
-  version: string;
-  action: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action05Context;
-}
-
-export function buildAction05Prompt(
-  context: Action05Context
-): Action05PromptResult {
-  const systemPrompt = `You are an automated report management system assistant responsible for registering daily engineer reports into the management system.
-
-Your role in Action 5 is to:
-1. Validate that the report has been properly submitted
-2. Prepare the report data for registration into the management system
-3. Confirm all required fields are present and properly formatted
-4. Generate a registration confirmation message
-
-You must ensure:
-- The report contains all three required sections (yesterday's accomplishments, today's plan, issues)
-- The data is properly formatted for system registration
-- The submission timestamp is recorded
-- The engineer's information is correctly associated with the report
-
-Respond with a JSON object containing:
-{
-  "isValid": boolean,
-  "registrationReady": boolean,
-  "validationErrors": string[],
-  "registrationData": {
-    "engineerId": string,
-    "engineerName": string,
-    "reportDate": string,
-    "submittedAt": string,
-    "content": {
-      "yesterdayAccomplishments": string,
-      "todayPlan": string,
-      "issues": string
-    }
-  },
-  "confirmationMessage": string
-}`;
-
-  const userPrompt = `Register the following daily report into the management system:
-
-Engineer ID: ${context.engineerId}
-Engineer Name: ${context.engineerName}
-Report Date: ${context.reportDate}
-Submitted At: ${context.submittedAt}
-
-Report Content:
-Yesterday's Accomplishments:
-${context.reportContent.yesterdayAccomplishments}
-
-Today's Plan:
-${context.reportContent.todayPlan}
-
-Issues/Challenges:
-${context.reportContent.issues}
-
-Management System ID: ${context.managementSystemId}
-
-Please validate this report and prepare it for registration. Confirm that all required information is present and properly formatted.`;
-
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    action: "action-05",
-    systemPrompt,
-    userPrompt,
-    context,
+  managementSystemConfig: {
+    apiEndpoint: string;
+    apiKey: string;
   };
+}
+
+export interface Action05Output {
+  success: boolean;
+  registrationId?: string;
+  timestamp: string;
+  message: string;
+  escalationRequired: boolean;
+  escalationReason?: string;
+}
+
+export function buildAction05Prompt(input: Action05Input): string {
+  const {
+    context,
+    reportContent,
+    managementSystemConfig,
+  } = input;
+
+  const prompt = `You are an AI agent responsible for registering daily reports to the management system.
+
+## Current Context
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Current Registration Status: ${context.registrationStatus}
+
+## Report Content to Register
+### Yesterday's Accomplishments
+${reportContent.yesterdayAccomplishments}
+
+### Today's Plans
+${reportContent.todayPlans}
+
+### Issues/Challenges
+${reportContent.issues}
+
+## Task
+Register the above report content to the management system using the provided API endpoint.
+
+## Requirements
+1. Validate that all required fields are present and properly formatted
+2. Prepare the report data in the format required by the management system API
+3. Attempt registration with proper error handling
+4. Record the registration timestamp and ID upon success
+5. If registration fails, determine whether escalation to human review is required
+
+## Management System Configuration
+- API Endpoint: ${managementSystemConfig.apiEndpoint}
+- Authentication: API Key provided
+
+## Success Criteria
+- Report is successfully registered with a unique registration ID
+- Timestamp is recorded in ISO 8601 format
+- All report content is accurately stored in the system
+
+## Escalation Triggers
+- Registration API returns an error
+- Report content is incomplete or malformed
+- System error prevents successful registration
+- Data validation fails
+
+Please proceed with the registration process and provide the result.`;
+
+  return prompt;
 }

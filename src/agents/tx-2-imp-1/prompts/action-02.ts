@@ -6,80 +6,90 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Action02PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
-  escalationContext?: string;
+  notificationRecipients: string[];
+  systemContext: string;
 }
 
 export interface Action02PromptOutput {
   prompt: string;
   version: string;
+  metadata: {
+    action: string;
+    contract: string;
+    purpose: string;
+  };
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
   const {
     reportingDeadline,
     overdueThresholdHours,
-    escalationContext = "",
+    notificationRecipients,
+    systemContext,
   } = input;
 
-  const systemInstructions = `You are an AI agent responsible for identifying unreported and delayed team members in the morning report management system.
+  const recipientList = notificationRecipients.join(", ");
 
-Your task is to:
-1. Analyze the confirmation email content to identify which team members have not submitted their daily reports
-2. Determine which team members have submitted reports but are past the deadline
-3. Create a comprehensive list of unreported and delayed members
-4. Prepare notification content for the department head
+  const prompt = `You are an AI agent responsible for monitoring daily report submission status and identifying unreported or delayed team members.
 
-Reporting Deadline: ${reportingDeadline}
-Overdue Threshold: ${overdueThresholdHours} hours past deadline
-${escalationContext ? `Additional Context: ${escalationContext}` : ""}
+## Context
+${systemContext}
 
-Classification Rules:
-- Unreported: No submission received by the deadline
-- Delayed: Submission received but after the deadline
-- On-time: Submission received before or at the deadline
+## Task: Identify Unreported and Delayed Team Members
 
-Output Format:
-Provide your analysis in the following JSON structure:
-{
-  "unreportedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "hoursOverdue": number
-    }
-  ],
-  "delayedMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "submissionTime": "ISO8601 timestamp",
-      "hoursLate": number
-    }
-  ],
-  "onTimeMembers": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "submissionTime": "ISO8601 timestamp"
-    }
-  ],
-  "summary": {
-    "totalMembers": number,
-    "unreportedCount": number,
-    "delayedCount": number,
-    "onTimeCount": number,
-    "complianceRate": number
-  },
-  "notificationContent": "string for department head notification"
-}`;
+### Reporting Deadline
+- Expected submission deadline: ${reportingDeadline}
+- Overdue threshold: ${overdueThresholdHours} hours after deadline
 
-  const userPrompt = `Please analyze the current report submission status and identify unreported and delayed team members. 
-Ensure accuracy in classification and provide clear, actionable information for the department head.`;
+### Notification Recipients
+- ${recipientList}
 
-  const fullPrompt = `${systemInstructions}\n\n${userPrompt}`;
+### Your Responsibilities
+
+1. **Check Submission Status**
+   - Verify all team members' daily report submission status
+   - Record submission timestamps for each member
+   - Identify members who have not submitted by the deadline
+
+2. **Classify Submission Status**
+   - On-time: Submitted before or at the deadline
+   - Delayed: Submitted after deadline but within grace period
+   - Unreported: Not submitted even after grace period
+
+3. **Generate Status Report**
+   - Create a comprehensive list of unreported members
+   - Create a list of delayed members with submission times
+   - Calculate total submission rate
+
+4. **Prepare Notification**
+   - Compile findings into a structured report
+   - Identify which members require follow-up
+   - Prepare notification content for department heads
+
+### Output Format
+
+Provide your analysis in the following structure:
+- Total team members monitored
+- On-time submissions count
+- Delayed submissions count (with member names and delay duration)
+- Unreported members count (with member names)
+- Overall submission rate percentage
+- Recommended actions for unreported members
+- Recommended actions for delayed members
+
+### Important Notes
+- Ensure accuracy in member identification
+- Double-check submission timestamps
+- Flag any system errors encountered during status check
+- Prepare clear, actionable information for department heads`;
 
   return {
-    prompt: fullPrompt,
+    prompt,
     version: ACTION_02_PROMPT_VERSION,
+    metadata: {
+      action: "action-02",
+      contract: "tx_2_imp_1",
+      purpose: "Monitor daily report submission status and identify unreported or delayed team members",
+    },
   };
 }

@@ -6,80 +6,214 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 export interface Action04Context {
   engineerId: string;
   engineerName: string;
-  reportDate: string;
-  submittedContent: {
-    yesterdayAccomplishment: string;
+  submittedReportContent: {
+    yesterdayAccomplishments: string;
     todayPlan: string;
     issues: string;
   };
   submissionTimestamp: string;
+  systemRegistrationId?: string;
 }
 
-export interface Action04ValidationResult {
+export interface Action04PromptInput {
+  context: Action04Context;
+  validationRules?: {
+    minAccomplishmentLength?: number;
+    minPlanLength?: number;
+    requireIssuesDescription?: boolean;
+  };
+}
+
+export interface Action04PromptOutput {
   isValid: boolean;
-  errors: string[];
-  warnings: string[];
+  validationErrors: string[];
+  registrationPayload: {
+    engineerId: string;
+    engineerName: string;
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+    submissionTimestamp: string;
+  };
+  confirmationEmailData: {
+    recipientEmail: string;
+    recipientName: string;
+    reportSummary: string;
+    registrationId: string;
+  };
 }
 
-export interface Action04RegistrationResult {
-  success: boolean;
-  reportId: string;
-  registeredAt: string;
-  message: string;
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const {
+    context,
+    validationRules = {
+      minAccomplishmentLength: 10,
+      minPlanLength: 10,
+      requireIssuesDescription: true,
+    },
+  } = input;
+
+  const {
+    engineerId,
+    engineerName,
+    submittedReportContent,
+    submissionTimestamp,
+  } = context;
+
+  const validationSection = buildValidationSection(
+    submittedReportContent,
+    validationRules
+  );
+
+  const registrationSection = buildRegistrationSection(
+    engineerId,
+    engineerName,
+    submittedReportContent,
+    submissionTimestamp
+  );
+
+  const confirmationSection = buildConfirmationEmailSection(
+    engineerName,
+    submittedReportContent
+  );
+
+  return `# Action 04: 日報の妥当性検証と管理システム登録
+
+## エンジニア情報
+- ID: ${engineerId}
+- 名前: ${engineerName}
+- 提出時刻: ${submissionTimestamp}
+
+## 提出内容
+### 昨日の実績
+${submittedReportContent.yesterdayAccomplishments}
+
+### 本日の予定
+${submittedReportContent.todayPlan}
+
+### 抱えている課題
+${submittedReportContent.issues}
+
+${validationSection}
+
+${registrationSection}
+
+${confirmationSection}
+
+## 実行指示
+1. 上記の検証ルールに基づいて入力内容の妥当性を判定してください
+2. 妥当性が確認できた場合、管理システムへの登録ペイロードを生成してください
+3. 登録完了後、確認メール配信用のデータを準備してください
+4. 検証エラーがある場合は、エラー内容を明確に列挙してください`;
 }
 
-export function buildAction04Prompt(context: Action04Context): string {
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
+function buildValidationSection(
+  content: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  },
+  rules: {
+    minAccomplishmentLength?: number;
+    minPlanLength?: number;
+    requireIssuesDescription?: boolean;
+  }
+): string {
+  const errors: string[] = [];
 
-## Task: Validate and Register Daily Report (Action 04)
+  if (
+    rules.minAccomplishmentLength &&
+    content.yesterdayAccomplishments.length < rules.minAccomplishmentLength
+  ) {
+    errors.push(
+      `昨日の実績が短すぎます（最小${rules.minAccomplishmentLength}文字）`
+    );
+  }
 
-### Input Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Timestamp: ${context.submissionTimestamp}
+  if (
+    rules.minPlanLength &&
+    content.todayPlan.length < rules.minPlanLength
+  ) {
+    errors.push(`本日の予定が短すぎます（最小${rules.minPlanLength}文字）`);
+  }
 
-### Submitted Content
-**Yesterday's Accomplishment:**
-${context.submittedContent.yesterdayAccomplishment}
+  if (
+    rules.requireIssuesDescription &&
+    (!content.issues || content.issues.trim().length === 0)
+  ) {
+    errors.push("抱えている課題の記述が必須です");
+  }
 
-**Today's Plan:**
-${context.submittedContent.todayPlan}
+  const errorList =
+    errors.length > 0
+      ? errors.map((e) => `  - ${e}`).join("\n")
+      : "  - 検出されたエラーなし";
 
-**Issues/Concerns:**
-${context.submittedContent.issues}
+  return `## 検証ルール
+- 昨日の実績の最小文字数: ${rules.minAccomplishmentLength || "指定なし"}
+- 本日の予定の最小文字数: ${rules.minPlanLength || "指定なし"}
+- 課題記述の必須性: ${rules.requireIssuesDescription ? "必須" : "任意"}
 
-### Validation Requirements
-1. Check that all three sections (yesterday's accomplishment, today's plan, issues) are filled in
-2. Verify that content is not empty or contains only whitespace
-3. Validate that content length is reasonable (not too short, not excessively long)
-4. Check for any inappropriate or suspicious content
-5. Ensure submission timestamp is within acceptable range
+## 検証結果
+${errorList}`;
+}
 
-### Registration Requirements
-Upon successful validation:
-1. Generate a unique report ID
-2. Record the submission timestamp
-3. Store all content in the management system
-4. Prepare for confirmation email dispatch
-
-### Output Format
-Provide your response as a JSON object with the following structure:
+function buildRegistrationSection(
+  engineerId: string,
+  engineerName: string,
+  content: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  },
+  submissionTimestamp: string
+): string {
+  return `## 管理システム登録ペイロード
+\`\`\`json
 {
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "reportId": string (if valid),
-  "registeredAt": string (ISO 8601 timestamp if valid),
-  "message": string
+  "engineerId": "${engineerId}",
+  "engineerName": "${engineerName}",
+  "yesterdayAccomplishments": "${escapeJsonString(content.yesterdayAccomplishments)}",
+  "todayPlan": "${escapeJsonString(content.todayPlan)}",
+  "issues": "${escapeJsonString(content.issues)}",
+  "submissionTimestamp": "${submissionTimestamp}",
+  "registrationStatus": "pending"
+}
+\`\`\``;
 }
 
-### Escalation Triggers
-- If content is incomplete or inappropriate, mark as invalid with clear error messages
-- If submission is significantly delayed, add warning but allow registration
-- If system error occurs during registration, return error status
+function buildConfirmationEmailSection(
+  engineerName: string,
+  content: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  }
+): string {
+  return `## 確認メール配信データ
+### メール件名
+日報登録完了のお知らせ - ${engineerName}
 
-Proceed with validation and registration.`;
+### メール本文
+${engineerName}様
 
-  return prompt;
+お疲れ様です。
+
+本日の日報が正常に登録されました。
+
+【登録内容】
+昨日の実績: ${content.yesterdayAccomplishments.substring(0, 50)}...
+本日の予定: ${content.todayPlan.substring(0, 50)}...
+抱えている課題: ${content.issues.substring(0, 50)}...
+
+ご確認ください。`;
+}
+
+function escapeJsonString(str: string): string {
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
 }

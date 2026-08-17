@@ -3,14 +3,12 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Context {
-  engineerInput: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-  };
-  engineerId: string;
+export interface Action02Input {
   engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
   submissionTimestamp: string;
 }
 
@@ -20,33 +18,57 @@ export interface Action02ValidationResult {
   warnings: string[];
 }
 
-export function buildAction02Prompt(context: Action02Context): string {
-  const prompt = `You are an AI agent responsible for validating daily report input content.
-
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Submission Time: ${context.submissionTimestamp}
-
-Input Content to Validate:
-- Yesterday's Accomplishments: ${context.engineerInput.yesterdayAccomplishments}
-- Today's Plans: ${context.engineerInput.todayPlans}
-- Current Issues: ${context.engineerInput.currentIssues}
-
-Your task is to validate the input content according to these criteria:
-1. Completeness: All three fields must have meaningful content (not empty or just whitespace)
-2. Appropriateness: Content should be work-related and relevant to daily reporting
-3. Clarity: Content should be clear and understandable
-4. Length: Each field should have reasonable length (not too short, not excessively long)
-
-Provide validation results in the following JSON format:
-{
-  "isValid": boolean,
-  "errors": [list of critical validation errors],
-  "warnings": [list of non-critical warnings]
+export interface Action02Context {
+  input: Action02Input;
+  validationResult: Action02ValidationResult;
 }
 
-Only respond with valid JSON, no additional text.`;
+export function buildAction02Prompt(context: Action02Context): string {
+  const { input, validationResult } = context;
 
-  return prompt;
+  const validationStatus = validationResult.isValid ? "✓ 検証成功" : "✗ 検証失敗";
+  const errorsSection =
+    validationResult.errors.length > 0
+      ? `\n\n【エラー】\n${validationResult.errors.map((e) => `- ${e}`).join("\n")}`
+      : "";
+  const warningsSection =
+    validationResult.warnings.length > 0
+      ? `\n\n【警告】\n${validationResult.warnings.map((w) => `- ${w}`).join("\n")}`
+      : "";
+
+  return `# Action 02: 入力内容の妥当性を検証する
+
+## 検証対象エンジニア
+- 名前: ${input.engineerName}
+- メール: ${input.engineerEmail}
+- 提出時刻: ${input.submissionTimestamp}
+
+## 入力内容
+### 昨日の実績
+${input.yesterdayAccomplishments || "（未入力）"}
+
+### 本日の予定
+${input.todayPlans || "（未入力）"}
+
+### 抱えている課題
+${input.currentIssues || "（未入力）"}
+
+## 検証結果
+${validationStatus}${errorsSection}${warningsSection}
+
+## 検証ルール
+1. 各項目が空でないこと
+2. 各項目が最低50文字以上であること
+3. 昨日の実績と本日の予定に矛盾がないこと
+4. 課題の記述が具体的であること
+
+## 指示
+以下の検証を実施し、結果を JSON 形式で返してください:
+{
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "shouldRegister": boolean,
+  "registrationReason": string
+}`;
 }

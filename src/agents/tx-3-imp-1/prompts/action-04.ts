@@ -13,146 +13,97 @@ export interface Action04PromptInput {
     lastReminderTime: string;
   }>;
   reminderRules?: {
-    maxReminders: number;
+    maxReminderCount: number;
     reminderIntervalMinutes: number;
   };
 }
 
 export interface Action04PromptOutput {
-  nonReportingEmployees: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    status: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
-  }>;
-  remindTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    email: string;
-    chatId?: string;
-    reminderType: "email" | "chat" | "both";
-    priority: "high" | "normal" | "low";
-    shouldRemind: boolean;
-    reason: string;
-  }>;
-  escalationCases: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: string;
-    requiresHumanReview: boolean;
-  }>;
-  summary: {
-    totalNonReporting: number;
-    totalRemindTargets: number;
-    totalEscalations: number;
-    executionTimestamp: string;
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: {
+    task: string;
+    constraints: string[];
+    expectedOutput: string;
   };
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reminderRules = input.reminderRules || {
-    maxReminders: 3,
-    reminderIntervalMinutes: 30,
-  };
+export function buildAction04Prompt(
+  input: Action04PromptInput
+): Action04PromptOutput {
+  const {
+    confirmationEmailContent,
+    reportingDeadline,
+    currentTimestamp,
+    previousReminders = [],
+    reminderRules = {
+      maxReminderCount: 3,
+      reminderIntervalMinutes: 30,
+    },
+  } = input;
 
-  const previousRemindersMap = new Map<string, { count: number; lastTime: string }>();
-  if (input.previousReminders) {
-    input.previousReminders.forEach((reminder) => {
-      previousRemindersMap.set(reminder.employeeId, {
-        count: reminder.reminderCount,
-        lastTime: reminder.lastReminderTime,
-      });
-    });
-  }
+  const systemPrompt = `You are an AI agent responsible for identifying unreported or delayed employees from confirmation email content and determining reminder targets. Your role is to:
+1. Parse confirmation email content to identify employees who have not submitted reports or submitted late
+2. Determine which employees should receive reminders based on the reminder rules
+3. Generate reminder messages for email and chat channels
+4. Log the results of reminder sending
 
-  const currentTime = new Date(input.currentTimestamp);
-  const deadline = new Date(input.reportingDeadline);
-  const isOverdue = currentTime > deadline;
-  const daysSinceDeadline = isOverdue
-    ? Math.floor((currentTime.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+You must follow these constraints:
+- Do not send reminders to employees who have already received ${reminderRules.maxReminderCount} reminders
+- Ensure at least ${reminderRules.reminderIntervalMinutes} minutes have passed since the last reminder
+- Classify employees into categories: not_submitted, submitted_late, submitted_on_time
+- Generate professional and concise reminder messages
+- Record all actions with timestamps for audit purposes`;
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting employees from confirmation email content and determining which ones should receive reminder notifications.
-
-Your task is to:
-1. Parse the confirmation email content to identify employees who have NOT submitted their daily reports
-2. Classify them as either "not_submitted" (before deadline) or "delayed" (after deadline)
-3. Determine which employees should receive reminders based on:
-   - Current reminder count (max: ${reminderRules.maxReminders})
-   - Time since last reminder (minimum interval: ${reminderRules.reminderIntervalMinutes} minutes)
-   - Escalation rules for repeated non-compliance
-4. Identify escalation cases that require human review
-
-Current Status:
-- Current Timestamp: ${input.currentTimestamp}
-- Reporting Deadline: ${input.reportingDeadline}
-- Is Overdue: ${isOverdue}
-- Days Since Deadline: ${daysSinceDeadline}
-- Max Reminders Allowed: ${reminderRules.maxReminders}
-- Minimum Reminder Interval: ${reminderRules.reminderIntervalMinutes} minutes
+  const userPrompt = `Process the following confirmation email content and determine reminder targets:
 
 Confirmation Email Content:
-${input.confirmationEmailContent}
+${confirmationEmailContent}
 
-Previous Reminder History:
+Reporting Deadline: ${reportingDeadline}
+Current Timestamp: ${currentTimestamp}
+
+Previous Reminders:
 ${
-  input.previousReminders && input.previousReminders.length > 0
-    ? input.previousReminders
+  previousReminders.length > 0
+    ? previousReminders
         .map(
           (r) =>
             `- Employee ID: ${r.employeeId}, Reminder Count: ${r.reminderCount}, Last Reminder: ${r.lastReminderTime}`
         )
         .join("\n")
-    : "No previous reminders"
+    : "None"
 }
 
-Reminder Decision Rules:
-1. If reminder count >= ${reminderRules.maxReminders}: escalate instead of sending reminder
-2. If last reminder was within ${reminderRules.reminderIntervalMinutes} minutes: do not send reminder yet
-3. If employee is delayed by more than 2 days: mark as high priority
-4. If same employee has been reminded 2+ times: escalate for human review
+Reminder Rules:
+- Maximum reminders per employee: ${reminderRules.maxReminderCount}
+- Minimum interval between reminders: ${reminderRules.reminderIntervalMinutes} minutes
 
-Output the analysis as a structured JSON object with the following format:
-{
-  "nonReportingEmployees": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "departmentId": "string",
-      "departmentName": "string",
-      "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "remindTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "email": "string",
-      "chatId": "string or null",
-      "reminderType": "email" | "chat" | "both",
-      "priority": "high" | "normal" | "low",
-      "shouldRemind": boolean,
-      "reason": "string explaining the decision"
-    }
-  ],
-  "escalationCases": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "string",
-      "requiresHumanReview": boolean
-    }
-  ],
-  "summary": {
-    "totalNonReporting": number,
-    "totalRemindTargets": number,
-    "totalEscalations": number,
-    "executionTimestamp": "${input.currentTimestamp}"
-  }
-}`;
+Please:
+1. Identify all employees from the confirmation email
+2. Classify each employee's submission status
+3. Determine which employees should receive reminders
+4. Generate reminder messages for each target employee
+5. Return the results in a structured format`;
 
-  return systemPrompt;
+  const context = {
+    task: "Identify unreported/delayed employees and send reminders",
+    constraints: [
+      "Respect maximum reminder count per employee",
+      "Maintain minimum interval between reminders",
+      "Only send reminders to employees who have not submitted or submitted late",
+      "Log all reminder actions with timestamps",
+      "Handle edge cases where employee data is incomplete",
+    ],
+    expectedOutput:
+      "Structured list of employees requiring reminders with generated messages for email and chat channels",
+  };
+
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

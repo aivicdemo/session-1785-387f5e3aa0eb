@@ -8,63 +8,75 @@ export interface Action06Context {
   engineerEmail: string;
   reportDate: string;
   submissionDeadline: string;
-  previousReportTemplate?: string;
-  systemName: string;
+  previousReportTemplate?: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
+  systemConfig: {
+    mailSystemApiEndpoint: string;
+    reportManagementSystemApiEndpoint: string;
+    adminEmail: string;
+  };
 }
 
 export interface Action06PromptResult {
   version: string;
   action: string;
-  systemPrompt: string;
-  userPrompt: string;
+  objective: string;
+  instructions: string[];
   context: Action06Context;
+  expectedOutput: {
+    confirmationEmailSent: boolean;
+    emailContent: string;
+    recipientList: string[];
+    timestamp: string;
+  };
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management workflow.
-Your role is to send reminder notifications to engineers who have not submitted their reports by the deadline.
-You must:
-1. Determine if a reminder notification should be sent based on submission status
-2. Compose a professional and encouraging reminder message
-3. Log the notification action for audit purposes
-4. Handle escalation cases where multiple reminders have been sent
+  const instructions = [
+    "確認メールの送信対象を確認する",
+    "メール本文に日報提出期限と提出方法を明記する",
+    "管理者と該当エンジニアに確認メールを自動配信する",
+    "送信結果をログに記録する",
+    "送信失敗時はエスカレーション条件を判定する"
+  ];
 
-Context:
-- System Name: ${context.systemName}
-- Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
+  const emailContent = `
+【日報提出のお願い】
 
-Guidelines:
-- Keep reminder messages concise and professional
-- Include the deadline and submission instructions
-- Avoid aggressive or accusatory language
-- Track reminder frequency to prevent over-notification
-- Escalate to human review if multiple reminders have been sent without response`;
+${context.engineerName} 様
 
-  const userPrompt = `Send a reminder notification for the following engineer:
+本日の日報提出をお願いします。
 
-Engineer Name: ${context.engineerName}
-Engineer Email: ${context.engineerEmail}
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
+【提出期限】
+${context.submissionDeadline}
 
-Task:
-1. Compose a reminder notification message
-2. Determine the appropriate delivery channel (email/chat)
-3. Log the notification action with timestamp
-4. Return the notification details for confirmation
+【提出内容】
+- 昨日の実績
+- 本日の予定
+- 抱えている課題
 
-Please provide:
-- Notification message content
-- Recommended delivery channel
-- Escalation flag (if applicable)
-- Audit log entry`;
+【提出方法】
+日報管理システムにログインし、フォームに入力してください。
+
+ご不明な点はお気軽にお問い合わせください。
+`;
+
+  const recipientList = [context.engineerEmail, context.systemConfig.adminEmail];
 
   return {
     version: ACTION_06_PROMPT_VERSION,
     action: "action-06",
-    systemPrompt,
-    userPrompt,
+    objective: "管理者に確認メールを自動配信する",
+    instructions,
     context,
+    expectedOutput: {
+      confirmationEmailSent: true,
+      emailContent,
+      recipientList,
+      timestamp: new Date().toISOString()
+    }
   };
 }

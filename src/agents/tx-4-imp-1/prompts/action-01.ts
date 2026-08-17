@@ -15,44 +15,65 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
+    targetAudience: string;
+  };
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const { reportDate, engineerName, engineerId, previousReportContent, systemContext } = input;
+export function buildAction01Prompt(
+  input: Action01PromptInput
+): {
+  systemPrompt: string;
+  userPrompt: string;
+  expectedOutputFormat: string;
+} {
+  const systemPrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
+Your role is to:
+1. Generate a structured daily report template based on the engineer's previous reports
+2. Determine the optimal distribution channels (email, chat, etc.)
+3. Schedule the distribution at the appropriate time
+4. Ensure the template is clear and encourages complete information submission
 
-  const previousContext = previousReportContent
-    ? `\n前日の日報内容:\n${previousReportContent}`
-    : "";
+Context:
+- Report Date: ${input.reportDate}
+- Target Engineer: ${input.engineerName} (ID: ${input.engineerId})
+- System Context: ${JSON.stringify(input.systemContext || {})}
 
-  const systemInfo = systemContext
-    ? `\nシステムコンテキスト: ${JSON.stringify(systemContext)}`
-    : "";
+Previous Report Reference:
+${input.previousReportContent || "No previous report available"}
 
-  return `あなたは朝会報告管理システムのAIエージェントです。
+Generate a comprehensive daily report template that includes sections for:
+- Yesterday's achievements
+- Today's planned tasks
+- Current challenges/blockers
+- Risk assessment
+- Dependencies on other team members`;
 
-【タスク】
-エンジニア「${engineerName}」(ID: ${engineerId})に対して、${reportDate}の日報テンプレートを自動生成して配信してください。
+  const userPrompt = `Generate a daily report template for ${input.engineerName} on ${input.reportDate}.
+The template should be:
+1. Clear and easy to fill out
+2. Structured with specific sections
+3. Encouraging detailed but concise responses
+4. Formatted for both email and chat distribution
 
-【日報テンプレートの構成要素】
-1. 昨日の実績（前日の進捗状況、完了したタスク）
-2. 本日の予定（本日実施予定のタスク、目標）
-3. 抱えている課題（現在の課題、ボトルネック、懸念事項）
+Return the template content, recommended distribution channels, and optimal send time.`;
 
-【出力形式】
-以下のJSON形式で返してください:
-{
-  "templateContent": "生成されたテンプレート本文",
-  "distributionChannels": ["email", "chat"],
-  "scheduledTime": "配信予定時刻（HH:MM形式）"
-}
+  const expectedOutputFormat = `{
+  "templateContent": "string - the actual template text",
+  "distributionChannels": ["email", "chat", "system"],
+  "scheduledTime": "ISO 8601 timestamp",
+  "metadata": {
+    "version": "string",
+    "generatedAt": "ISO 8601 timestamp",
+    "targetAudience": "string"
+  }
+}`;
 
-【前提条件】
-- テンプレートは簡潔で、エンジニアが5分以内に入力完了できる分量にしてください
-- 前日の内容がある場合は参考にしてください${previousContext}
-${systemInfo}
-
-【制約】
-- テンプレートは日本語で作成してください
-- 配信チャネルはメール、チャットツール、または両方を指定してください
-- 配信時刻は営業開始時刻の30分前を推奨してください`;
+  return {
+    systemPrompt,
+    userPrompt,
+    expectedOutputFormat,
+  };
 }
