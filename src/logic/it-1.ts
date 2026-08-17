@@ -1332,7 +1332,7 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
       errors: [],
       isSubmitted: true,
       confirmationEmailSent: true,
-      report_id: `report_${submissionDate}_${submissionId.substring(0, 8)}`,
+      report_id: `report_${submittedAt.toISOString().split('T')[0]}_${submissionId.substring(0, 8)}`,
       recordId: submissionId,
       submitted_at: submittedAt,
       submittedAt: submittedAt,
@@ -2964,12 +2964,11 @@ const __aivicBundle_sendConfirmationEmail = (() => {
       emailLogId = `email_log_${randomUUID()}`;
     }
 
-    const { randomUUID } = require('crypto');
     return {
       success: true,
       emailSent: true,
       dataSaved: !!reportData.database,
-      messageId: `msg_${randomUUID()}`,
+      messageId: `msg_${require('crypto').randomUUID()}`,
       sent: true,
       email_log_id: emailLogId,
     };
@@ -3927,7 +3926,7 @@ export const validateReportBeforeSend = __aivicBundle_45_validateReportBeforeSen
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportBeforeSend */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportInput exports=validateReportInput */
-const __aivicBundle_46_validateReportInput = (() => {
+const __aivicBundle_validateReportInput_fixed = (() => {
   function validateReportInput(input: {
     yesterday_achievement?: string;
     yesterdayWork?: string;
@@ -3937,39 +3936,39 @@ const __aivicBundle_46_validateReportInput = (() => {
     currentIssue?: string;
   }): { isValid: boolean; errors: Array<{ field: string; reason: string }> } {
     const errors: Array<{ field: string; reason: string }> = [];
-  
+
     const yesterdayWork = input.yesterday_achievement ?? input.yesterdayWork ?? '';
     const todayPlan = input.today_plan ?? input.todayPlan ?? '';
     const currentIssue = input.current_issue ?? input.currentIssue ?? '';
-  
+
     if (yesterdayWork.length === 0 || yesterdayWork.length > 500) {
       errors.push({
         field: 'yesterday_achievement',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-  
+
     if (/<[^>]*>/g.test(yesterdayWork)) {
       errors.push({
         field: 'yesterday_achievement',
         reason: '形式が不正です',
       });
     }
-  
+
     if (todayPlan.length === 0 || todayPlan.length > 500) {
       errors.push({
         field: 'today_plan',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-  
+
     if (currentIssue.length === 0 || currentIssue.length > 500) {
       errors.push({
         field: 'current_issue',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-  
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -3977,7 +3976,7 @@ const __aivicBundle_46_validateReportInput = (() => {
   }
   return { validateReportInput };
 })();
-export const validateReportInput = __aivicBundle_46_validateReportInput.validateReportInput;
+export const validateReportInput = __aivicBundle_validateReportInput_fixed.validateReportInput;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportInput */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=submitReportForm exports=submitReportForm */

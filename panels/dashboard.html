@@ -18,7 +18,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
+            background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 30px;
@@ -35,49 +35,54 @@
             font-size: 28px;
             color: #333;
         }
+        .user-info {
+            text-align: right;
+            font-size: 14px;
+            color: #666;
+        }
+        .user-info div {
+            margin: 5px 0;
+        }
         .nav-buttons {
             display: flex;
             gap: 10px;
+            margin-bottom: 20px;
         }
-        .nav-buttons a {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
+        .nav-buttons button {
+            padding: 10px 16px;
+            font-size: 13px;
+            border: none;
             border-radius: 4px;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
+            background-color: #6c757d;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
-        .nav-buttons a:hover {
-            background-color: #0056b3;
+        .nav-buttons button:hover {
+            background-color: #545b62;
         }
         .deadline-section {
             background-color: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
             padding: 20px;
             margin-bottom: 30px;
         }
         .deadline-section h2 {
-            font-size: 16px;
             color: #856404;
+            font-size: 18px;
             margin-bottom: 10px;
         }
-        .deadline-badge {
-            display: inline-block;
-            background-color: #ffc107;
+        .deadline-content {
+            font-size: 16px;
             color: #333;
-            padding: 8px 16px;
-            border-radius: 20px;
             font-weight: 600;
-            font-size: 14px;
         }
         .summary-section {
             margin-bottom: 30px;
         }
         .summary-section h2 {
-            font-size: 20px;
+            font-size: 22px;
             color: #333;
             margin-bottom: 20px;
             border-left: 4px solid #007bff;
@@ -88,34 +93,45 @@
             border-collapse: collapse;
             background-color: #f9f9f9;
         }
-        .summary-table th {
+        .summary-table thead {
             background-color: #007bff;
             color: white;
+        }
+        .summary-table th {
             padding: 15px;
             text-align: left;
             font-weight: 600;
-            font-size: 14px;
+            border: 1px solid #ddd;
         }
         .summary-table td {
             padding: 15px;
-            border-bottom: 1px solid #ddd;
-            font-size: 14px;
+            border: 1px solid #ddd;
         }
-        .summary-table tr:hover {
+        .summary-table tbody tr:hover {
             background-color: #f0f0f0;
+        }
+        .submission-rate {
+            font-weight: 600;
+            color: #007bff;
+        }
+        .submission-rate.high {
+            color: #28a745;
+        }
+        .submission-rate.low {
+            color: #dc3545;
         }
         .progress-bar {
             width: 100%;
-            height: 24px;
-            background-color: #e0e0e0;
-            border-radius: 4px;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
             overflow: hidden;
-            display: flex;
-            align-items: center;
+            margin-top: 5px;
         }
         .progress-fill {
             height: 100%;
             background-color: #28a745;
+            transition: width 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -123,13 +139,12 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .status-submitted {
-            color: #28a745;
-            font-weight: 600;
+        .progress-fill.warning {
+            background-color: #ffc107;
+            color: #333;
         }
-        .status-pending {
-            color: #dc3545;
-            font-weight: 600;
+        .progress-fill.danger {
+            background-color: #dc3545;
         }
     </style>
 </head>
@@ -137,14 +152,22 @@
     <div class="container">
         <div class="header">
             <h1>日報提出状況ダッシュボード</h1>
-            <div class="nav-buttons">
-                <a href="./daily-report.html">日報入力へ</a>
+            <div class="user-info">
+                <div>ユーザー: <span id="userName">-</span></div>
+                <div>メール: <span id="userEmail">-</span></div>
             </div>
+        </div>
+
+        <div class="nav-buttons">
+            <button onclick="goToReport()">日報入力・送信</button>
+            <button onclick="logout()">ログアウト</button>
         </div>
 
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <div class="deadline-badge" id="deadlineDisplay">本日 18:00</div>
+            <div class="deadline-content" id="deadlineContent">
+                本日 17:00 までに提出してください
+            </div>
         </div>
 
         <div class="summary-section">
@@ -155,13 +178,59 @@
                         <th>部門名</th>
                         <th>提出済み</th>
                         <th>未提出</th>
+                        <th>合計</th>
                         <th>提出率</th>
                         <th>進捗</th>
                     </tr>
                 </thead>
                 <tbody id="summaryTableBody">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #999;">読み込み中...</td>
+                        <td>営業部</td>
+                        <td>8</td>
+                        <td>2</td>
+                        <td>10</td>
+                        <td class="submission-rate high">80%</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 80%;">80%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>企画部</td>
+                        <td>5</td>
+                        <td>3</td>
+                        <td>8</td>
+                        <td class="submission-rate warning">62.5%</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 62.5%;">62.5%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>技術部</td>
+                        <td>12</td>
+                        <td>0</td>
+                        <td>12</td>
+                        <td class="submission-rate high">100%</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%;">100%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>管理部</td>
+                        <td>4</td>
+                        <td>1</td>
+                        <td>5</td>
+                        <td class="submission-rate high">80%</td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 80%;">80%</div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -169,51 +238,30 @@
     </div>
 
     <script>
+        let currentUser = null;
+
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadDashboardData();
+            await initializePage();
         });
 
-        async function loadDashboardData() {
-            try {
-                const response = await fetch('/api/dashboard');
-                if (response.ok) {
-                    const data = await response.json();
-                    renderSummary(data.departments);
-                    updateDeadline(data.deadline);
-                } else {
-                    console.error('Failed to load dashboard data');
-                }
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
+        async function initializePage() {
+            const userStr = sessionStorage.getItem('currentUser');
+            if (!userStr) {
+                window.location.href = './login.html';
+                return;
             }
+            currentUser = JSON.parse(userStr);
+            document.getElementById('userName').textContent = currentUser.name || currentUser.userId;
+            document.getElementById('userEmail').textContent = currentUser.email || '-';
         }
 
-        function renderSummary(departments) {
-            const tbody = document.getElementById('summaryTableBody');
-            tbody.innerHTML = departments.map(dept => {
-                const total = dept.submitted + dept.pending;
-                const rate = total > 0 ? Math.round((dept.submitted / total) * 100) : 0;
-                return `
-                    <tr>
-                        <td>${dept.name}</td>
-                        <td><span class="status-submitted">${dept.submitted}</span></td>
-                        <td><span class="status-pending">${dept.pending}</span></td>
-                        <td>${rate}%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${rate}%">${rate}%</div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+        function goToReport() {
+            window.location.href = './daily-report.html';
         }
 
-        function updateDeadline(deadline) {
-            const deadlineDisplay = document.getElementById('deadlineDisplay');
-            if (deadline) {
-                deadlineDisplay.textContent = deadline;
-            }
+        function logout() {
+            sessionStorage.removeItem('currentUser');
+            window.location.href = './login.html';
         }
     </script>
 </body>
