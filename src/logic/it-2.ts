@@ -130,6 +130,7 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
   interface SendConfirmationEmailResult {
     success: boolean;
     error_message?: string;
+    email_sent?: boolean;
   }
 
   function sendConfirmationEmail(
@@ -185,6 +186,7 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
       return {
         success: false,
         error_message: "送信者メールアドレスが空文字のため、メール送信を中断します",
+        email_sent: false,
       };
     }
 
@@ -193,11 +195,13 @@ const __aivicBundle_2_sendConfirmationEmail = (() => {
       return {
         success: false,
         error_message: "受信者メールアドレスが空文字のため、メール送信を中断します",
+        email_sent: false,
       };
     }
 
     return {
       success: true,
+      email_sent: true,
     };
   }
   return { sendConfirmationEmail };

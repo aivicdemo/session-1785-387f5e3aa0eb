@@ -1906,7 +1906,7 @@ export const validateAndSubmitDailyReport = __aivicBundle_validateAndSubmitDaily
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateMorningReportSubmission exports=validateMorningReportSubmission */
-const __aivicBundle_17_validateMorningReportSubmission = (() => {
+const __aivicBundle_17_validateMorningReportSubmission_fixed = (() => {
   function validateMorningReportSubmission(input: {
     yesterday_achievement?: string;
     today_plan?: string;
@@ -2084,7 +2084,7 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
   }
   return { validateMorningReportSubmission };
 })();
-export const validateMorningReportSubmission = __aivicBundle_17_validateMorningReportSubmission.validateMorningReportSubmission;
+export const validateMorningReportSubmission = __aivicBundle_17_validateMorningReportSubmission_fixed.validateMorningReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateMorningReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReport exports=validateDailyReport */
@@ -2957,7 +2957,6 @@ const __aivicBundle_sendConfirmationEmail_fixed = (() => {
       }
     }
 
-    const { randomUUID } = require('crypto');
     let emailLogId: string | undefined;
     if (reportData.database) {
       emailLogId = `email_log_${randomUUID()}`;
