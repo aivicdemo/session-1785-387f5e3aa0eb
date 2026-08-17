@@ -4,78 +4,115 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportingDeadline: string;
-  overdueThresholdHours: number;
-  notificationChannels: string[];
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalHours: number;
-  };
+  submissionDeadline: string;
+  targetDate: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  submittedEngineers: Array<{
+    id: string;
+    name: string;
+    submittedAt: string;
+  }>;
+  systemTime: string;
 }
 
 export interface Action02PromptOutput {
-  overdueEngineers: Array<{
-    engineerId: string;
-    engineerName: string;
-    submissionTime: string | null;
+  notSubmittedEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    status: "not_submitted" | "delayed";
     hoursOverdue: number;
-    reminderCount: number;
   }>;
-  notificationsSent: Array<{
-    engineerId: string;
-    channel: string;
-    timestamp: string;
-    status: "sent" | "failed";
-  }>;
-  escalationTriggered: boolean;
-  escalationReason?: string;
+  submissionStatus: {
+    total: number;
+    submitted: number;
+    notSubmitted: number;
+    delayed: number;
+  };
+  notificationRequired: boolean;
+  urgencyLevel: "low" | "medium" | "high";
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
-  const deadlineDate = new Date(input.reportingDeadline);
-  const currentTime = new Date();
-  const hoursUntilDeadline = (deadlineDate.getTime() - currentTime.getTime()) / (1000 * 60 * 60);
+  const notSubmittedList = input.engineerList.filter(
+    (engineer) =>
+      !input.submittedEngineers.some((submitted) => submitted.id === engineer.id)
+  );
 
-  const channelList = input.notificationChannels.join(", ");
-  const maxReminders = input.escalationRules.maxReminders;
-  const reminderInterval = input.escalationRules.reminderIntervalHours;
+  const systemTimeDate = new Date(input.systemTime);
+  const deadlineDate = new Date(input.submissionDeadline);
+  const isOverdue = systemTimeDate > deadlineDate;
+  const hoursOverdue = isOverdue
+    ? Math.floor(
+        (systemTimeDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60)
+      )
+    : 0;
 
-  return `You are an AI agent responsible for monitoring daily report submission status and sending reminders to overdue engineers.
+  const submissionStatus = {
+    total: input.engineerList.length,
+    submitted: input.submittedEngineers.length,
+    notSubmitted: notSubmittedList.length,
+    delayed: isOverdue ? input.submittedEngineers.length : 0,
+  };
 
-## Current Task: Identify Overdue Reports and Send Notifications
+  const urgencyLevel =
+    notSubmittedList.length === 0
+      ? "low"
+      : notSubmittedList.length <= 2
+        ? "medium"
+        : "high";
 
-### Deadline Information
-- Reporting Deadline: ${input.reportingDeadline}
-- Current Time: ${currentTime.toISOString()}
-- Hours Until Deadline: ${hoursUntilDeadline.toFixed(2)}
-- Overdue Threshold: ${input.overdueThresholdHours} hours
+  const prompt = `# 日報未提出者自動判定プロンプト
 
-### Notification Configuration
-- Available Channels: ${channelList}
-- Maximum Reminders per Engineer: ${maxReminders}
-- Reminder Interval: ${reminderInterval} hours
+## 実行日時
+${input.systemTime}
 
-### Your Responsibilities
-1. Identify all engineers whose reports are overdue by more than ${input.overdueThresholdHours} hours
-2. Check the reminder history for each overdue engineer
-3. Send notifications through available channels if reminder limit not exceeded
-4. Track all notifications sent with timestamps and status
-5. Determine if escalation to management is required
+## 対象日付
+${input.targetDate}
 
-### Escalation Criteria
-- Engineer has received ${maxReminders} reminders and still hasn't submitted
-- System error prevents notification delivery
-- Multiple engineers are overdue simultaneously
+## 提出期限
+${input.submissionDeadline}
 
-### Output Format
-Provide a structured response containing:
-- List of overdue engineers with submission status
-- Notifications sent (channel, timestamp, status)
-- Escalation decision and reasoning if applicable
+## 提出状況サマリー
+- 総人数: ${submissionStatus.total}名
+- 提出済み: ${submissionStatus.submitted}名
+- 未提出: ${submissionStatus.notSubmitted}名
+${isOverdue ? `- 期限超過時間: ${hoursOverdue}時間` : ""}
 
-### Important Notes
-- Do not send more than ${maxReminders} reminders to the same engineer
-- Respect the ${reminderInterval}-hour interval between reminders
-- Log all actions with precise timestamps
-- Prioritize escalation for engineers with highest overdue duration`;
+## 未提出者一覧
+${
+  notSubmittedList.length > 0
+    ? notSubmittedList
+        .map(
+          (engineer) =>
+            `- ${engineer.name} (ID: ${engineer.id}, Email: ${engineer.email})`
+        )
+        .join("\n")
+    : "なし"
+}
+
+## 判定ルール
+1. 提出期限を過ぎている場合、未提出者を「遅延」として判定
+2. 未提出者が全体の30%以上の場合、緊急度を「高」に設定
+3. 未提出者が1～2名の場合、緊急度を「中」に設定
+4. 未提出者がいない場合、緊急度を「低」に設定
+
+## 出力形式
+以下の情報を構造化して返却してください:
+- 未提出者の詳細リスト（ID、名前、メール、ステータス、超過時間）
+- 提出状況の集計
+- 通知の必要性判定
+- 緊急度レベル（low/medium/high）
+
+## 処理指示
+1. 未提出者を正確に特定する
+2. 提出期限超過の有無を判定する
+3. 緊急度を自動判定する
+4. 部長への通知メール送信の要否を判定する`;
+
+  return prompt;
 }

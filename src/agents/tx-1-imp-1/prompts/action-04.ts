@@ -13,88 +13,77 @@ export interface Action04Context {
     issues: string;
   };
   submissionDeadline: string;
-  systemTimestamp: string;
+  systemRegistrationStatus: "pending" | "success" | "failed";
 }
 
-export interface Action04ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  validatedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
+export interface Action04PromptResult {
+  version: string;
+  action: "validate_and_register";
+  instructions: string;
+  validationRules: {
+    requiredFields: string[];
+    contentLengthLimits: {
+      yesterday: { min: number; max: number };
+      today: { min: number; max: number };
+      issues: { min: number; max: number };
+    };
+    forbiddenPatterns: string[];
+  };
+  registrationInstructions: string;
+  errorHandling: {
+    incompleteContent: string;
+    inappropriateContent: string;
+    systemError: string;
   };
 }
 
-export function buildAction04Prompt(context: Action04Context): string {
-  const {
-    engineerId,
-    engineerName,
-    reportDate,
-    previousReportContent,
-    submissionDeadline,
-    systemTimestamp,
-  } = context;
+export function buildAction04Prompt(context: Action04Context): Action04PromptResult {
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    action: "validate_and_register",
+    instructions: `
+You are processing the daily report submission for engineer ${context.engineerName} (ID: ${context.engineerId}).
+The report date is ${context.reportDate} and the submission deadline is ${context.submissionDeadline}.
 
-  const promptContent = `# 日報入力内容の妥当性検証タスク
+Your task is to:
+1. Validate the completeness and appropriateness of the submitted report content
+2. Register the validated report into the management system
+3. Identify any issues that require escalation
 
-## タスク概要
-エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
+Report content to validate:
+- Yesterday's achievements: ${context.previousReportContent.yesterday}
+- Today's schedule: ${context.previousReportContent.today}
+- Current issues: ${context.previousReportContent.issues}
 
-## 対象エンジニア情報
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- システム時刻: ${systemTimestamp}
-- 提出期限: ${submissionDeadline}
-
-## 受け取った入力内容
-### 昨日の実績
-${previousReportContent.yesterday}
-
-### 本日の予定
-${previousReportContent.today}
-
-### 抱えている課題
-${previousReportContent.issues}
-
-## 検証基準
-1. **完全性チェック**
-   - 各項目が空白でないこと
-   - 最小文字数（各項目50文字以上）を満たしていること
-   - 必須情報が含まれていること
-
-2. **適切性チェック**
-   - 昨日の実績が具体的で測定可能であること
-   - 本日の予定が現実的で達成可能であること
-   - 課題が明確に記述されていること
-   - 日本語として正しく記述されていること
-
-3. **一貫性チェック**
-   - 昨日の実績と本日の予定に矛盾がないこと
-   - 課題が実績・予定と関連していること
-
-4. **タイムリネスチェック**
-   - 提出期限内であること
-
-## 出力形式
-JSON形式で以下の構造で返してください：
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "validatedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
-}
-
-## 注記
-- errorsは登録を阻止する重大な問題
-- warningsは登録は可能だが改善が望ましい問題
-- validatedContentは検証後の最終内容（修正が必要な場合は修正版を返す）`;
-
-  return promptContent;
+Current system registration status: ${context.systemRegistrationStatus}
+    `,
+    validationRules: {
+      requiredFields: ["yesterday", "today", "issues"],
+      contentLengthLimits: {
+        yesterday: { min: 10, max: 500 },
+        today: { min: 10, max: 500 },
+        issues: { min: 0, max: 500 },
+      },
+      forbiddenPatterns: [
+        "^\\s*$",
+        "^test$",
+        "^dummy$",
+        "^placeholder$",
+      ],
+    },
+    registrationInstructions: `
+After validation passes, register the report with the following steps:
+1. Verify all required fields contain valid content
+2. Check content length constraints are met
+3. Ensure no forbidden patterns are present
+4. Submit to management system API
+5. Record registration timestamp and status
+6. Generate confirmation for admin notification
+    `,
+    errorHandling: {
+      incompleteContent: "Report is missing required fields or content is too short. Request resubmission from engineer.",
+      inappropriateContent: "Report content contains inappropriate or suspicious patterns. Flag for human review before registration.",
+      systemError: "System registration failed. Log error details and escalate to system administrator.",
+    },
+  };
 }

@@ -7,82 +7,67 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTime: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemApiEndpoint: string;
+  adminEmail: string;
 }
 
-export interface Action06PromptResult {
-  version: string;
-  action: number;
-  prompt: string;
-  instructions: string[];
-  context: Action06Context;
+export interface Action06Result {
+  success: boolean;
+  confirmationEmailSent: boolean;
+  adminNotified: boolean;
+  timestamp: string;
+  message: string;
 }
 
-export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const instructions = [
-    "提出期限を超過したエンジニアに対して、催促通知を送信する準備を行う",
-    "催促通知の内容を生成する際、エンジニアの名前と超過日数を含める",
-    "催促通知は丁寧かつ促進的なトーンで作成する",
-    "超過日数に応じて催促の強度を調整する",
-    "催促通知の送信対象と内容を確認可能な形式で出力する",
-  ];
+export function buildAction06Prompt(context: Action06Context): string {
+  const promptContent = `
+You are an automated daily report management agent. Your task is to send confirmation emails to administrators after a daily report has been successfully registered in the management system.
 
-  const prompt = generateAction06Prompt(context);
+## Context
+- Engineer Name: ${context.engineerName}
+- Engineer Email: ${context.engineerEmail}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
+- Admin Email: ${context.adminEmail}
+- System API Endpoint: ${context.systemApiEndpoint}
 
-  return {
-    version: ACTION_06_PROMPT_VERSION,
-    action: 6,
-    prompt,
-    instructions,
-    context,
-  };
-}
+## Task: Send Confirmation Email to Administrator
 
-function generateAction06Prompt(context: Action06Context): string {
-  const basePrompt = `
-あなたは朝会報告管理システムのAIエージェントです。
-現在、提出期限を超過したエンジニアへの催促通知を送信する段階にあります。
+Your responsibilities:
+1. Verify that the daily report has been successfully registered in the management system
+2. Prepare a confirmation email summarizing the report submission
+3. Send the confirmation email to the administrator
+4. Log the email delivery status
+5. Handle any delivery failures gracefully
 
-【対象エンジニア情報】
-- 名前: ${context.engineerName}
-- メールアドレス: ${context.engineerEmail}
-- 報告対象日: ${context.reportDate}
-- 提出時刻: ${context.submissionTime}
-- 超過日数: ${context.daysOverdue}日
+## Confirmation Email Requirements
+- Subject: Daily Report Submission Confirmation - ${context.engineerName} (${context.reportDate})
+- Include: Engineer name, submission timestamp, report date, and confirmation of successful registration
+- Format: Professional and concise
+- Recipient: ${context.adminEmail}
 
-【タスク】
-1. 上記のエンジニアが提出期限を${context.daysOverdue}日超過していることを確認する
-2. 催促通知メールの内容を生成する
-3. 催促通知には以下の要素を含める:
-   - エンジニアへの敬意を示す挨拶
-   - 未提出の日報に関する具体的な情報
-   - 提出期限の超過日数
-   - 早急な提出を促すメッセージ
-   - 提出方法の確認
-4. 催促通知の送信準備状況をJSON形式で出力する
+## Success Criteria
+- Confirmation email is successfully sent to the administrator
+- Email delivery is logged with timestamp
+- No errors occur during the sending process
+- Administrator receives notification within 5 minutes of report registration
 
-【出力形式】
+## Error Handling
+- If email delivery fails, log the error and attempt retry up to 3 times
+- If system API is unreachable, escalate to human review
+- If administrator email is invalid, notify the system administrator
+
+Return a JSON object with the following structure:
 {
-  "targetEngineer": "${context.engineerName}",
-  "targetEmail": "${context.engineerEmail}",
-  "reportDate": "${context.reportDate}",
-  "overdueStatus": {
-    "isOverdue": ${context.isLate},
-    "daysOverdue": ${context.daysOverdue}
-  },
-  "notificationContent": {
-    "subject": "催促通知のサブジェクト",
-    "body": "催促通知の本文"
-  },
-  "readyToSend": true,
-  "timestamp": "${new Date().toISOString()}"
+  "success": boolean,
+  "confirmationEmailSent": boolean,
+  "adminNotified": boolean,
+  "timestamp": string (ISO 8601 format),
+  "message": string
 }
 `;
 
-  return basePrompt;
+  return promptContent;
 }

@@ -9,7 +9,7 @@ interface LogEntry {
   timestamp: string;
 }
 
-const logStore: LogEntry[] = [];
+const logs: LogEntry[] = [];
 
 export function warn(message: string): void {
   const entry: LogEntry = {
@@ -17,7 +17,7 @@ export function warn(message: string): void {
     message,
     timestamp: new Date().toISOString(),
   };
-  logStore.push(entry);
+  logs.push(entry);
 }
 
 export function info(message: string): void {
@@ -26,5 +26,5 @@ export function info(message: string): void {
     message,
     timestamp: new Date().toISOString(),
   };
-  logStore.push(entry);
+  logs.push(entry);
 }

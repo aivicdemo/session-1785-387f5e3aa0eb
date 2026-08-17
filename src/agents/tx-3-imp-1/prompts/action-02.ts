@@ -6,140 +6,111 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Tx3Imp1ConfirmationEmailContent {
   emailId: string;
   sentAt: string;
-  recipientId: string;
+  recipientEmail: string;
   recipientName: string;
   subject: string;
   body: string;
-  reportStatus: {
-    submitted: boolean;
+  reportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "submitted" | "pending" | "overdue";
     submittedAt?: string;
-    reportContent?: {
-      yesterdayAccomplishment: string;
-      todayPlan: string;
-      issues: string;
-    };
-  };
+  }>;
 }
 
 export interface Tx3Imp1PromptContext {
-  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent[];
+  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThreshold: number;
-  previousReminders: Array<{
-    recipientId: string;
-    reminderCount: number;
-    lastReminderAt: string;
-  }>;
+  escalationThresholdMinutes: number;
 }
 
-export interface Tx3Imp1IdentifiedNonSubmitter {
-  recipientId: string;
-  recipientName: string;
-  status: "not_submitted" | "delayed";
-  daysSinceDeadline: number;
-  previousReminderCount: number;
+export interface Tx3Imp1IdentifiedMember {
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  status: "not_submitted" | "overdue" | "submitted";
+  hoursOverdue?: number;
+  lastReminderSentAt?: string;
+  reminderCount: number;
 }
 
-export interface Tx3Imp1RemindTarget {
-  recipientId: string;
-  recipientName: string;
-  reminderType: "email" | "chat" | "both";
-  priority: "normal" | "high";
-  message: string;
+export interface Tx3Imp1Action02Output {
+  identifiedMembers: Tx3Imp1IdentifiedMember[];
+  totalNotSubmitted: number;
+  totalOverdue: number;
+  analysisTimestamp: string;
+  emailContentId: string;
 }
 
-export interface Tx3Imp1PromptOutput {
-  identifiedNonSubmitters: Tx3Imp1IdentifiedNonSubmitter[];
-  remindTargets: Tx3Imp1RemindTarget[];
-  escalationCases: Array<{
-    recipientId: string;
-    reason: string;
-    recommendedAction: string;
-  }>;
-  executionTimestamp: string;
-}
+export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
+  const {
+    confirmationEmailContent,
+    currentTimestamp,
+    submissionDeadline,
+    escalationThresholdMinutes,
+  } = context;
 
-export function buildAction02Prompt(
-  context: Tx3Imp1PromptContext
-): string {
-  const emailSummary = context.confirmationEmailContent
-    .map((email) => {
-      const status = email.reportStatus.submitted
-        ? `提出済み (${email.reportStatus.submittedAt})`
-        : "未提出";
-      return `- ${email.recipientName} (ID: ${email.recipientId}): ${status}`;
-    })
+  const membersList = confirmationEmailContent.reportedMembers
+    .map(
+      (member) =>
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
+          member.submittedAt ? ` at ${member.submittedAt}` : ""
+        }`
+    )
     .join("\n");
 
-  const previousRemindersInfo = context.previousReminders
-    .map((reminder) => {
-      return `- ${reminder.recipientId}: ${reminder.reminderCount}回催促済み (最終: ${reminder.lastReminderAt})`;
-    })
-    .join("\n");
+  return `You are an AI agent responsible for identifying members with missing or overdue reports from confirmation email content.
 
-  const prompt = `# 報告漏れ・遅延部員の特定と催促対象判定
+## Task: Identify Missing and Overdue Report Members
 
-## 確認メール送信状況
-${emailSummary}
+### Input Email Content:
+Subject: ${confirmationEmailContent.subject}
+Sent At: ${confirmationEmailContent.sentAt}
+Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientEmail})
 
-## 現在時刻
-${context.currentTimestamp}
+Body:
+${confirmationEmailContent.body}
 
-## 提出期限
-${context.submissionDeadline}
+### Member Status List:
+${membersList}
 
-## 過去の催促履歴
-${previousRemindersInfo || "なし"}
+### Current Context:
+- Current Timestamp: ${currentTimestamp}
+- Submission Deadline: ${submissionDeadline}
+- Escalation Threshold: ${escalationThresholdMinutes} minutes after deadline
 
-## 催促エスカレーション閾値
-${context.escalationThreshold}回以上の催促後も報告がない場合はエスカレーション対象
+### Your Responsibilities:
+1. Analyze the confirmation email content to identify all members mentioned
+2. Determine each member's submission status (not_submitted, overdue, or submitted)
+3. For overdue members, calculate hours past the deadline
+4. Identify members who should be escalated based on the threshold
+5. Track reminder history for each member
 
-## タスク
-1. 確認メール内容から報告漏れ・遅延部員を特定してください
-2. 各部員について以下を判定してください:
-   - 提出状況 (未提出 / 遅延)
-   - 期限超過日数
-   - 過去の催促回数
-3. 催促対象部員を判定してください:
-   - 未提出者は全員催促対象
-   - 遅延者で期限超過が1日以上の場合は催促対象
-   - 過去催促回数が閾値に達した場合はエスカレーション対象
-4. 各催促対象者に対して以下を決定してください:
-   - 催促方法 (メール / チャット / 両方)
-   - 優先度 (通常 / 高)
-   - 催促メッセージ内容
-
-## 出力形式
-JSON形式で以下の構造で返してください:
+### Output Format:
+Provide a JSON object with the following structure:
 {
-  "identifiedNonSubmitters": [
+  "identifiedMembers": [
     {
-      "recipientId": "string",
-      "recipientName": "string",
-      "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number,
-      "previousReminderCount": number
+      "memberId": "string",
+      "memberName": "string",
+      "memberEmail": "string",
+      "status": "not_submitted" | "overdue" | "submitted",
+      "hoursOverdue": number (only for overdue members),
+      "lastReminderSentAt": "ISO8601 timestamp or null",
+      "reminderCount": number
     }
   ],
-  "remindTargets": [
-    {
-      "recipientId": "string",
-      "recipientName": "string",
-      "reminderType": "email" | "chat" | "both",
-      "priority": "normal" | "high",
-      "message": "string"
-    }
-  ],
-  "escalationCases": [
-    {
-      "recipientId": "string",
-      "reason": "string",
-      "recommendedAction": "string"
-    }
-  ],
-  "executionTimestamp": "string"
-}`;
+  "totalNotSubmitted": number,
+  "totalOverdue": number,
+  "analysisTimestamp": "${currentTimestamp}",
+  "emailContentId": "${confirmationEmailContent.emailId}"
+}
 
-  return prompt;
+### Rules:
+- Only identify members explicitly mentioned in the email content
+- Calculate overdue hours from the deadline to current timestamp
+- Members with status "submitted" should have reminderCount of 0
+- Include email addresses inferred from member names or provided in the email
+- Ensure all timestamps are in ISO8601 format`;
 }

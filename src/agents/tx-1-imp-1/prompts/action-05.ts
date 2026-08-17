@@ -7,92 +7,94 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
+  submittedReportContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
   };
-  submissionDeadline: string;
-  systemTimestamp: string;
-}
-
-export interface Action05ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  validatedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
+  submissionTimestamp: string;
+  systemRegistrationStatus: "pending" | "registered" | "failed";
 }
 
 export interface Action05PromptInput {
   context: Action05Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
-  };
+  adminEmailAddresses: string[];
+  reportManagementSystemUrl: string;
 }
 
 export interface Action05PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action05Context;
+  confirmationEmailContent: {
+    subject: string;
+    body: string;
+    recipients: string[];
+  };
+  registrationVerification: {
+    isRegistered: boolean;
+    registrationId?: string;
+    errorMessage?: string;
+  };
+  nextAction: "send_confirmation_email" | "retry_registration" | "escalate";
 }
 
-export function buildAction05Prompt(
-  input: Action05PromptInput
-): Action05PromptOutput {
-  const { context, validationRules } = input;
-
-  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
-
-Your role is to:
-1. Validate the completeness and appropriateness of engineer daily reports
-2. Check that all required fields are filled with sufficient detail
-3. Identify any inconsistencies or concerning patterns in the report content
-4. Provide clear feedback on validation results
-5. Escalate issues that require human review
-
-Validation criteria:
-- Yesterday's accomplishments: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
-- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
-- Issues/concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
-
-Be thorough but fair in validation. Flag incomplete or vague entries, but accept reasonable variations in reporting style.`;
-
-  const userPrompt = `Please validate the following daily report submission:
-
-Engineer: ${context.engineerName} (ID: ${context.engineerId})
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-System Timestamp: ${context.systemTimestamp}
-
-Yesterday's Accomplishments:
-${context.previousReportContent.yesterday}
-
-Today's Plan:
-${context.previousReportContent.today}
-
-Issues/Concerns:
-${context.previousReportContent.issues}
-
-Please provide:
-1. Overall validation status (VALID / INVALID / NEEDS_REVIEW)
-2. Specific validation errors (if any)
-3. Warnings or suggestions for improvement
-4. Recommendation for next action (APPROVE / REQUEST_REVISION / ESCALATE)`;
-
-  return {
-    version: ACTION_05_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
+export function buildAction05Prompt(input: Action05PromptInput): string {
+  const {
     context,
-  };
+    adminEmailAddresses,
+    reportManagementSystemUrl,
+  } = input;
+
+  const promptContent = `
+You are an automated daily report management agent. Your task is to generate and prepare a confirmation email to be sent to administrators after a report has been successfully registered in the management system.
+
+## Report Information
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Timestamp: ${context.submissionTimestamp}
+- System Registration Status: ${context.systemRegistrationStatus}
+
+## Report Content Summary
+Yesterday's Accomplishments:
+${context.submittedReportContent.yesterdayAccomplishments}
+
+Today's Plans:
+${context.submittedReportContent.todayPlans}
+
+Current Issues:
+${context.submittedReportContent.currentIssues}
+
+## Administrator Recipients
+${adminEmailAddresses.map((email) => `- ${email}`).join("\n")}
+
+## Report Management System
+URL: ${reportManagementSystemUrl}
+
+## Your Task
+1. Verify that the report has been successfully registered in the management system
+2. Generate a professional confirmation email to be sent to administrators
+3. The email should include:
+   - Confirmation that the report was received and registered
+   - Summary of the submitted report content
+   - Link to the report management system for review
+   - Timestamp of registration
+4. Determine the next action based on registration status
+
+## Output Format
+Provide your response as a JSON object with the following structure:
+{
+  "confirmationEmailContent": {
+    "subject": "string",
+    "body": "string",
+    "recipients": ["string"]
+  },
+  "registrationVerification": {
+    "isRegistered": boolean,
+    "registrationId": "string or null",
+    "errorMessage": "string or null"
+  },
+  "nextAction": "send_confirmation_email" | "retry_registration" | "escalate"
+}
+`;
+
+  return promptContent;
 }

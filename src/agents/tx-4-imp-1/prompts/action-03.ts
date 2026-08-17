@@ -5,92 +5,96 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  previousIssues?: string[];
-  teamContext?: string;
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>;
+  priorityFramework: {
+    criteria: string[];
+    levels: string[];
+  };
 }
 
 interface Action03PromptOutput {
-  extractedIssues: Array<{
-    issue: string;
-    description: string;
-    affectedMembers?: string[];
-  }>;
-  priorityAssessment: Array<{
-    issue: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  bottlenecks: string[];
-  recommendations: string[];
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: {
+    taskDescription: string;
+    objectives: string[];
+    constraints: string[];
+  };
 }
 
-function buildAction03Prompt(input: Action03PromptInput): string {
-  const sections: string[] = [];
+function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for extracting and prioritizing issues from daily reports in the morning meeting preparation system.
 
-  sections.push("# 課題抽出・優先度判定プロンプト");
-  sections.push("");
-  sections.push("## 目的");
-  sections.push(
-    "日報内容から課題・ボトルネックを自動抽出し、優先度を判定・分類する"
-  );
-  sections.push("");
+Your role is to:
+1. Analyze the provided report content and extracted issues
+2. Apply the priority framework to classify and rank issues
+3. Identify bottlenecks and dependencies between issues
+4. Provide a structured priority list for management review
 
-  sections.push("## 日報内容");
-  sections.push(input.reportContent);
-  sections.push("");
+You must follow the priority framework criteria strictly and provide clear reasoning for each classification.`;
 
-  if (input.previousIssues && input.previousIssues.length > 0) {
-    sections.push("## 前回抽出された課題");
-    input.previousIssues.forEach((issue, index) => {
-      sections.push(`${index + 1}. ${issue}`);
-    });
-    sections.push("");
-  }
+  const userPrompt = `Please analyze the following daily report content and extracted issues, then apply priority classification.
 
-  if (input.teamContext) {
-    sections.push("## チームコンテキスト");
-    sections.push(input.teamContext);
-    sections.push("");
-  }
+Report Content:
+${input.reportContent}
 
-  sections.push("## 実行タスク");
-  sections.push("1. 日報から課題・ボトルネックを抽出する");
-  sections.push("2. 各課題の優先度を判定する（critical/high/medium/low）");
-  sections.push("3. 優先度判定の根拠を記述する");
-  sections.push("4. 影響を受けるメンバーを特定する");
-  sections.push("5. 推奨される対応策を提示する");
-  sections.push("");
+Extracted Issues:
+${input.extractedIssues
+  .map(
+    (issue) => `
+- ID: ${issue.id}
+  Title: ${issue.title}
+  Description: ${issue.description}
+  Category: ${issue.category}
+`
+  )
+  .join("")}
 
-  sections.push("## 優先度判定基準");
-  sections.push("- Critical: プロジェクト全体の進行を停止させる可能性");
-  sections.push("- High: 複数メンバーに影響、対応が急務");
-  sections.push("- Medium: 限定的な影響、対応予定あり");
-  sections.push("- Low: 軽微な問題、対応は後回し可能");
-  sections.push("");
+Team Members:
+${input.teamMembers.map((member) => `- ${member.name} (${member.department})`).join("\n")}
 
-  sections.push("## 出力形式");
-  sections.push("JSON形式で以下の構造で出力してください:");
-  sections.push("{");
-  sections.push('  "extractedIssues": [');
-  sections.push("    {");
-  sections.push('      "issue": "課題タイトル",');
-  sections.push('      "description": "詳細説明",');
-  sections.push('      "affectedMembers": ["メンバーA", "メンバーB"]');
-  sections.push("    }");
-  sections.push("  ],");
-  sections.push('  "priorityAssessment": [');
-  sections.push("    {");
-  sections.push('      "issue": "課題タイトル",');
-  sections.push('      "priority": "high",');
-  sections.push('      "reasoning": "優先度判定の根拠"');
-  sections.push("    }");
-  sections.push("  ],");
-  sections.push('  "bottlenecks": ["ボトルネック1", "ボトルネック2"],');
-  sections.push('  "recommendations": ["推奨対応1", "推奨対応2"]');
-  sections.push("}");
+Priority Framework:
+Criteria: ${input.priorityFramework.criteria.join(", ")}
+Levels: ${input.priorityFramework.levels.join(", ")}
 
-  return sections.join("\n");
+Please provide:
+1. Prioritized issue list with reasoning
+2. Identified bottlenecks and dependencies
+3. Recommended action items for management
+4. Risk assessment for high-priority issues`;
+
+  return {
+    version: ACTION_03_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    context: {
+      taskDescription:
+        "Classify and prioritize extracted issues from daily reports using defined framework",
+      objectives: [
+        "Apply priority framework to all extracted issues",
+        "Identify dependencies and bottlenecks",
+        "Provide structured priority list",
+        "Assess risks for high-priority items",
+      ],
+      constraints: [
+        "Must use only provided priority framework",
+        "Must include reasoning for each classification",
+        "Must identify cross-team dependencies",
+        "Must flag escalation-worthy issues",
+      ],
+    },
+  };
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03PromptInput, Action03PromptOutput };

@@ -4,104 +4,100 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
-  reportSummary: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    category: string;
+    reportedBy: string;
+    reportedDate: string;
   }>;
-  priorityAssignments: Array<{
+  priorityClassifications: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  departmentHead: string;
-  reportingDate: string;
+  reportSummary: {
+    totalReports: number;
+    submittedReports: number;
+    pendingReports: number;
+    overallProgress: string;
+  };
 }
 
 export interface Action06PromptInput {
-  reportSummary: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  departmentHead: string;
-  reportingDate: string;
-  previousPriorityPatterns?: Array<{
-    category: string;
-    typicalPriority: string;
-  }>;
+  context: Action06Context;
+  departmentHeadEmail: string;
+  reportGenerationTime: string;
 }
 
 export interface Action06PromptOutput {
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  reportReady: boolean;
+  reportContent: string;
+  priorityListContent: string;
   escalationFlags: Array<{
-    flag: string;
-    severity: "info" | "warning" | "critical";
+    type: "unusual_issue" | "conflicting_priority" | "critical_risk" | "incomplete_data";
     description: string;
+    requiresHumanReview: boolean;
   }>;
 }
 
 export function buildAction06Prompt(input: Action06PromptInput): string {
-  const issuesList = input.extractedIssues
-    .map(
-      (issue, index) =>
-        `${index + 1}. [${issue.id}] ${issue.title}\n   Category: ${issue.category}\n   Description: ${issue.description}`
-    )
-    .join("\n");
+  const {
+    context,
+    departmentHeadEmail,
+    reportGenerationTime,
+  } = input;
 
-  const patternContext =
-    input.previousPriorityPatterns && input.previousPriorityPatterns.length > 0
-      ? `\n\nHistorical Priority Patterns:\n${input.previousPriorityPatterns
-          .map((p) => `- ${p.category}: typically ${p.typicalPriority}`)
-          .join("\n")}`
-      : "";
+  const issuesSection = context.extractedIssues
+    .map((issue) => {
+      const classification = context.priorityClassifications.find(
+        (pc) => pc.issueId === issue.id
+      );
+      return `
+Issue ID: ${issue.id}
+Title: ${issue.title}
+Description: ${issue.description}
+Reported By: ${issue.reportedBy}
+Reported Date: ${issue.reportedDate}
+Priority: ${classification?.priority || "unclassified"}
+Priority Reasoning: ${classification?.reasoning || "N/A"}
+`;
+    })
+    .join("\n---\n");
 
-  const prompt = `You are an AI agent responsible for the final step of daily report processing: assigning priority levels to extracted issues and preparing a comprehensive report for the department head.
+  const reportSummarySection = `
+Total Reports: ${context.reportSummary.totalReports}
+Submitted Reports: ${context.reportSummary.submittedReports}
+Pending Reports: ${context.reportSummary.pendingReports}
+Overall Progress: ${context.reportSummary.overallProgress}
+`;
 
-Task: Analyze the following extracted issues and assign priority levels (critical, high, medium, low) based on impact, urgency, and business context.
+  const prompt = `You are an AI agent responsible for generating a comprehensive daily report for the department head based on extracted issues and their priority classifications.
 
-Report Summary:
-${input.reportSummary}
+Report Generation Time: ${reportGenerationTime}
+Department Head Email: ${departmentHeadEmail}
 
-Extracted Issues to Prioritize:
-${issuesList}${patternContext}
+=== REPORT SUMMARY ===
+${reportSummarySection}
 
-Department Head: ${input.departmentHead}
-Reporting Date: ${input.reportingDate}
+=== EXTRACTED ISSUES AND PRIORITY CLASSIFICATIONS ===
+${issuesSection}
 
-Instructions:
-1. Evaluate each issue based on:
-   - Business impact (revenue, customer satisfaction, team productivity)
-   - Urgency (time-sensitive constraints, deadline proximity)
-   - Dependencies (blocking other work, affecting multiple teams)
-   - Risk level (potential escalation, safety concerns)
+Your task:
+1. Generate a well-structured report summarizing the overall progress and key issues
+2. Create a prioritized issue list organized by priority level (critical, high, medium, low)
+3. Identify any escalation flags that require human review:
+   - Unusual or unexpected issues
+   - Conflicting priority classifications
+   - Critical risk issues
+   - Incomplete or unclear data
+4. Format the output as a professional report suitable for department head review
 
-2. Assign priority levels:
-   - CRITICAL: Immediate action required, blocks multiple teams or has severe business impact
-   - HIGH: Should be addressed today, significant impact on operations
-   - MEDIUM: Should be addressed this week, moderate impact
-   - LOW: Can be scheduled for later, minimal immediate impact
+Output format:
+- Report Content: A comprehensive summary of daily progress and issues
+- Priority List Content: Issues organized by priority with brief descriptions
+- Escalation Flags: Array of items requiring human review with reasoning
 
-3. Provide clear reasoning for each priority assignment
-
-4. Identify any escalation flags:
-   - Issues requiring immediate department head attention
-   - Patterns indicating systemic problems
-   - Resource constraints that need escalation
-   - Risks that could become critical
-
-5. Confirm the report is ready for presentation to the department head
-
-Output your analysis in a structured format with priority assignments, reasoning, and escalation flags.`;
+Ensure the report is clear, actionable, and highlights the most critical items first.`;
 
   return prompt;
 }
