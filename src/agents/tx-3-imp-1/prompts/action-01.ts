@@ -15,15 +15,15 @@ export interface Action01PromptOutput {
     memberId: string;
     memberName: string;
     reason: "not_submitted" | "delayed";
-    submissionTime?: string;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
     escalationLevel: number;
-    shouldSendReminder: boolean;
+    recommendedAction: "email" | "chat" | "both" | "hold";
   }>;
   analysisTimestamp: string;
+  confidence: number;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
@@ -34,14 +34,12 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     previousEscalationCount = {},
   } = input;
 
-  const escalationInfo = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `- ${memberId}: ${count}回の催促済み`)
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([memberId, count]) => `  - ${memberId}: ${count}回`)
     .join("\n");
 
-  return `あなたは朝会報告管理システムの自動催促エージェントです。
-
-【タスク】
-確認メール内容から報告漏れ・遅延部員を特定し、催促対象を判定してください。
+  return `あなたは朝会報告管理システムのAIエージェント（tx-3-imp-1）です。
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してください。
 
 【入力情報】
 確認メール内容:
@@ -50,14 +48,21 @@ ${confirmationEmailContent}
 報告期限: ${reportDeadline}
 現在時刻: ${currentTimestamp}
 
-【過去の催促履歴】
-${escalationInfo || "なし"}
+過去の催促履歴:
+${escalationCountSummary || "  なし"}
 
-【判定ルール】
-1. 確認メール内容から未提出者と遅延者を特定する
-2. 同一部員への催促回数が3回以上の場合は、エスカレーション対象として判定する
-3. 報告期限を30分以上超過している場合は催促対象とする
-4. 初回催促対象者には必ずリマインダーを送信する
+【実行タスク】
+1. 確認メール内容から報告漏れ・遅延部員を特定する
+   - 未提出者を抽出
+   - 期限超過者を抽出
+   - 各部員の理由を分類
+
+2. 催促対象部員を判定する
+   - 初回催促対象か判定
+   - 複数回催促済みの場合は対応方針を検討
+   - 催促方法（メール/チャット/両方/保留）を推奨
+
+3. 出力形式に従って結果を返す
 
 【出力形式】
 JSON形式で以下の構造で返してください:
@@ -66,8 +71,7 @@ JSON形式で以下の構造で返してください:
     {
       "memberId": "string",
       "memberName": "string",
-      "reason": "not_submitted" | "delayed",
-      "submissionTime": "ISO8601形式またはundefined"
+      "reason": "not_submitted" | "delayed"
     }
   ],
   "escalationTargets": [
@@ -75,9 +79,24 @@ JSON形式で以下の構造で返してください:
       "memberId": "string",
       "memberName": "string",
       "escalationLevel": number,
-      "shouldSendReminder": boolean
+      "recommendedAction": "email" | "chat" | "both" | "hold"
     }
   ],
-  "analysisTimestamp": "ISO8601形式"
-}`;
+  "analysisTimestamp": "ISO8601形式",
+  "confidence": 0.0-1.0の数値
+}
+
+【判定ルール】
+- escalationLevel: 1=初回催促, 2=2回目, 3=3回目以上
+- recommendedAction: 
+  * "email": メール送信のみ
+  * "chat": チャット送信のみ
+  * "both": メール+チャット送信
+  * "hold": 上限到達のため保留
+- confidence: 判定の確信度（0.0-1.0）
+
+【注意事項】
+- 同一部員への催促回数上限は3回とする
+- 複数回催促後も報告がない場合は"hold"を推奨
+- システムエラーで判定不可の場合は理由を記録`;
 }

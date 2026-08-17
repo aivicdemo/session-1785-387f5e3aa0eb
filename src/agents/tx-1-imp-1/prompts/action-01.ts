@@ -3,41 +3,49 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
+export interface Action01Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  previousDayTemplate: string;
-  submissionDeadline: string;
+  previousDayReportDate: string;
+  reportDeadline: string;
+  systemName: string;
 }
 
-export interface Action01PromptOutput {
-  templateId: string;
-  templateContent: string;
-  distributionTimestamp: string;
-  recipientEmail: string;
+export interface Action01PromptResult {
+  version: string;
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action01Context;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const prompt = `You are an AI agent responsible for generating and distributing daily report templates.
-
-Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Deadline: ${input.submissionDeadline}
-
-Previous Day Template Reference:
-${input.previousDayTemplate}
-
-Your task is to:
-1. Generate a daily report template based on the previous day's template structure
-2. Ensure the template includes sections for:
-   - Yesterday's achievements
-   - Today's planned tasks
-   - Current issues/challenges
+export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
+  const systemPrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
+Your role is to:
+1. Generate a structured daily report template based on the previous day's report
+2. Ensure the template includes sections for: yesterday's achievements, today's plans, and current issues
 3. Prepare the template for distribution to the engineer
-4. Include the submission deadline in the template
+4. Format the template in a clear, easy-to-fill manner
 
-Output the generated template in a structured format that can be sent via email.`;
+The daily report system is designed to automate the collection and management of engineer progress reports.`;
 
-  return prompt;
+  const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
+Previous report date: ${context.previousDayReportDate}
+Report submission deadline: ${context.reportDeadline}
+System: ${context.systemName}
+
+Please create a template that:
+1. References the previous day's report context
+2. Includes clear sections for today's input
+3. Specifies the submission deadline
+4. Provides guidance on what information should be included
+5. Is formatted for easy distribution via email`;
+
+  return {
+    version: ACTION_01_PROMPT_VERSION,
+    action: "action-01",
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

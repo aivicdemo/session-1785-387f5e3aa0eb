@@ -6,7 +6,7 @@ export interface AuditLog {
   operator_role: string;
   operation_name: string;
   result: "DENIED" | "ALLOWED" | "SUCCESS" | "FAILURE";
-  reason: string;
+  reason?: string;
   target_department_id?: string;
   target_manager_id?: string;
 }

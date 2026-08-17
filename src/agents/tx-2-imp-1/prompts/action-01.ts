@@ -21,87 +21,79 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionPlan: {
     recipients: string[];
-    deliveryMethod: string;
-    scheduledTime: string;
+    sendTime: string;
+    channels: string[];
   };
   validationRules: Array<{
     field: string;
-    rule: string;
-    errorMessage: string;
+    required: boolean;
+    constraints: string[];
   }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportingDeadline,
-    targetDate,
-    engineerList,
-    systemContext,
-  } = input;
+  const engineerNames = input.engineerList.map((e) => e.name).join(", ");
+  const channelList = input.systemContext.notificationChannels.join(", ");
 
-  const engineerNames = engineerList.map((e) => e.name).join("、");
-  const recipientEmails = engineerList.map((e) => e.email).join("; ");
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-  const prompt = `# 日報テンプレート自動生成・配信プロンプト
+## 実行日時
+- 対象日: ${input.targetDate}
+- 提出期限: ${input.reportingDeadline}
 
-## 実行目的
-前日の日報テンプレートを自動生成して、全エンジニアに配信する。
+## 対象エンジニア
+${engineerNames}
 
-## 入力情報
-- 対象日付: ${targetDate}
-- 報告期限: ${reportingDeadline}
-- 対象エンジニア: ${engineerNames}
-- 配信先メールアドレス: ${recipientEmails}
-- 日報管理システムURL: ${systemContext.reportManagementSystemUrl}
-- 通知チャネル: ${systemContext.notificationChannels.join(", ")}
+## タスク
+以下の手順で日報テンプレートを自動生成し、全エンジニアに配信してください:
 
-## 生成すべき日報テンプレート内容
-以下の項目を含む日報テンプレートを生成してください:
+1. **テンプレート生成**
+   - 前日の日報テンプレートを参照し、本日分のテンプレートを生成
+   - 以下の項目を含める:
+     * 昨日の実績（成果・完了タスク）
+     * 本日の予定（予定タスク・目標）
+     * 抱えている課題（ブロッカー・リスク）
+     * 備考欄
 
-1. **昨日の実績**
-   - 完了したタスク
-   - 進捗状況
-   - 成果物
+2. **入力項目の妥当性検証ルール定義**
+   - 昨日の実績: 必須、100文字以上
+   - 本日の予定: 必須、100文字以上
+   - 抱えている課題: 任意、500文字以内
+   - 各項目は日本語で記述されていることを確認
 
-2. **本日の予定**
-   - 予定されたタスク
-   - 優先順位
-   - 見積もり時間
+3. **配信計画の策定**
+   - 配信先: ${engineerNames}
+   - 配信チャネル: ${channelList}
+   - 提出期限を明記
+   - 提出方法を明記
 
-3. **抱えている課題**
-   - 現在の課題
-   - 影響範囲
-   - 必要なサポート
-
-## 配信計画
-- 配信方法: メール + ${systemContext.notificationChannels.join(" + ")}
-- 配信対象: 全エンジニア (${engineerList.length}名)
-- 期限: ${reportingDeadline}
-
-## 検証ルール
-生成されたテンプレートは以下の条件を満たす必要があります:
-- 全ての必須項目が含まれている
-- 記入例が明確である
-- 文字数制限が明示されている
-- 提出期限が明記されている
+4. **配信内容の確認**
+   - テンプレートが完全であることを確認
+   - 配信リストに漏れがないことを確認
+   - 提出期限が正確であることを確認
 
 ## 出力形式
-JSON形式で以下の構造で返してください:
+以下の JSON 形式で結果を返してください:
+\`\`\`json
 {
-  "templateContent": "生成されたテンプレートの完全なテキスト",
+  "templateContent": "生成されたテンプレートの内容",
   "distributionPlan": {
-    "recipients": ["メールアドレスの配列"],
-    "deliveryMethod": "email, slack, teams等の配信方法",
-    "scheduledTime": "配信予定時刻"
+    "recipients": ["engineer1@example.com", "engineer2@example.com"],
+    "sendTime": "2024-01-01T08:00:00Z",
+    "channels": ["email", "chat"]
   },
   "validationRules": [
     {
-      "field": "フィールド名",
-      "rule": "検証ルール",
-      "errorMessage": "エラーメッセージ"
+      "field": "昨日の実績",
+      "required": true,
+      "constraints": ["100文字以上", "日本語"]
     }
   ]
-}`;
+}
+\`\`\`
 
-  return prompt;
+## 注意事項
+- テンプレートは前日のものと一貫性を保つ
+- 配信時刻は朝会開始の2時間前を推奨
+- 提出期限超過時の自動催促ルールを適用`;
 }

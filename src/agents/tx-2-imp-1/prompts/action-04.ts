@@ -5,88 +5,115 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    firstReminderHours: number;
-    secondReminderHours: number;
-    maxReminders: number;
-  };
-  departmentMembers: Array<{
+  oversueThresholdHours: number;
+  reminderFrequencyMinutes: number;
+  targetEngineers: Array<{
     id: string;
     name: string;
     email: string;
-    department: string;
   }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
+  submissionStatus: Array<{
+    engineerId: string;
+    submitted: boolean;
+    submittedAt?: string;
   }>;
-  currentTime: string;
 }
 
 export interface Action04PromptOutput {
-  escalationCandidates: Array<{
-    memberId: string;
-    memberName: string;
-    memberEmail: string;
-    department: string;
-    hoursOverdue: number;
-    reminderCount: number;
-    escalationLevel: "first_reminder" | "second_reminder" | "manager_escalation";
-    reason: string;
+  reminderNotifications: Array<{
+    engineerId: string;
+    engineerName: string;
+    engineerEmail: string;
+    reminderType: "first" | "second" | "urgent";
+    message: string;
+    scheduledAt: string;
   }>;
-  summary: {
-    totalMembers: number;
-    submittedCount: number;
-    overdueCount: number;
-    escalationCount: number;
-  };
-  timestamp: string;
+  escalationCases: Array<{
+    engineerId: string;
+    engineerName: string;
+    reason: string;
+    recommendedAction: string;
+  }>;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
-  
-  const overdueMembers = input.departmentMembers.filter(member => {
-    if (submittedMemberIds.has(member.id)) {
-      return false;
+  const deadlineDate = new Date(input.reportingDeadline);
+  const now = new Date();
+  const hoursOverdue = (now.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60);
+
+  const nonSubmitters = input.submissionStatus
+    .filter((status) => !status.submitted)
+    .map((status) => {
+      const engineer = input.targetEngineers.find(
+        (e) => e.id === status.engineerId
+      );
+      return {
+        id: status.engineerId,
+        name: engineer?.name || "Unknown",
+        email: engineer?.email || "",
+        hoursOverdue: hoursOverdue,
+      };
+    });
+
+  const reminderNotifications: Action04PromptOutput["reminderNotifications"] =
+    [];
+  const escalationCases: Action04PromptOutput["escalationCases"] = [];
+
+  for (const nonSubmitter of nonSubmitters) {
+    if (nonSubmitter.hoursOverdue > input.oversueThresholdHours * 2) {
+      escalationCases.push({
+        engineerId: nonSubmitter.id,
+        engineerName: nonSubmitter.name,
+        reason: `Significantly overdue: ${Math.floor(nonSubmitter.hoursOverdue)} hours past deadline`,
+        recommendedAction:
+          "Escalate to department head for immediate follow-up",
+      });
+    } else if (nonSubmitter.hoursOverdue > input.oversueThresholdHours) {
+      reminderNotifications.push({
+        engineerId: nonSubmitter.id,
+        engineerName: nonSubmitter.name,
+        engineerEmail: nonSubmitter.email,
+        reminderType: "urgent",
+        message: `Urgent: Your daily report is ${Math.floor(nonSubmitter.hoursOverdue)} hours overdue. Please submit immediately.`,
+        scheduledAt: new Date(
+          now.getTime() + input.reminderFrequencyMinutes * 60 * 1000
+        ).toISOString(),
+      });
+    } else {
+      reminderNotifications.push({
+        engineerId: nonSubmitter.id,
+        engineerName: nonSubmitter.name,
+        engineerEmail: nonSubmitter.email,
+        reminderType: "first",
+        message: `Reminder: Please submit your daily report by ${input.reportingDeadline}.`,
+        scheduledAt: new Date(
+          now.getTime() + input.reminderFrequencyMinutes * 60 * 1000
+        ).toISOString(),
+      });
     }
-    
-    const deadline = new Date(input.reportingDeadline);
-    const now = new Date(input.currentTime);
-    const hoursOverdue = (now.getTime() - deadline.getTime()) / (1000 * 60 * 60);
-    
-    return hoursOverdue > 0;
-  });
+  }
 
-  const escalationRules = input.escalationRules;
-  
-  const systemPrompt = `You are an AI agent responsible for identifying report submission escalation candidates.
+  const systemPrompt = `You are an automated reminder and escalation system for daily report submissions.
+Your role is to:
+1. Identify engineers who have not submitted their daily reports
+2. Generate appropriate reminder notifications based on how overdue the submission is
+3. Identify cases that require escalation to management
 
-Your task is to analyze the provided report submission data and determine which team members require escalation actions based on the following criteria:
+Current Status:
+- Reporting Deadline: ${input.reportingDeadline}
+- Overdue Threshold: ${input.oversueThresholdHours} hours
+- Reminder Frequency: ${input.reminderFrequencyMinutes} minutes
+- Non-submitters: ${nonSubmitters.length}
 
-1. Report Deadline: ${input.reportingDeadline}
-2. Current Time: ${input.currentTime}
-3. Escalation Rules:
-   - First Reminder: After ${escalationRules.firstReminderHours} hours overdue
-   - Second Reminder: After ${escalationRules.secondReminderHours} hours overdue
-   - Maximum Reminders: ${escalationRules.maxReminders}
+Non-submitting Engineers:
+${nonSubmitters
+  .map(
+    (ns) =>
+      `- ${ns.name} (${ns.email}): ${Math.floor(ns.hoursOverdue)} hours overdue`
+  )
+  .join("\n")}
 
-4. Team Members Status:
-   - Total Members: ${input.departmentMembers.length}
-   - Submitted Reports: ${input.submittedReports.length}
-   - Overdue Members: ${overdueMembers.length}
-
-5. Overdue Members Requiring Escalation:
-${overdueMembers.map(member => `   - ${member.name} (${member.email}) - Department: ${member.department}`).join('\n')}
-
-For each overdue member, determine:
-- Hours overdue from the deadline
-- Appropriate escalation level (first_reminder, second_reminder, or manager_escalation)
-- Clear reason for escalation
-
-Return a structured analysis identifying escalation candidates with their escalation levels and reasons.`;
+Generate reminder notifications and identify escalation cases.`;
 
   return systemPrompt;
 }

@@ -3,91 +3,64 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04PromptContext {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentDateTime: string;
   escalationThreshold: number;
-  previousEscalationCount?: Record<string, number>;
+  previousEscalationCount: Record<string, number>;
 }
 
-export interface Action04PromptOutput {
-  identifiedNonReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
-  }>;
-  escalationTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    escalationLevel: number;
-    recommendedAction: "email" | "chat" | "both" | "manager_review";
-  }>;
-  summary: {
-    totalNonReporters: number;
-    totalEscalationTargets: number;
-    criticalCases: number;
-  };
+export interface Action04PromptResult {
+  nonReportingMembers: string[];
+  delayedMembers: string[];
+  escalationTargets: string[];
+  escalationReasons: Record<string, string>;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
+export function buildAction04Prompt(context: Action04PromptContext): string {
   const {
     confirmationEmailContent,
     reportingDeadline,
-    currentDateTime,
     escalationThreshold,
-    previousEscalationCount = {},
-  } = input;
+    previousEscalationCount,
+  } = context;
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting employees and determining escalation targets based on confirmation email content and reporting deadlines.
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([member, count]) => `${member}: ${count}回`)
+    .join("\n");
 
-Your task is to:
-1. Parse the confirmation email content to identify employees who have not submitted reports
-2. Classify them as either "not_submitted" or "delayed" based on the reporting deadline
-3. Determine escalation targets based on the escalation threshold and previous escalation counts
-4. Recommend appropriate actions (email, chat, both, or manager review)
+  return `# Action 04: 催促対象部員の判定と催促メール・チャット送信
 
-Current date and time: ${currentDateTime}
-Reporting deadline: ${reportingDeadline}
-Escalation threshold (days): ${escalationThreshold}
-Previous escalation counts: ${JSON.stringify(previousEscalationCount)}
-
-Confirmation email content to analyze:
+## 入力情報
+### 確認メール内容
 ${confirmationEmailContent}
 
-Return a JSON object with the following structure:
+### 催促ルール
+- 報告期限: ${reportingDeadline}
+- 催促対象判定の閾値: ${escalationThreshold}回以上の催促で対応判断が必要
+- 過去の催促履歴:
+${escalationCountSummary}
+
+## タスク
+1. 確認メール内容から報告漏れ・遅延部員を特定する
+2. 催促対象部員を判定する（過去の催促回数と閾値を考慮）
+3. 催促メール・チャットを自動送信する
+4. 送信結果をログに記録する
+
+## 出力形式
+以下の JSON 形式で結果を返してください:
 {
-  "identifiedNonReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "escalationTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "escalationLevel": number,
-      "recommendedAction": "email" | "chat" | "both" | "manager_review"
-    }
-  ],
-  "summary": {
-    "totalNonReporters": number,
-    "totalEscalationTargets": number,
-    "criticalCases": number
+  "nonReportingMembers": ["member1", "member2"],
+  "delayedMembers": ["member3"],
+  "escalationTargets": ["member1", "member3"],
+  "escalationReasons": {
+    "member1": "初回催促",
+    "member3": "2回目催促"
   }
 }
 
-Rules:
-- Identify all employees mentioned in the confirmation email who have not submitted reports
-- Calculate days since deadline based on the current date and reporting deadline
-- Escalation level increases with each previous escalation attempt
-- If escalation level >= escalation threshold, recommend manager_review
-- Critical cases are those with escalation level >= 2 or days since deadline > 3
-- Ensure all employee IDs and names are accurately extracted from the email content`;
-
-  return systemPrompt;
+## 注意事項
+- 同一部員への複数回催促後も報告がない場合はエスカレーション対象とする
+- 催促回数の上限を設定して過度な催促を防ぐ
+- 送信履歴を保存し、誤送信時に取り消し・修正できるようにする`;
 }

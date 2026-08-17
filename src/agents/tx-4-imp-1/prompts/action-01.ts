@@ -4,74 +4,69 @@
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
 export interface Action01PromptInput {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  departmentName: string;
-  submissionDeadline: string;
+  reportDeadline: string;
+  targetDate: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  systemContext: {
+    reportSystemUrl: string;
+    managementSystemUrl: string;
+  };
 }
 
 export interface Action01PromptOutput {
-  templateId: string;
   templateContent: string;
-  distributionChannels: string[];
+  distributionList: string[];
   scheduledTime: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportDate,
-    engineerName,
-    engineerId,
-    departmentName,
-    submissionDeadline,
-  } = input;
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const engineerEmails = input.engineerList.map((e) => e.email).join("; ");
 
-  return `
-# 日報テンプレート自動生成・配信プロンプト
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-## 実行日時
-${new Date().toISOString()}
+## 実行目的
+前日の日報テンプレートを自動生成して、全エンジニアに配信する
 
-## 対象者情報
-- エンジニア名: ${engineerName}
-- エンジニアID: ${engineerId}
-- 部門: ${departmentName}
-- 報告対象日: ${reportDate}
+## 入力情報
+- 対象日付: ${input.targetDate}
+- 日報提出期限: ${input.reportDeadline}
+- 対象エンジニア: ${engineerNames}
+- 配信先メールアドレス: ${engineerEmails}
+- 日報システムURL: ${input.systemContext.reportSystemUrl}
+- 管理システムURL: ${input.systemContext.managementSystemUrl}
 
-## タスク
-以下の手順で日報テンプレートを自動生成し、対象エンジニアに配信してください。
+## 実行タスク
+1. 前日の日報テンプレートを生成する
+   - 「昨日の実績」セクション
+   - 「本日の予定」セクション
+   - 「抱えている課題」セクション
+   - 提出期限と提出方法の記載
 
-### ステップ1: テンプレート生成
-1. 報告対象日の前日の日報テンプレートを取得する
-2. 本日の日付を反映した新規テンプレートを生成する
-3. エンジニア名と部門情報をテンプレートに埋め込む
-4. 提出期限を明記する（期限: ${submissionDeadline}）
+2. テンプレートを全エンジニアに配信する
+   - メール件名: 【日報】${input.targetDate}の日報テンプレート
+   - 本文にテンプレート内容を含める
+   - 日報システムへのアクセスリンクを記載
 
-### ステップ2: テンプレート内容
-以下の項目を含める:
-- 昨日の実績（具体的な成果、完了したタスク）
-- 本日の予定（予定されているタスク、目標）
-- 抱えている課題（現在の問題、ボトルネック、リスク）
-- 備考（その他の報告事項）
-
-### ステップ3: 配信
-1. メールで対象エンジニアに送信する
-2. 社内チャットツールにも通知する
-3. 配信完了をログに記録する
+3. 配信結果をログに記録する
+   - 配信日時
+   - 配信対象者
+   - 配信ステータス
 
 ## 出力形式
-JSON形式で以下の情報を返す:
+JSON形式で以下を返す:
 {
-  "templateId": "生成されたテンプレートの一意識別子",
-  "templateContent": "生成されたテンプレートの内容",
-  "distributionChannels": ["email", "chat"],
-  "scheduledTime": "配信予定時刻"
+  "templateContent": "生成されたテンプレート内容",
+  "distributionList": ["配信対象メールアドレス"],
+  "scheduledTime": "配信実行時刻"
 }
 
 ## 注意事項
-- テンプレートは統一フォーマットを使用する
-- 配信時刻は営業時間内とする
-- 配信失敗時はリトライを実行する
-`;
+- テンプレートは簡潔で入力しやすい形式にする
+- 提出期限を明確に記載する
+- 配信失敗時はエラーログを記録する`;
 }

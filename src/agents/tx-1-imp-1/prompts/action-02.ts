@@ -4,62 +4,71 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02Context {
-  engineerInput: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
+  engineerInputData: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
     currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
   };
-  engineerId: string;
-  engineerName: string;
-  submissionTimestamp: string;
 }
 
 export interface Action02ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  validatedData: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
+  };
 }
 
 export function buildAction02Prompt(context: Action02Context): string {
-  const prompt = `You are an AI agent responsible for validating daily report input content.
+  const {
+    engineerInputData: {
+      yesterdayAccomplishments,
+      todayPlans,
+      currentIssues,
+      engineerId,
+      engineerName,
+      submissionTimestamp,
+    },
+  } = context;
+
+  return `You are a validation agent for the morning report management system.
+
+Your task is to validate the engineer's daily report input for completeness and appropriateness.
 
 Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Submission Time: ${context.submissionTimestamp}
+- ID: ${engineerId}
+- Name: ${engineerName}
+- Submission Time: ${submissionTimestamp}
 
 Input Content to Validate:
-- Yesterday's Accomplishment: ${context.engineerInput.yesterdayAccomplishment}
-- Today's Plan: ${context.engineerInput.todayPlan}
-- Current Issues: ${context.engineerInput.currentIssues}
+- Yesterday's Accomplishments: ${yesterdayAccomplishments}
+- Today's Plans: ${todayPlans}
+- Current Issues: ${currentIssues}
 
-Your task is to validate the input content according to the following criteria:
+Validation Rules:
+1. All three fields (yesterday's accomplishments, today's plans, current issues) must be present and non-empty
+2. Each field should contain meaningful content (minimum 10 characters)
+3. Yesterday's accomplishments should describe completed work
+4. Today's plans should describe planned activities
+5. Current issues should describe any blockers or concerns (can be "None" if no issues)
+6. No field should contain only whitespace or placeholder text
+7. Content should be in Japanese or English
+8. Total content length should not exceed 2000 characters
 
-1. Completeness Check:
-   - All three fields must have content (not empty or whitespace-only)
-   - Each field should have at least 10 characters
+Perform validation and respond with:
+1. Whether the input is valid (true/false)
+2. List of any errors found
+3. List of any warnings (non-blocking issues)
+4. The validated and normalized data
 
-2. Appropriateness Check:
-   - Content should be relevant to work activities
-   - No offensive or inappropriate language
-   - No sensitive personal information
-
-3. Consistency Check:
-   - Today's plan should not directly contradict yesterday's accomplishment
-   - Issues should be work-related and actionable
-
-4. Format Check:
-   - Content should be in clear, understandable language
-   - Avoid excessive special characters or formatting issues
-
-Provide validation results in the following JSON format:
-{
-  "isValid": boolean,
-  "errors": [list of critical validation failures],
-  "warnings": [list of non-critical issues to address]
-}
-
-Only output valid JSON, no additional text.`;
-
-  return prompt;
+Respond in JSON format with keys: isValid, errors, warnings, validatedData`;
 }

@@ -18,7 +18,7 @@ export interface Action02PromptOutput {
   isValid: boolean;
   validationErrors: string[];
   sanitizedContent: string;
-  timestamp: string;
+  severity: "critical" | "warning" | "info";
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
@@ -38,104 +38,36 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
   const minLength = validationRules.minLength || 10;
   const maxLength = validationRules.maxLength || 5000;
 
-  return `You are a validation agent for the Daily Report Management System.
+  return `You are a daily report validation agent for the morning meeting report management system.
 
-Your task is to validate the daily report submission from engineer: ${engineerName}
-Submission Date: ${submissionDate}
+Your task is to validate the daily report content submitted by engineer "${engineerName}" on ${submissionDate}.
 
-Report Content to Validate:
+Report Content:
 ---
 ${reportContent}
 ---
 
 Validation Rules:
 1. Content length must be between ${minLength} and ${maxLength} characters
-2. Required fields must be present: ${requiredFieldsText}
-3. Content must be appropriate and professional
+2. Required sections must be present: ${requiredFieldsText}
+3. Content must be coherent and professional
 4. No sensitive information should be exposed
-5. Content must be coherent and meaningful
+5. All required fields must have substantive content (not just placeholders)
 
-Please perform the following validations:
-- Check if all required fields are present and filled
-- Verify content length is within acceptable range
-- Identify any inappropriate or sensitive content
-- Assess overall coherence and quality
-- Flag any anomalies or concerns
+Please perform the following validation:
+1. Check if all required fields are present and contain meaningful content
+2. Verify content length is within acceptable range
+3. Identify any inappropriate or sensitive information
+4. Assess overall quality and completeness
+5. Determine if the report is acceptable for system registration
 
 Respond with a JSON object containing:
 {
   "isValid": boolean,
   "validationErrors": string[],
   "sanitizedContent": string,
-  "timestamp": string
+  "severity": "critical" | "warning" | "info"
 }
 
-Be strict but fair in validation. Only reject if there are genuine issues.`;
-}
-
-export function validateAction02Input(
-  input: Action02PromptInput
-): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!input.reportContent || input.reportContent.trim().length === 0) {
-    errors.push("Report content is required");
-  }
-
-  if (!input.engineerName || input.engineerName.trim().length === 0) {
-    errors.push("Engineer name is required");
-  }
-
-  if (!input.submissionDate || input.submissionDate.trim().length === 0) {
-    errors.push("Submission date is required");
-  }
-
-  if (input.reportContent && input.reportContent.length > 10000) {
-    errors.push("Report content exceeds maximum length of 10000 characters");
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
-}
-
-export function parseAction02Response(
-  responseText: string
-): Action02PromptOutput {
-  try {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return {
-        isValid: false,
-        validationErrors: ["Failed to parse validation response"],
-        sanitizedContent: "",
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    return {
-      isValid: parsed.isValid === true,
-      validationErrors: Array.isArray(parsed.validationErrors)
-        ? parsed.validationErrors
-        : [],
-      sanitizedContent:
-        typeof parsed.sanitizedContent === "string"
-          ? parsed.sanitizedContent
-          : "",
-      timestamp:
-        typeof parsed.timestamp === "string"
-          ? parsed.timestamp
-          : new Date().toISOString(),
-    };
-  } catch {
-    return {
-      isValid: false,
-      validationErrors: ["Failed to parse validation response"],
-      sanitizedContent: "",
-      timestamp: new Date().toISOString(),
-    };
-  }
+Be strict but fair in validation. A report should only be rejected if it has critical issues that prevent proper processing.`;
 }

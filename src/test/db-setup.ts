@@ -3,102 +3,88 @@
 
 type TableName = "users" | "daily_reports" | "report_send_history" | "audit_events";
 
-interface TableData {
-  users: Array<{
-    user_id: string;
-    user_name: string;
-    department: string;
-    role: string;
-  }>;
-  daily_reports: Array<{
-    report_id: string;
-    user_id: string;
-    report_date: string;
-    yesterday_achievement: string;
-    today_plan: string;
-    issues: string;
-    created_at: Date;
-  }>;
-  report_send_history: Array<{
-    history_id: string;
-    user_id: string;
-    report_date: string;
-    sent_at: Date;
-    status: string;
-  }>;
-  audit_events: Array<{
-    event_type: string;
-    target_role: string;
-    unsubmitted_count: number;
-    timestamp: Date;
-    [key: string]: unknown;
-  }>;
+interface TableRow {
+  [key: string]: unknown;
+}
+
+interface TableOperations {
+  del(): Promise<number>;
+  insert(row: TableRow | TableRow[]): Promise<void>;
+  where(conditions: Record<string, unknown>): Promise<TableRow[]>;
 }
 
 interface TestDatabase {
-  (tableName: TableName): TableQuery;
+  (tableName: TableName): TableOperations;
 }
 
-interface TableQuery {
-  del(): Promise<void>;
-  insert(data: Record<string, unknown>): Promise<void>;
-  where(conditions: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
-}
+const databases = new Map<string, Map<TableName, TableRow[]>>();
+let databaseCounter = 0;
 
-const createInMemoryDatabase = (): {
-  tables: Map<TableName, Array<Record<string, unknown>>>;
-  query: (tableName: TableName) => TableQuery;
-} => {
-  const tables = new Map<TableName, Array<Record<string, unknown>>>([
+function createInMemoryTable(): Map<TableName, TableRow[]> {
+  return new Map<TableName, TableRow[]>([
     ["users", []],
     ["daily_reports", []],
     ["report_send_history", []],
     ["audit_events", []],
   ]);
+}
 
-  const query = (tableName: TableName): TableQuery => {
-    return {
-      del: async () => {
-        tables.set(tableName, []);
-      },
-      insert: async (data: Record<string, unknown>) => {
-        const table = tables.get(tableName) || [];
-        table.push(data);
-        tables.set(tableName, table);
-      },
-      where: async (conditions: Record<string, unknown>) => {
-        const table = tables.get(tableName) || [];
-        return table.filter((row) => {
-          return Object.entries(conditions).every(([key, value]) => {
-            return row[key] === value;
-          });
+function createTableOperations(
+  tableData: Map<TableName, TableRow[]>,
+  tableName: TableName
+): TableOperations {
+  return {
+    async del(): Promise<number> {
+      const rows = tableData.get(tableName) || [];
+      const count = rows.length;
+      tableData.set(tableName, []);
+      return count;
+    },
+
+    async insert(row: TableRow | TableRow[]): Promise<void> {
+      const rows = tableData.get(tableName) || [];
+      if (Array.isArray(row)) {
+        rows.push(...row);
+      } else {
+        rows.push(row);
+      }
+      tableData.set(tableName, rows);
+    },
+
+    async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
+      const rows = tableData.get(tableName) || [];
+      return rows.filter((row) => {
+        return Object.entries(conditions).every(([key, value]) => {
+          return row[key] === value;
         });
-      },
-    };
+      });
+    },
   };
+}
 
-  return { tables, query };
-};
+export async function createTestDatabase(): Promise<TestDatabase> {
+  const dbId = `test_db_${databaseCounter++}`;
+  const tableData = createInMemoryTable();
+  databases.set(dbId, tableData);
 
-export const createTestDatabase = async (): Promise<TestDatabase> => {
-  const { query } = createInMemoryDatabase();
-
-  return (tableName: TableName): TableQuery => {
-    return query(tableName);
+  return (tableName: TableName): TableOperations => {
+    const data = databases.get(dbId);
+    if (!data) {
+      throw new Error(`Database ${dbId} not found`);
+    }
+    return createTableOperations(data, tableName);
   };
-};
+}
 
-export const cleanupTestDatabase = async (
-  testDb: TestDatabase
-): Promise<void> => {
-  const tableNames: TableName[] = [
+export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
+  const tables: TableName[] = [
     "users",
     "daily_reports",
     "report_send_history",
     "audit_events",
   ];
 
-  for (const tableName of tableNames) {
-    await testDb(tableName).del();
+  for (const tableName of tables) {
+    await db(tableName).del();
   }
-};
+}
