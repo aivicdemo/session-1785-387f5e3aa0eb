@@ -1228,14 +1228,14 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
       input?.yesterdayAccomplishment ||
       input?.yesterday_achievement ||
       input?.item1_yesterday ||
-      "";
+      '';
     const today =
       input?.today_plan ||
       input?.today ||
       input?.todayPlan ||
       input?.todays_plan ||
       input?.item2_today ||
-      "";
+      '';
     const issue =
       input?.current_issue ||
       input?.issue ||
@@ -1246,47 +1246,47 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
       input?.currentChallenge ||
       input?.issues ||
       input?.item3_issue ||
-      "";
+      '';
 
-    const yesterdayEmpty = !yesterday || String(yesterday).trim() === "";
-    const todayEmpty = !today || String(today).trim() === "";
-    const issueEmpty = !issue || String(issue).trim() === "";
+    const yesterdayEmpty = !yesterday || String(yesterday).trim() === '';
+    const todayEmpty = !today || String(today).trim() === '';
+    const issueEmpty = !issue || String(issue).trim() === '';
 
     if (yesterdayEmpty || todayEmpty || issueEmpty) {
       const errors = [];
       if (yesterdayEmpty) {
-        errors.push({ field: "yesterday", message: "昨日やったことが未入力です" });
+        errors.push({ field: 'yesterday', message: '昨日やったことが未入力です' });
       }
       if (todayEmpty) {
-        errors.push({ field: "today", message: "今日やることが未入力です" });
+        errors.push({ field: 'today', message: '今日やることが未入力です' });
       }
       if (issueEmpty) {
-        errors.push({ field: "issue", message: "抱えている課題は必須項目です" });
+        errors.push({ field: 'issue', message: '抱えている課題は必須項目です' });
       }
 
       return {
         isValid: false,
         is_valid: false,
-        errorMessage: errors.map((e) => e.message).join("、"),
-        error_message: errors.map((e) => e.message).join("、"),
+        errorMessage: errors.map((e) => e.message).join('、'),
+        error_message: errors.map((e) => e.message).join('、'),
         mailSent: false,
         email_sent: false,
         retainedTodayPlan: today,
         retainedCurrentIssue: issue,
         errors: errors,
         shouldSendConfirmationEmail: false,
-        message: errors.map((e) => e.message).join("、"),
+        message: errors.map((e) => e.message).join('、'),
       };
     }
 
     const submissionHistory = input?.submissionHistory || [];
-    const userId = input?.user_id || input?.userId || "";
-    const submissionDate = input?.submission_date || input?.submissionDate || "";
+    const userId = input?.user_id || input?.userId || '';
+    const submissionDate = input?.submission_date || input?.submissionDate || '';
 
     // 重複送信チェック
     if (submissionHistory && submissionHistory.length > 0) {
       const isDuplicate = submissionHistory.some((record: any) => {
-        const recordDate = record.submission_date || record.submissionDate || "";
+        const recordDate = record.submission_date || record.submissionDate || '';
         return recordDate === submissionDate && userId;
       });
 
@@ -1294,29 +1294,29 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
         return {
           isValid: false,
           is_valid: false,
-          errorMessage: "本日の朝会報告は既に送信済みです。重複送信はできません",
-          error_message: "本日の朝会報告は既に送信済みです。重複送信はできません",
+          errorMessage: '本日の朝会報告は既に送信済みです。重複送信はできません',
+          error_message: '本日の朝会報告は既に送信済みです。重複送信はできません',
           mailSent: false,
           email_sent: false,
           retainedTodayPlan: today,
           retainedCurrentIssue: issue,
-          errors: [{ field: "submission", message: "重複送信" }],
+          errors: [{ field: 'submission', message: '重複送信' }],
           shouldSendConfirmationEmail: false,
-          message: "本日の朝会報告は既に送信済みです。重複送信はできません",
+          message: '本日の朝会報告は既に送信済みです。重複送信はできません',
         };
       }
     }
 
-    const { randomUUID } = require("crypto");
+    const { randomUUID } = require('crypto');
     const submissionId = randomUUID();
     const submittedAt = new Date();
 
     const result: any = {
-      status: "submitted",
+      status: 'submitted',
       success: true,
       isValid: true,
       is_valid: true,
-      message: "報告を送信しました",
+      message: '報告を送信しました',
       form_reset: true,
       shouldSendConfirmationEmail: true,
       mailSent: true,
@@ -1341,7 +1341,7 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
         sent: true,
         timestamp: submittedAt,
       },
-      reason: "submission_successful",
+      reason: 'submission_successful',
       dataSaved: true,
       retained_input: {
         yesterday: yesterday,
@@ -1349,30 +1349,30 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
         issue: issue,
       },
       submitted_timestamp: submittedAt,
-      submission_status: "submitted_on_time",
+      submission_status: 'submitted_on_time',
       record_id: submissionId,
       submitted_user_id: userId,
       submission_id: submissionId,
       submission_history: submissionHistory,
       mail_send_log_id: `mail_${submissionId}`,
       sender_user_id: userId,
-      recipient_email: input?.reporter_email || "",
-      email_type: "confirmation",
-      send_status: "sent",
+      recipient_email: input?.reporter_email || '',
+      email_type: 'confirmation',
+      send_status: 'sent',
       sent_at: submittedAt.toISOString(),
-      mail_subject: "朝会報告確認メール",
+      mail_subject: '朝会報告確認メール',
       mail_body: `昨日: ${yesterday}\n今日: ${today}\n課題: ${issue}`,
       email_log: {
         id: `mail_${submissionId}`,
         sent_at: submittedAt.toISOString(),
-        status: "sent",
-        recipient_email: input?.reporter_email || "",
+        status: 'sent',
+        recipient_email: input?.reporter_email || '',
       },
       report_sent: true,
       isOnTime: true,
       minutesBeforeDeadline: 30,
       requiresUrgentReminder: false,
-      deadlineTime: "09:00",
+      deadlineTime: '09:00',
       emailSent: true,
       isFirstSubmissionOfDay: submissionHistory.length === 0,
       currentChallenge: issue,
@@ -1383,14 +1383,14 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
       confirmation_emails_sent_count: 1,
       submitted_date: submissionDate,
       should_save_report: true,
-      error_field: "",
+      error_field: '',
       is_button_disabled: false,
-      error_message: "",
+      error_message: '',
       submit_button_disabled: false,
       validation_errors: [],
-      email_status: "queued",
+      email_status: 'queued',
       submitted: true,
-      formState: "completed",
+      formState: 'completed',
       is_submitted: true,
       is_same_day: true,
       send_confirmation_email: true,
@@ -1401,6 +1401,7 @@ const __aivicBundle_validateAndSubmitReport_fixed = (() => {
 
     return result;
   }
+
   return { validateAndSubmitReport };
 })();
 export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateAndSubmitReport_fixed.validateAndSubmitReport as (...args: any[]) => any)(...args);
@@ -1638,83 +1639,85 @@ export const validateAndSendMorningReport = __aivicBundle_14_validateAndSendMorn
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendReport exports=validateAndSendReport */
 const __aivicBundle_validateAndSendReport_fixed = (() => {
-  function validateAndSendReport(
-    input: any,
-    emailService?: any
-  ): any {
-    const userId = input?.user_id ?? input?.userId ?? "";
+  function validateAndSendReport(input: any, emailService?: any): any {
+    const userId = input?.user_id ?? input?.userId ?? '';
     const yesterdayAchievement =
       input?.yesterday_achievement ??
       input?.yesterdayAccomplishment ??
       input?.yesterday ??
-      "";
+      '';
     const todayPlan =
-      input?.today_plan ?? input?.todays_plan ?? input?.todayPlan ?? input?.today ?? "";
+      input?.today_plan ?? input?.todays_plan ?? input?.todayPlan ?? input?.today ?? '';
     const currentIssue =
       input?.current_issue ??
       input?.current_issues ??
       input?.currentChallenge ??
       input?.challenge ??
       input?.issues ??
-      input?.item3CurrentChallenge ?? "";
+      input?.item3CurrentChallenge ??
+      '';
     const sentAt =
       input?.sent_at ?? input?.sentAt ?? input?.submittedAt ?? input?.submitted_at;
     const item1 = input?.item1YesterdayAccomplishment ?? yesterdayAchievement;
     const item2 = input?.item2TodayPlan ?? todayPlan;
     const item3 = input?.item3CurrentChallenge ?? currentIssue;
-  
-    if (!userId || userId === "") {
-      throw new Error("ユーザーIDは必須です");
+
+    if (!userId || userId === '') {
+      throw new Error('ユーザーIDは必須です');
     }
-  
+
     if (
       item1 === null ||
       item1 === undefined ||
-      (typeof item1 === "string" && item1.trim() === "")
+      (typeof item1 === 'string' && item1.trim() === '')
     ) {
-      throw new Error("昨日の実績は必須です");
+      throw new Error('昨日の実績は必須です');
     }
-  
-    if (item2 === null || item2 === undefined || (typeof item2 === "string" && item2.trim() === "")) {
-      throw new Error("本日の予定は必須です");
+
+    if (
+      item2 === null ||
+      item2 === undefined ||
+      (typeof item2 === 'string' && item2.trim() === '')
+    ) {
+      throw new Error('本日の予定は必須です');
     }
-  
+
     if (
       item3 === null ||
       item3 === undefined ||
-      (typeof item3 === "string" && item3.trim() === "")
+      (typeof item3 === 'string' && item3.trim() === '')
     ) {
-      throw new Error("抱えている課題は必須です");
+      throw new Error('抱えている課題は必須です');
     }
-  
+
     const maxCharLimit = 500;
-    if (typeof item1 === "string" && item1.length > maxCharLimit) {
-      throw new Error("昨日の実績の文字数が上限を超えています");
+    if (typeof item1 === 'string' && item1.length > maxCharLimit) {
+      throw new Error('昨日の実績の文字数が上限を超えています');
     }
-  
-    if (typeof item2 === "string" && item2.length > maxCharLimit) {
-      throw new Error("本日の予定の文字数が上限を超えています");
+
+    if (typeof item2 === 'string' && item2.length > maxCharLimit) {
+      throw new Error('本日の予定の文字数が上限を超えています');
     }
-  
-    if (typeof item3 === "string" && item3.length > maxCharLimit) {
-      throw new Error("抱えている課題の文字数が上限を超えています");
+
+    if (typeof item3 === 'string' && item3.length > maxCharLimit) {
+      throw new Error('抱えている課題の文字数が上限を超えています');
     }
-  
+
     if (sentAt !== undefined && sentAt !== null) {
-      if (typeof sentAt === "string") {
+      if (typeof sentAt === 'string') {
         const dateObj = new Date(sentAt);
         if (isNaN(dateObj.getTime())) {
-          throw new Error("送信日時の形式が不正です");
+          throw new Error('送信日時の形式が不正です');
         }
       } else if (!(sentAt instanceof Date)) {
-        throw new Error("送信日時の形式が不正です");
+        throw new Error('送信日時の形式が不正です');
       } else if (isNaN(sentAt.getTime())) {
-        throw new Error("送信日時の形式が不正です");
+        throw new Error('送信日時の形式が不正です');
       }
     }
-  
-    const shouldSendEmail = emailService && typeof emailService.send === "function";
-  
+
+    const shouldSendEmail = emailService && typeof emailService.send === 'function';
+
     if (shouldSendEmail) {
       emailService.send({
         userId,
@@ -1724,17 +1727,17 @@ const __aivicBundle_validateAndSendReport_fixed = (() => {
         sentAt: sentAt instanceof Date ? sentAt : new Date(sentAt),
       });
     }
-  
+
     let isDelayed = false;
     let delayMinutes = 0;
     let submissionConfirmed = false;
     let managerNotificationSent = false;
     let notificationIncludesDelayInfo = false;
-  
+
     if (emailService instanceof Date) {
       const meetingStartTime = emailService;
       const submissionTime = sentAt instanceof Date ? sentAt : new Date(sentAt);
-  
+
       if (submissionTime > meetingStartTime) {
         isDelayed = true;
         delayMinutes = Math.floor(
@@ -1745,13 +1748,13 @@ const __aivicBundle_validateAndSendReport_fixed = (() => {
         notificationIncludesDelayInfo = true;
       }
     }
-  
+
     const result: any = {
       success: true,
       email_sent: shouldSendEmail,
       database_record_created: true,
     };
-  
+
     if (emailService instanceof Date) {
       result.isDelayed = isDelayed;
       result.delayMinutes = delayMinutes;
@@ -1760,12 +1763,13 @@ const __aivicBundle_validateAndSendReport_fixed = (() => {
       result.managerNotificationSent = managerNotificationSent;
       result.notificationIncludesDelayInfo = notificationIncludesDelayInfo;
     }
-  
+
     result.isValid = true;
     result.errors = [];
-  
+
     return result;
   }
+
   return { validateAndSendReport };
 })();
 export const validateAndSendReport: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_validateAndSendReport_fixed.validateAndSendReport as (...args: any[]) => any)(...args);
@@ -1773,12 +1777,9 @@ export const validateAndSendReport: (...args: any[]) => any = (...args: any[]) =
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSubmitDailyReport exports=validateAndSubmitDailyReport */
 const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
-  function validateAndSubmitDailyReport(
-    input: any,
-    emailService?: any
-  ): any {
+  function validateAndSubmitDailyReport(input: any, emailService?: any): any {
     const errors: Array<{ field: string; message: string }> = [];
-  
+
     const yesterday =
       input?.yesterday_accomplishment ??
       input?.yesterdayAccomplishment ??
@@ -1786,13 +1787,10 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
       input?.yesterdayActivity ??
       input?.yesterday_achievement ??
       '';
-  
+
     const today =
-      input?.today_plan ??
-      input?.todayPlan ??
-      input?.today ??
-      '';
-  
+      input?.today_plan ?? input?.todayPlan ?? input?.today ?? '';
+
     const challenges =
       input?.current_issue ??
       input?.currentIssue ??
@@ -1801,7 +1799,7 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
       input?.challenges ??
       input?.challengesFaced ??
       '';
-  
+
     if (
       input?.challenges === null ||
       input?.current_issue === null ||
@@ -1811,35 +1809,35 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
     ) {
       throw new Error('抱えている課題は必須です');
     }
-  
+
     if (yesterday && /<script|<iframe|javascript:/i.test(yesterday)) {
       throw new Error('第1項目に使用できない文字が含まれています');
     }
-  
+
     if (!yesterday || String(yesterday).trim() === '') {
       errors.push({
         field: 'yesterdayAccomplishment',
         message: '昨日やったことは必須です',
       });
     }
-  
+
     if (!today || String(today).trim() === '') {
       errors.push({
         field: 'todayPlan',
         message: '本日の予定は必須です',
       });
     }
-  
+
     if (!challenges || String(challenges).trim() === '') {
       errors.push({
         field: 'currentChallenges',
         message: '抱えている課題は必須です',
       });
     }
-  
+
     if (errors.length > 0) {
-      const hasSnakeCase = Object.keys(input || {}).some(k => k.includes('_'));
-  
+      const hasSnakeCase = Object.keys(input || {}).some((k) => k.includes('_'));
+
       if (hasSnakeCase) {
         return {
           is_valid: false,
@@ -1851,7 +1849,7 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
           confirmationEmailSent: false,
         };
       }
-  
+
       return {
         isValid: false,
         errors,
@@ -1859,7 +1857,7 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
         confirmationEmailSent: false,
       };
     }
-  
+
     let confirmationEmailSent = false;
     if (emailService && typeof emailService === 'function') {
       try {
@@ -1873,9 +1871,9 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
         confirmationEmailSent = false;
       }
     }
-  
-    const hasSnakeCase = Object.keys(input || {}).some(k => k.includes('_'));
-  
+
+    const hasSnakeCase = Object.keys(input || {}).some((k) => k.includes('_'));
+
     if (hasSnakeCase) {
       return {
         is_valid: true,
@@ -1888,7 +1886,7 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
         form_reset: true,
       };
     }
-  
+
     return {
       isValid: true,
       isSubmitted: true,
@@ -1897,6 +1895,7 @@ const __aivicBundle_validateAndSubmitDailyReport_fixed = (() => {
       form_reset: true,
     };
   }
+
   return { validateAndSubmitDailyReport };
 })();
 export const validateAndSubmitDailyReport = __aivicBundle_validateAndSubmitDailyReport_fixed.validateAndSubmitDailyReport;
@@ -2200,9 +2199,14 @@ export const validateDailyReport = __aivicBundle_18_validateDailyReport.validate
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReportSubmission exports=validateDailyReportSubmission */
 const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
-  function validateDailyReportSubmission(
-    formData: any
-  ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
+  function validateDailyReportSubmission(formData: any): {
+    isValid: boolean;
+    errors: Array<{ field: string; message: string }>;
+    validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗';
+    shouldSendConfirmationEmail?: boolean;
+    is_allowed?: boolean;
+    message?: string;
+  } {
     const errors: Array<{ field: string; message: string }> = [];
 
     const reportDate = formData?.reportDate || formData?.report_date || '';
@@ -2214,16 +2218,19 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     if (!reportDate || String(reportDate).trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
     }
-    
+
     if (!department || String(department).trim() === '') {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
+
     if (!yesterday || String(yesterday).trim() === '') {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
+
     if (!today || String(today).trim() === '') {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
+
     if (!challenge || String(challenge).trim() === '') {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
@@ -2236,9 +2243,10 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
       validationStatus: isValid ? '妥当性確認: 完了' : '妥当性確認: 失敗',
       shouldSendConfirmationEmail: isValid,
       is_allowed: isValid,
-      message: isValid ? '送信完了しました' : undefined
+      message: isValid ? '送信完了しました' : undefined,
     };
   }
+
   return { validateDailyReportSubmission };
 })();
 export const validateDailyReportSubmission = __aivicBundle_validateDailyReportSubmission_fixed.validateDailyReportSubmission;
@@ -2526,26 +2534,19 @@ export const sendConfirmationEmailWithReport = __aivicBundle_24_sendConfirmation
 const __aivicBundle_submitDailyReport_fixed = (() => {
   const submissionStore = new Map<string, Set<string>>();
 
-  async function submitDailyReport(
-    reportData: any,
-    mockDuplicateCheckFn?: Function
-  ): Promise<any> {
-    const userId =
-      reportData?.user_id ||
-      reportData?.userId ||
-      reportData?.staff_id ||
-      "";
+  async function submitDailyReport(reportData: any, mockDuplicateCheckFn?: Function): Promise<any> {
+    const userId = reportData?.user_id || reportData?.userId || reportData?.staff_id || '';
     const yesterdayWork =
       reportData?.yesterday_achievement ||
       reportData?.yesterday_accomplished ||
       reportData?.yesterday ||
       reportData?.yesterdayAccomplishment ||
-      "";
+      '';
     const todayPlan =
       reportData?.today_plan ||
       reportData?.today ||
       reportData?.todayPlan ||
-      "";
+      '';
     const currentIssues =
       reportData?.current_issues ||
       reportData?.current_issue ||
@@ -2556,7 +2557,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData?.issue ||
       reportData?.issue_held ||
       reportData?.openIssues ||
-      "";
+      '';
 
     let submittedAt: Date | null = null;
     if (reportData?.submitted_at) {
@@ -2584,7 +2585,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData?.reportDate ||
       reportData?.submission_date ||
       reportData?.submissionDate ||
-      (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
+      (submittedAt ? submittedAt.toISOString().split('T')[0] : '');
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {
       const retained = {
@@ -2595,14 +2596,14 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       if (!yesterdayWork) {
         return {
           success: false,
-          error_message: "昨日やったことが未入力",
+          error_message: '昨日やったことが未入力',
           retained_input: retained,
           submitted_at: null,
         };
       }
       return {
         success: false,
-        error_message: "必須項目が未入力です",
+        error_message: '必須項目が未入力です',
         retained_input: retained,
         submitted_at: null,
       };
@@ -2620,8 +2621,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
           };
           return {
             success: false,
-            error_message:
-              "送信に失敗しました。時間をおいて再度お試しください。",
+            error_message: '送信に失敗しました。時間をおいて再度お試しください。',
             submitted_at: null,
             retained_input: retained,
           };
@@ -2634,8 +2634,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
         };
         return {
           success: false,
-          error_message:
-            "送信に失敗しました。時間をおいて再度お試しください。",
+          error_message: '送信に失敗しました。時間をおいて再度お試しください。',
           submitted_at: null,
           retained_input: retained,
         };
@@ -2651,8 +2650,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
         };
         return {
           success: false,
-          error_message:
-            "送信に失敗しました。時間をおいて再度お試しください。",
+          error_message: '送信に失敗しました。時間をおいて再度お試しください。',
           submitted_at: null,
           retained_input: retained,
         };
@@ -2660,17 +2658,17 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       submissionStore.set(submissionKey, new Set([userId]));
     }
 
-    const { randomUUID } = require("crypto");
+    const { randomUUID } = require('crypto');
     const reportId = `report_${reportDate}_${randomUUID().substring(0, 8)}`;
     const submissionHistoryId = `HIST-${randomUUID().substring(0, 8)}`;
-    
+
     const dateStr = submittedAt.toISOString().split('T')[0].replace(/-/g, '');
     const logSuffix = '001';
     const mailSendLogId = `LOG-${dateStr}-${logSuffix}`;
 
-    const userEmail = reportData?.user_email || reportData?.userEmail || "";
-    const managerEmail = reportData?.manager_email || "";
-    const staffName = reportData?.staff_name || "";
+    const userEmail = reportData?.user_email || reportData?.userEmail || '';
+    const managerEmail = reportData?.manager_email || '';
+    const staffName = reportData?.staff_name || '';
 
     const emailBody = `
 朝会報告
@@ -2679,20 +2677,20 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
 昨日やったこと: ${yesterdayWork}
 今日やること: ${todayPlan}
 抱えている課題: ${currentIssues}
-送信日時: ${submittedAt ? submittedAt.toISOString() : ""}
+送信日時: ${submittedAt ? submittedAt.toISOString() : ''}
     `.trim();
 
     const emailLog: any = {
       id: mailSendLogId,
       sent_at: submittedAt ? submittedAt.toISOString() : new Date().toISOString(),
-      status: "送信成功",
-      recipient_email: userEmail || managerEmail || "",
-      recipient_role: userEmail ? "engineer" : "manager",
-      subject: "朝会報告",
+      status: '送信成功',
+      recipient_email: userEmail || managerEmail || '',
+      recipient_role: userEmail ? 'engineer' : 'manager',
+      subject: '朝会報告',
       body: emailBody,
-      email_subject: "朝会報告",
+      email_subject: '朝会報告',
       email_body: emailBody,
-      send_status: "送信成功",
+      send_status: '送信成功',
     };
 
     const recipients = new Set<string>();
@@ -2703,20 +2701,20 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       success: true,
       reportId: reportId,
       report_id: reportId,
-      status: "success",
+      status: 'success',
       submission_history_id: submissionHistoryId,
       confirmation_email_sent: recipients.size > 0,
       mail_send_log_id: mailSendLogId,
       sender_user_id: userId,
-      recipient_email: userEmail || managerEmail || "",
-      email_type: "confirmation",
-      send_status: "送信成功",
+      recipient_email: userEmail || managerEmail || '',
+      email_type: 'confirmation',
+      send_status: '送信成功',
       sent_at: submittedAt ? submittedAt.toISOString() : new Date().toISOString(),
       email_log: emailLog,
       submitted_at: submittedAt,
       userId: userId,
       reportDate: reportDate,
-      message: "送信完了しました",
+      message: '送信完了しました',
       emailNotified: recipients.size > 0,
       isFirstSubmissionOfDay: true,
       yesterdayAccomplishment: yesterdayWork,
@@ -2735,7 +2733,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       isValid: true,
       submitted: true,
       confirmation_email: {
-        recipient_type: "管理者",
+        recipient_type: '管理者',
         body: emailBody,
       },
     };
@@ -8361,7 +8359,7 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
   ): any {
     const result: any = {
       success: false,
-      status: "pending",
+      status: 'pending',
       completed_actions: [],
       execution_log: [],
       errors: [],
@@ -8377,16 +8375,16 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       return result;
     }
 
-    if (input && typeof input === "object") {
+    if (input && typeof input === 'object') {
       normalizedInput = input;
     }
 
-    if (context && typeof context === "object" && !(context instanceof Date)) {
+    if (context && typeof context === 'object' && !(context instanceof Date)) {
       normalizedContext = context;
       aiClient = context.aiClient;
     }
 
-    if (additionalContext && typeof additionalContext === "object") {
+    if (additionalContext && typeof additionalContext === 'object') {
       normalizedContext = { ...normalizedContext, ...additionalContext };
       if (additionalContext.aiClient) {
         aiClient = additionalContext.aiClient;
@@ -8429,53 +8427,53 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
     const systemConfig = normalizedInput.systemConfig;
     const engineerStatuses = normalizedInput.engineerStatuses;
 
-    result.completed_actions!.push("validate_input");
+    result.completed_actions!.push('validate_input');
     result.execution_log!.push({
       timestamp: executionStartTime.toISOString(),
-      action: "validate_input",
-      status: "started",
+      action: 'validate_input',
+      status: 'started',
     });
 
     const validationErrors: string[] = [];
 
     if (!engineerId) {
-      validationErrors.push("エンジニアIDが未入力");
+      validationErrors.push('エンジニアIDが未入力');
     }
     if (!engineerEmail) {
-      validationErrors.push("送信者のメールアドレスが登録されていません");
+      validationErrors.push('送信者のメールアドレスが登録されていません');
     }
     if (!yesterdayWork || (yesterdayWork as string).trim().length === 0) {
-      validationErrors.push("昨日やったことが未入力");
+      validationErrors.push('昨日やったことが未入力');
     }
     if (!todayPlan || (todayPlan as string).trim().length === 0) {
-      validationErrors.push("今日のプランが未入力");
+      validationErrors.push('今日のプランが未入力');
     }
 
     if (validationErrors.length > 0) {
       result.success = false;
-      result.status = "妥当性確認: 失敗";
-      result.validationStatus = "妥当性確認: 失敗";
+      result.status = '妥当性確認: 失敗';
+      result.validationStatus = '妥当性確認: 失敗';
       result.isValid = false;
       result.errors = validationErrors;
       result.canProceedToRegistration = false;
       result.execution_log!.push({
         timestamp: new Date().toISOString(),
-        action: "validate_input",
-        status: "failed",
+        action: 'validate_input',
+        status: 'failed',
         errors: validationErrors,
       });
       return result;
     }
 
-    result.status = "妥当性確認: 完了";
-    result.validationStatus = "妥当性確認: 完了";
+    result.status = '妥当性確認: 完了';
+    result.validationStatus = '妥当性確認: 完了';
     result.isValid = true;
     result.errors = [];
     result.canProceedToRegistration = true;
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
-      action: "validate_input",
-      status: "completed",
+      action: 'validate_input',
+      status: 'completed',
     });
 
     // escalation check: 提出期限を大幅に超過
@@ -8487,16 +8485,16 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
 
       if (delayHours > 24) {
         result.success = false;
-        result.status = "escalated";
+        result.status = 'escalated';
         result.escalationTriggered = true;
-        result.escalationReason = "提出期限を大幅に超過";
+        result.escalationReason = '提出期限を大幅に超過';
         result.reportRegistered = false;
         result.confirmationEmailSent = false;
-        result.completed_actions!.push("escalation_triggered");
+        result.completed_actions!.push('escalation_triggered');
         result.execution_log!.push({
           timestamp: new Date().toISOString(),
-          action: "escalation_triggered",
-          reason: "提出期限を大幅に超過",
+          action: 'escalation_triggered',
+          reason: '提出期限を大幅に超過',
         });
         return result;
       }
@@ -8509,16 +8507,16 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       normalizedInput.reportInput.confidence < 0.7
     ) {
       result.success = false;
-      result.status = "escalated";
+      result.status = 'escalated';
       result.escalationTriggered = true;
-      result.escalationReason = "不正・曖昧・低確信度";
+      result.escalationReason = '不正・曖昧・低確信度';
       result.reportRegistered = false;
       result.confirmationEmailSent = false;
-      result.completed_actions!.push("escalation_triggered");
+      result.completed_actions!.push('escalation_triggered');
       result.execution_log!.push({
         timestamp: new Date().toISOString(),
-        action: "escalation_triggered",
-        reason: "不正・曖昧・低確信度",
+        action: 'escalation_triggered',
+        reason: '不正・曖昧・低確信度',
       });
       return result;
     }
@@ -8529,17 +8527,17 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
       (!todayPlan || (todayPlan as string).trim().length === 0)
     ) {
       result.success = false;
-      result.status = "escalation_pending";
-      result.escalationReason = "input_incomplete";
-      result.requiredFieldsForCompletion = ["yesterday_work", "today_plan"];
+      result.status = 'escalation_pending';
+      result.escalationReason = 'input_incomplete';
+      result.requiredFieldsForCompletion = ['yesterday_work', 'today_plan'];
       result.sideEffectConfirmed = false;
       result.systemRegistrationId = undefined;
       result.confirmationEmailSent = false;
-      result.completed_actions!.push("escalation_check");
+      result.completed_actions!.push('escalation_check');
       result.execution_log!.push({
         timestamp: new Date().toISOString(),
-        action: "escalation_check",
-        status: "escalation_pending",
+        action: 'escalation_check',
+        status: 'escalation_pending',
       });
       return result;
     }
@@ -8547,15 +8545,15 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
     // escalation check: 日報登録システムエラー
     if (normalizedContext.onRegistrationError && normalizedInput.reportInput?.systemError) {
       result.escalationTriggered = true;
-      result.escalationReason = "日報登録システムエラー";
-      result.status = "escalated";
+      result.escalationReason = '日報登録システムエラー';
+      result.status = 'escalated';
       result.reportRegistered = false;
       result.confirmationEmailSent = false;
-      result.completed_actions = ["validate_input", "escalation_triggered"];
+      result.completed_actions = ['validate_input', 'escalation_triggered'];
       result.execution_log!.push({
         timestamp: new Date().toISOString(),
-        action: "escalation_triggered",
-        reason: "日報登録システムエラー",
+        action: 'escalation_triggered',
+        reason: '日報登録システムエラー',
       });
       return result;
     }
@@ -8563,34 +8561,34 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
     // escalation check: メール配信失敗によるロールバック
     if (normalizedContext.onEmailSend && normalizedInput.reportInput?.emailDeliveryFailed) {
       result.success = false;
-      result.status = "escalated";
-      result.escalation_reason = "メール配信失敗によるロールバック";
-      result.final_state = "ROLLED_BACK";
+      result.status = 'escalated';
+      result.escalation_reason = 'メール配信失敗によるロールバック';
+      result.final_state = 'ROLLED_BACK';
       result.report_id = undefined;
       result.completed_actions = [
-        "validate_input",
-        "register_report",
-        "rollback_report_registration",
-        "rollback_email_log",
+        'validate_input',
+        'register_report',
+        'rollback_report_registration',
+        'rollback_email_log',
       ];
       result.execution_log!.push({
         timestamp: new Date().toISOString(),
-        action: "rollback_report_registration",
-        status: "completed",
+        action: 'rollback_report_registration',
+        status: 'completed',
       });
       result.execution_log!.push({
         timestamp: new Date().toISOString(),
-        action: "rollback_email_log",
-        status: "completed",
+        action: 'rollback_email_log',
+        status: 'completed',
       });
       return result;
     }
 
-    result.completed_actions!.push("register_report");
+    result.completed_actions!.push('register_report');
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
-      action: "register_report",
-      status: "started",
+      action: 'register_report',
+      status: 'started',
     });
 
     const reportId = `report-${submissionTimestamp?.toISOString().substring(0, 10)}-001`;
@@ -8599,19 +8597,19 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
     result.registeredAt = submissionTimestamp?.toISOString();
     result.userId = engineerId;
     result.report_registered = true;
-    result.completed_actions!.push("register_report_to_system");
+    result.completed_actions!.push('register_report_to_system');
 
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
-      action: "register_report",
-      status: "completed",
+      action: 'register_report',
+      status: 'completed',
       reportId: reportId,
     });
 
-    result.completed_actions!.push("send_confirmation_email");
-    result.completed_actions!.push("send_confirmation_email_to_admin");
+    result.completed_actions!.push('send_confirmation_email');
+    result.completed_actions!.push('send_confirmation_email_to_admin');
     result.emailSent = true;
-    result.emailMessageId = "msg-001";
+    result.emailMessageId = 'msg-001';
     result.engineerNotified = true;
     result.adminNotified = true;
     result.confirmation_email_sent = true;
@@ -8619,16 +8617,16 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
 
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
-      action: "send_confirmation_email",
-      status: "completed",
-      emailMessageId: "msg-001",
+      action: 'send_confirmation_email',
+      status: 'completed',
+      emailMessageId: 'msg-001',
     });
 
-    result.completed_actions!.push("record_submission_history");
+    result.completed_actions!.push('record_submission_history');
     result.execution_log!.push({
       timestamp: new Date().toISOString(),
-      action: "record_submission_history",
-      status: "completed",
+      action: 'record_submission_history',
+      status: 'completed',
     });
 
     if (
@@ -8658,26 +8656,26 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
           notificationCount,
           systemConfig.maxNotificationTargetCount || notificationCount
         );
-        result.status = "completed";
+        result.status = 'completed';
         result.auditLogged = true;
-        result.completed_actions!.push("identify_overdue_engineers");
-        result.completed_actions!.push("send_reminder_notifications");
-        result.completed_actions!.push("record_audit_logs");
+        result.completed_actions!.push('identify_overdue_engineers');
+        result.completed_actions!.push('send_reminder_notifications');
+        result.completed_actions!.push('record_audit_logs');
 
         result.execution_log!.push({
           timestamp: new Date().toISOString(),
-          action: "identify_overdue_engineers",
+          action: 'identify_overdue_engineers',
           count: overdueEngineers.length,
         });
         result.execution_log!.push({
           timestamp: new Date().toISOString(),
-          action: "send_reminder_notifications",
+          action: 'send_reminder_notifications',
           count: result.notificationsSent,
         });
         result.execution_log!.push({
           timestamp: new Date().toISOString(),
-          action: "record_audit_logs",
-          status: "completed",
+          action: 'record_audit_logs',
+          status: 'completed',
         });
 
         return result;
@@ -8685,14 +8683,14 @@ const __aivicBundle_runTx1Imp1Agent_fixed = (() => {
     }
 
     result.success = true;
-    result.status = "submitted";
+    result.status = 'submitted';
     result.validation_passed = true;
     result.report_registered = true;
     result.confirmation_email_sent = true;
     result.internalState = {
-      actionStatus: "入力内容受け取り完了",
+      actionStatus: '入力内容受け取り完了',
     };
-    result.actionStatus = "入力内容受け取り完了";
+    result.actionStatus = '入力内容受け取り完了';
 
     return result;
   }
@@ -9051,7 +9049,7 @@ const __aivicBundle_runTx4Imp1Agent_fixed = (() => {
 
     if (
       input &&
-      typeof input === "object" &&
+      typeof input === 'object' &&
       input.extractChallenges &&
       !input.reportSubmissions &&
       !input.reports &&
