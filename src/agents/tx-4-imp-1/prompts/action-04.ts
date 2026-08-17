@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04Context {
+export interface Action04PromptInput {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,149 +11,123 @@ export interface Action04Context {
     description: string;
     category: string;
   }>;
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  departmentHead: string;
-  timestamp: string;
-}
-
-export interface Action04Input {
-  confirmedReports: Array<{
-    engineerId: string;
-    engineerName: string;
-    reportContent: string;
-    submittedAt: string;
-  }>;
-  previousIssues: Array<{
+  teamMembers: Array<{
     id: string;
-    title: string;
-    priority: string;
-    status: string;
+    name: string;
+    department: string;
   }>;
-  organizationContext: {
-    departmentName: string;
-    departmentHeadEmail: string;
-    teamSize: number;
+  priorityFramework: {
+    criteria: string[];
+    levels: string[];
   };
 }
 
-export interface Action04Output {
-  success: boolean;
-  extractedIssues: Array<{
+export interface Action04PromptOutput {
+  prioritizedIssues: Array<{
     id: string;
     title: string;
     description: string;
     category: string;
-    relatedEngineers: string[];
-    impactLevel: string;
-  }>;
-  prioritizedIssues: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
+    priority: string;
+    priorityScore: number;
     reasoning: string;
+    affectedMembers: string[];
     recommendedAction: string;
   }>;
-  progressSummary: {
-    totalReportsCollected: number;
-    completionRate: number;
-    overallStatus: string;
-    keyMetrics: Record<string, unknown>;
-  };
-  reportContent: string;
-  generatedAt: string;
-  escalationFlags: Array<{
-    type: string;
-    description: string;
-    requiresHumanReview: boolean;
+  criticalIssues: Array<{
+    id: string;
+    title: string;
+    severity: string;
+    escalationRequired: boolean;
   }>;
+  issueClassification: {
+    blocking: string[];
+    highPriority: string[];
+    medium: string[];
+    low: string[];
+  };
+  summary: string;
 }
 
-export function buildAction04Prompt(input: Action04Input): string {
-  const reportsList = input.confirmedReports
-    .map(
-      (report) =>
-        `[${report.engineerId}] ${report.engineerName} (${report.submittedAt}):\n${report.reportContent}`
-    )
-    .join("\n\n---\n\n");
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const priorityLevels = input.priorityFramework.levels.join(", ");
+  const criteria = input.priorityFramework.criteria
+    .map((c, i) => `${i + 1}. ${c}`)
+    .join("\n");
 
-  const previousIssuesList = input.previousIssues
+  const issuesText = input.extractedIssues
     .map(
       (issue) =>
-        `- [${issue.id}] ${issue.title} (Priority: ${issue.priority}, Status: ${issue.status})`
+        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
     )
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for analyzing daily reports and extracting key issues with priority assessment.
+  const teamText = input.teamMembers
+    .map((member) => `- ${member.name} (${member.department})`)
+    .join("\n");
 
-## Context
-Department: ${input.organizationContext.departmentName}
-Team Size: ${input.organizationContext.teamSize}
-Department Head: ${input.organizationContext.departmentHeadEmail}
+  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
 
-## Collected Reports
-${reportsList}
+## Task: Prioritize and Classify Extracted Issues
 
-## Previous Issues Being Tracked
-${previousIssuesList || "No previous issues"}
+### Input Report Content:
+${input.reportContent}
 
-## Your Tasks
-1. Extract all issues, bottlenecks, and risks mentioned across all reports
-2. Categorize each issue (e.g., Technical, Resource, Process, External Dependency)
-3. Assess impact level for each issue
-4. Assign priority (critical, high, medium, low) based on:
-   - Frequency of mention across reports
-   - Potential impact on project timeline
-   - Number of team members affected
-   - Dependency on external factors
-5. Identify escalation flags for human review
-6. Generate a summary of overall progress status
+### Extracted Issues to Prioritize:
+${issuesText}
 
-## Output Requirements
-- Return a JSON object with the following structure:
+### Team Members:
+${teamText}
+
+### Priority Framework:
+Priority Levels: ${priorityLevels}
+
+Prioritization Criteria:
+${criteria}
+
+### Instructions:
+1. Analyze each extracted issue against the prioritization criteria
+2. Assign a priority level (${priorityLevels}) to each issue
+3. Provide a numerical priority score (1-100, where 100 is highest priority)
+4. Classify issues into categories: blocking, highPriority, medium, low
+5. Identify any critical issues requiring immediate escalation
+6. Provide reasoning for each priority assignment
+7. Identify affected team members for each issue
+8. Recommend specific actions for high-priority issues
+9. Generate a summary of the prioritization results
+
+### Output Format:
+Return a JSON object with the following structure:
 {
-  "success": boolean,
-  "extractedIssues": [
-    {
-      "id": "ISSUE_XXX",
-      "title": "Issue Title",
-      "description": "Detailed description",
-      "category": "Category",
-      "relatedEngineers": ["engineer_id"],
-      "impactLevel": "high|medium|low"
-    }
-  ],
   "prioritizedIssues": [
     {
-      "issueId": "ISSUE_XXX",
-      "priority": "critical|high|medium|low",
-      "reasoning": "Why this priority",
-      "recommendedAction": "Suggested action"
+      "id": "issue_id",
+      "title": "issue_title",
+      "description": "issue_description",
+      "category": "issue_category",
+      "priority": "priority_level",
+      "priorityScore": number,
+      "reasoning": "explanation_of_priority",
+      "affectedMembers": ["member_id"],
+      "recommendedAction": "specific_action"
     }
   ],
-  "progressSummary": {
-    "totalReportsCollected": number,
-    "completionRate": percentage,
-    "overallStatus": "on_track|at_risk|blocked",
-    "keyMetrics": {}
-  },
-  "escalationFlags": [
+  "criticalIssues": [
     {
-      "type": "type_name",
-      "description": "Description",
-      "requiresHumanReview": boolean
+      "id": "issue_id",
+      "title": "issue_title",
+      "severity": "severity_level",
+      "escalationRequired": boolean
     }
-  ]
+  ],
+  "issueClassification": {
+    "blocking": ["issue_id"],
+    "highPriority": ["issue_id"],
+    "medium": ["issue_id"],
+    "low": ["issue_id"]
+  },
+  "summary": "overall_summary_of_prioritization"
 }
 
-## Escalation Conditions to Flag
-- Same issue reported by multiple team members
-- Critical blockers affecting project timeline
-- Resource constraints or capacity issues
-- External dependency delays
-- Unusual patterns or anomalies in reports`;
-
-  return prompt;
+Ensure all issues are classified and prioritized based on the provided framework.`;
 }

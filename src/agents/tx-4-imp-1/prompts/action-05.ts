@@ -7,16 +7,11 @@ export interface Action05Context {
   confirmationEmailContent: string;
   reportSubmissionDeadline: string;
   currentTimestamp: string;
-  previousEscalationHistory: Array<{
+  previousEscalationHistory?: Array<{
     employeeId: string;
     escalationCount: number;
     lastEscalationTime: string;
   }>;
-  escalationRules: {
-    maxEscalationCount: number;
-    escalationIntervalMinutes: number;
-    considerLateAfterMinutes: number;
-  };
 }
 
 export interface ExtractedIssue {
@@ -26,155 +21,112 @@ export interface ExtractedIssue {
   affectedEmployees: string[];
   severity: "critical" | "high" | "medium" | "low";
   category: string;
+  relatedReports: string[];
+}
+
+export interface PrioritizedIssue extends ExtractedIssue {
+  priority: number;
+  priorityReason: string;
   recommendedAction: string;
 }
 
-export interface PrioritizedIssueList {
-  issues: Array<ExtractedIssue & { priority: number; reasoning: string }>;
-  summary: string;
-  generatedAt: string;
-  reportingPeriod: {
-    startDate: string;
-    endDate: string;
-  };
-}
-
-export interface Action05PromptInput {
-  context: Action05Context;
+export interface Action05Output {
   extractedIssues: ExtractedIssue[];
+  prioritizedIssues: PrioritizedIssue[];
   overallProgressSummary: string;
-  employeeReportCount: number;
-  totalEmployeeCount: number;
-}
-
-export interface Action05PromptOutput {
-  prioritizedIssueList: PrioritizedIssueList;
+  bottlenecks: Array<{
+    description: string;
+    impactLevel: "high" | "medium" | "low";
+    affectedTeams: string[];
+  }>;
   escalationRecommendations: Array<{
     employeeId: string;
     reason: string;
-    suggestedAction: "send_reminder" | "escalate_to_manager" | "no_action";
-    urgencyLevel: "immediate" | "high" | "normal";
+    recommendedAction: string;
   }>;
-  reportReadinessAssessment: {
-    isReadyForMorningMeeting: boolean;
-    missingReports: string[];
-    delayedReports: string[];
-    criticalIssuesDetected: boolean;
-  };
+  reportGenerationTimestamp: string;
 }
 
-export function buildAction05Prompt(input: Action05PromptInput): string {
-  const {
-    context,
-    extractedIssues,
-    overallProgressSummary,
-    employeeReportCount,
-    totalEmployeeCount,
-  } = input;
+export function buildAction05Prompt(context: Action05Context): string {
+  const basePrompt = `You are an AI agent responsible for extracting issues and determining priorities from daily report confirmation emails.
 
-  const escalationHistoryText = context.previousEscalationHistory
-    .map(
-      (h) =>
-        `- Employee ${h.employeeId}: ${h.escalationCount} escalation(s), last at ${h.lastEscalationTime}`
-    )
-    .join("\n");
-
-  const issuesText = extractedIssues
-    .map(
-      (issue) =>
-        `Issue: ${issue.title}\n` +
-        `  Description: ${issue.description}\n` +
-        `  Category: ${issue.category}\n` +
-        `  Severity: ${issue.severity}\n` +
-        `  Affected Employees: ${issue.affectedEmployees.join(", ")}\n` +
-        `  Recommended Action: ${issue.recommendedAction}`
-    )
-    .join("\n\n");
-
-  const prompt = `You are an AI agent responsible for the final stage of daily report processing: extracting issues from collected reports and determining their priority for the morning meeting.
-
-## Current Context
-- Submission Deadline: ${context.reportSubmissionDeadline}
+## Context
+- Confirmation Email Content: ${context.confirmationEmailContent}
+- Report Submission Deadline: ${context.reportSubmissionDeadline}
 - Current Timestamp: ${context.currentTimestamp}
-- Reports Received: ${employeeReportCount} / ${totalEmployeeCount}
-- Deadline Status: ${new Date(context.currentTimestamp) > new Date(context.reportSubmissionDeadline) ? "OVERDUE" : "ON TIME"}
-
-## Escalation Rules
-- Maximum escalation count per employee: ${context.escalationRules.maxEscalationCount}
-- Minimum interval between escalations: ${context.escalationRules.escalationIntervalMinutes} minutes
-- Consider report late after: ${context.escalationRules.considerLateAfterMinutes} minutes past deadline
-
-## Previous Escalation History
-${escalationHistoryText || "No previous escalations"}
-
-## Overall Progress Summary
-${overallProgressSummary}
-
-## Extracted Issues Requiring Priority Assessment
-${issuesText || "No issues extracted"}
+${
+  context.previousEscalationHistory && context.previousEscalationHistory.length > 0
+    ? `- Previous Escalation History: ${JSON.stringify(context.previousEscalationHistory)}`
+    : ""
+}
 
 ## Your Tasks
+1. Extract all issues and bottlenecks mentioned in the confirmation email content
+2. Classify each issue by category and severity
+3. Determine priority ranking based on impact and urgency
+4. Identify affected employees and teams
+5. Recommend escalation actions for critical issues
+6. Generate a comprehensive progress summary
 
-1. **Prioritize Issues**: Analyze each extracted issue and assign a priority number (1-10, where 1 is highest priority). Consider:
-   - Severity level (critical > high > medium > low)
-   - Number of affected employees
-   - Impact on project timeline
-   - Dependencies on other issues
-   - Recommended actions
-
-2. **Assess Escalation Needs**: For each employee with missing or delayed reports:
-   - Check escalation history
-   - Determine if another escalation is warranted
-   - Recommend action: send_reminder, escalate_to_manager, or no_action
-   - Assign urgency level: immediate, high, or normal
-
-3. **Evaluate Meeting Readiness**: Determine if the morning meeting can proceed with:
-   - Current report submission status
-   - Identified critical issues
-   - Overall progress visibility
-
-## Output Format
-
-Provide your analysis as a JSON object with the following structure:
+## Output Requirements
+Return a JSON object with the following structure:
 {
-  "prioritizedIssueList": {
-    "issues": [
-      {
-        "id": "issue_id",
-        "title": "issue_title",
-        "description": "issue_description",
-        "affectedEmployees": ["emp1", "emp2"],
-        "severity": "critical|high|medium|low",
-        "category": "category_name",
-        "recommendedAction": "action_description",
-        "priority": 1-10,
-        "reasoning": "explanation_of_priority"
-      }
-    ],
-    "summary": "overall_summary_of_issues",
-    "generatedAt": "${new Date().toISOString()}",
-    "reportingPeriod": {
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD"
-    }
-  },
-  "escalationRecommendations": [
+  "extractedIssues": [
     {
-      "employeeId": "emp_id",
-      "reason": "reason_for_escalation",
-      "suggestedAction": "send_reminder|escalate_to_manager|no_action",
-      "urgencyLevel": "immediate|high|normal"
+      "id": "string (unique identifier)",
+      "title": "string",
+      "description": "string",
+      "affectedEmployees": ["string"],
+      "severity": "critical|high|medium|low",
+      "category": "string",
+      "relatedReports": ["string"]
     }
   ],
-  "reportReadinessAssessment": {
-    "isReadyForMorningMeeting": true|false,
-    "missingReports": ["emp_id1", "emp_id2"],
-    "delayedReports": ["emp_id3", "emp_id4"],
-    "criticalIssuesDetected": true|false
-  }
+  "prioritizedIssues": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "affectedEmployees": ["string"],
+      "severity": "critical|high|medium|low",
+      "category": "string",
+      "relatedReports": ["string"],
+      "priority": number (1 = highest),
+      "priorityReason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "overallProgressSummary": "string",
+  "bottlenecks": [
+    {
+      "description": "string",
+      "impactLevel": "high|medium|low",
+      "affectedTeams": ["string"]
+    }
+  ],
+  "escalationRecommendations": [
+    {
+      "employeeId": "string",
+      "reason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "reportGenerationTimestamp": "string (ISO 8601 format)"
 }
 
-Ensure your analysis is thorough, fair, and considers both the urgency of issues and the need to support employees in meeting deadlines.`;
+## Priority Determination Rules
+- Critical issues affecting project timeline or team safety: Priority 1-2
+- High-impact issues affecting multiple teams or deliverables: Priority 3-4
+- Medium-impact issues affecting individual tasks: Priority 5-6
+- Low-impact issues or informational items: Priority 7+
 
-  return prompt;
+## Escalation Criteria
+- Issues blocking other teams' work
+- Repeated issues from the same employee
+- Issues exceeding scope or requiring management intervention
+- Safety or compliance concerns
+
+Analyze the confirmation email content thoroughly and provide comprehensive issue extraction and prioritization.`;
+
+  return basePrompt;
 }

@@ -4,83 +4,64 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  engineerName: string;
-  engineerEmail: string;
-  yesterdayReport: string;
-  todayPlan: string;
-  issues: string;
+  reportContent: string;
   submissionDeadline: string;
-  systemName: string;
+  escalationThreshold: number;
+  previousEscalationCount: number;
 }
 
 export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
+  shouldEscalate: boolean;
+  escalationReason: string;
+  recommendedAction: string;
+  riskLevel: "low" | "medium" | "high";
+  nextSteps: string[];
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const prompt = `
-You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
+export function buildAction02Prompt(input: Action02PromptInput): string {
+  const {
+    reportContent,
+    submissionDeadline,
+    escalationThreshold,
+    previousEscalationCount,
+  } = input;
 
-**Context:**
-- Engineer Name: ${input.engineerName}
-- Engineer Email: ${input.engineerEmail}
-- System: ${input.systemName}
-- Submission Deadline: ${input.submissionDeadline}
+  const escalationStatus =
+    previousEscalationCount >= escalationThreshold ? "exceeded" : "within";
 
-**Submitted Report Content:**
-- Yesterday's Achievements: ${input.yesterdayReport}
-- Today's Plan: ${input.todayPlan}
-- Issues/Concerns: ${input.issues}
+  return `You are an AI agent responsible for analyzing daily report submissions and determining escalation conditions.
 
-**Your Task:**
-Validate the submitted daily report content according to the following criteria:
+## Current Context
+- Report Content: ${reportContent}
+- Submission Deadline: ${submissionDeadline}
+- Escalation Threshold: ${escalationThreshold}
+- Previous Escalation Count: ${previousEscalationCount}
+- Escalation Status: ${escalationStatus}
 
-1. **Completeness Check:**
-   - Verify that all three sections (yesterday's achievements, today's plan, issues) are provided
-   - Ensure each section contains meaningful content (not empty or placeholder text)
-   - Check that the content is relevant to the engineer's role
+## Your Task
+Analyze the report content and submission status to determine if escalation is required.
 
-2. **Quality Assessment:**
-   - Evaluate clarity and specificity of the report
-   - Identify any vague or incomplete statements
-   - Check for logical consistency between sections
+### Escalation Conditions to Check:
+1. Incomplete or inappropriate input content
+2. Submission deadline significantly exceeded
+3. System errors preventing registration
+4. Multiple escalations for the same engineer
+5. Unusual patterns or risk indicators in report content
 
-3. **Timeliness Verification:**
-   - Confirm submission is within the deadline
-   - Note any delays
+### Analysis Requirements:
+- Evaluate report completeness and appropriateness
+- Assess deadline compliance
+- Determine risk level (low/medium/high)
+- Recommend specific actions if escalation is needed
+- Provide clear reasoning for your decision
 
-4. **Issue Identification:**
-   - Flag any concerning patterns or red flags
-   - Identify blockers or critical issues mentioned
+### Output Format:
+Provide your analysis as a structured decision with:
+- shouldEscalate: boolean
+- escalationReason: string (detailed explanation)
+- recommendedAction: string (specific action to take)
+- riskLevel: "low" | "medium" | "high"
+- nextSteps: array of strings (ordered action items)
 
-**Output Format:**
-Provide your validation result as a JSON object with the following structure:
-{
-  "isValid": boolean,
-  "completeness": {
-    "yesterdayReportComplete": boolean,
-    "todayPlanComplete": boolean,
-    "issuesComplete": boolean
-  },
-  "quality": {
-    "score": number (0-100),
-    "issues": string[]
-  },
-  "timeliness": {
-    "isOnTime": boolean,
-    "delayMinutes": number
-  },
-  "flaggedConcerns": string[],
-  "recommendation": "APPROVE" | "REQUEST_REVISION" | "ESCALATE",
-  "notes": string
-}
-
-Perform this validation now.
-  `.trim();
-
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
-  };
+Ensure your response is actionable and provides clear guidance for human review.`;
 }

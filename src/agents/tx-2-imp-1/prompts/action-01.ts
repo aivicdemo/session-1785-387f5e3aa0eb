@@ -19,80 +19,63 @@ export interface Action01PromptInput {
 
 export interface Action01PromptOutput {
   templateContent: string;
-  distributionPlan: {
-    recipients: string[];
-    sendTime: string;
-    channels: string[];
+  distributionList: string[];
+  scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
   };
-  validationRules: Array<{
-    field: string;
-    required: boolean;
-    constraints: string[];
-  }>;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const deadline = new Date(input.reportingDeadline).toLocaleString("ja-JP");
-  const targetDateFormatted = new Date(input.targetDate).toLocaleDateString(
-    "ja-JP"
-  );
+  const engineerNames = input.engineerList
+    .map((engineer) => engineer.name)
+    .join("、");
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  const prompt = `# 日報テンプレート自動生成・配信プロンプト
 
-## 実行目的
-前日の日報テンプレートを自動生成してエンジニアに配信し、本日の日報入力を促進する。
-
-## 対象者
-${engineerNames}
+## 実行日時
+${new Date().toISOString()}
 
 ## 対象日付
-${targetDateFormatted}
+${input.targetDate}
 
-## 提出期限
-${deadline}
+## 報告期限
+${input.reportingDeadline}
 
-## 実行内容
+## 対象エンジニア
+${engineerNames}
 
-### 1. テンプレート生成
-以下の項目を含む日報テンプレートを生成してください：
-- 昨日の実績（具体的な成果、完了したタスク）
-- 本日の予定（予定されたタスク、目標）
-- 抱えている課題（ボトルネック、リスク、懸念事項）
-- 進捗率（パーセンテージ）
-- 備考
+## タスク
+以下の手順で日報テンプレートを自動生成し、全エンジニアに配信してください：
 
-### 2. 配信計画
-- 配信先: ${input.engineerList.map((e) => e.email).join(", ")}
-- 配信チャネル: ${input.systemContext.notificationChannels.join(", ")}
-- 配信時刻: 朝会開始の30分前
+1. **テンプレート生成**
+   - 前日の実績入力セクション
+   - 本日の予定入力セクション
+   - 抱えている課題入力セクション
+   - 提出期限表示
+   - エンジニアID・名前の自動入力フィールド
 
-### 3. 入力内容の妥当性検証ルール
-- 昨日の実績: 必須、100文字以上
-- 本日の予定: 必須、100文字以上
-- 抱えている課題: 任意、記入時は50文字以上
-- 進捗率: 必須、0-100の整数値
+2. **配信準備**
+   - 各エンジニアのメールアドレスを確認
+   - テンプレートのパーソナライズ（名前・ID自動入力）
+   - 配信スケジュール設定
 
-### 4. 配信後の処理
-- テンプレート配信完了をログに記録
-- エンジニアの入力受け取り準備状態に遷移
-- 入力タイムアウト: 提出期限から30分後
+3. **配信実行**
+   - 全エンジニアへのメール送信
+   - 配信ログの記録
+   - 配信完了通知
 
 ## 出力形式
-JSON形式で以下を返却してください：
-{
-  "templateContent": "生成されたテンプレート本文",
-  "distributionPlan": {
-    "recipients": ["email1@example.com", "email2@example.com"],
-    "sendTime": "ISO 8601形式の送信予定時刻",
-    "channels": ["email", "chat"]
-  },
-  "validationRules": [
-    {
-      "field": "フィールド名",
-      "required": true/false,
-      "constraints": ["制約条件"]
-    }
-  ]
-}`;
+JSON形式で以下を含める：
+- templateContent: 生成されたテンプレート本文
+- distributionList: 配信対象メールアドレスリスト
+- scheduledTime: 配信予定時刻
+- metadata: バージョン・生成時刻等のメタデータ
+
+## システム連携情報
+- 報告管理システムURL: ${input.systemContext.reportManagementSystemUrl}
+- 通知チャネル: ${input.systemContext.notificationChannels.join("、")}`;
+
+  return prompt;
 }

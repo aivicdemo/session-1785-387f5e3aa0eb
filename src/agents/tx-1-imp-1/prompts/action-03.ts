@@ -3,14 +3,26 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayReport: string;
-  todayPlan: string;
-  issues: string;
-  submissionDeadline: string;
-  systemName: string;
+  submittedContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+  };
+  submissionTimestamp: string;
+  deadline: string;
+}
+
+export interface Action03ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface Action03PromptInput {
+  context: Action03Context;
 }
 
 export interface Action03PromptOutput {
@@ -19,65 +31,55 @@ export interface Action03PromptOutput {
 }
 
 export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const prompt = `
-You are an AI agent responsible for validating daily report submissions in the "朝会報告管理システム" (Morning Meeting Report Management System).
+  const { context } = input;
+  const {
+    engineerId,
+    engineerName,
+    submittedContent,
+    submissionTimestamp,
+    deadline,
+  } = context;
 
-**Task: Validate Daily Report Input Content**
+  const validationPrompt = `
+You are a validation agent for the daily report management system.
 
-Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Deadline: ${input.submissionDeadline}
+Your task is to validate the submitted daily report content for engineer: ${engineerName} (ID: ${engineerId})
 
-Submitted Report Content:
-- Yesterday's Achievements: ${input.yesterdayReport}
-- Today's Plan: ${input.todayPlan}
-- Current Issues: ${input.issues}
+Submission Details:
+- Submitted at: ${submissionTimestamp}
+- Deadline: ${deadline}
 
-**Validation Requirements:**
+Submitted Content:
+1. Yesterday's Accomplishments:
+${submittedContent.yesterdayAccomplishments}
 
-1. **Completeness Check**
-   - Verify that all three sections (yesterday's achievements, today's plan, issues) are provided
-   - Ensure each section contains meaningful content (not empty or placeholder text)
-   - Check that the content length is reasonable (not too brief, not excessively long)
+2. Today's Plans:
+${submittedContent.todayPlans}
 
-2. **Appropriateness Check**
-   - Verify that yesterday's achievements are work-related and specific
-   - Verify that today's plan is realistic and actionable
-   - Verify that issues are clearly articulated and relevant to work
+3. Current Issues:
+${submittedContent.currentIssues}
 
-3. **Format Validation**
-   - Check for basic grammar and clarity
-   - Ensure the report follows professional communication standards
-   - Verify no sensitive information is exposed
+Validation Criteria:
+1. Content Completeness: All three sections must have meaningful content (not empty or placeholder text)
+2. Content Appropriateness: Content should be relevant to work activities and realistic
+3. Format Consistency: Content should follow professional communication standards
+4. Issue Clarity: If issues are mentioned, they should be clearly described with context
 
-4. **Consistency Check**
-   - Verify that today's plan logically follows from yesterday's achievements
-   - Check for any contradictions between sections
+Please validate the submitted content and provide:
+1. A boolean indicating if the content is valid
+2. A list of specific errors (if any)
+3. A list of warnings (if any)
 
-**Output Format:**
-Return a JSON object with the following structure:
+Respond in JSON format:
 {
   "isValid": boolean,
-  "validationStatus": "VALID" | "INCOMPLETE" | "INAPPROPRIATE" | "ERROR",
-  "issues": string[],
-  "recommendations": string[],
-  "canProceedToRegistration": boolean,
-  "escalationRequired": boolean,
-  "escalationReason": string | null
+  "errors": string[],
+  "warnings": string[]
 }
-
-**Escalation Conditions:**
-- If content is incomplete or missing required sections
-- If content appears inappropriate or off-topic
-- If the submission is significantly past the deadline
-- If any content raises concerns about work quality or team dynamics
-
-Perform the validation and return the JSON response.
-  `.trim();
+`;
 
   return {
-    prompt,
+    prompt: validationPrompt,
     version: ACTION_03_PROMPT_VERSION,
   };
 }

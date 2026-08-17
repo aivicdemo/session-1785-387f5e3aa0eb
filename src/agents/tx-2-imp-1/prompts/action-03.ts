@@ -5,71 +5,71 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  oversueThresholdHours: number;
+  overdueThresholdHours: number;
   escalationRules: {
     maxReminders: number;
-    reminderIntervalHours: number;
+    reminderIntervalMinutes: number;
   };
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPrompt: string;
-  constraints: string[];
+  userPromptTemplate: string;
+  expectedOutputFormat: {
+    overdueEmployees: Array<{
+      employeeId: string;
+      employeeName: string;
+      hoursOverdue: number;
+      reminderCount: number;
+    }>;
+    escalationActions: Array<{
+      employeeId: string;
+      action: "send_reminder" | "escalate_to_manager" | "no_action";
+      reason: string;
+    }>;
+  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying unreported and delayed team members from confirmation email contents, determining escalation targets, and automatically sending reminder emails and chat messages. Your role is to:
+  const systemPrompt = `You are an AI agent responsible for identifying overdue daily reports and determining escalation actions.
 
-1. Parse confirmation email contents to identify team members who have not submitted reports or submitted late
-2. Determine which team members require escalation based on predefined rules
-3. Generate and send reminder emails and chat messages to escalation targets
-4. Log all sending results for audit purposes
+Your role:
+1. Analyze the current time against the reporting deadline: ${input.reportingDeadline}
+2. Identify employees whose reports are overdue by more than ${input.overdueThresholdHours} hours
+3. Check the reminder count for each overdue employee
+4. Determine appropriate escalation actions based on the rules:
+   - Maximum reminders allowed: ${input.escalationRules.maxReminders}
+   - Reminder interval: ${input.escalationRules.reminderIntervalMinutes} minutes
 
-You must follow these constraints:
-- Only escalate team members who meet the escalation criteria
-- Track the number of reminders sent to each team member
-- Do not exceed the maximum reminder limit (${input.escalationRules.maxReminders})
-- Respect the reminder interval of ${input.escalationRules.reminderIntervalHours} hours between reminders
-- Maintain detailed logs of all actions taken`;
+Escalation Logic:
+- If reminder count < max reminders: send_reminder
+- If reminder count >= max reminders: escalate_to_manager
+- If no overdue: no_action
 
-  const userPrompt = `Process the following confirmation email contents and determine escalation actions:
+Output must be valid JSON matching the expected format.`;
 
-Current Time: ${input.currentTime}
-Reporting Deadline: ${input.reportingDeadline}
-Overdue Threshold: ${input.oversueThresholdHours} hours
+  const userPromptTemplate = `Current timestamp: {currentTimestamp}
+Reporting deadline: ${input.reportingDeadline}
 
-Tasks:
-1. Identify unreported team members from the confirmation email
-2. Identify delayed team members (submitted after deadline)
-3. Determine which team members should receive escalation reminders
-4. Generate reminder messages for each escalation target
-5. Log all actions and results
+Employee report status:
+{employeeReportStatus}
 
-Return a structured response containing:
-- List of unreported team members
-- List of delayed team members
-- List of escalation targets with reason
-- Reminder messages to be sent
-- Action log`;
+For each overdue employee, determine:
+1. Hours overdue (current time - deadline)
+2. Current reminder count from the system
+3. Appropriate escalation action
 
-  const constraints = [
-    "Do not send reminders to team members who have already submitted reports",
-    "Do not exceed maximum reminder limit per team member",
-    "Respect reminder interval between consecutive reminders",
-    "Log all escalation decisions with timestamps",
-    "Maintain audit trail of all sent messages",
-    "Handle system errors gracefully and log failures",
-    "Do not escalate on special exception cases without explicit approval",
-  ];
+Return the analysis as JSON with overdueEmployees array and escalationActions array.`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPrompt,
-    constraints,
+    userPromptTemplate,
+    expectedOutputFormat: {
+      overdueEmployees: [],
+      escalationActions: [],
+    },
   };
 }
 

@@ -11,108 +11,67 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
-  missingReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportStatus: "missing" | "delayed";
-    daysSinceDeadline: number;
+  unreportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    reason: "not_submitted" | "delayed";
+    submissionTime?: string;
   }>;
   escalationTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    escalationReason: string;
-    priority: "high" | "medium" | "low";
-    previousEscalationCount: number;
+    memberId: string;
+    memberName: string;
+    escalationLevel: number;
+    recommendedAction: "first_reminder" | "second_reminder" | "manager_escalation";
   }>;
   analysisTimestamp: string;
-  analysisNotes: string;
 }
 
-export function buildAction01Prompt(
-  input: Action01PromptInput
-): string {
-  const previousEscalationInfo =
-    input.previousEscalationCount && Object.keys(input.previousEscalationCount).length > 0
-      ? `\n前回までの催促履歴:\n${Object.entries(input.previousEscalationCount)
-          .map(([empId, count]) => `- 従業員ID ${empId}: ${count}回`)
-          .join("\n")}`
-      : "";
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const escalationHistory = input.previousEscalationCount || {};
+  
+  const escalationSummary = Object.entries(escalationHistory)
+    .map(([memberId, count]) => `- Member ${memberId}: ${count} previous reminders`)
+    .join("\n");
 
-  return `# Action 01: 確認メール内容から報告漏れ・遅延部員を特定
+  return `You are an AI agent responsible for identifying unreported members and determining escalation targets from confirmation email content.
 
-## 目的
-確認メール内容を分析し、報告漏れ・遅延部員を自動特定し、催促対象を判定する。
+## Task: Analyze Unreported Members and Determine Escalation Actions
 
-## 入力情報
-
-### 確認メール内容
-\`\`\`
+### Input Information:
+- Confirmation Email Content:
 ${input.confirmationEmailContent}
-\`\`\`
 
-### システム情報
-- 報告期限: ${input.reportDeadline}
-- 現在時刻: ${input.currentTimestamp}${previousEscalationInfo}
+- Report Deadline: ${input.reportDeadline}
+- Current Timestamp: ${input.currentTimestamp}
 
-## 実行タスク
+### Previous Escalation History:
+${escalationSummary || "No previous escalations"}
 
-1. **報告漏れ・遅延部員の特定**
-   - 確認メール内容から未提出者と遅延者を抽出
-   - 各部員の報告状況を判定（missing / delayed）
-   - 期限超過日数を計算
+### Your Responsibilities:
 
-2. **催促対象の判定**
-   - 報告漏れ・遅延部員の中から催促対象を選定
-   - 催促理由を明確化
-   - 優先度を判定（high / medium / low）
-   - 前回までの催促履歴を考慮
+1. **Identify Unreported Members**: Parse the confirmation email content to identify:
+   - Members who have not submitted reports (status: "not_submitted")
+   - Members whose reports are delayed past the deadline (status: "delayed")
+   - Extract member ID and member name for each unreported member
 
-3. **分析結果の構造化**
-   - 報告漏れ部員リスト
-   - 催促対象部員リスト
-   - 分析タイムスタンプ
-   - 分析ノート
+2. **Determine Escalation Targets**: For each unreported member, determine:
+   - Current escalation level (0 = first time, 1+ = repeat offender)
+   - Recommended action based on escalation level:
+     * Level 0: "first_reminder" (send initial reminder)
+     * Level 1: "second_reminder" (send second reminder with urgency)
+     * Level 2+: "manager_escalation" (escalate to manager for intervention)
 
-## 出力形式
+3. **Output Structure**: Return a JSON object with:
+   - unreportedMembers: Array of unreported member objects
+   - escalationTargets: Array of escalation target objects with recommended actions
+   - analysisTimestamp: ISO 8601 timestamp of analysis
 
-JSON形式で以下の構造で返却:
-\`\`\`json
-{
-  "missingReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reportStatus": "missing" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "escalationTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "escalationReason": "string",
-      "priority": "high" | "medium" | "low",
-      "previousEscalationCount": number
-    }
-  ],
-  "analysisTimestamp": "ISO 8601形式",
-  "analysisNotes": "string"
-}
-\`\`\`
+### Constraints:
+- Only identify members explicitly mentioned in the confirmation email as unreported or delayed
+- Escalation level should not exceed 3 (prevent excessive reminders)
+- Ensure member IDs and names are accurately extracted
+- Timestamp should be in ISO 8601 format
 
-## 判定ルール
-
-### 報告漏れ判定
-- 報告期限を過ぎても報告がない場合: reportStatus = "missing"
-- 報告期限から24時間以内に報告がある場合: reportStatus = "delayed"
-
-### 催促優先度判定
-- high: 期限超過が3日以上、または前回催促から返答がない
-- medium: 期限超過が1-2日、または初回催促対象
-- low: 期限超過が24時間以内
-
-## 注意事項
-- 同一部員への複数回催促は上限を考慮
-- 催促ルールに該当しない特殊ケースは escalationTargets から除外
-- 分析ノートには判定根拠を記載`;
+### Output Format:
+Return ONLY valid JSON matching the expected structure. No additional text or explanation.`;
 }

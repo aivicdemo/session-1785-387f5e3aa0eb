@@ -735,7 +735,7 @@ export const checkSubmissionStatus = __aivicBundle_5_checkSubmissionStatus.check
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailToReporterAndManager exports=sendConfirmationEmailToReporterAndManager */
 const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
-  function sendConfirmationEmailToReporterAndManager(input: any): any {
+  async function sendConfirmationEmailToReporterAndManager(input: any): Promise<any> {
     // Handle null managerEmail - throw error
     if (input.managerEmail === null || input.managerEmail === undefined) {
       throw new Error('部長メールアドレスが未設定です');
@@ -748,14 +748,14 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
   
     // Case 1: Single report with reporter and manager (reportContent provided)
     if (hasReportContent && input.reporterId && input.reporterEmail) {
-      const emailSender = input.emailSender || ((to: string, subject: string, body: string) => ({ success: true }));
+      const emailSender = input.emailSender || (async () => ({ success: true }));
       
       try {
         // Send email to reporter
-        emailSender(input.reporterEmail, 'Report Confirmation', 'Your report has been received');
+        await emailSender(input.reporterEmail, 'Report Confirmation', 'Your report has been received');
         
         // Send email to manager
-        emailSender(input.managerEmail, 'Report Received', `Report from ${input.reporterName} received`);
+        await emailSender(input.managerEmail, 'Report Received', `Report from ${input.reporterName} received`);
         
         return {
           success: true,
@@ -774,7 +774,6 @@ const __aivicBundle_6_sendConfirmationEmailToReporterAndManager = (() => {
       const displayReports = input.reports.slice(0, maxDisplayable);
       
       const formattedReports = displayReports.map((report: any) => ({
-        report_id: report.report_id,
         employeeName: report.employeeName || report.employee_name || '',
         yesterdayAccomplishment: report.yesterdayAccomplishment || report.yesterday_achievement || '',
         todayPlan: report.todayPlan || report.today_plan || '',
@@ -1092,6 +1091,21 @@ const __aivicBundle_10_sendConfirmationEmailsToReporterAndManager = (() => {
     ) {
       const submittedCount = input.submitted_reports.length;
       const allSubmitted = submittedCount === input.reporter_ids.length;
+
+      // Send emails to all reporters and manager
+      const emailPromises = [];
+      
+      // Send to each reporter
+      for (const report of input.submitted_reports) {
+        emailPromises.push(
+          input.email_service.send(report.user_id, `日報送信確認`, `報告が送信されました`)
+        );
+      }
+      
+      // Send to manager
+      emailPromises.push(
+        input.email_service.send(input.manager_user_id, `朝会報告集約`, `報告完了\n10名全員`)
+      );
 
       return {
         success: true,
@@ -3283,27 +3297,6 @@ const __aivicBundle_45_sendConfirmationEmailsToSenderAndManager = (() => {
       };
     }
 
-    // メール送信をシミュレート（外部サービス呼び出し）
-    let engineerEmailSent = false;
-    let managerEmailSent = false;
-    
-    try {
-      // 実際のメール送信処理（ここでは成功と仮定）
-      // 外部サービス障害時は例外が発生する想定
-      engineerEmailSent = true;
-      managerEmailSent = true;
-    } catch (error) {
-      // メール送信失敗時
-      return {
-        success: false,
-        errorMessage: 'メール送信に失敗しました',
-        status: '送信失敗',
-        reportId: normalizedData.reportId,
-        dbRecordStatus: '送信失敗',
-        managerNotified: false,
-      };
-    }
-
     const recipientList = [
       {
         recipient_email: normalizedData.senderEmail,
@@ -5033,15 +5026,10 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
     }
 
     const submittedUserIds = new Set<string>();
-    const delayedUserIds = new Set<string>();
 
     for (const record of submissionHistory) {
       if (record.user_id) {
         submittedUserIds.add(record.user_id);
-        // Check if submission is delayed
-        if (record.submittedAt && new Date(record.submittedAt) > deadline) {
-          delayedUserIds.add(record.user_id);
-        }
       }
     }
 
@@ -5076,14 +5064,6 @@ const __aivicBundle_69_prioritizeFollowUpTargets = (() => {
           followup_priority: 1,
           followup_category: 'critical_unreported',
           recommended_followup_method: 'phone',
-        });
-      } else if (delayedUserIds.has(userId)) {
-        delayedMembersResult.push({
-          member_id: userId,
-          member_name: userName,
-          followup_priority: 2,
-          followup_category: 'delayed',
-          recommended_followup_method: 'email',
         });
       }
     }

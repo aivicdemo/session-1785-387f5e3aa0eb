@@ -6,97 +6,69 @@ export const ACTION_03_PROMPT_VERSION = "1.0.0";
 export interface Action03PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentDateTime: string;
   escalationThreshold: number;
+  previousEscalationCount: Record<string, number>;
 }
 
 export interface Action03PromptOutput {
-  missingReporters: Array<{
+  identifiedNonReporters: Array<{
     employeeId: string;
     employeeName: string;
-    department: string;
-    lastReminderSentAt?: string;
-    reminderCount: number;
+    status: "non-reported" | "delayed";
+    daysOverdue: number;
   }>;
-  delayedReporters: Array<{
+  escalationTargets: Array<{
     employeeId: string;
     employeeName: string;
-    department: string;
-    submittedAt: string;
-    delayMinutes: number;
+    escalationReason: string;
+    escalationCount: number;
+    shouldEscalate: boolean;
   }>;
-  escalationCandidates: Array<{
+  escalationMessages: Array<{
     employeeId: string;
-    employeeName: string;
-    department: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
+    messageType: "email" | "chat";
+    messageContent: string;
+    priority: "normal" | "high";
   }>;
-  actionItems: Array<{
-    targetEmployeeId: string;
-    actionType: "reminder_email" | "chat_notification" | "escalation";
-    message: string;
-    urgency: "immediate" | "normal" | "low";
-  }>;
+  executionLog: {
+    timestamp: string;
+    processedEmailCount: number;
+    identifiedCount: number;
+    escalatedCount: number;
+    errors: string[];
+  };
 }
 
 export function buildAction03Prompt(input: Action03PromptInput): string {
-  const systemPrompt = `You are an AI agent responsible for identifying missing and delayed reporters from confirmation email content and determining escalation targets.
+  const systemPrompt = `You are an AI agent responsible for identifying non-reporters and delayed reporters from confirmation email content, determining escalation targets, and preparing escalation messages.
 
 Your task is to:
-1. Parse the confirmation email content to identify which employees have submitted their reports and which have not
-2. Classify reporters into three categories: missing (not submitted), delayed (submitted after deadline), and on-time
-3. Determine which employees require escalation based on:
-   - Number of previous reminders sent
-   - Time elapsed since deadline
-   - Department and role criticality
-4. Generate appropriate action items for each category
+1. Parse the confirmation email content to identify employees who have not submitted reports or submitted late
+2. Determine which employees should be escalated based on the escalation threshold and previous escalation count
+3. Generate appropriate escalation messages (email or chat) for each target
+4. Log the execution results
 
-Current system time: ${input.currentDateTime}
-Reporting deadline: ${input.reportingDeadline}
-Escalation threshold (minutes after deadline): ${input.escalationThreshold}
+Reporting Deadline: ${input.reportingDeadline}
+Escalation Threshold (days): ${input.escalationThreshold}
+Previous Escalation Counts: ${JSON.stringify(input.previousEscalationCount)}
 
-Confirmation email content to analyze:
+Rules:
+- An employee is "non-reported" if no report is found in the confirmation email content
+- An employee is "delayed" if the report timestamp is after the reporting deadline
+- Escalation should occur if daysOverdue >= escalationThreshold
+- Limit escalation to prevent excessive notifications
+- Generate clear, professional escalation messages
+- Record all actions in the execution log`;
+
+  const userPrompt = `Process the following confirmation email content and identify non-reporters and delayed reporters:
+
 ${input.confirmationEmailContent}
 
-Return a JSON object with the following structure:
-{
-  "missingReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "department": "string",
-      "lastReminderSentAt": "ISO8601 datetime or null",
-      "reminderCount": number
-    }
-  ],
-  "delayedReporters": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "department": "string",
-      "submittedAt": "ISO8601 datetime",
-      "delayMinutes": number
-    }
-  ],
-  "escalationCandidates": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "department": "string",
-      "reason": "string describing why escalation is needed",
-      "priority": "high" | "medium" | "low"
-    }
-  ],
-  "actionItems": [
-    {
-      "targetEmployeeId": "string",
-      "actionType": "reminder_email" | "chat_notification" | "escalation",
-      "message": "string with the content to send",
-      "urgency": "immediate" | "normal" | "low"
-    }
-  ]
-}`;
+Return a structured response with:
+- identifiedNonReporters: array of non-reporters and delayed reporters
+- escalationTargets: array of employees requiring escalation
+- escalationMessages: array of messages to send
+- executionLog: processing statistics and any errors`;
 
-  return systemPrompt;
+  return `${systemPrompt}\n\n${userPrompt}`;
 }

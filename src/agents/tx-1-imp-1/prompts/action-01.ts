@@ -3,41 +3,49 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
+export interface Action01Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  previousDayTemplate: string;
-  submissionDeadline: string;
+  previousDayReportTemplate: string;
+  distributionTime: string;
 }
 
-export interface Action01PromptOutput {
-  templateId: string;
+export interface Action01Result {
+  templateGenerated: boolean;
   templateContent: string;
-  distributionTimestamp: string;
-  recipientEmail: string;
+  distributedAt: string;
+  recipientCount: number;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const prompt = `You are an AI agent responsible for generating and distributing daily report templates.
+export function buildAction01Prompt(context: Action01Context): string {
+  const prompt = `
+あなたは朝会報告管理システムのAIエージェントです。
+以下の情報に基づいて、前日の日報テンプレートを自動生成して配信してください。
 
-Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Deadline: ${input.submissionDeadline}
+【エンジニア情報】
+- ID: ${context.engineerId}
+- 名前: ${context.engineerName}
 
-Previous Day Template Reference:
-${input.previousDayTemplate}
+【テンプレート生成要件】
+1. 前日の日報テンプレートを生成する
+2. 以下の項目を含める:
+   - 昨日の実績
+   - 本日の予定
+   - 抱えている課題
+3. テンプレートは簡潔で入力しやすい形式にする
+4. 配信時刻: ${context.distributionTime}
 
-Your task is to:
-1. Generate a daily report template based on the previous day's structure
-2. Ensure the template includes sections for:
-   - Yesterday's achievements
-   - Today's planned tasks
-   - Current challenges/issues
-3. Prepare the template for distribution to the engineer
-4. Include the submission deadline in the template
+【前日のテンプレート参考】
+${context.previousDayReportTemplate}
 
-Output the template in a clear, structured format that the engineer can easily fill out.`;
-
+【出力形式】
+生成したテンプレートを以下の形式で返してください:
+{
+  "templateGenerated": true,
+  "templateContent": "生成されたテンプレート内容",
+  "distributedAt": "配信時刻",
+  "recipientCount": 配信対象者数
+}
+`;
   return prompt;
 }

@@ -3,100 +3,69 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
-  reportingDeadline: string;
-  escalationThreshold: number;
-  systemErrorRetryCount: number;
-  notificationChannels: string[];
-}
-
 export interface Action04PromptInput {
-  context: Action04PromptContext;
-  reportStatus: {
-    totalEngineers: number;
-    submittedCount: number;
-    overdueCount: number;
-    notSubmittedEngineers: string[];
+  reportingDeadline: string;
+  overdueThresholdHours: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
   };
-  previousEscalations: Array<{
-    engineerId: string;
-    timestamp: string;
-    reason: string;
-  }>;
 }
 
 export interface Action04PromptOutput {
-  escalationDecision: boolean;
-  escalationReason: string;
-  targetEngineers: string[];
-  escalationActions: Array<{
-    type: "email" | "notification" | "system_alert";
-    recipient: string;
-    message: string;
-    priority: "high" | "medium" | "low";
-  }>;
-  recommendedNextSteps: string[];
+  prompt: string;
+  version: string;
+  metadata: {
+    action: number;
+    contract: string;
+    purpose: string;
+  };
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
+export function buildAction04Prompt(
+  input: Action04PromptInput
+): Action04PromptOutput {
   const {
-    context,
-    reportStatus,
-    previousEscalations,
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
   } = input;
 
-  const submissionRate = (
-    (reportStatus.submittedCount / reportStatus.totalEngineers) *
-    100
-  ).toFixed(1);
+  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (Contract: tx_2_imp_1).
 
-  const escalationHistory = previousEscalations
-    .map(
-      (e) =>
-        `- ${e.engineerId}: ${e.reason} (${e.timestamp})`
-    )
-    .join("\n");
+Your task is to send reminder notifications to members who have not submitted their daily reports.
 
-  const notSubmittedList = reportStatus.notSubmittedEngineers
-    .join(", ");
+Context:
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- Maximum Reminders per Member: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-  return `You are an AI agent responsible for determining escalation actions when daily reports are not submitted on time.
+Instructions:
+1. Identify members who have exceeded the overdue threshold
+2. Check the reminder history to ensure the maximum reminder limit has not been exceeded
+3. Compose and send reminder notifications via email and chat
+4. Log all reminder activities with timestamps
+5. Escalate to department head if a member has received maximum reminders without submitting
 
-## Current Status
-- Reporting Deadline: ${context.reportingDeadline}
-- Total Engineers: ${reportStatus.totalEngineers}
-- Submitted Reports: ${reportStatus.submittedCount}
-- Overdue Reports: ${reportStatus.overdueCount}
-- Submission Rate: ${submissionRate}%
-- Not Submitted Engineers: ${notSubmittedList}
+Output Format:
+- List of members notified
+- Notification method (email/chat)
+- Timestamp of each notification
+- Any escalation actions taken
 
-## Escalation Configuration
-- Escalation Threshold: ${context.escalationThreshold}% submission rate
-- Retry Count for System Errors: ${context.systemErrorRetryCount}
-- Notification Channels: ${context.notificationChannels.join(", ")}
+Escalation Conditions:
+- Same member receives multiple reminders without submitting
+- System error during notification sending
+- Special cases not covered by standard reminder rules`;
 
-## Previous Escalation History
-${escalationHistory || "No previous escalations"}
-
-## Your Task
-Analyze the current reporting status and determine:
-1. Whether escalation is necessary based on the threshold
-2. Which engineers should be targeted for escalation
-3. What specific escalation actions should be taken
-4. The priority level for each action
-5. Recommended next steps if escalation fails
-
-## Decision Criteria
-- If submission rate is below the escalation threshold, escalation is required
-- Consider the frequency of previous escalations for the same engineers
-- Recommend appropriate notification channels based on urgency
-- Ensure escalation messages are clear and actionable
-
-## Output Format
-Provide your analysis in the following structure:
-- Escalation Decision: (yes/no)
-- Escalation Reason: (brief explanation)
-- Target Engineers: (list of engineer IDs)
-- Escalation Actions: (array of actions with type, recipient, message, and priority)
-- Recommended Next Steps: (list of follow-up actions)`;
+  return {
+    prompt,
+    version: ACTION_04_PROMPT_VERSION,
+    metadata: {
+      action: 4,
+      contract: "tx_2_imp_1",
+      purpose: "Send reminder notifications to non-submitting members",
+    },
+  };
 }

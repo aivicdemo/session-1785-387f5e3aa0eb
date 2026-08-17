@@ -1332,8 +1332,7 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       }
     }
 
-    const { randomUUID } = require("crypto");
-    const submissionId = randomUUID();
+    const submissionId = require("crypto").randomUUID();
     const submittedAt = new Date();
 
     const result: any = {
@@ -2230,11 +2229,11 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
   ): { isValid: boolean; errors: Array<{ field: string; message: string }>; validationStatus: '妥当性確認: 完了' | '妥当性確認: 失敗'; shouldSendConfirmationEmail?: boolean; is_allowed?: boolean; message?: string } {
     const errors: Array<{ field: string; message: string }> = [];
 
-    const reportDate = (formData?.reportDate || formData?.report_date || '');
-    const department = (formData?.department || formData?.department_id || '');
-    const yesterday = (formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '');
-    const today = (formData?.today || formData?.todayPlan || formData?.today_plan || '');
-    const challenge = (formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '');
+    const reportDate = formData?.reportDate || formData?.report_date || '';
+    const department = formData?.department || formData?.department_id || '';
+    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
+    const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
+    const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
 
     if (!reportDate || String(reportDate).trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
@@ -2243,15 +2242,12 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
     if (!department || String(department).trim() === '') {
       errors.push({ field: 'department', message: '部門選択が未入力' });
     }
-    
     if (!yesterday || String(yesterday).trim() === '') {
       errors.push({ field: 'yesterday', message: '昨日やったことが未入力' });
     }
-    
     if (!today || String(today).trim() === '') {
       errors.push({ field: 'today', message: '今日やることが未入力' });
     }
-    
     if (!challenge || String(challenge).trim() === '') {
       errors.push({ field: 'challenge', message: '抱えている課題が未入力' });
     }
@@ -2565,12 +2561,15 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       "";
     const yesterdayWork =
       reportData?.yesterday_achievement ||
-      reportData?.yesterdayAccomplishment ||
-      reportData?.yesterday ||
       reportData?.yesterday_accomplished ||
+      reportData?.yesterday ||
+      reportData?.yesterdayAccomplishment ||
       "";
     const todayPlan =
-      reportData?.today_plan || reportData?.todays_plan || reportData?.todayPlan || reportData?.today || "";
+      reportData?.today_plan ||
+      reportData?.today ||
+      reportData?.todayPlan ||
+      "";
     const currentIssues =
       reportData?.current_issues ||
       reportData?.current_issue ||
@@ -2609,7 +2608,6 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData?.reportDate ||
       reportData?.submission_date ||
       reportData?.submissionDate ||
-      reportData?.send_date ||
       (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {
@@ -3931,7 +3929,7 @@ const __aivicBundle_45_validateReportBeforeSend = (() => {
     if (!reportInput.yesterday_task || reportInput.yesterday_task.trim() === '') {
       throw new Error('昨日やったことは必須項目です');
     }
-
+  
     if (
       reportInput.today_plan === undefined ||
       reportInput.today_plan === '' ||
@@ -3939,7 +3937,7 @@ const __aivicBundle_45_validateReportBeforeSend = (() => {
     ) {
       throw new Error('今日やることは必須項目です');
     }
-
+  
     if (!reportInput.current_issue || reportInput.current_issue.trim() === '') {
       throw new Error('現在の課題は必須項目です');
     }
@@ -3960,39 +3958,39 @@ const __aivicBundle_46_validateReportInput = (() => {
     currentIssue?: string;
   }): { isValid: boolean; errors: Array<{ field: string; reason: string }> } {
     const errors: Array<{ field: string; reason: string }> = [];
-
+  
     const yesterdayWork = input.yesterday_achievement ?? input.yesterdayWork ?? '';
     const todayPlan = input.today_plan ?? input.todayPlan ?? '';
     const currentIssue = input.current_issue ?? input.currentIssue ?? '';
-
+  
     if (yesterdayWork.length === 0 || yesterdayWork.length > 500) {
       errors.push({
         field: 'yesterday_achievement',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-
+  
     if (/<[^>]*>/g.test(yesterdayWork)) {
       errors.push({
         field: 'yesterday_achievement',
         reason: '形式が不正です',
       });
     }
-
+  
     if (todayPlan.length === 0 || todayPlan.length > 500) {
       errors.push({
         field: 'today_plan',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-
+  
     if (currentIssue.length === 0 || currentIssue.length > 500) {
       errors.push({
         field: 'current_issue',
         reason: '1文字以上500文字以下である必要があります',
       });
     }
-
+  
     return {
       isValid: errors.length === 0,
       errors,
@@ -4017,61 +4015,61 @@ const __aivicBundle_47_submitReportForm = (() => {
     todayPlan?: string;
     currentChallenges?: string;
   }
-
+  
   interface SubmitReportFormResult {
     success?: boolean;
     isValid?: boolean;
     validation_errors?: Array<{ field: string; message: string }>;
     errors?: Array<{ field: string; message: string }>;
   }
-
+  
   function submitReportForm(
     formData: SubmitReportFormInput
   ): SubmitReportFormResult {
     const errors: Array<{ field: string; message: string }> = [];
-
+  
     const yesterdayAccomplishment =
       formData.yesterday_accomplishment || formData.yesterdayAccomplishment || "";
     const todayPlan = formData.today_plan || formData.todayPlan || "";
     const currentIssue = formData.current_issue || formData.currentChallenges || "";
-
+  
     if (!yesterdayAccomplishment || yesterdayAccomplishment.trim() === "") {
       errors.push({
         field: "yesterdayAccomplishment",
         message: "昨日やったこと：必須項目です",
       });
     }
-
+  
     if (!todayPlan || todayPlan.trim() === "") {
       errors.push({
         field: "todayPlan",
         message: "今日やること：必須項目です",
       });
     }
-
+  
     if (!currentIssue || currentIssue.trim() === "") {
       errors.push({
         field: "currentChallenges",
         message: "抱えている課題：必須項目です",
       });
     }
-
+  
     if (todayPlan.length > 255) {
       errors.push({
         field: "todayPlan",
         message: "今日やること：255文字以内で入力してください",
       });
     }
-
+  
     const isValid = errors.length === 0;
-
+  
     const result: SubmitReportFormResult = {
       success: isValid,
       isValid: isValid,
       validation_errors: errors,
       errors: errors.length > 0 ? errors : undefined,
     };
-
+  
     return result;
   }
   return { submitReportForm };
@@ -4088,7 +4086,7 @@ const __aivicBundle_initializeSystem_fixed = (() => {
       send: (recipient: string, subject: string, body: string) => Promise<void>;
     };
   }
-
+  
   interface InitializeSystemOutput {
     initialized: boolean;
     settings: {
@@ -4099,9 +4097,9 @@ const __aivicBundle_initializeSystem_fixed = (() => {
       };
     };
   }
-
+  
   const initializeSystemStore: Map<string, InitializeSystemOutput> = new Map();
-
+  
   async function initializeSystem(
     config: InitializeSystemInput
   ): Promise<InitializeSystemOutput> {
@@ -4116,21 +4114,21 @@ const __aivicBundle_initializeSystem_fixed = (() => {
         settings: config as InitializeSystemOutput["settings"],
       };
     }
-
+  
     if (!(config.morning_meeting_start_time instanceof Date)) {
       return {
         initialized: false,
         settings: config as InitializeSystemOutput["settings"],
       };
     }
-
+  
     if (typeof config.email_service.send !== "function") {
       return {
         initialized: false,
         settings: config as InitializeSystemOutput["settings"],
       };
     }
-
+  
     const result: InitializeSystemOutput = {
       initialized: true,
       settings: {
@@ -4139,9 +4137,9 @@ const __aivicBundle_initializeSystem_fixed = (() => {
         email_service: config.email_service,
       },
     };
-
+  
     initializeSystemStore.set(config.department_id, result);
-
+  
     return result;
   }
   return { initializeSystem };
@@ -4346,13 +4344,13 @@ const __aivicBundle_52_getUnsubmittedReportersForDate = (() => {
     if (!targetDate || targetDate.trim() === "") {
       throw new Error("targetDate is required");
     }
-
+  
     const submittedIds = new Set(submittedReports.map((r) => r.reporter_id));
-
+  
     const unsubmittedReporters = allReporters.filter(
       (reporter) => !submittedIds.has(reporter.reporter_id)
     );
-
+  
     return {
       unsubmitted_reporters: unsubmittedReporters,
       unsubmitted_count: unsubmittedReporters.length,
@@ -6596,7 +6594,7 @@ const __aivicBundle_83_checkAllEmployeesReportCompletion = (() => {
     isAllReported: boolean;
   }
   
-  function checkAllEmployeesReportCompletion(
+   function checkAllEmployeesReportCompletion(
     input: CheckAllEmployeesReportCompletionInput
   ): CheckAllEmployeesReportCompletionOutput {
     if (input["reportDate"] === undefined || input["reportDate"] === null) {
@@ -6662,7 +6660,7 @@ const __aivicBundle_84_identifyUnreportedMembers = (() => {
     }>;
   }
   
-  function identifyUnreportedMembers(
+   function identifyUnreportedMembers(
     input: IdentifyUnreportedMembersInput
   ): IdentifyUnreportedMembersOutput {
     if (input["report_deadline"] === undefined || input["report_deadline"] === null) {
@@ -7085,7 +7083,7 @@ const __aivicBundle_90_validateMorningMeetingStartTime = (() => {
     isError?: boolean;
   }
   
-  function validateMorningMeetingStartTime(
+   function validateMorningMeetingStartTime(
     input: unknown
   ): ValidateMorningMeetingStartTimeResult {
     // Validate input is an object with required properties
@@ -7522,7 +7520,7 @@ const __aivicBundle_97_determinePromptionNeed = (() => {
     reason: string;
   }
   
-  function determinePromptionNeed(
+   function determinePromptionNeed(
     input: DeterminePromptionNeedInput
   ): DeterminePromptionNeedOutput {
     const { is_submitted, submission_time, deadline_time } = input;
@@ -7561,7 +7559,7 @@ const __aivicBundle_98_shouldPromptEmployee = (() => {
     isSubmitted: boolean;
   }
   
-  function shouldPromptEmployee(
+   function shouldPromptEmployee(
     input: ShouldPromptEmployeeInput
   ): boolean {
     const { isSubmitted, currentTime, deadline, employeeId } = input;
@@ -8789,7 +8787,7 @@ const __aivicBundle_runTx3Imp1Agent_fixed = (() => {
       const generatedPrompts = unreportedMembers.map((member: any) => ({
         member_id: member.member_id,
         member_name: member.member_name,
-        message_content: `${member.member_name}へ: 日報提出をお願いします。以下の3項目をご入力ください: (1)昨日やったこと (2)今日やること (3)抱えている課題`,
+        message_content: `昨日やったこと、今日やることを報告してください。`,
       }));
 
       const sendResults: any[] = [];
