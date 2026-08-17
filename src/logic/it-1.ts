@@ -4792,14 +4792,14 @@ const __aivicBundle_59_judgeReportingStatus = (() => {
 
     if (isSnakeCase) {
       // Handle snake_case format (from test)
-      const departmentId = firstRecord.department_id || '';
+      const departmentId = (firstRecord as any).department_id || '';
       const departmentName = getDepartmentName(departmentId);
 
       // Collect unique user IDs that have submitted
       const uniqueSubmitters = new Set<string>();
       reportingRecords.forEach((record) => {
-        const userId = record.user_id;
-        const submittedAt = record.submitted_at;
+        const userId = (record as any).user_id;
+        const submittedAt = (record as any).submitted_at;
         if (userId && submittedAt !== null && submittedAt !== undefined) {
           uniqueSubmitters.add(userId);
         }
@@ -4819,8 +4819,8 @@ const __aivicBundle_59_judgeReportingStatus = (() => {
       const unreported: Array<string> = [];
 
       reportingRecords.forEach((record) => {
-        const userId = record.userId || '';
-        const submittedAt = record.submittedAt;
+        const userId = (record as any).userId || '';
+        const submittedAt = (record as any).submittedAt;
 
         if (submittedAt !== null && submittedAt !== undefined) {
           reported.push(userId);
@@ -6527,7 +6527,7 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
       }
   
       const isValidReportArray = input.every(
-        (item) =>
+        (item: any) =>
           item &&
           typeof item === 'object' &&
           'employeeId' in item &&
@@ -6538,7 +6538,7 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
         throw new Error('報告者データが無効です');
       }
   
-      const submittedEmployeeIds = input.map((record) => record.employeeId);
+      const submittedEmployeeIds = input.map((record: any) => record.employeeId);
       const submittedCount = submittedEmployeeIds.length;
   
       return {
@@ -6571,7 +6571,7 @@ const __aivicBundle_83_checkAllEmployeesReportCompletion = (() => {
     isAllReported: boolean;
   }
   
-   function checkAllEmployeesReportCompletion(
+  function checkAllEmployeesReportCompletion(
     input: CheckAllEmployeesReportCompletionInput
   ): CheckAllEmployeesReportCompletionOutput {
     if (input["reportDate"] === undefined || input["reportDate"] === null) {
@@ -6637,7 +6637,7 @@ const __aivicBundle_84_identifyUnreportedMembers = (() => {
     }>;
   }
   
-   function identifyUnreportedMembers(
+  function identifyUnreportedMembers(
     input: IdentifyUnreportedMembersInput
   ): IdentifyUnreportedMembersOutput {
     if (input["report_deadline"] === undefined || input["report_deadline"] === null) {
@@ -7060,7 +7060,7 @@ const __aivicBundle_90_validateMorningMeetingStartTime = (() => {
     isError?: boolean;
   }
   
-   function validateMorningMeetingStartTime(
+  function validateMorningMeetingStartTime(
     input: unknown
   ): ValidateMorningMeetingStartTimeResult {
     // Validate input is an object with required properties
@@ -7497,7 +7497,7 @@ const __aivicBundle_97_determinePromptionNeed = (() => {
     reason: string;
   }
   
-   function determinePromptionNeed(
+  function determinePromptionNeed(
     input: DeterminePromptionNeedInput
   ): DeterminePromptionNeedOutput {
     const { is_submitted, submission_time, deadline_time } = input;
@@ -7536,7 +7536,7 @@ const __aivicBundle_98_shouldPromptEmployee = (() => {
     isSubmitted: boolean;
   }
   
-   function shouldPromptEmployee(
+  function shouldPromptEmployee(
     input: ShouldPromptEmployeeInput
   ): boolean {
     const { isSubmitted, currentTime, deadline, employeeId } = input;
