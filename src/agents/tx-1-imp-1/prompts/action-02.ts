@@ -3,72 +3,55 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Context {
-  engineerInputData: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
-  };
+export interface Action02Input {
+  engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
 export interface Action02ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedData: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
-  };
 }
 
-export function buildAction02Prompt(context: Action02Context): string {
-  const {
-    engineerInputData: {
-      yesterdayAccomplishments,
-      todayPlans,
-      currentIssues,
-      engineerId,
-      engineerName,
-      submissionTimestamp,
-    },
-  } = context;
-
-  return `You are a validation agent for the morning report management system.
-
-Your task is to validate the engineer's daily report input for completeness and appropriateness.
+export function buildAction02Prompt(input: Action02Input): string {
+  const prompt = `You are validating a daily report submission from an engineer.
 
 Engineer Information:
-- ID: ${engineerId}
-- Name: ${engineerName}
-- Submission Time: ${submissionTimestamp}
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Time: ${input.submissionTimestamp}
 
-Input Content to Validate:
-- Yesterday's Accomplishments: ${yesterdayAccomplishments}
-- Today's Plans: ${todayPlans}
-- Current Issues: ${currentIssues}
+Report Content:
+Yesterday's Accomplishments:
+${input.yesterdayAccomplishments}
 
-Validation Rules:
-1. All three fields (yesterday's accomplishments, today's plans, current issues) must be present and non-empty
-2. Each field should contain meaningful content (minimum 10 characters)
-3. Yesterday's accomplishments should describe completed work
-4. Today's plans should describe planned activities
-5. Current issues should describe any blockers or concerns (can be "None" if no issues)
-6. No field should contain only whitespace or placeholder text
-7. Content should be in Japanese or English
-8. Total content length should not exceed 2000 characters
+Today's Plans:
+${input.todayPlans}
 
-Perform validation and respond with:
-1. Whether the input is valid (true/false)
-2. List of any errors found
-3. List of any warnings (non-blocking issues)
-4. The validated and normalized data
+Current Issues:
+${input.currentIssues}
 
-Respond in JSON format with keys: isValid, errors, warnings, validatedData`;
+Please validate the following:
+1. All required fields are filled (not empty)
+2. Content is appropriate and professional
+3. No obvious errors or inconsistencies
+4. Content length is reasonable (not too short or too long)
+5. Issues are clearly described if present
+
+Respond with a JSON object containing:
+{
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[]
+}
+
+Errors should indicate critical issues that prevent registration.
+Warnings should indicate minor issues that should be reviewed but don't block submission.`;
+
+  return prompt;
 }

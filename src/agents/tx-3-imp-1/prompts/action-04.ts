@@ -3,64 +3,59 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
-  confirmationEmailContent: string;
-  reportingDeadline: string;
-  escalationThreshold: number;
-  previousEscalationCount: Record<string, number>;
+export interface Action04PromptInput {
+  reportContent: string;
+  reporterName: string;
+  reportDate: string;
+  escalationHistory?: string[];
 }
 
-export interface Action04PromptResult {
-  nonReportingMembers: string[];
-  delayedMembers: string[];
-  escalationTargets: string[];
-  escalationReasons: Record<string, string>;
+export interface Action04PromptOutput {
+  urgentIssues: Array<{
+    issue: string;
+    priority: "critical" | "high" | "medium" | "low";
+    recommendation: string;
+  }>;
+  escalationRequired: boolean;
+  escalationReason?: string;
 }
 
-export function buildAction04Prompt(context: Action04PromptContext): string {
-  const {
-    confirmationEmailContent,
-    reportingDeadline,
-    escalationThreshold,
-    previousEscalationCount,
-  } = context;
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const escalationHistoryText =
+    input.escalationHistory && input.escalationHistory.length > 0
+      ? `\n過去の催促履歴:\n${input.escalationHistory.join("\n")}`
+      : "";
 
-  const escalationCountSummary = Object.entries(previousEscalationCount)
-    .map(([member, count]) => `${member}: ${count}回`)
-    .join("\n");
+  return `あなたは朝会報告管理システムのAIエージェントです。
+以下の日報内容から、報告漏れ・遅延部員への催促判定と、エスカレーション対象を自動判定してください。
 
-  return `# Action 04: 催促対象部員の判定と催促メール・チャット送信
+【日報情報】
+報告者: ${input.reporterName}
+報告日: ${input.reportDate}
+報告内容:
+${input.reportContent}${escalationHistoryText}
 
-## 入力情報
-### 確認メール内容
-${confirmationEmailContent}
+【判定タスク】
+1. 報告内容から緊急度の高い課題・ボトルネックを抽出してください
+2. 各課題に対して優先度（critical/high/medium/low）を付与してください
+3. 各課題に対する推奨対応を記述してください
+4. 以下の場合はエスカレーション対象と判定してください:
+   - 同一部員への複数回催促後も報告がない場合
+   - システムエラーでメール・チャット送信に失敗した場合
+   - 催促ルールに該当しない特殊ケース
+   - 重大なリスク課題が検出された場合
 
-### 催促ルール
-- 報告期限: ${reportingDeadline}
-- 催促対象判定の閾値: ${escalationThreshold}回以上の催促で対応判断が必要
-- 過去の催促履歴:
-${escalationCountSummary}
-
-## タスク
-1. 確認メール内容から報告漏れ・遅延部員を特定する
-2. 催促対象部員を判定する（過去の催促回数と閾値を考慮）
-3. 催促メール・チャットを自動送信する
-4. 送信結果をログに記録する
-
-## 出力形式
-以下の JSON 形式で結果を返してください:
+【出力形式】
+JSON形式で以下の構造で返してください:
 {
-  "nonReportingMembers": ["member1", "member2"],
-  "delayedMembers": ["member3"],
-  "escalationTargets": ["member1", "member3"],
-  "escalationReasons": {
-    "member1": "初回催促",
-    "member3": "2回目催促"
-  }
-}
-
-## 注意事項
-- 同一部員への複数回催促後も報告がない場合はエスカレーション対象とする
-- 催促回数の上限を設定して過度な催促を防ぐ
-- 送信履歴を保存し、誤送信時に取り消し・修正できるようにする`;
+  "urgentIssues": [
+    {
+      "issue": "課題内容",
+      "priority": "critical|high|medium|low",
+      "recommendation": "推奨対応"
+    }
+  ],
+  "escalationRequired": true|false,
+  "escalationReason": "エスカレーション理由（必要な場合のみ）"
+}`;
 }

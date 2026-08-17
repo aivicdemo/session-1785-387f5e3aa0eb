@@ -10,79 +10,65 @@ export interface Action06Context {
   yesterdayAccomplishments: string;
   todayPlans: string;
   currentIssues: string;
-  submissionTime: string;
+  submissionTimestamp: string;
   isLate: boolean;
   daysOverdue: number;
 }
 
 export interface Action06PromptResult {
   version: string;
-  action: number;
-  prompt: string;
-  instructions: string[];
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
   context: Action06Context;
 }
 
-export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const instructions = [
-    "提出期限を超過したエンジニアに対して、催促通知を送信する準備を行う",
-    "催促通知の内容を生成する際、エンジニアの名前と超過日数を含める",
-    "催促通知は丁寧かつ促進的なトーンで作成する",
-    "超過日数に応じて催促の強度を調整する",
-    "催促通知の送信対象と内容を確認可能な形式で出力する",
-  ];
+export function buildAction06Prompt(
+  context: Action06Context
+): Action06PromptResult {
+  const systemPrompt = `You are an automated notification system for the morning report management system.
+Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
+You must:
+1. Determine if a reminder notification should be sent based on submission status
+2. Generate an appropriate reminder message considering the days overdue
+3. Decide on the notification channel (email/chat)
+4. Log the reminder action for audit purposes
 
-  const prompt = generateAction06Prompt(context);
+Guidelines:
+- Be professional and respectful in tone
+- Escalate if the same engineer has received multiple reminders
+- Consider timezone and working hours when determining urgency
+- Provide clear instructions for report submission`;
+
+  const userPrompt = `Process the following late report submission case:
+
+Engineer: ${context.engineerName}
+Email: ${context.engineerEmail}
+Report Date: ${context.reportDate}
+Days Overdue: ${context.daysOverdue}
+Submission Status: Late (submitted at ${context.submissionTimestamp})
+
+Yesterday's Accomplishments:
+${context.yesterdayAccomplishments}
+
+Today's Plans:
+${context.todayPlans}
+
+Current Issues:
+${context.currentIssues}
+
+Tasks:
+1. Evaluate if this submission requires a reminder notification despite being late
+2. Determine the appropriate reminder message
+3. Specify the notification channel (email or chat)
+4. Generate a log entry for this action
+5. Recommend escalation if needed`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,
-    action: 6,
-    prompt,
-    instructions,
+    action: "action-06",
+    systemPrompt,
+    userPrompt,
     context,
   };
-}
-
-function generateAction06Prompt(context: Action06Context): string {
-  const basePrompt = `
-あなたは朝会報告管理システムのAIエージェントです。
-現在、提出期限を超過したエンジニアへの催促通知を送信する段階にあります。
-
-【対象エンジニア情報】
-- 名前: ${context.engineerName}
-- メールアドレス: ${context.engineerEmail}
-- 報告対象日: ${context.reportDate}
-- 提出時刻: ${context.submissionTime}
-- 超過日数: ${context.daysOverdue}日
-
-【タスク】
-1. 上記のエンジニアが提出期限を${context.daysOverdue}日超過していることを確認する
-2. 催促通知メールの内容を生成する
-3. 催促通知には以下の要素を含める:
-   - エンジニアへの敬意を示す挨拶
-   - 未提出の日報に関する具体的な情報
-   - 提出期限の超過日数
-   - 早急な提出を促すメッセージ
-   - 提出方法の確認
-4. 催促通知の送信準備状況をJSON形式で出力する
-
-【出力形式】
-{
-  "targetEngineer": "${context.engineerName}",
-  "targetEmail": "${context.engineerEmail}",
-  "reportDate": "${context.reportDate}",
-  "overdueStatus": {
-    "isOverdue": ${context.isLate},
-    "daysOverdue": ${context.daysOverdue}
-  },
-  "notificationContent": {
-    "subject": "催促通知のサブジェクト",
-    "body": "催促通知の本文"
-  },
-  "readyToSend": true,
-  "timestamp": "${new Date().toISOString()}"
-}
-`;
-
-  return basePrompt;
 }

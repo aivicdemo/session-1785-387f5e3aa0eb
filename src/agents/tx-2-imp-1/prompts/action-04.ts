@@ -5,115 +5,82 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
   reportingDeadline: string;
-  oversueThresholdHours: number;
-  reminderFrequencyMinutes: number;
-  targetEngineers: Array<{
+  overdueThresholdHours: number;
+  escalationRules: {
+    firstReminderHours: number;
+    secondReminderHours: number;
+    maxReminders: number;
+  };
+  departmentMembers: Array<{
     id: string;
     name: string;
     email: string;
+    department: string;
   }>;
-  submissionStatus: Array<{
-    engineerId: string;
-    submitted: boolean;
-    submittedAt?: string;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
   }>;
+  currentTime: string;
 }
 
 export interface Action04PromptOutput {
-  reminderNotifications: Array<{
-    engineerId: string;
-    engineerName: string;
-    engineerEmail: string;
-    reminderType: "first" | "second" | "urgent";
+  overdueMembers: Array<{
+    memberId: string;
+    name: string;
+    email: string;
+    department: string;
+    submittedAt: string | null;
+    hoursOverdue: number;
+    reminderCount: number;
+    shouldEscalate: boolean;
+    escalationReason: string;
+  }>;
+  reminderActions: Array<{
+    memberId: string;
+    name: string;
+    email: string;
+    reminderType: "first" | "second" | "escalation";
     message: string;
-    scheduledAt: string;
+    sendAt: string;
   }>;
-  escalationCases: Array<{
-    engineerId: string;
-    engineerName: string;
-    reason: string;
-    recommendedAction: string;
-  }>;
+  summary: {
+    totalMembers: number;
+    submittedCount: number;
+    overdueCount: number;
+    escalationCount: number;
+    generatedAt: string;
+  };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const deadlineDate = new Date(input.reportingDeadline);
-  const now = new Date();
-  const hoursOverdue = (now.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60);
+  const systemPrompt = `You are an automated report escalation agent for the morning report management system.
+Your task is to identify overdue reports and determine appropriate escalation actions.
 
-  const nonSubmitters = input.submissionStatus
-    .filter((status) => !status.submitted)
-    .map((status) => {
-      const engineer = input.targetEngineers.find(
-        (e) => e.id === status.engineerId
-      );
-      return {
-        id: status.engineerId,
-        name: engineer?.name || "Unknown",
-        email: engineer?.email || "",
-        hoursOverdue: hoursOverdue,
-      };
-    });
+Current Time: ${input.currentTime}
+Reporting Deadline: ${input.reportingDeadline}
+Overdue Threshold: ${input.overdueThresholdHours} hours
 
-  const reminderNotifications: Action04PromptOutput["reminderNotifications"] =
-    [];
-  const escalationCases: Action04PromptOutput["escalationCases"] = [];
+Escalation Rules:
+- First Reminder: After ${input.escalationRules.firstReminderHours} hours overdue
+- Second Reminder: After ${input.escalationRules.secondReminderHours} hours overdue
+- Maximum Reminders: ${input.escalationRules.maxReminders}
 
-  for (const nonSubmitter of nonSubmitters) {
-    if (nonSubmitter.hoursOverdue > input.oversueThresholdHours * 2) {
-      escalationCases.push({
-        engineerId: nonSubmitter.id,
-        engineerName: nonSubmitter.name,
-        reason: `Significantly overdue: ${Math.floor(nonSubmitter.hoursOverdue)} hours past deadline`,
-        recommendedAction:
-          "Escalate to department head for immediate follow-up",
-      });
-    } else if (nonSubmitter.hoursOverdue > input.oversueThresholdHours) {
-      reminderNotifications.push({
-        engineerId: nonSubmitter.id,
-        engineerName: nonSubmitter.name,
-        engineerEmail: nonSubmitter.email,
-        reminderType: "urgent",
-        message: `Urgent: Your daily report is ${Math.floor(nonSubmitter.hoursOverdue)} hours overdue. Please submit immediately.`,
-        scheduledAt: new Date(
-          now.getTime() + input.reminderFrequencyMinutes * 60 * 1000
-        ).toISOString(),
-      });
-    } else {
-      reminderNotifications.push({
-        engineerId: nonSubmitter.id,
-        engineerName: nonSubmitter.name,
-        engineerEmail: nonSubmitter.email,
-        reminderType: "first",
-        message: `Reminder: Please submit your daily report by ${input.reportingDeadline}.`,
-        scheduledAt: new Date(
-          now.getTime() + input.reminderFrequencyMinutes * 60 * 1000
-        ).toISOString(),
-      });
-    }
-  }
+Department Members:
+${input.departmentMembers.map((m) => `- ${m.id}: ${m.name} (${m.email}) - ${m.department}`).join("\n")}
 
-  const systemPrompt = `You are an automated reminder and escalation system for daily report submissions.
-Your role is to:
-1. Identify engineers who have not submitted their daily reports
-2. Generate appropriate reminder notifications based on how overdue the submission is
-3. Identify cases that require escalation to management
+Submitted Reports:
+${input.submittedReports.map((r) => `- Member ${r.memberId}: Submitted at ${r.submittedAt}`).join("\n")}
 
-Current Status:
-- Reporting Deadline: ${input.reportingDeadline}
-- Overdue Threshold: ${input.oversueThresholdHours} hours
-- Reminder Frequency: ${input.reminderFrequencyMinutes} minutes
-- Non-submitters: ${nonSubmitters.length}
+Analyze the submission status and determine:
+1. Which members have not submitted reports
+2. Which members submitted after the deadline
+3. How many hours each overdue member is past the deadline
+4. Whether escalation actions are needed based on the rules
+5. What type of reminder should be sent (first, second, or escalation)
 
-Non-submitting Engineers:
-${nonSubmitters
-  .map(
-    (ns) =>
-      `- ${ns.name} (${ns.email}): ${Math.floor(ns.hoursOverdue)} hours overdue`
-  )
-  .join("\n")}
-
-Generate reminder notifications and identify escalation cases.`;
+Return a JSON object matching the Action04PromptOutput interface.`;
 
   return systemPrompt;
 }

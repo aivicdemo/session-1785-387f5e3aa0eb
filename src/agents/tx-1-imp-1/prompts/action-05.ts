@@ -7,92 +7,84 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
+  reportContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
     issues: string;
   };
   submissionDeadline: string;
   systemTimestamp: string;
 }
 
-export interface Action05ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  validatedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
-}
-
-export interface Action05PromptInput {
-  context: Action05Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
-  };
-}
-
-export interface Action05PromptOutput {
+export interface Action05PromptResult {
   version: string;
-  systemPrompt: string;
-  userPrompt: string;
+  action: string;
+  prompt: string;
   context: Action05Context;
 }
 
-export function buildAction05Prompt(
-  input: Action05PromptInput
-): Action05PromptOutput {
-  const { context, validationRules } = input;
+export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
+  const prompt = `
+You are an AI agent responsible for registering daily reports to the management system.
 
-  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
+**Action 5: Register Daily Report to Management System**
 
-Your role is to:
-1. Validate the completeness and appropriateness of engineer daily reports
-2. Check that all required fields are filled with sufficient detail
-3. Identify any inconsistencies or concerning patterns in the report content
-4. Provide clear feedback on validation results
-5. Escalate issues that require human review
+**Context:**
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
+- System Timestamp: ${context.systemTimestamp}
 
-Validation criteria:
-- Yesterday's accomplishments: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
-- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
-- Issues/concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
-
-Be thorough but fair in validation. Flag incomplete or vague entries, but accept reasonable variations in reporting style.`;
-
-  const userPrompt = `Please validate the following daily report submission:
-
-Engineer: ${context.engineerName} (ID: ${context.engineerId})
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-System Timestamp: ${context.systemTimestamp}
-
+**Report Content:**
 Yesterday's Accomplishments:
-${context.previousReportContent.yesterday}
+${context.reportContent.yesterdayAccomplishments}
 
-Today's Plan:
-${context.previousReportContent.today}
+Today's Plans:
+${context.reportContent.todayPlans}
 
-Issues/Concerns:
-${context.previousReportContent.issues}
+Issues/Challenges:
+${context.reportContent.issues}
 
-Please provide:
-1. Overall validation status (VALID / INVALID / NEEDS_REVIEW)
-2. Specific validation errors (if any)
-3. Warnings or suggestions for improvement
-4. Recommendation for next action (APPROVE / REQUEST_REVISION / ESCALATE)`;
+**Task:**
+1. Validate that all required fields in the report are complete and appropriate
+2. Format the report data according to management system specifications
+3. Register the report to the management system database
+4. Generate a registration confirmation with timestamp and registration ID
+5. Prepare data for confirmation email distribution in the next action
+
+**Output Format:**
+Return a JSON object with:
+{
+  "status": "success" | "validation_error" | "system_error",
+  "registrationId": string,
+  "registeredAt": string,
+  "validationMessages": string[],
+  "readyForEmailDistribution": boolean,
+  "nextActionData": {
+    "engineerId": string,
+    "engineerName": string,
+    "reportDate": string,
+    "registrationId": string,
+    "registeredAt": string
+  }
+}
+
+**Error Handling:**
+- If validation fails, return status "validation_error" with specific messages
+- If system registration fails, return status "system_error"
+- Do not proceed to email distribution if registration fails
+
+**Escalation Triggers:**
+- Incomplete or inappropriate report content
+- System registration failure
+- Data format incompatibility
+`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
+    action: "action-05",
+    prompt: prompt.trim(),
     context,
   };
 }

@@ -6,76 +6,53 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Action02PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
-  notificationChannels: string[];
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalHours: number;
-  };
+  notificationRecipients: string[];
+  systemContext: string;
 }
 
 export interface Action02PromptOutput {
-  overdueEngineers: Array<{
-    engineerId: string;
-    engineerName: string;
-    submissionTime: string | null;
-    hoursOverdue: number;
-    reminderCount: number;
-  }>;
-  notificationsSent: Array<{
-    engineerId: string;
-    channel: string;
-    timestamp: string;
-    status: "sent" | "failed";
-  }>;
-  escalationTriggered: boolean;
-  escalationReason?: string;
+  prompt: string;
+  version: string;
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const deadlineDate = new Date(input.reportingDeadline);
-  const currentTime = new Date();
-  const hoursUntilDeadline = (deadlineDate.getTime() - currentTime.getTime()) / (1000 * 60 * 60);
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    notificationRecipients,
+    systemContext,
+  } = input;
 
-  const channelList = input.notificationChannels.join(", ");
-  const maxReminders = input.escalationRules.maxReminders;
-  const reminderInterval = input.escalationRules.reminderIntervalHours;
+  const prompt = `You are an AI agent responsible for identifying unreported and delayed report submissions.
 
-  return `You are an AI agent responsible for monitoring daily report submission status and sending reminders to overdue engineers.
+System Context:
+${systemContext}
 
-## Current Task: Identify Overdue Reports and Send Notifications
+Task: Analyze the current report submission status and identify:
+1. Team members who have not submitted their reports
+2. Team members whose reports are delayed beyond the deadline
+3. Generate a comprehensive list of unreported and delayed members
 
-### Deadline Information
-- Reporting Deadline: ${input.reportingDeadline}
-- Current Time: ${currentTime.toISOString()}
-- Hours Until Deadline: ${hoursUntilDeadline.toFixed(2)}
-- Overdue Threshold: ${input.overdueThresholdHours} hours
+Reporting Deadline: ${reportingDeadline}
+Overdue Threshold: ${overdueThresholdHours} hours
+Notification Recipients: ${notificationRecipients.join(", ")}
 
-### Notification Configuration
-- Available Channels: ${channelList}
-- Maximum Reminders per Engineer: ${maxReminders}
-- Reminder Interval: ${reminderInterval} hours
+Instructions:
+- Check all team members' submission status against the deadline
+- Classify members into: "On-time", "Delayed", "Not submitted"
+- Create a structured list with member names, submission status, and delay duration if applicable
+- Prepare notification content for the department head
+- Ensure accuracy to prevent false positives
 
-### Your Responsibilities
-1. Identify all engineers whose reports are overdue by more than ${input.overdueThresholdHours} hours
-2. Check the reminder history for each overdue engineer
-3. Send notifications through available channels if reminder limit not exceeded
-4. Track all notifications sent with timestamps and status
-5. Determine if escalation to management is required
+Output Format:
+- Provide a JSON structure with:
+  - unreportedMembers: array of member objects with name and last check time
+  - delayedMembers: array of member objects with name, submission time, and delay duration
+  - summary: brief summary of the status
+  - recommendedActions: suggested next steps`;
 
-### Escalation Criteria
-- Engineer has received ${maxReminders} reminders and still hasn't submitted
-- System error prevents notification delivery
-- Multiple engineers are overdue simultaneously
-
-### Output Format
-Provide a structured response containing:
-- List of overdue engineers with submission status
-- Notifications sent (channel, timestamp, status)
-- Escalation decision and reasoning if applicable
-
-### Important Notes
-- Do not send more than ${maxReminders} reminders to the same engineer
-- Respect the ${reminderInterval}-hour interval between reminders
-- Log all actions with precise timestamps
-- Prioritize escalation for engineers with highest overdue duration`;
+  return {
+    prompt,
+    version: ACTION_02_PROMPT_VERSION,
+  };
 }

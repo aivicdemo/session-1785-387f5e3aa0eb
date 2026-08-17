@@ -21,87 +21,124 @@ export interface Action06Context {
 }
 
 export interface Action06PromptInput {
-  reportSummary: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
+  context: Action06Context;
+  previousActions: Array<{
+    actionNumber: number;
+    result: string;
   }>;
-  departmentHead: string;
-  reportingDate: string;
-  previousPriorityPatterns?: Array<{
-    category: string;
-    typicalPriority: string;
-  }>;
+  systemInstructions: string;
 }
 
 export interface Action06PromptOutput {
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  reportReady: boolean;
-  escalationFlags: Array<{
-    flag: string;
-    severity: "info" | "warning" | "critical";
-    description: string;
-  }>;
+  version: string;
+  actionNumber: 6;
+  prompt: string;
+  expectedOutputFormat: {
+    type: "structured";
+    schema: {
+      reportPresentation: string;
+      prioritizedIssuesList: Array<{
+        rank: number;
+        issueId: string;
+        title: string;
+        priority: string;
+        actionItems: string[];
+      }>;
+      recommendedNextSteps: string[];
+      escalationFlags: string[];
+    };
+  };
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): string {
-  const issuesList = input.extractedIssues
+export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
+  const {
+    context,
+    previousActions,
+    systemInstructions,
+  } = input;
+
+  const previousActionsSummary = previousActions
     .map(
-      (issue, index) =>
-        `${index + 1}. [${issue.id}] ${issue.title}\n   Category: ${issue.category}\n   Description: ${issue.description}`
+      (action) =>
+        `Action ${action.actionNumber}: ${action.result}`
     )
     .join("\n");
 
-  const patternContext =
-    input.previousPriorityPatterns && input.previousPriorityPatterns.length > 0
-      ? `\n\nHistorical Priority Patterns:\n${input.previousPriorityPatterns
-          .map((p) => `- ${p.category}: typically ${p.typicalPriority}`)
-          .join("\n")}`
-      : "";
+  const issuesWithPriority = context.priorityAssignments
+    .map((assignment) => {
+      const issue = context.extractedIssues.find(
+        (i) => i.id === assignment.issueId
+      );
+      return {
+        issueId: assignment.issueId,
+        title: issue?.title || "Unknown",
+        priority: assignment.priority,
+        reasoning: assignment.reasoning,
+      };
+    })
+    .sort((a, b) => {
+      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+      return (
+        priorityOrder[a.priority as keyof typeof priorityOrder] -
+        priorityOrder[b.priority as keyof typeof priorityOrder]
+      );
+    });
 
-  const prompt = `You are an AI agent responsible for the final step of daily report processing: assigning priority levels to extracted issues and preparing a comprehensive report for the department head.
+  const promptText = `${systemInstructions}
 
-Task: Analyze the following extracted issues and assign priority levels (critical, high, medium, low) based on impact, urgency, and business context.
+## Previous Actions Summary
+${previousActionsSummary}
 
-Report Summary:
-${input.reportSummary}
+## Current Context
+- Reporting Date: ${context.reportingDate}
+- Department Head: ${context.departmentHead}
+- Overall Report Summary:
+${context.reportSummary}
 
-Extracted Issues to Prioritize:
-${issuesList}${patternContext}
+## Extracted Issues and Priority Assignments
+${issuesWithPriority
+  .map(
+    (item, index) =>
+      `${index + 1}. [${item.priority.toUpperCase()}] ${item.title} (ID: ${item.issueId})
+   Reasoning: ${item.reasoning}`
+  )
+  .join("\n")}
 
-Department Head: ${input.departmentHead}
-Reporting Date: ${input.reportingDate}
+## Task
+You are the final action in the daily report processing workflow. Your role is to:
 
-Instructions:
-1. Evaluate each issue based on:
-   - Business impact (revenue, customer satisfaction, team productivity)
-   - Urgency (time-sensitive constraints, deadline proximity)
-   - Dependencies (blocking other work, affecting multiple teams)
-   - Risk level (potential escalation, safety concerns)
+1. Present the collected daily report in a clear, executive-friendly format
+2. Validate and finalize the prioritized issues list
+3. Identify any escalation flags or critical concerns
+4. Recommend immediate next steps based on the prioritized issues
+5. Prepare a comprehensive summary for the department head
 
-2. Assign priority levels:
-   - CRITICAL: Immediate action required, blocks multiple teams or has severe business impact
-   - HIGH: Should be addressed today, significant impact on operations
-   - MEDIUM: Should be addressed this week, moderate impact
-   - LOW: Can be scheduled for later, minimal immediate impact
+Please structure your response with:
+- A concise executive summary of today's progress
+- The prioritized issues list with action items for each
+- Any escalation flags that require immediate attention
+- Recommended next steps for the department head
 
-3. Provide clear reasoning for each priority assignment
+Ensure that critical and high-priority issues are clearly highlighted and actionable steps are specific and time-bound.`;
 
-4. Identify any escalation flags:
-   - Issues requiring immediate department head attention
-   - Patterns indicating systemic problems
-   - Resource constraints that need escalation
-   - Risks that could become critical
-
-5. Confirm the report is ready for presentation to the department head
-
-Output your analysis in a structured format with priority assignments, reasoning, and escalation flags.`;
-
-  return prompt;
+  return {
+    version: ACTION_06_PROMPT_VERSION,
+    actionNumber: 6,
+    prompt: promptText,
+    expectedOutputFormat: {
+      type: "structured",
+      schema: {
+        reportPresentation: "",
+        prioritizedIssuesList: issuesWithPriority.map((item, index) => ({
+          rank: index + 1,
+          issueId: item.issueId,
+          title: item.title,
+          priority: item.priority,
+          actionItems: [],
+        })),
+        recommendedNextSteps: [],
+        escalationFlags: [],
+      },
+    },
+  };
 }

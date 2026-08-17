@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04Context {
+export interface Action04PromptInput {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,172 +11,120 @@ export interface Action04Context {
     description: string;
     category: string;
   }>;
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  reportMetadata: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    submissionTime: string;
-  };
-}
-
-export interface Action04PromptInput {
-  reportContent: string;
-  reportMetadata: {
-    engineerId: string;
-    engineerName: string;
-    reportDate: string;
-    submissionTime: string;
-  };
-  previousExtractedIssues?: Array<{
+  teamMembers: Array<{
     id: string;
-    title: string;
-    description: string;
-    category: string;
+    name: string;
+    department: string;
   }>;
-  priorityClassificationRules?: string;
+  priorityFramework: {
+    criteria: string[];
+    levels: string[];
+  };
 }
 
 export interface Action04PromptOutput {
-  extractedIssues: Array<{
+  prioritizedIssues: Array<{
     id: string;
     title: string;
     description: string;
     category: string;
-  }>;
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
+    priority: string;
+    priorityScore: number;
     reasoning: string;
+    affectedMembers: string[];
+    recommendedAction: string;
   }>;
-  summaryAnalysis: string;
-  escalationFlags: Array<{
-    flag: string;
-    severity: "info" | "warning" | "critical";
-    description: string;
-  }>;
+  issueClassification: {
+    critical: string[];
+    high: string[];
+    medium: string[];
+    low: string[];
+  };
+  riskAssessment: {
+    hasBlocker: boolean;
+    blockerDescription?: string;
+    estimatedImpact: string;
+  };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const {
-    reportContent,
-    reportMetadata,
-    previousExtractedIssues = [],
-    priorityClassificationRules = "",
-  } = input;
+  const priorityLevels = input.priorityFramework.levels.join(", ");
+  const criteria = input.priorityFramework.criteria
+    .map((c, i) => `${i + 1}. ${c}`)
+    .join("\n");
 
-  const previousIssuesSection =
-    previousExtractedIssues.length > 0
-      ? `
-## 前回抽出済みの課題（参考）
-${previousExtractedIssues.map((issue) => `- [${issue.id}] ${issue.title}: ${issue.description} (カテゴリ: ${issue.category})`).join("\n")}`
-      : "";
+  const issuesText = input.extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
+    )
+    .join("\n");
 
-  const rulesSection =
-    priorityClassificationRules.length > 0
-      ? `
-## 優先度判定ルール
-${priorityClassificationRules}`
-      : `
-## デフォルト優先度判定ルール
-- Critical: システム障害、セキュリティ問題、本番環境への影響、プロジェクト全体の遅延リスク
-- High: 重要な機能の不具合、複数チームへの影響、納期に関わる課題
-- Medium: 単一機能の改善、限定的な影響、対応可能な期間内の課題
-- Low: ドキュメント更新、軽微なバグ、将来の改善提案`;
+  const membersText = input.teamMembers
+    .map((m) => `- ${m.name} (${m.department})`)
+    .join("\n");
 
-  return `# Action 04: 課題抽出と優先度判定
+  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
 
-## 目的
-日報内容から課題・ボトルネックを自動抽出し、優先度を判定・分類する。
+## Task: Prioritize and Classify Extracted Issues
 
-## 入力情報
+### Input Report Content:
+${input.reportContent}
 
-### 報告者情報
-- エンジニアID: ${reportMetadata.engineerId}
-- エンジニア名: ${reportMetadata.engineerName}
-- 報告日: ${reportMetadata.reportDate}
-- 提出時刻: ${reportMetadata.submissionTime}
+### Extracted Issues to Prioritize:
+${issuesText}
 
-### 日報内容
-\`\`\`
-${reportContent}
-\`\`\`
-${previousIssuesSection}
+### Team Members Context:
+${membersText}
 
-${rulesSection}
+### Priority Framework:
+Priority Levels: ${priorityLevels}
 
-## 実行タスク
+Prioritization Criteria:
+${criteria}
 
-### 1. 課題・ボトルネック抽出
-日報内容から以下の観点で課題を抽出してください：
-- 明示的に記載されている課題・問題点
-- 進捗遅延の原因となっているボトルネック
-- 技術的な制約や依存関係の問題
-- リソース不足や人員配置の課題
-- 外部依存による待機状態
-- 品質・パフォーマンスに関する懸念
+### Instructions:
+1. Analyze each extracted issue against the prioritization criteria
+2. Assign a priority level (${priorityLevels}) to each issue
+3. Provide a numerical priority score (1-100, where 100 is highest priority)
+4. Classify issues into categories: critical, high, medium, low
+5. Identify which team members are affected by each issue
+6. Provide recommended actions for each issue
+7. Assess overall risk: identify any blockers or critical issues
+8. Explain your reasoning for each priority assignment
 
-各課題について以下の情報を構造化してください：
-- id: 一意の識別子（例: ISSUE_001）
-- title: 課題のタイトル（簡潔に）
-- description: 詳細な説明
-- category: カテゴリ分類（technical/resource/dependency/quality/schedule/other）
-
-### 2. 優先度判定
-抽出した各課題に対して、以下の基準で優先度を判定してください：
-- critical: 即座の対応が必要。プロジェクト全体に大きな影響
-- high: 早期の対応が望ましい。複数チームまたは重要な機能に影響
-- medium: 計画的に対応すべき。限定的な影響
-- low: 対応可能な範囲で対応。軽微な影響
-
-各優先度判定について reasoning フィールドに判定理由を記載してください。
-
-### 3. エスカレーション判定
-以下のいずれかに該当する場合、escalationFlags に記録してください：
-- 重大なリスク課題（critical 優先度）
-- 複数課題の優先度が同等で判定が困難
-- 通常と異なる事象や異常パターン
-- 前回報告からの悪化傾向
-
-## 出力形式
-
-JSON形式で以下の構造で返してください：
-
-\`\`\`json
+### Output Format:
+Return a JSON object with the following structure:
 {
-  "extractedIssues": [
+  "prioritizedIssues": [
     {
-      "id": "ISSUE_001",
-      "title": "課題タイトル",
-      "description": "詳細説明",
-      "category": "technical|resource|dependency|quality|schedule|other"
+      "id": "issue_id",
+      "title": "issue_title",
+      "description": "issue_description",
+      "category": "issue_category",
+      "priority": "priority_level",
+      "priorityScore": number,
+      "reasoning": "explanation_of_priority_assignment",
+      "affectedMembers": ["member_id_1", "member_id_2"],
+      "recommendedAction": "suggested_action"
     }
   ],
-  "priorityAssignments": [
-    {
-      "issueId": "ISSUE_001",
-      "priority": "critical|high|medium|low",
-      "reasoning": "優先度判定の理由"
-    }
-  ],
-  "summaryAnalysis": "全体的な課題分析サマリー。主要な課題傾向、リスク評価、推奨対応方針を記載",
-  "escalationFlags": [
-    {
-      "flag": "フラグ名",
-      "severity": "info|warning|critical",
-      "description": "詳細説明"
-    }
-  ]
+  "issueClassification": {
+    "critical": ["issue_id_1", "issue_id_2"],
+    "high": ["issue_id_3"],
+    "medium": ["issue_id_4"],
+    "low": ["issue_id_5"]
+  },
+  "riskAssessment": {
+    "hasBlocker": boolean,
+    "blockerDescription": "description_if_blocker_exists",
+    "estimatedImpact": "description_of_overall_impact"
+  }
 }
-\`\`\`
 
-## 注意事項
-- 日報に明記されていない推測は避け、記載内容に基づいて判定してください
-- 同じ課題の重複抽出を避けてください
-- 優先度判定は客観的な基準に基づいてください
-- エスカレーション対象は慎重に判定し、実際に対応が必要なものに限定してください`;
+### Quality Checks:
+- Ensure all extracted issues are included in the prioritization
+- Verify that priority assignments are consistent with the framework
+- Confirm that affected members are correctly identified
+- Validate that critical/blocker issues are clearly marked`;
 }

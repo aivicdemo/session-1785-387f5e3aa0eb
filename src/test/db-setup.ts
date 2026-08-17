@@ -17,45 +17,34 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-const databases = new Map<string, Map<TableName, TableRow[]>>();
-let databaseCounter = 0;
+const memoryStore: Map<TableName, TableRow[]> = new Map([
+  ["users", []],
+  ["daily_reports", []],
+  ["report_send_history", []],
+  ["audit_events", []],
+]);
 
-function createInMemoryTable(): Map<TableName, TableRow[]> {
-  return new Map<TableName, TableRow[]>([
-    ["users", []],
-    ["daily_reports", []],
-    ["report_send_history", []],
-    ["audit_events", []],
-  ]);
-}
-
-function createTableOperations(
-  tableData: Map<TableName, TableRow[]>,
-  tableName: TableName
-): TableOperations {
+function createTableOperations(tableName: TableName): TableOperations {
   return {
     async del(): Promise<number> {
-      const rows = tableData.get(tableName) || [];
-      const count = rows.length;
-      tableData.set(tableName, []);
+      const store = memoryStore.get(tableName) || [];
+      const count = store.length;
+      memoryStore.set(tableName, []);
       return count;
     },
 
     async insert(row: TableRow | TableRow[]): Promise<void> {
-      const rows = tableData.get(tableName) || [];
-      if (Array.isArray(row)) {
-        rows.push(...row);
-      } else {
-        rows.push(row);
-      }
-      tableData.set(tableName, rows);
+      const store = memoryStore.get(tableName) || [];
+      const rows = Array.isArray(row) ? row : [row];
+      store.push(...rows);
+      memoryStore.set(tableName, store);
     },
 
     async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-      const rows = tableData.get(tableName) || [];
-      return rows.filter((row) => {
+      const store = memoryStore.get(tableName) || [];
+      return store.filter((item) => {
         return Object.entries(conditions).every(([key, value]) => {
-          return row[key] === value;
+          return item[key] === value;
         });
       });
     },
@@ -63,28 +52,20 @@ function createTableOperations(
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const dbId = `test_db_${databaseCounter++}`;
-  const tableData = createInMemoryTable();
-  databases.set(dbId, tableData);
+  memoryStore.set("users", []);
+  memoryStore.set("daily_reports", []);
+  memoryStore.set("report_send_history", []);
+  memoryStore.set("audit_events", []);
 
   return (tableName: TableName): TableOperations => {
-    const data = databases.get(dbId);
-    if (!data) {
-      throw new Error(`Database ${dbId} not found`);
-    }
-    return createTableOperations(data, tableName);
+    return createTableOperations(tableName);
   };
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  const tables: TableName[] = [
-    "users",
-    "daily_reports",
-    "report_send_history",
-    "audit_events",
-  ];
-
-  for (const tableName of tables) {
-    await db(tableName).del();
-  }
+  await db("users").del();
+  await db("daily_reports").del();
+  await db("report_send_history").del();
+  await db("audit_events").del();
+  memoryStore.clear();
 }

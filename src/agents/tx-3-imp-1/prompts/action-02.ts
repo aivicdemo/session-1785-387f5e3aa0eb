@@ -10,135 +10,96 @@ export interface Tx3Imp1ConfirmationEmailContent {
   recipientName: string;
   subject: string;
   body: string;
-  reportStatus: {
-    submitted: boolean;
+  reportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "submitted" | "pending" | "overdue";
     submittedAt?: string;
-    reportContent?: {
-      yesterdayAccomplishment: string;
-      todayPlan: string;
-      issues: string;
-    };
-  };
+  }>;
 }
 
 export interface Tx3Imp1PromptContext {
-  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent[];
+  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
   escalationThreshold: number;
-  previousReminders: Array<{
-    recipientId: string;
-    reminderCount: number;
-    lastReminderAt: string;
+}
+
+export interface Tx3Imp1Action02Result {
+  identifiedNonReporters: Array<{
+    memberId: string;
+    memberName: string;
+    status: "not_submitted" | "delayed";
+    daysOverdue: number;
   }>;
-}
-
-export interface Tx3Imp1IdentifiedNonSubmitter {
-  recipientId: string;
-  recipientName: string;
-  status: "not_submitted" | "delayed";
-  daysSinceDeadline: number;
-  previousReminderCount: number;
-}
-
-export interface Tx3Imp1RemindTarget {
-  recipientId: string;
-  recipientName: string;
-  reminderType: "email" | "chat" | "both";
-  priority: "normal" | "high";
-  message: string;
-}
-
-export interface Tx3Imp1PromptOutput {
-  identifiedNonSubmitters: Tx3Imp1IdentifiedNonSubmitter[];
-  remindTargets: Tx3Imp1RemindTarget[];
-  escalationCases: Array<{
-    recipientId: string;
-    reason: string;
-    recommendedAction: string;
+  escalationTargets: Array<{
+    memberId: string;
+    memberName: string;
+    escalationReason: string;
+    priority: "high" | "medium" | "low";
   }>;
-  executionTimestamp: string;
+  analysisTimestamp: string;
 }
 
 export function buildAction02Prompt(
   context: Tx3Imp1PromptContext
 ): string {
-  const emailSummary = context.confirmationEmailContent
-    .map((email) => {
-      const status = email.reportStatus.submitted
-        ? `提出済み (${email.reportStatus.submittedAt})`
-        : "未提出";
-      return `- ${email.recipientName} (ID: ${email.recipientId}): ${status}`;
-    })
+  const {
+    confirmationEmailContent,
+    currentTimestamp,
+    submissionDeadline,
+    escalationThreshold,
+  } = context;
+
+  const nonSubmittedMembers = confirmationEmailContent.reportedMembers
+    .filter((m) => m.status === "pending" || m.status === "overdue")
+    .map((m) => `- ${m.memberName} (ID: ${m.memberId}): ${m.status}`)
     .join("\n");
 
-  const previousRemindersInfo = context.previousReminders
-    .map((reminder) => {
-      return `- ${reminder.recipientId}: ${reminder.reminderCount}回催促済み (最終: ${reminder.lastReminderAt})`;
-    })
-    .join("\n");
+  const prompt = `You are an AI agent responsible for identifying non-reporters and determining escalation targets from confirmation email content.
 
-  const prompt = `# 報告漏れ・遅延部員の特定と催促対象判定
+## Current Context
+- Current Timestamp: ${currentTimestamp}
+- Submission Deadline: ${submissionDeadline}
+- Escalation Threshold (days): ${escalationThreshold}
 
-## 確認メール送信状況
-${emailSummary}
+## Confirmation Email Content
+- Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
+- Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientId})
+- Subject: ${confirmationEmailContent.subject}
 
-## 現在時刻
-${context.currentTimestamp}
+## Reported Members Status
+${nonSubmittedMembers}
 
-## 提出期限
-${context.submissionDeadline}
+## Task
+1. Identify all members who have not submitted their reports (status: "pending" or "overdue")
+2. Calculate days overdue for each delayed member
+3. Determine which members should be escalated based on:
+   - Status is "overdue" AND days overdue >= escalation threshold
+   - Assign priority: "high" if days overdue > 2x threshold, "medium" if >= threshold, "low" otherwise
+4. Return structured analysis with identified non-reporters and escalation targets
 
-## 過去の催促履歴
-${previousRemindersInfo || "なし"}
-
-## 催促エスカレーション閾値
-${context.escalationThreshold}回以上の催促後も報告がない場合はエスカレーション対象
-
-## タスク
-1. 確認メール内容から報告漏れ・遅延部員を特定してください
-2. 各部員について以下を判定してください:
-   - 提出状況 (未提出 / 遅延)
-   - 期限超過日数
-   - 過去の催促回数
-3. 催促対象部員を判定してください:
-   - 未提出者は全員催促対象
-   - 遅延者で期限超過が1日以上の場合は催促対象
-   - 過去催促回数が閾値に達した場合はエスカレーション対象
-4. 各催促対象者に対して以下を決定してください:
-   - 催促方法 (メール / チャット / 両方)
-   - 優先度 (通常 / 高)
-   - 催促メッセージ内容
-
-## 出力形式
-JSON形式で以下の構造で返してください:
+## Output Format
+Return a JSON object with:
 {
-  "identifiedNonSubmitters": [
+  "identifiedNonReporters": [
     {
-      "recipientId": "string",
-      "recipientName": "string",
+      "memberId": "string",
+      "memberName": "string",
       "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number,
-      "previousReminderCount": number
+      "daysOverdue": number
     }
   ],
-  "remindTargets": [
+  "escalationTargets": [
     {
-      "recipientId": "string",
-      "recipientName": "string",
-      "reminderType": "email" | "chat" | "both",
-      "priority": "normal" | "high",
-      "message": "string"
+      "memberId": "string",
+      "memberName": "string",
+      "escalationReason": "string",
+      "priority": "high" | "medium" | "low"
     }
   ],
-  "escalationCases": [
-    {
-      "recipientId": "string",
-      "reason": "string",
-      "recommendedAction": "string"
-    }
-  ],
-  "executionTimestamp": "string"
+  "analysisTimestamp": "${currentTimestamp}"
 }`;
 
   return prompt;

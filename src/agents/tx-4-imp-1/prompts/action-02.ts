@@ -40,34 +40,26 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
 
   return `You are a daily report validation agent for the morning meeting report management system.
 
-Your task is to validate the daily report content submitted by engineer "${engineerName}" on ${submissionDate}.
+Your task is to validate the daily report submission from engineer: ${engineerName}
+Submission date: ${submissionDate}
 
-Report Content:
----
+Report content to validate:
+"""
 ${reportContent}
----
+"""
 
-Validation Rules:
+Validation rules:
 1. Content length must be between ${minLength} and ${maxLength} characters
 2. Required sections must be present: ${requiredFieldsText}
 3. Content must be coherent and professional
 4. No sensitive information should be exposed
-5. All required fields must have substantive content (not just placeholders)
+5. Content should be relevant to daily work reporting
 
-Please perform the following validation:
-1. Check if all required fields are present and contain meaningful content
-2. Verify content length is within acceptable range
-3. Identify any inappropriate or sensitive information
-4. Assess overall quality and completeness
-5. Determine if the report is acceptable for system registration
+Please analyze the report and provide:
+1. Whether the report is valid (true/false)
+2. List of any validation errors found
+3. Sanitized version of the content (with any sensitive data removed)
+4. Severity level of any issues (critical/warning/info)
 
-Respond with a JSON object containing:
-{
-  "isValid": boolean,
-  "validationErrors": string[],
-  "sanitizedContent": string,
-  "severity": "critical" | "warning" | "info"
-}
-
-Be strict but fair in validation. A report should only be rejected if it has critical issues that prevent proper processing.`;
+Respond in JSON format with keys: isValid, validationErrors (array), sanitizedContent, severity`;
 }

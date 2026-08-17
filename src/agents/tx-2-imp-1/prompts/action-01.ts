@@ -21,7 +21,7 @@ export interface Action01PromptOutput {
   templateContent: string;
   distributionPlan: {
     recipients: string[];
-    sendTime: string;
+    scheduledTime: string;
     channels: string[];
   };
   validationRules: Array<{
@@ -32,68 +32,76 @@ export interface Action01PromptOutput {
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join(", ");
-  const channelList = input.systemContext.notificationChannels.join(", ");
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const channelList = input.systemContext.notificationChannels.join("、");
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  const prompt = `# 日報テンプレート自動生成・配信アクション
+
+## 目的
+前日の日報テンプレートを自動生成して、全エンジニアに配信する。
 
 ## 実行日時
-- 対象日: ${input.targetDate}
-- 提出期限: ${input.reportingDeadline}
+対象日: ${input.targetDate}
+提出期限: ${input.reportingDeadline}
 
-## 対象エンジニア
+## 対象者
 ${engineerNames}
 
-## タスク
-以下の手順で日報テンプレートを自動生成し、全エンジニアに配信してください:
+## 配信チャネル
+${channelList}
 
-1. **テンプレート生成**
-   - 前日の日報テンプレートを参照し、本日分のテンプレートを生成
-   - 以下の項目を含める:
-     * 昨日の実績（成果・完了タスク）
-     * 本日の予定（予定タスク・目標）
-     * 抱えている課題（ブロッカー・リスク）
-     * 備考欄
+## 生成するテンプレート内容
+以下の項目を含む日報テンプレートを生成してください:
 
-2. **入力項目の妥当性検証ルール定義**
-   - 昨日の実績: 必須、100文字以上
-   - 本日の予定: 必須、100文字以上
-   - 抱えている課題: 任意、500文字以内
-   - 各項目は日本語で記述されていることを確認
+1. **昨日の実績**
+   - 完了したタスク
+   - 進捗状況
+   - 実績の詳細
 
-3. **配信計画の策定**
-   - 配信先: ${engineerNames}
-   - 配信チャネル: ${channelList}
-   - 提出期限を明記
-   - 提出方法を明記
+2. **本日の予定**
+   - 予定されたタスク
+   - 優先順位
+   - 予定時間
 
-4. **配信内容の確認**
-   - テンプレートが完全であることを確認
-   - 配信リストに漏れがないことを確認
-   - 提出期限が正確であることを確認
+3. **抱えている課題**
+   - 現在の課題
+   - 影響範囲
+   - 対応予定
+
+4. **その他**
+   - 特記事項
+   - 相談事項
+
+## 配信計画
+- 配信先: 全エンジニア (${input.engineerList.length}名)
+- 配信チャネル: ${channelList}
+- 提出期限: ${input.reportingDeadline}
+- 管理システムURL: ${input.systemContext.reportManagementSystemUrl}
+
+## 検証ルール
+生成されたテンプレートは以下の検証ルールに従うこと:
+- 全ての必須項目が含まれていること
+- 項目の説明が明確であること
+- 入力形式が統一されていること
+- 提出期限が明記されていること
 
 ## 出力形式
-以下の JSON 形式で結果を返してください:
-\`\`\`json
+JSON形式で以下の構造で返却してください:
 {
-  "templateContent": "生成されたテンプレートの内容",
+  "templateContent": "生成されたテンプレートの完全なテキスト",
   "distributionPlan": {
     "recipients": ["engineer1@example.com", "engineer2@example.com"],
-    "sendTime": "2024-01-01T08:00:00Z",
+    "scheduledTime": "配信予定時刻",
     "channels": ["email", "chat"]
   },
   "validationRules": [
     {
-      "field": "昨日の実績",
+      "field": "フィールド名",
       "required": true,
-      "constraints": ["100文字以上", "日本語"]
+      "constraints": ["制約条件"]
     }
   ]
-}
-\`\`\`
+}`;
 
-## 注意事項
-- テンプレートは前日のものと一貫性を保つ
-- 配信時刻は朝会開始の2時間前を推奨
-- 提出期限超過時の自動催促ルールを適用`;
+  return prompt;
 }

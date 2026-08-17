@@ -15,7 +15,7 @@ interface Action03PromptOutput {
     description: string;
     affectedMembers?: string[];
   }>;
-  priorityAssessment: Array<{
+  priorityClassification: Array<{
     issue: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
@@ -29,9 +29,10 @@ function buildAction03Prompt(input: Action03PromptInput): string {
 
   sections.push("# 課題抽出・優先度判定プロンプト");
   sections.push("");
+
   sections.push("## 目的");
   sections.push(
-    "日報内容から課題・ボトルネックを自動抽出し、優先度を判定・分類する"
+    "日報内容から課題・ボトルネックを自動抽出し、優先度を判定・分類します。"
   );
   sections.push("");
 
@@ -54,39 +55,38 @@ function buildAction03Prompt(input: Action03PromptInput): string {
   }
 
   sections.push("## 実行タスク");
-  sections.push("1. 日報から課題・ボトルネックを抽出する");
-  sections.push("2. 各課題の優先度を判定する（critical/high/medium/low）");
-  sections.push("3. 優先度判定の根拠を記述する");
-  sections.push("4. 影響を受けるメンバーを特定する");
-  sections.push("5. 推奨される対応策を提示する");
+  sections.push("1. 日報から課題・ボトルネックを抽出");
+  sections.push("2. 各課題の優先度を判定（critical/high/medium/low）");
+  sections.push("3. 優先度判定の根拠を記述");
+  sections.push("4. 推奨アクションを提示");
   sections.push("");
 
   sections.push("## 優先度判定基準");
-  sections.push("- Critical: プロジェクト全体の進行を停止させる可能性");
-  sections.push("- High: 複数メンバーに影響、対応が急務");
-  sections.push("- Medium: 限定的な影響、対応予定あり");
-  sections.push("- Low: 軽微な問題、対応は後回し可能");
+  sections.push("- critical: 朝会開始前に対応が必要、プロジェクト全体に影響");
+  sections.push("- high: 本日中に対応が必要、複数チームに影響");
+  sections.push("- medium: 今週中に対応が必要、特定チームに影響");
+  sections.push("- low: 来週以降の対応可能、個別対応で対応可能");
   sections.push("");
 
   sections.push("## 出力形式");
-  sections.push("JSON形式で以下の構造で出力してください:");
+  sections.push("JSON形式で以下の構造で返却してください:");
   sections.push("{");
   sections.push('  "extractedIssues": [');
   sections.push("    {");
   sections.push('      "issue": "課題タイトル",');
   sections.push('      "description": "詳細説明",');
-  sections.push('      "affectedMembers": ["メンバーA", "メンバーB"]');
+  sections.push('      "affectedMembers": ["メンバー1", "メンバー2"]');
   sections.push("    }");
   sections.push("  ],");
-  sections.push('  "priorityAssessment": [');
+  sections.push('  "priorityClassification": [');
   sections.push("    {");
   sections.push('      "issue": "課題タイトル",');
-  sections.push('      "priority": "high",');
+  sections.push('      "priority": "critical|high|medium|low",');
   sections.push('      "reasoning": "優先度判定の根拠"');
   sections.push("    }");
   sections.push("  ],");
   sections.push('  "bottlenecks": ["ボトルネック1", "ボトルネック2"],');
-  sections.push('  "recommendations": ["推奨対応1", "推奨対応2"]');
+  sections.push('  "recommendations": ["推奨アクション1", "推奨アクション2"]');
   sections.push("}");
 
   return sections.join("\n");

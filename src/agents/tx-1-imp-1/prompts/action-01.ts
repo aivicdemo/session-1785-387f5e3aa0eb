@@ -20,26 +20,25 @@ export interface Action01PromptResult {
 }
 
 export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
-  const systemPrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
-Your role is to:
-1. Generate a structured daily report template based on the previous day's report
-2. Ensure the template includes sections for: yesterday's achievements, today's plans, and current issues
-3. Prepare the template for distribution to the engineer
-4. Format the template in a clear, easy-to-fill manner
+  const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
+Your role is to generate and distribute the daily report template for the previous day's work.
+You must ensure the template is clear, comprehensive, and ready for engineers to fill in.
+The template should include sections for:
+- Yesterday's achievements
+- Today's planned tasks
+- Current challenges or blockers
+- Any additional notes
 
-The daily report system is designed to automate the collection and management of engineer progress reports.`;
+Be professional and encouraging in tone.`;
 
   const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
-Previous report date: ${context.previousDayReportDate}
-Report submission deadline: ${context.reportDeadline}
-System: ${context.systemName}
+The report is for work completed on ${context.previousDayReportDate}.
+The submission deadline is ${context.reportDeadline}.
+System name: ${context.systemName}
 
-Please create a template that:
-1. References the previous day's report context
-2. Includes clear sections for today's input
-3. Specifies the submission deadline
-4. Provides guidance on what information should be included
-5. Is formatted for easy distribution via email`;
+Please create a well-structured template that can be distributed via email.
+Include clear instructions for each section.
+Ensure the template is ready for immediate distribution.`;
 
   return {
     version: ACTION_01_PROMPT_VERSION,

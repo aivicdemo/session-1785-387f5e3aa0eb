@@ -3,64 +3,72 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Input {
+export interface Action03PromptInput {
   engineerName: string;
   engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
+  yesterdayReport: string;
+  todayPlan: string;
+  issues: string;
+  submissionDeadline: string;
+  systemName: string;
 }
 
-export interface Action03ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
+export interface Action03PromptOutput {
+  prompt: string;
+  version: string;
 }
 
-export interface Action03PromptContext {
-  input: Action03Input;
-  validationRules: {
-    minAccomplishmentsLength: number;
-    minPlansLength: number;
-    minIssuesLength: number;
-    maxAccomplishmentsLength: number;
-    maxPlansLength: number;
-    maxIssuesLength: number;
-  };
-}
+export function buildAction03Prompt(
+  input: Action03PromptInput
+): Action03PromptOutput {
+  const {
+    engineerName,
+    engineerEmail,
+    yesterdayReport,
+    todayPlan,
+    issues,
+    submissionDeadline,
+    systemName,
+  } = input;
 
-export function buildAction03Prompt(context: Action03PromptContext): string {
-  const { input, validationRules } = context;
-
-  const prompt = `You are validating a daily report submission for an engineer.
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the "${systemName}" system.
 
 Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Time: ${input.submissionTimestamp}
+- Name: ${engineerName}
+- Email: ${engineerEmail}
+- Submission Deadline: ${submissionDeadline}
 
-Report Content:
-- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
-- Today's Plans: ${input.todayPlans}
-- Current Issues: ${input.currentIssues}
+Submitted Report Content:
+- Yesterday's Achievements: ${yesterdayReport}
+- Today's Plan: ${todayPlan}
+- Current Issues: ${issues}
 
-Validation Rules:
-- Accomplishments length: ${validationRules.minAccomplishmentsLength} - ${validationRules.maxAccomplishmentsLength} characters
-- Plans length: ${validationRules.minPlansLength} - ${validationRules.maxPlansLength} characters
-- Issues length: ${validationRules.minIssuesLength} - ${validationRules.maxIssuesLength} characters
+Your Task (Action 3: Validate Input Content):
+1. Verify that all required fields are completed and not empty
+2. Check that the content is appropriate and meaningful (not placeholder text)
+3. Validate that yesterday's achievements are specific and measurable
+4. Validate that today's plan is clear and actionable
+5. Validate that issues are clearly described with context
+6. Identify any missing or incomplete information
+7. Flag any content that appears to be low-quality or insufficient
 
-Please validate the report content against these rules and identify:
-1. Any validation errors (content that violates the rules)
-2. Any warnings (content that is technically valid but may need attention)
-3. Whether the report is complete and appropriate for registration
+Validation Criteria:
+- Yesterday's Achievements: Must contain specific accomplishments (minimum 20 characters)
+- Today's Plan: Must contain concrete tasks (minimum 20 characters)
+- Issues: Must be clearly described if present (minimum 10 characters if provided)
+- All fields must be in appropriate language and format
 
-Respond with a JSON object containing:
+Output your validation result as JSON with the following structure:
 {
   "isValid": boolean,
-  "errors": string[],
-  "warnings": string[]
+  "validationErrors": string[],
+  "validationWarnings": string[],
+  "summary": string,
+  "recommendedAction": "approve" | "request_revision" | "escalate"
 }`;
 
-  return prompt;
+  return {
+    prompt,
+    version: ACTION_03_PROMPT_VERSION,
+  };
 }

@@ -25,10 +25,9 @@ interface Action03PromptOutput {
   systemPrompt: string;
   userPrompt: string;
   context: {
-    deadline: string;
-    timestamp: string;
-    nonSubmitterCount: number;
-    delayedSubmitterCount: number;
+    taskDescription: string;
+    objectives: string[];
+    constraints: string[];
   };
 }
 
@@ -40,52 +39,53 @@ Your role is to:
 2. Identify employees who have not submitted their reports
 3. Identify employees who submitted reports after the deadline
 4. Determine escalation priority based on submission delay duration
-5. Generate a structured list for management notification
+5. Prepare a structured list for manager notification
 
-You must provide accurate identification and clear categorization of report submission status.`;
+You must be precise and objective in your analysis. All timestamps should be compared against the reporting deadline: ${input.reportingDeadline}
 
-  const nonSubmitterList = input.nonSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`
-    )
-    .join("\n");
+Current system time: ${input.currentTime}`;
 
-  const delayedSubmitterList = input.delayedSubmitters
-    .map(
-      (emp) =>
-        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted: ${emp.submittedAt})`
-    )
-    .join("\n");
+  const userPrompt = `Please analyze the following daily report submission status and prepare a notification for the department manager.
 
-  const userPrompt = `Current Time: ${input.currentTime}
 Reporting Deadline: ${input.reportingDeadline}
-Escalation Threshold (minutes): ${input.escalationThreshold}
+Current Time: ${input.currentTime}
 
 Non-Submitters (${input.nonSubmitters.length} employees):
-${nonSubmitterList || "None"}
+${input.nonSubmitters.map((emp) => `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`).join("\n")}
 
 Delayed Submitters (${input.delayedSubmitters.length} employees):
-${delayedSubmitterList || "None"}
+${input.delayedSubmitters.map((emp) => `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted at: ${emp.submittedAt})`).join("\n")}
 
-Please analyze the submission status and provide:
-1. A summary of non-submission and delay statistics
-2. Categorization of employees by escalation priority
-3. Recommended actions for each category
-4. A notification message for the department manager`;
+Escalation Threshold: ${input.escalationThreshold} minutes
+
+Please provide:
+1. Summary of submission status
+2. List of non-submitters requiring immediate follow-up
+3. List of delayed submitters with delay duration
+4. Escalation priority classification
+5. Recommended actions for each category`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
     context: {
-      deadline: input.reportingDeadline,
-      timestamp: input.currentTime,
-      nonSubmitterCount: input.nonSubmitters.length,
-      delayedSubmitterCount: input.delayedSubmitters.length,
+      taskDescription:
+        "Identify and classify non-submitters and delayed submitters of daily reports for manager notification",
+      objectives: [
+        "Accurately identify all non-submitters against the deadline",
+        "Calculate delay duration for each delayed submission",
+        "Classify escalation priority based on delay threshold",
+        "Prepare structured notification content for manager",
+      ],
+      constraints: [
+        "Must use the exact reporting deadline provided",
+        "Must compare all timestamps against current system time",
+        "Must respect the escalation threshold for priority classification",
+        "Must maintain employee privacy while providing necessary identification",
+      ],
     },
   };
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03PromptInput, Action03PromptOutput };

@@ -20,7 +20,7 @@ export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedContent: {
+  normalizedContent: {
     yesterday: string;
     today: string;
     issues: string;
@@ -37,64 +37,65 @@ export function buildAction04Prompt(context: Action04Context): string {
     systemTimestamp,
   } = context;
 
-  const promptContent = `# 日報入力内容の妥当性検証タスク
+  const promptContent = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-## タスク概要
-エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
+## Task: Validate Daily Report Content (Action 04)
 
-## 対象エンジニア情報
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- システム時刻: ${systemTimestamp}
-- 提出期限: ${submissionDeadline}
+### Engineer Information
+- Engineer ID: ${engineerId}
+- Engineer Name: ${engineerName}
+- Report Date: ${reportDate}
+- System Timestamp: ${systemTimestamp}
+- Submission Deadline: ${submissionDeadline}
 
-## 受け取った入力内容
-### 昨日の実績
+### Report Content to Validate
+**Yesterday's Achievements:**
 ${previousReportContent.yesterday}
 
-### 本日の予定
+**Today's Plans:**
 ${previousReportContent.today}
 
-### 抱えている課題
+**Current Issues/Challenges:**
 ${previousReportContent.issues}
 
-## 検証基準
-1. **完全性チェック**
-   - 各項目が空白でないこと
-   - 最小文字数（各項目50文字以上）を満たしていること
-   - 必須情報が含まれていること
+### Validation Rules
+1. **Completeness Check**
+   - All three sections (yesterday, today, issues) must have content
+   - Minimum 10 characters per section
+   - Maximum 2000 characters per section
 
-2. **適切性チェック**
-   - 昨日の実績が具体的で測定可能であること
-   - 本日の予定が現実的で達成可能であること
-   - 課題が明確に記述されていること
-   - 日本語として正しく記述されていること
+2. **Content Quality Check**
+   - Content must be relevant to work activities
+   - No placeholder text (e.g., "N/A", "None", "TBD" as sole content)
+   - Language must be professional and clear
 
-3. **一貫性チェック**
-   - 昨日の実績と本日の予定に矛盾がないこと
-   - 課題が実績・予定と関連していること
+3. **Appropriateness Check**
+   - Content must not contain sensitive personal information
+   - Content must not contain offensive language
+   - Content must be work-related
 
-4. **タイムリネスチェック**
-   - 提出期限内であること
+4. **Format Check**
+   - No excessive special characters or formatting issues
+   - Text should be properly structured
 
-## 出力形式
-JSON形式で以下の構造で返してください：
+### Output Format
+Respond with a JSON object containing:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "validatedContent": {
+  "normalizedContent": {
     "yesterday": string,
     "today": string,
     "issues": string
   }
 }
 
-## 注記
-- errorsは登録を阻止する重大な問題
-- warningsは登録は可能だが改善が望ましい問題
-- validatedContentは検証後の最終内容（修正が必要な場合は修正版を返す）`;
+### Instructions
+- If validation fails, provide specific error messages in the "errors" array
+- If there are minor issues that don't prevent submission, add them to "warnings"
+- In "normalizedContent", provide cleaned/trimmed versions of the content
+- Be strict but fair in validation - the goal is to ensure quality reports while not being overly restrictive`;
 
   return promptContent;
 }

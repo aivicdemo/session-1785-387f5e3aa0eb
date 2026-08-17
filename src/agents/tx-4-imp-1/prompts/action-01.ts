@@ -3,70 +3,60 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
-  reportDeadline: string;
-  targetDate: string;
-  engineerList: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  systemContext: {
-    reportSystemUrl: string;
-    managementSystemUrl: string;
-  };
+export interface Action01PromptContext {
+  reportDate: string;
+  engineerName: string;
+  engineerId: string;
+  departmentName: string;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
 }
 
-export interface Action01PromptOutput {
-  templateContent: string;
-  distributionList: string[];
-  scheduledTime: string;
+export interface Action01PromptResult {
+  promptText: string;
+  version: string;
+  context: Action01PromptContext;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const engineerEmails = input.engineerList.map((e) => e.email).join("; ");
+export function buildAction01Prompt(
+  context: Action01PromptContext
+): Action01PromptResult {
+  const promptText = `
+あなたは朝会報告管理システムのAIエージェントです。
+以下の情報に基づいて、エンジニアに対する日報テンプレートを自動生成して配信してください。
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+【対象エンジニア情報】
+- 名前: ${context.engineerName}
+- ID: ${context.engineerId}
+- 部門: ${context.departmentName}
+- 報告日: ${context.reportDate}
+- 提出期限: ${context.submissionDeadline}
 
-## 実行目的
-前日の日報テンプレートを自動生成して、全エンジニアに配信する
+【タスク】
+1. 前日の日報テンプレートを参考にして、本日の日報入力フォームを生成する
+2. 以下の項目を含める:
+   - 昨日の実績（具体的な成果・完了タスク）
+   - 本日の予定（予定されたタスク・目標）
+   - 抱えている課題（ボトルネック・リスク・懸念事項）
+3. テンプレートをメール形式で整形する
+4. 提出期限と提出方法を明記する
 
-## 入力情報
-- 対象日付: ${input.targetDate}
-- 日報提出期限: ${input.reportDeadline}
-- 対象エンジニア: ${engineerNames}
-- 配信先メールアドレス: ${engineerEmails}
-- 日報システムURL: ${input.systemContext.reportSystemUrl}
-- 管理システムURL: ${input.systemContext.managementSystemUrl}
+${context.previousReportTemplate ? `【前日のテンプレート参考】\n${context.previousReportTemplate}` : ""}
 
-## 実行タスク
-1. 前日の日報テンプレートを生成する
-   - 「昨日の実績」セクション
-   - 「本日の予定」セクション
-   - 「抱えている課題」セクション
-   - 提出期限と提出方法の記載
-
-2. テンプレートを全エンジニアに配信する
-   - メール件名: 【日報】${input.targetDate}の日報テンプレート
-   - 本文にテンプレート内容を含める
-   - 日報システムへのアクセスリンクを記載
-
-3. 配信結果をログに記録する
-   - 配信日時
-   - 配信対象者
-   - 配信ステータス
-
-## 出力形式
-JSON形式で以下を返す:
+生成したテンプレートを以下のJSON形式で返してください:
 {
-  "templateContent": "生成されたテンプレート内容",
-  "distributionList": ["配信対象メールアドレス"],
-  "scheduledTime": "配信実行時刻"
+  "templateId": "string",
+  "engineerId": "string",
+  "reportDate": "string",
+  "templateContent": "string",
+  "submissionDeadline": "string",
+  "status": "generated"
 }
+  `.trim();
 
-## 注意事項
-- テンプレートは簡潔で入力しやすい形式にする
-- 提出期限を明確に記載する
-- 配信失敗時はエラーログを記録する`;
+  return {
+    promptText,
+    version: ACTION_01_PROMPT_VERSION,
+    context,
+  };
 }
