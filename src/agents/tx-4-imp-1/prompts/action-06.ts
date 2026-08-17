@@ -21,77 +21,87 @@ export interface Action06Context {
 }
 
 export interface Action06PromptInput {
-  context: Action06Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
+  reportSummary: string;
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>;
+  departmentHead: string;
+  reportingDate: string;
+  previousPriorityPatterns?: Array<{
+    category: string;
+    typicalPriority: string;
   }>;
 }
 
 export interface Action06PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  metadata: {
-    actionNumber: 6;
-    contractId: "tx_4_imp_1";
-    purpose: string;
-  };
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>;
+  reportReady: boolean;
+  escalationFlags: Array<{
+    flag: string;
+    severity: "info" | "warning" | "critical";
+    description: string;
+  }>;
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the morning report processing workflow.
-Your role is to present the organized report and prioritized issue list to the department head.
-You must ensure all extracted issues are properly categorized and prioritized based on business impact and urgency.
-Provide clear, actionable recommendations for issue resolution.`;
+export function buildAction06Prompt(input: Action06PromptInput): string {
+  const issuesList = input.extractedIssues
+    .map(
+      (issue, index) =>
+        `${index + 1}. [${issue.id}] ${issue.title}\n   Category: ${issue.category}\n   Description: ${issue.description}`
+    )
+    .join("\n");
 
-  const userPrompt = `Based on the following morning report summary and extracted issues, prepare a final report for the department head:
+  const patternContext =
+    input.previousPriorityPatterns && input.previousPriorityPatterns.length > 0
+      ? `\n\nHistorical Priority Patterns:\n${input.previousPriorityPatterns
+          .map((p) => `- ${p.category}: typically ${p.typicalPriority}`)
+          .join("\n")}`
+      : "";
+
+  const prompt = `You are an AI agent responsible for the final step of daily report processing: assigning priority levels to extracted issues and preparing a comprehensive report for the department head.
+
+Task: Analyze the following extracted issues and assign priority levels (critical, high, medium, low) based on impact, urgency, and business context.
 
 Report Summary:
-${input.context.reportSummary}
+${input.reportSummary}
 
-Extracted Issues:
-${input.context.extractedIssues
-  .map(
-    (issue) => `
-- ID: ${issue.id}
-  Title: ${issue.title}
-  Description: ${issue.description}
-  Category: ${issue.category}
-`
-  )
-  .join("")}
+Extracted Issues to Prioritize:
+${issuesList}${patternContext}
 
-Priority Assignments:
-${input.context.priorityAssignments
-  .map(
-    (assignment) => `
-- Issue ID: ${assignment.issueId}
-  Priority: ${assignment.priority}
-  Reasoning: ${assignment.reasoning}
-`
-  )
-  .join("")}
+Department Head: ${input.departmentHead}
+Reporting Date: ${input.reportingDate}
 
-Department Head: ${input.context.departmentHead}
-Reporting Date: ${input.context.reportingDate}
+Instructions:
+1. Evaluate each issue based on:
+   - Business impact (revenue, customer satisfaction, team productivity)
+   - Urgency (time-sensitive constraints, deadline proximity)
+   - Dependencies (blocking other work, affecting multiple teams)
+   - Risk level (potential escalation, safety concerns)
 
-Please:
-1. Validate all priority assignments
-2. Identify any critical issues requiring immediate attention
-3. Group issues by category and priority level
-4. Provide a concise executive summary
-5. Recommend next steps for each priority level`;
+2. Assign priority levels:
+   - CRITICAL: Immediate action required, blocks multiple teams or has severe business impact
+   - HIGH: Should be addressed today, significant impact on operations
+   - MEDIUM: Should be addressed this week, moderate impact
+   - LOW: Can be scheduled for later, minimal immediate impact
 
-  return {
-    version: ACTION_06_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    metadata: {
-      actionNumber: 6,
-      contractId: "tx_4_imp_1",
-      purpose:
-        "Present organized report and prioritized issue list to department head for morning meeting",
-    },
-  };
+3. Provide clear reasoning for each priority assignment
+
+4. Identify any escalation flags:
+   - Issues requiring immediate department head attention
+   - Patterns indicating systemic problems
+   - Resource constraints that need escalation
+   - Risks that could become critical
+
+5. Confirm the report is ready for presentation to the department head
+
+Output your analysis in a structured format with priority assignments, reasoning, and escalation flags.`;
+
+  return prompt;
 }

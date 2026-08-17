@@ -3,16 +3,13 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Context {
-  engineerId: string;
+export interface Action03Input {
   engineerName: string;
-  submittedContent: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-  };
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
   submissionTimestamp: string;
-  deadline: string;
 }
 
 export interface Action03ValidationResult {
@@ -21,65 +18,49 @@ export interface Action03ValidationResult {
   warnings: string[];
 }
 
-export interface Action03PromptInput {
-  context: Action03Context;
+export interface Action03PromptContext {
+  input: Action03Input;
+  validationRules: {
+    minAccomplishmentsLength: number;
+    minPlansLength: number;
+    minIssuesLength: number;
+    maxAccomplishmentsLength: number;
+    maxPlansLength: number;
+    maxIssuesLength: number;
+  };
 }
 
-export interface Action03PromptOutput {
-  prompt: string;
-  version: string;
-}
+export function buildAction03Prompt(context: Action03PromptContext): string {
+  const { input, validationRules } = context;
 
-export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const { context } = input;
-  const {
-    engineerId,
-    engineerName,
-    submittedContent,
-    submissionTimestamp,
-    deadline,
-  } = context;
+  const prompt = `You are validating a daily report submission for an engineer.
 
-  const validationPrompt = `
-You are a validation agent for the daily report management system.
+Engineer Information:
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Time: ${input.submissionTimestamp}
 
-Your task is to validate the submitted daily report content for engineer: ${engineerName} (ID: ${engineerId})
+Report Content:
+- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
+- Today's Plans: ${input.todayPlans}
+- Current Issues: ${input.currentIssues}
 
-Submission Details:
-- Submitted at: ${submissionTimestamp}
-- Deadline: ${deadline}
+Validation Rules:
+- Accomplishments length: ${validationRules.minAccomplishmentsLength} - ${validationRules.maxAccomplishmentsLength} characters
+- Plans length: ${validationRules.minPlansLength} - ${validationRules.maxPlansLength} characters
+- Issues length: ${validationRules.minIssuesLength} - ${validationRules.maxIssuesLength} characters
 
-Submitted Content:
-1. Yesterday's Accomplishments:
-${submittedContent.yesterdayAccomplishments}
+Please validate the report content against these rules and identify:
+1. Any validation errors (content that violates the rules)
+2. Any warnings (content that is technically valid but may need attention)
+3. Whether the report is complete and appropriate for registration
 
-2. Today's Plans:
-${submittedContent.todayPlans}
-
-3. Current Issues:
-${submittedContent.currentIssues}
-
-Validation Criteria:
-1. Content Completeness: All three sections must have meaningful content (not empty or placeholder text)
-2. Content Appropriateness: Content should be relevant to work activities and realistic
-3. Format Consistency: Content should follow professional communication standards
-4. Issue Clarity: If issues are mentioned, they should be clearly described with context
-
-Please validate the submitted content and provide:
-1. A boolean indicating if the content is valid
-2. A list of specific errors (if any)
-3. A list of warnings (if any)
-
-Respond in JSON format:
+Respond with a JSON object containing:
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[]
-}
-`;
+}`;
 
-  return {
-    prompt: validationPrompt,
-    version: ACTION_03_PROMPT_VERSION,
-  };
+  return prompt;
 }

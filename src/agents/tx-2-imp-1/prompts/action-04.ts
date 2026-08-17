@@ -5,67 +5,115 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  oversueThresholdHours: number;
+  reminderFrequencyMinutes: number;
+  targetEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  submissionStatus: Array<{
+    engineerId: string;
+    submitted: boolean;
+    submittedAt?: string;
+  }>;
 }
 
 export interface Action04PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: number;
-    contract: string;
-    purpose: string;
-  };
+  reminderNotifications: Array<{
+    engineerId: string;
+    engineerName: string;
+    engineerEmail: string;
+    reminderType: "first" | "second" | "urgent";
+    message: string;
+    scheduledAt: string;
+  }>;
+  escalationCases: Array<{
+    engineerId: string;
+    engineerName: string;
+    reason: string;
+    recommendedAction: string;
+  }>;
 }
 
-export function buildAction04Prompt(
-  input: Action04PromptInput
-): Action04PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdHours,
-    escalationRules,
-  } = input;
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const deadlineDate = new Date(input.reportingDeadline);
+  const now = new Date();
+  const hoursOverdue = (now.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60);
 
-  const prompt = `You are an AI agent responsible for Action 4 in the Daily Report Management System (Contract: tx_2_imp_1).
+  const nonSubmitters = input.submissionStatus
+    .filter((status) => !status.submitted)
+    .map((status) => {
+      const engineer = input.targetEngineers.find(
+        (e) => e.id === status.engineerId
+      );
+      return {
+        id: status.engineerId,
+        name: engineer?.name || "Unknown",
+        email: engineer?.email || "",
+        hoursOverdue: hoursOverdue,
+      };
+    });
 
-Your task is to send reminder notifications to members who have not submitted their daily reports.
+  const reminderNotifications: Action04PromptOutput["reminderNotifications"] =
+    [];
+  const escalationCases: Action04PromptOutput["escalationCases"] = [];
 
-Context:
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdHours} hours
-- Maximum Reminders per Member: ${escalationRules.maxReminders}
-- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
+  for (const nonSubmitter of nonSubmitters) {
+    if (nonSubmitter.hoursOverdue > input.oversueThresholdHours * 2) {
+      escalationCases.push({
+        engineerId: nonSubmitter.id,
+        engineerName: nonSubmitter.name,
+        reason: `Significantly overdue: ${Math.floor(nonSubmitter.hoursOverdue)} hours past deadline`,
+        recommendedAction:
+          "Escalate to department head for immediate follow-up",
+      });
+    } else if (nonSubmitter.hoursOverdue > input.oversueThresholdHours) {
+      reminderNotifications.push({
+        engineerId: nonSubmitter.id,
+        engineerName: nonSubmitter.name,
+        engineerEmail: nonSubmitter.email,
+        reminderType: "urgent",
+        message: `Urgent: Your daily report is ${Math.floor(nonSubmitter.hoursOverdue)} hours overdue. Please submit immediately.`,
+        scheduledAt: new Date(
+          now.getTime() + input.reminderFrequencyMinutes * 60 * 1000
+        ).toISOString(),
+      });
+    } else {
+      reminderNotifications.push({
+        engineerId: nonSubmitter.id,
+        engineerName: nonSubmitter.name,
+        engineerEmail: nonSubmitter.email,
+        reminderType: "first",
+        message: `Reminder: Please submit your daily report by ${input.reportingDeadline}.`,
+        scheduledAt: new Date(
+          now.getTime() + input.reminderFrequencyMinutes * 60 * 1000
+        ).toISOString(),
+      });
+    }
+  }
 
-Instructions:
-1. Identify members who have exceeded the overdue threshold
-2. Check the reminder history to ensure the maximum reminder limit has not been exceeded
-3. Compose and send reminder notifications via email and chat
-4. Log all reminder activities with timestamps
-5. Escalate to department head if a member has received maximum reminders without submitting
+  const systemPrompt = `You are an automated reminder and escalation system for daily report submissions.
+Your role is to:
+1. Identify engineers who have not submitted their daily reports
+2. Generate appropriate reminder notifications based on how overdue the submission is
+3. Identify cases that require escalation to management
 
-Output Format:
-- List of members notified
-- Notification method (email/chat)
-- Timestamp of each notification
-- Any escalation actions taken
+Current Status:
+- Reporting Deadline: ${input.reportingDeadline}
+- Overdue Threshold: ${input.oversueThresholdHours} hours
+- Reminder Frequency: ${input.reminderFrequencyMinutes} minutes
+- Non-submitters: ${nonSubmitters.length}
 
-Escalation Conditions:
-- Same member receives multiple reminders without submitting
-- System error during notification sending
-- Special cases not covered by standard reminder rules`;
+Non-submitting Engineers:
+${nonSubmitters
+  .map(
+    (ns) =>
+      `- ${ns.name} (${ns.email}): ${Math.floor(ns.hoursOverdue)} hours overdue`
+  )
+  .join("\n")}
 
-  return {
-    prompt,
-    version: ACTION_04_PROMPT_VERSION,
-    metadata: {
-      action: 4,
-      contract: "tx_2_imp_1",
-      purpose: "Send reminder notifications to non-submitting members",
-    },
-  };
+Generate reminder notifications and identify escalation cases.`;
+
+  return systemPrompt;
 }

@@ -5,63 +5,69 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportContent: string;
-  submissionDeadline: string;
-  escalationThreshold: number;
-  previousEscalationCount: number;
+  engineerName: string;
+  submissionDate: string;
+  validationRules?: {
+    minLength?: number;
+    maxLength?: number;
+    requiredFields?: string[];
+  };
 }
 
 export interface Action02PromptOutput {
-  shouldEscalate: boolean;
-  escalationReason: string;
-  recommendedAction: string;
-  riskLevel: "low" | "medium" | "high";
-  nextSteps: string[];
+  isValid: boolean;
+  validationErrors: string[];
+  sanitizedContent: string;
+  severity: "critical" | "warning" | "info";
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
   const {
     reportContent,
-    submissionDeadline,
-    escalationThreshold,
-    previousEscalationCount,
+    engineerName,
+    submissionDate,
+    validationRules = {
+      minLength: 10,
+      maxLength: 5000,
+      requiredFields: ["yesterday", "today", "issues"],
+    },
   } = input;
 
-  const escalationStatus =
-    previousEscalationCount >= escalationThreshold ? "exceeded" : "within";
+  const requiredFieldsText =
+    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
+  const minLength = validationRules.minLength || 10;
+  const maxLength = validationRules.maxLength || 5000;
 
-  return `You are an AI agent responsible for analyzing daily report submissions and determining escalation conditions.
+  return `You are a daily report validation agent for the morning meeting report management system.
 
-## Current Context
-- Report Content: ${reportContent}
-- Submission Deadline: ${submissionDeadline}
-- Escalation Threshold: ${escalationThreshold}
-- Previous Escalation Count: ${previousEscalationCount}
-- Escalation Status: ${escalationStatus}
+Your task is to validate the daily report content submitted by engineer "${engineerName}" on ${submissionDate}.
 
-## Your Task
-Analyze the report content and submission status to determine if escalation is required.
+Report Content:
+---
+${reportContent}
+---
 
-### Escalation Conditions to Check:
-1. Incomplete or inappropriate input content
-2. Submission deadline significantly exceeded
-3. System errors preventing registration
-4. Multiple escalations for the same engineer
-5. Unusual patterns or risk indicators in report content
+Validation Rules:
+1. Content length must be between ${minLength} and ${maxLength} characters
+2. Required sections must be present: ${requiredFieldsText}
+3. Content must be coherent and professional
+4. No sensitive information should be exposed
+5. All required fields must have substantive content (not just placeholders)
 
-### Analysis Requirements:
-- Evaluate report completeness and appropriateness
-- Assess deadline compliance
-- Determine risk level (low/medium/high)
-- Recommend specific actions if escalation is needed
-- Provide clear reasoning for your decision
+Please perform the following validation:
+1. Check if all required fields are present and contain meaningful content
+2. Verify content length is within acceptable range
+3. Identify any inappropriate or sensitive information
+4. Assess overall quality and completeness
+5. Determine if the report is acceptable for system registration
 
-### Output Format:
-Provide your analysis as a structured decision with:
-- shouldEscalate: boolean
-- escalationReason: string (detailed explanation)
-- recommendedAction: string (specific action to take)
-- riskLevel: "low" | "medium" | "high"
-- nextSteps: array of strings (ordered action items)
+Respond with a JSON object containing:
+{
+  "isValid": boolean,
+  "validationErrors": string[],
+  "sanitizedContent": string,
+  "severity": "critical" | "warning" | "info"
+}
 
-Ensure your response is actionable and provides clear guidance for human review.`;
+Be strict but fair in validation. A report should only be rejected if it has critical issues that prevent proper processing.`;
 }

@@ -3,156 +3,64 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04PromptContext {
   confirmationEmailContent: string;
   reportingDeadline: string;
-  currentTimestamp: string;
-  previousReminders?: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
-  }>;
-  reminderRules?: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  escalationThreshold: number;
+  previousEscalationCount: Record<string, number>;
 }
 
-export interface Action04PromptOutput {
-  nonReportingEmployees: Array<{
-    employeeId: string;
-    employeeName: string;
-    departmentId: string;
-    departmentName: string;
-    status: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
-  }>;
-  remindTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    email: string;
-    chatId?: string;
-    reminderType: "email" | "chat" | "both";
-    priority: "high" | "normal" | "low";
-    shouldRemind: boolean;
-    reason: string;
-  }>;
-  escalationCases: Array<{
-    employeeId: string;
-    employeeName: string;
-    reason: string;
-    requiresHumanReview: boolean;
-  }>;
-  summary: {
-    totalNonReporting: number;
-    totalRemindTargets: number;
-    totalEscalations: number;
-    executionTimestamp: string;
-  };
+export interface Action04PromptResult {
+  nonReportingMembers: string[];
+  delayedMembers: string[];
+  escalationTargets: string[];
+  escalationReasons: Record<string, string>;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reminderRules = input.reminderRules || {
-    maxReminders: 3,
-    reminderIntervalMinutes: 30,
-  };
+export function buildAction04Prompt(context: Action04PromptContext): string {
+  const {
+    confirmationEmailContent,
+    reportingDeadline,
+    escalationThreshold,
+    previousEscalationCount,
+  } = context;
 
-  const previousRemindersMap = new Map<string, { count: number; lastTime: string }>();
-  if (input.previousReminders) {
-    input.previousReminders.forEach((reminder) => {
-      previousRemindersMap.set(reminder.employeeId, {
-        count: reminder.reminderCount,
-        lastTime: reminder.lastReminderTime,
-      });
-    });
-  }
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([member, count]) => `${member}: ${count}回`)
+    .join("\n");
 
-  const currentTime = new Date(input.currentTimestamp);
-  const deadline = new Date(input.reportingDeadline);
-  const isOverdue = currentTime > deadline;
-  const daysSinceDeadline = isOverdue
-    ? Math.floor((currentTime.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+  return `# Action 04: 催促対象部員の判定と催促メール・チャット送信
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting employees from confirmation email content and determining which ones should receive reminder notifications.
+## 入力情報
+### 確認メール内容
+${confirmationEmailContent}
 
-Your task is to:
-1. Parse the confirmation email content to identify employees who have NOT submitted their daily reports
-2. Classify them as either "not_submitted" (before deadline) or "delayed" (after deadline)
-3. Determine which employees should receive reminders based on:
-   - Current reminder count (max: ${reminderRules.maxReminders})
-   - Time since last reminder (minimum interval: ${reminderRules.reminderIntervalMinutes} minutes)
-   - Escalation rules for repeated non-compliance
-4. Identify escalation cases that require human review
+### 催促ルール
+- 報告期限: ${reportingDeadline}
+- 催促対象判定の閾値: ${escalationThreshold}回以上の催促で対応判断が必要
+- 過去の催促履歴:
+${escalationCountSummary}
 
-Current Status:
-- Current Timestamp: ${input.currentTimestamp}
-- Reporting Deadline: ${input.reportingDeadline}
-- Is Overdue: ${isOverdue}
-- Days Since Deadline: ${daysSinceDeadline}
-- Max Reminders Allowed: ${reminderRules.maxReminders}
-- Minimum Reminder Interval: ${reminderRules.reminderIntervalMinutes} minutes
+## タスク
+1. 確認メール内容から報告漏れ・遅延部員を特定する
+2. 催促対象部員を判定する（過去の催促回数と閾値を考慮）
+3. 催促メール・チャットを自動送信する
+4. 送信結果をログに記録する
 
-Confirmation Email Content:
-${input.confirmationEmailContent}
-
-Previous Reminder History:
-${
-  input.previousReminders && input.previousReminders.length > 0
-    ? input.previousReminders
-        .map(
-          (r) =>
-            `- Employee ID: ${r.employeeId}, Reminder Count: ${r.reminderCount}, Last Reminder: ${r.lastReminderTime}`
-        )
-        .join("\n")
-    : "No previous reminders"
-}
-
-Reminder Decision Rules:
-1. If reminder count >= ${reminderRules.maxReminders}: escalate instead of sending reminder
-2. If last reminder was within ${reminderRules.reminderIntervalMinutes} minutes: do not send reminder yet
-3. If employee is delayed by more than 2 days: mark as high priority
-4. If same employee has been reminded 2+ times: escalate for human review
-
-Output the analysis as a structured JSON object with the following format:
+## 出力形式
+以下の JSON 形式で結果を返してください:
 {
-  "nonReportingEmployees": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "departmentId": "string",
-      "departmentName": "string",
-      "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
-    }
-  ],
-  "remindTargets": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "email": "string",
-      "chatId": "string or null",
-      "reminderType": "email" | "chat" | "both",
-      "priority": "high" | "normal" | "low",
-      "shouldRemind": boolean,
-      "reason": "string explaining the decision"
-    }
-  ],
-  "escalationCases": [
-    {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reason": "string",
-      "requiresHumanReview": boolean
-    }
-  ],
-  "summary": {
-    "totalNonReporting": number,
-    "totalRemindTargets": number,
-    "totalEscalations": number,
-    "executionTimestamp": "${input.currentTimestamp}"
+  "nonReportingMembers": ["member1", "member2"],
+  "delayedMembers": ["member3"],
+  "escalationTargets": ["member1", "member3"],
+  "escalationReasons": {
+    "member1": "初回催促",
+    "member3": "2回目催促"
   }
-}`;
+}
 
-  return systemPrompt;
+## 注意事項
+- 同一部員への複数回催促後も報告がない場合はエスカレーション対象とする
+- 催促回数の上限を設定して過度な催促を防ぐ
+- 送信履歴を保存し、誤送信時に取り消し・修正できるようにする`;
 }

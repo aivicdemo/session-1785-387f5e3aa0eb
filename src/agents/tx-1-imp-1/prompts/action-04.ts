@@ -7,79 +7,94 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedContent: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
-  submissionTimestamp: string;
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
 export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-}
-
-export interface Action04RegistrationResult {
-  success: boolean;
-  reportId: string;
-  registeredAt: string;
-  message: string;
+  validatedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
 }
 
 export function buildAction04Prompt(context: Action04Context): string {
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
+  const {
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
+  } = context;
 
-## Task: Validate and Register Daily Report (Action 04)
+  const promptContent = `# 日報入力内容の妥当性検証タスク
 
-### Input Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Timestamp: ${context.submissionTimestamp}
+## タスク概要
+エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
 
-### Submitted Content
-**Yesterday's Accomplishment:**
-${context.submittedContent.yesterdayAccomplishment}
+## 対象エンジニア情報
+- エンジニアID: ${engineerId}
+- エンジニア名: ${engineerName}
+- 報告日: ${reportDate}
+- システム時刻: ${systemTimestamp}
+- 提出期限: ${submissionDeadline}
 
-**Today's Plan:**
-${context.submittedContent.todayPlan}
+## 受け取った入力内容
+### 昨日の実績
+${previousReportContent.yesterday}
 
-**Issues/Concerns:**
-${context.submittedContent.issues}
+### 本日の予定
+${previousReportContent.today}
 
-### Validation Requirements
-1. Check that all three sections (yesterday's accomplishment, today's plan, issues) are filled in
-2. Verify that content is not empty or contains only whitespace
-3. Validate that content length is reasonable (not too short, not excessively long)
-4. Check for any inappropriate or suspicious content
-5. Ensure submission timestamp is within acceptable range
+### 抱えている課題
+${previousReportContent.issues}
 
-### Registration Requirements
-Upon successful validation:
-1. Generate a unique report ID
-2. Record the submission timestamp
-3. Store all content in the management system
-4. Prepare for confirmation email dispatch
+## 検証基準
+1. **完全性チェック**
+   - 各項目が空白でないこと
+   - 最小文字数（各項目50文字以上）を満たしていること
+   - 必須情報が含まれていること
 
-### Output Format
-Provide your response as a JSON object with the following structure:
+2. **適切性チェック**
+   - 昨日の実績が具体的で測定可能であること
+   - 本日の予定が現実的で達成可能であること
+   - 課題が明確に記述されていること
+   - 日本語として正しく記述されていること
+
+3. **一貫性チェック**
+   - 昨日の実績と本日の予定に矛盾がないこと
+   - 課題が実績・予定と関連していること
+
+4. **タイムリネスチェック**
+   - 提出期限内であること
+
+## 出力形式
+JSON形式で以下の構造で返してください：
 {
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
-  "reportId": string (if valid),
-  "registeredAt": string (ISO 8601 timestamp if valid),
-  "message": string
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
 }
 
-### Escalation Triggers
-- If content is incomplete or inappropriate, mark as invalid with clear error messages
-- If submission is significantly delayed, add warning but allow registration
-- If system error occurs during registration, return error status
+## 注記
+- errorsは登録を阻止する重大な問題
+- warningsは登録は可能だが改善が望ましい問題
+- validatedContentは検証後の最終内容（修正が必要な場合は修正版を返す）`;
 
-Proceed with validation and registration.`;
-
-  return prompt;
+  return promptContent;
 }

@@ -9,24 +9,22 @@ interface LogEntry {
   timestamp: string;
 }
 
-const logs: LogEntry[] = [];
+const logStore: LogEntry[] = [];
 
-function warn(message: string): void {
+export function warn(message: string): void {
   const entry: LogEntry = {
     level: 'warn',
     message,
     timestamp: new Date().toISOString(),
   };
-  logs.push(entry);
+  logStore.push(entry);
 }
 
-function info(message: string): void {
+export function info(message: string): void {
   const entry: LogEntry = {
     level: 'info',
     message,
     timestamp: new Date().toISOString(),
   };
-  logs.push(entry);
+  logStore.push(entry);
 }
-
-export { warn, info };

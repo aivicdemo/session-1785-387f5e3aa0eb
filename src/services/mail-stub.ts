@@ -16,8 +16,8 @@ interface StubMailService {
     listId: string,
     memberCount: number
   ): Promise<void>;
-  clearCallHistory(): void;
   getCallHistory(): MailCallRecord[];
+  clearCallHistory(): void;
 }
 
 const mailCallHistory: MailCallRecord[] = [];
@@ -37,12 +37,12 @@ export function getStubMailService(): StubMailService {
       });
     },
 
-    clearCallHistory(): void {
-      mailCallHistory.length = 0;
-    },
-
     getCallHistory(): MailCallRecord[] {
       return [...mailCallHistory];
+    },
+
+    clearCallHistory(): void {
+      mailCallHistory.length = 0;
     },
   };
 }

@@ -4,55 +4,69 @@
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
 export interface Action01PromptInput {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  previousReportContent?: string;
-  systemContext?: Record<string, unknown>;
+  reportDeadline: string;
+  targetDate: string;
+  engineerList: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  systemContext: {
+    reportSystemUrl: string;
+    managementSystemUrl: string;
+  };
 }
 
 export interface Action01PromptOutput {
   templateContent: string;
-  distributionChannels: string[];
+  distributionList: string[];
   scheduledTime: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const { reportDate, engineerName, engineerId, previousReportContent, systemContext } = input;
+  const engineerNames = input.engineerList.map((e) => e.name).join("、");
+  const engineerEmails = input.engineerList.map((e) => e.email).join("; ");
 
-  const previousContext = previousReportContent
-    ? `\n前日の日報内容:\n${previousReportContent}`
-    : "";
+  return `# 日報テンプレート自動生成・配信プロンプト
 
-  const systemInfo = systemContext
-    ? `\nシステムコンテキスト: ${JSON.stringify(systemContext)}`
-    : "";
+## 実行目的
+前日の日報テンプレートを自動生成して、全エンジニアに配信する
 
-  return `あなたは朝会報告管理システムのAIエージェントです。
+## 入力情報
+- 対象日付: ${input.targetDate}
+- 日報提出期限: ${input.reportDeadline}
+- 対象エンジニア: ${engineerNames}
+- 配信先メールアドレス: ${engineerEmails}
+- 日報システムURL: ${input.systemContext.reportSystemUrl}
+- 管理システムURL: ${input.systemContext.managementSystemUrl}
 
-【タスク】
-エンジニア「${engineerName}」(ID: ${engineerId})に対して、${reportDate}の日報テンプレートを自動生成して配信してください。
+## 実行タスク
+1. 前日の日報テンプレートを生成する
+   - 「昨日の実績」セクション
+   - 「本日の予定」セクション
+   - 「抱えている課題」セクション
+   - 提出期限と提出方法の記載
 
-【日報テンプレートの構成要素】
-1. 昨日の実績（前日の進捗状況、完了したタスク）
-2. 本日の予定（本日実施予定のタスク、目標）
-3. 抱えている課題（現在の課題、ボトルネック、懸念事項）
+2. テンプレートを全エンジニアに配信する
+   - メール件名: 【日報】${input.targetDate}の日報テンプレート
+   - 本文にテンプレート内容を含める
+   - 日報システムへのアクセスリンクを記載
 
-【出力形式】
-以下のJSON形式で返してください:
+3. 配信結果をログに記録する
+   - 配信日時
+   - 配信対象者
+   - 配信ステータス
+
+## 出力形式
+JSON形式で以下を返す:
 {
-  "templateContent": "生成されたテンプレート本文",
-  "distributionChannels": ["email", "chat"],
-  "scheduledTime": "配信予定時刻（HH:MM形式）"
+  "templateContent": "生成されたテンプレート内容",
+  "distributionList": ["配信対象メールアドレス"],
+  "scheduledTime": "配信実行時刻"
 }
 
-【前提条件】
-- テンプレートは簡潔で、エンジニアが5分以内に入力完了できる分量にしてください
-- 前日の内容がある場合は参考にしてください${previousContext}
-${systemInfo}
-
-【制約】
-- テンプレートは日本語で作成してください
-- 配信チャネルはメール、チャットツール、または両方を指定してください
-- 配信時刻は営業開始時刻の30分前を推奨してください`;
+## 注意事項
+- テンプレートは簡潔で入力しやすい形式にする
+- 提出期限を明確に記載する
+- 配信失敗時はエラーログを記録する`;
 }

@@ -10,86 +10,136 @@ export interface Tx3Imp1ConfirmationEmailContent {
   recipientName: string;
   subject: string;
   body: string;
-  reportedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    status: "submitted" | "pending" | "overdue";
+  reportStatus: {
+    submitted: boolean;
     submittedAt?: string;
-  }>;
-}
-
-export interface Tx3Imp1PromptContext {
-  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
-  currentTimestamp: string;
-  submissionDeadline: string;
-  escalationThresholds: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
+    reportContent?: {
+      yesterdayAccomplishment: string;
+      todayPlan: string;
+      issues: string;
+    };
   };
 }
 
-export interface Tx3Imp1Action02Result {
-  identifiedNonReporters: Array<{
-    memberId: string;
-    memberName: string;
-    status: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
-    previousReminderCount: number;
+export interface Tx3Imp1PromptContext {
+  confirmationEmailContent: Tx3Imp1ConfirmationEmailContent[];
+  currentTimestamp: string;
+  submissionDeadline: string;
+  escalationThreshold: number;
+  previousReminders: Array<{
+    recipientId: string;
+    reminderCount: number;
+    lastReminderAt: string;
   }>;
-  escalationTargets: Array<{
-    memberId: string;
-    memberName: string;
-    escalationReason: string;
-    shouldSendReminder: boolean;
-    reminderPriority: "high" | "normal" | "low";
-  }>;
-  analysisTimestamp: string;
 }
 
-export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
-  const { confirmationEmailContent, currentTimestamp, submissionDeadline, escalationThresholds } = context;
+export interface Tx3Imp1IdentifiedNonSubmitter {
+  recipientId: string;
+  recipientName: string;
+  status: "not_submitted" | "delayed";
+  daysSinceDeadline: number;
+  previousReminderCount: number;
+}
 
-  const reportStatus = confirmationEmailContent.reportedMembers
-    .map(
-      (member) =>
-        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${member.submittedAt ? ` at ${member.submittedAt}` : ""}`
-    )
+export interface Tx3Imp1RemindTarget {
+  recipientId: string;
+  recipientName: string;
+  reminderType: "email" | "chat" | "both";
+  priority: "normal" | "high";
+  message: string;
+}
+
+export interface Tx3Imp1PromptOutput {
+  identifiedNonSubmitters: Tx3Imp1IdentifiedNonSubmitter[];
+  remindTargets: Tx3Imp1RemindTarget[];
+  escalationCases: Array<{
+    recipientId: string;
+    reason: string;
+    recommendedAction: string;
+  }>;
+  executionTimestamp: string;
+}
+
+export function buildAction02Prompt(
+  context: Tx3Imp1PromptContext
+): string {
+  const emailSummary = context.confirmationEmailContent
+    .map((email) => {
+      const status = email.reportStatus.submitted
+        ? `提出済み (${email.reportStatus.submittedAt})`
+        : "未提出";
+      return `- ${email.recipientName} (ID: ${email.recipientId}): ${status}`;
+    })
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying non-reporters and determining escalation targets from confirmation email content.
+  const previousRemindersInfo = context.previousReminders
+    .map((reminder) => {
+      return `- ${reminder.recipientId}: ${reminder.reminderCount}回催促済み (最終: ${reminder.lastReminderAt})`;
+    })
+    .join("\n");
 
-## Current Context
-- Current Timestamp: ${currentTimestamp}
-- Submission Deadline: ${submissionDeadline}
-- Max Reminders Allowed: ${escalationThresholds.maxReminders}
-- Reminder Interval: ${escalationThresholds.reminderIntervalMinutes} minutes
+  const prompt = `# 報告漏れ・遅延部員の特定と催促対象判定
 
-## Confirmation Email Content
-- Email ID: ${confirmationEmailContent.emailId}
-- Sent At: ${confirmationEmailContent.sentAt}
-- Recipient: ${confirmationEmailContent.recipientName} (ID: ${confirmationEmailContent.recipientId})
-- Subject: ${confirmationEmailContent.subject}
+## 確認メール送信状況
+${emailSummary}
 
-## Reported Members Status
-${reportStatus}
+## 現在時刻
+${context.currentTimestamp}
 
-## Task
-Analyze the confirmation email content and:
-1. Identify all members who have not submitted their reports (status: "not_submitted" or "delayed")
-2. Calculate days since deadline for each non-reporter
-3. Determine which members should receive reminder notifications based on:
-   - Current reminder count (if available from system)
-   - Days overdue
-   - Escalation thresholds
-4. Classify escalation priority as "high" (multiple days overdue), "normal" (1-2 days overdue), or "low" (just past deadline)
+## 提出期限
+${context.submissionDeadline}
 
-## Output Format
-Return a JSON object with:
-- identifiedNonReporters: array of non-reporting members with their status and days overdue
-- escalationTargets: array of members requiring action with escalation reasons and priority
-- analysisTimestamp: ISO 8601 timestamp of this analysis
+## 過去の催促履歴
+${previousRemindersInfo || "なし"}
 
-Ensure accuracy in identifying non-reporters and appropriate escalation prioritization.`;
+## 催促エスカレーション閾値
+${context.escalationThreshold}回以上の催促後も報告がない場合はエスカレーション対象
+
+## タスク
+1. 確認メール内容から報告漏れ・遅延部員を特定してください
+2. 各部員について以下を判定してください:
+   - 提出状況 (未提出 / 遅延)
+   - 期限超過日数
+   - 過去の催促回数
+3. 催促対象部員を判定してください:
+   - 未提出者は全員催促対象
+   - 遅延者で期限超過が1日以上の場合は催促対象
+   - 過去催促回数が閾値に達した場合はエスカレーション対象
+4. 各催促対象者に対して以下を決定してください:
+   - 催促方法 (メール / チャット / 両方)
+   - 優先度 (通常 / 高)
+   - 催促メッセージ内容
+
+## 出力形式
+JSON形式で以下の構造で返してください:
+{
+  "identifiedNonSubmitters": [
+    {
+      "recipientId": "string",
+      "recipientName": "string",
+      "status": "not_submitted" | "delayed",
+      "daysSinceDeadline": number,
+      "previousReminderCount": number
+    }
+  ],
+  "remindTargets": [
+    {
+      "recipientId": "string",
+      "recipientName": "string",
+      "reminderType": "email" | "chat" | "both",
+      "priority": "normal" | "high",
+      "message": "string"
+    }
+  ],
+  "escalationCases": [
+    {
+      "recipientId": "string",
+      "reason": "string",
+      "recommendedAction": "string"
+    }
+  ],
+  "executionTimestamp": "string"
+}`;
 
   return prompt;
 }

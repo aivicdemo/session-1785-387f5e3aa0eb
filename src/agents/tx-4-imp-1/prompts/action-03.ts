@@ -5,84 +5,92 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  submissionDeadline: string;
-  escalationThreshold: number;
+  previousIssues?: string[];
+  teamContext?: string;
 }
 
 interface Action03PromptOutput {
-  prompt: string;
-  version: string;
+  extractedIssues: Array<{
+    issue: string;
+    description: string;
+    affectedMembers?: string[];
+  }>;
+  priorityAssessment: Array<{
+    issue: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>;
+  bottlenecks: string[];
+  recommendations: string[];
 }
 
-function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const { reportContent, submissionDeadline, escalationThreshold } = input;
+function buildAction03Prompt(input: Action03PromptInput): string {
+  const sections: string[] = [];
 
-  const prompt = `You are an AI agent responsible for extracting issues and bottlenecks from daily reports and determining their priority levels.
+  sections.push("# 課題抽出・優先度判定プロンプト");
+  sections.push("");
+  sections.push("## 目的");
+  sections.push(
+    "日報内容から課題・ボトルネックを自動抽出し、優先度を判定・分類する"
+  );
+  sections.push("");
 
-## Task: Extract Issues and Determine Priority
+  sections.push("## 日報内容");
+  sections.push(input.reportContent);
+  sections.push("");
 
-### Input Report Content:
-${reportContent}
-
-### Submission Deadline:
-${submissionDeadline}
-
-### Escalation Threshold (days):
-${escalationThreshold}
-
-## Instructions:
-
-1. **Analyze Report Content**: Review the provided report content to identify any mentioned issues, blockers, or bottlenecks.
-
-2. **Extract Issues**: List all identified issues with:
-   - Issue description
-   - Affected team member or area
-   - Current status
-   - Impact assessment
-
-3. **Determine Priority**: Classify each issue into priority levels:
-   - CRITICAL: Blocks multiple team members or critical path
-   - HIGH: Significant impact on project timeline
-   - MEDIUM: Moderate impact, can be addressed in current sprint
-   - LOW: Minor issues, can be deferred
-
-4. **Identify Escalation Needs**: Flag issues that require immediate escalation based on:
-   - Severity level
-   - Duration (exceeding ${escalationThreshold} days)
-   - Cross-team impact
-
-5. **Generate Structured Output**: Provide a prioritized list of issues with recommended actions.
-
-## Output Format:
-
-Return a JSON object with the following structure:
-{
-  "issues": [
-    {
-      "id": "string",
-      "description": "string",
-      "affectedArea": "string",
-      "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-      "status": "string",
-      "impactAssessment": "string",
-      "requiresEscalation": boolean,
-      "recommendedAction": "string"
-    }
-  ],
-  "summary": {
-    "totalIssues": number,
-    "criticalCount": number,
-    "highCount": number,
-    "mediumCount": number,
-    "lowCount": number,
-    "escalationRequired": boolean
+  if (input.previousIssues && input.previousIssues.length > 0) {
+    sections.push("## 前回抽出された課題");
+    input.previousIssues.forEach((issue, index) => {
+      sections.push(`${index + 1}. ${issue}`);
+    });
+    sections.push("");
   }
-}`;
 
-  return {
-    prompt,
-    version: ACTION_03_PROMPT_VERSION,
-  };
+  if (input.teamContext) {
+    sections.push("## チームコンテキスト");
+    sections.push(input.teamContext);
+    sections.push("");
+  }
+
+  sections.push("## 実行タスク");
+  sections.push("1. 日報から課題・ボトルネックを抽出する");
+  sections.push("2. 各課題の優先度を判定する（critical/high/medium/low）");
+  sections.push("3. 優先度判定の根拠を記述する");
+  sections.push("4. 影響を受けるメンバーを特定する");
+  sections.push("5. 推奨される対応策を提示する");
+  sections.push("");
+
+  sections.push("## 優先度判定基準");
+  sections.push("- Critical: プロジェクト全体の進行を停止させる可能性");
+  sections.push("- High: 複数メンバーに影響、対応が急務");
+  sections.push("- Medium: 限定的な影響、対応予定あり");
+  sections.push("- Low: 軽微な問題、対応は後回し可能");
+  sections.push("");
+
+  sections.push("## 出力形式");
+  sections.push("JSON形式で以下の構造で出力してください:");
+  sections.push("{");
+  sections.push('  "extractedIssues": [');
+  sections.push("    {");
+  sections.push('      "issue": "課題タイトル",');
+  sections.push('      "description": "詳細説明",');
+  sections.push('      "affectedMembers": ["メンバーA", "メンバーB"]');
+  sections.push("    }");
+  sections.push("  ],");
+  sections.push('  "priorityAssessment": [');
+  sections.push("    {");
+  sections.push('      "issue": "課題タイトル",');
+  sections.push('      "priority": "high",');
+  sections.push('      "reasoning": "優先度判定の根拠"');
+  sections.push("    }");
+  sections.push("  ],");
+  sections.push('  "bottlenecks": ["ボトルネック1", "ボトルネック2"],');
+  sections.push('  "recommendations": ["推奨対応1", "推奨対応2"]');
+  sections.push("}");
+
+  return sections.join("\n");
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03PromptInput, Action03PromptOutput };

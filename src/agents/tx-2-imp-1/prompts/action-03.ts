@@ -5,72 +5,87 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  currentTime: string;
+  nonSubmitters: Array<{
+    employeeId: string;
+    employeeName: string;
+    department: string;
+  }>;
+  delayedSubmitters: Array<{
+    employeeId: string;
+    employeeName: string;
+    department: string;
+    submittedAt: string;
+  }>;
+  escalationThreshold: number;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPromptTemplate: string;
-  expectedOutputFormat: {
-    overdueEmployees: Array<{
-      employeeId: string;
-      employeeName: string;
-      hoursOverdue: number;
-      reminderCount: number;
-    }>;
-    escalationActions: Array<{
-      employeeId: string;
-      action: "send_reminder" | "escalate_to_manager" | "no_action";
-      reason: string;
-    }>;
+  userPrompt: string;
+  context: {
+    deadline: string;
+    timestamp: string;
+    nonSubmitterCount: number;
+    delayedSubmitterCount: number;
   };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying overdue daily reports and determining escalation actions.
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed submitters of daily reports in a morning meeting management system.
 
-Your role:
-1. Analyze the current time against the reporting deadline: ${input.reportingDeadline}
-2. Identify employees whose reports are overdue by more than ${input.overdueThresholdHours} hours
-3. Check the reminder count for each overdue employee
-4. Determine appropriate escalation actions based on the rules:
-   - Maximum reminders allowed: ${input.escalationRules.maxReminders}
-   - Reminder interval: ${input.escalationRules.reminderIntervalMinutes} minutes
+Your role is to:
+1. Analyze the current reporting status against the deadline
+2. Identify employees who have not submitted their reports
+3. Identify employees who submitted reports after the deadline
+4. Determine escalation priority based on submission delay duration
+5. Generate a structured list for management notification
 
-Escalation Logic:
-- If reminder count < max reminders: send_reminder
-- If reminder count >= max reminders: escalate_to_manager
-- If no overdue: no_action
+You must provide accurate identification and clear categorization of report submission status.`;
 
-Output must be valid JSON matching the expected format.`;
+  const nonSubmitterList = input.nonSubmitters
+    .map(
+      (emp) =>
+        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`
+    )
+    .join("\n");
 
-  const userPromptTemplate = `Current timestamp: {currentTimestamp}
-Reporting deadline: ${input.reportingDeadline}
+  const delayedSubmitterList = input.delayedSubmitters
+    .map(
+      (emp) =>
+        `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted: ${emp.submittedAt})`
+    )
+    .join("\n");
 
-Employee report status:
-{employeeReportStatus}
+  const userPrompt = `Current Time: ${input.currentTime}
+Reporting Deadline: ${input.reportingDeadline}
+Escalation Threshold (minutes): ${input.escalationThreshold}
 
-For each overdue employee, determine:
-1. Hours overdue (current time - deadline)
-2. Current reminder count from the system
-3. Appropriate escalation action
+Non-Submitters (${input.nonSubmitters.length} employees):
+${nonSubmitterList || "None"}
 
-Return the analysis as JSON with overdueEmployees array and escalationActions array.`;
+Delayed Submitters (${input.delayedSubmitters.length} employees):
+${delayedSubmitterList || "None"}
+
+Please analyze the submission status and provide:
+1. A summary of non-submission and delay statistics
+2. Categorization of employees by escalation priority
+3. Recommended actions for each category
+4. A notification message for the department manager`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPromptTemplate,
-    expectedOutputFormat: {
-      overdueEmployees: [],
-      escalationActions: [],
+    userPrompt,
+    context: {
+      deadline: input.reportingDeadline,
+      timestamp: input.currentTime,
+      nonSubmitterCount: input.nonSubmitters.length,
+      delayedSubmitterCount: input.delayedSubmitters.length,
     },
   };
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03PromptInput, Action03PromptOutput };

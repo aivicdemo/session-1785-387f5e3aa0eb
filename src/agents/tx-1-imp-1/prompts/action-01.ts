@@ -6,46 +6,46 @@ export const ACTION_01_PROMPT_VERSION = "1.0.0";
 export interface Action01Context {
   engineerId: string;
   engineerName: string;
-  previousDayReportTemplate: string;
-  distributionTime: string;
+  previousDayReportDate: string;
+  reportDeadline: string;
+  systemName: string;
 }
 
-export interface Action01Result {
-  templateGenerated: boolean;
-  templateContent: string;
-  distributedAt: string;
-  recipientCount: number;
+export interface Action01PromptResult {
+  version: string;
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action01Context;
 }
 
-export function buildAction01Prompt(context: Action01Context): string {
-  const prompt = `
-あなたは朝会報告管理システムのAIエージェントです。
-以下の情報に基づいて、前日の日報テンプレートを自動生成して配信してください。
+export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
+  const systemPrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
+Your role is to:
+1. Generate a structured daily report template based on the previous day's report
+2. Ensure the template includes sections for: yesterday's achievements, today's plans, and current issues
+3. Prepare the template for distribution to the engineer
+4. Format the template in a clear, easy-to-fill manner
 
-【エンジニア情報】
-- ID: ${context.engineerId}
-- 名前: ${context.engineerName}
+The daily report system is designed to automate the collection and management of engineer progress reports.`;
 
-【テンプレート生成要件】
-1. 前日の日報テンプレートを生成する
-2. 以下の項目を含める:
-   - 昨日の実績
-   - 本日の予定
-   - 抱えている課題
-3. テンプレートは簡潔で入力しやすい形式にする
-4. 配信時刻: ${context.distributionTime}
+  const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
+Previous report date: ${context.previousDayReportDate}
+Report submission deadline: ${context.reportDeadline}
+System: ${context.systemName}
 
-【前日のテンプレート参考】
-${context.previousDayReportTemplate}
+Please create a template that:
+1. References the previous day's report context
+2. Includes clear sections for today's input
+3. Specifies the submission deadline
+4. Provides guidance on what information should be included
+5. Is formatted for easy distribution via email`;
 
-【出力形式】
-生成したテンプレートを以下の形式で返してください:
-{
-  "templateGenerated": true,
-  "templateContent": "生成されたテンプレート内容",
-  "distributedAt": "配信時刻",
-  "recipientCount": 配信対象者数
-}
-`;
-  return prompt;
+  return {
+    version: ACTION_01_PROMPT_VERSION,
+    action: "action-01",
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

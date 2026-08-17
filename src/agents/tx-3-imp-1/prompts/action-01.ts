@@ -15,63 +15,88 @@ export interface Action01PromptOutput {
     memberId: string;
     memberName: string;
     reason: "not_submitted" | "delayed";
-    submissionTime?: string;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
     escalationLevel: number;
-    recommendedAction: "first_reminder" | "second_reminder" | "manager_escalation";
+    recommendedAction: "email" | "chat" | "both" | "hold";
   }>;
   analysisTimestamp: string;
+  confidence: number;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const escalationHistory = input.previousEscalationCount || {};
-  
-  const escalationSummary = Object.entries(escalationHistory)
-    .map(([memberId, count]) => `- Member ${memberId}: ${count} previous reminders`)
+  const {
+    confirmationEmailContent,
+    reportDeadline,
+    currentTimestamp,
+    previousEscalationCount = {},
+  } = input;
+
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([memberId, count]) => `  - ${memberId}: ${count}回`)
     .join("\n");
 
-  return `You are an AI agent responsible for identifying unreported members and determining escalation targets from confirmation email content.
+  return `あなたは朝会報告管理システムのAIエージェント（tx-3-imp-1）です。
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してください。
 
-## Task: Analyze Unreported Members and Determine Escalation Actions
+【入力情報】
+確認メール内容:
+${confirmationEmailContent}
 
-### Input Information:
-- Confirmation Email Content:
-${input.confirmationEmailContent}
+報告期限: ${reportDeadline}
+現在時刻: ${currentTimestamp}
 
-- Report Deadline: ${input.reportDeadline}
-- Current Timestamp: ${input.currentTimestamp}
+過去の催促履歴:
+${escalationCountSummary || "  なし"}
 
-### Previous Escalation History:
-${escalationSummary || "No previous escalations"}
+【実行タスク】
+1. 確認メール内容から報告漏れ・遅延部員を特定する
+   - 未提出者を抽出
+   - 期限超過者を抽出
+   - 各部員の理由を分類
 
-### Your Responsibilities:
+2. 催促対象部員を判定する
+   - 初回催促対象か判定
+   - 複数回催促済みの場合は対応方針を検討
+   - 催促方法（メール/チャット/両方/保留）を推奨
 
-1. **Identify Unreported Members**: Parse the confirmation email content to identify:
-   - Members who have not submitted reports (status: "not_submitted")
-   - Members whose reports are delayed past the deadline (status: "delayed")
-   - Extract member ID and member name for each unreported member
+3. 出力形式に従って結果を返す
 
-2. **Determine Escalation Targets**: For each unreported member, determine:
-   - Current escalation level (0 = first time, 1+ = repeat offender)
-   - Recommended action based on escalation level:
-     * Level 0: "first_reminder" (send initial reminder)
-     * Level 1: "second_reminder" (send second reminder with urgency)
-     * Level 2+: "manager_escalation" (escalate to manager for intervention)
+【出力形式】
+JSON形式で以下の構造で返してください:
+{
+  "unreportedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "reason": "not_submitted" | "delayed"
+    }
+  ],
+  "escalationTargets": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "escalationLevel": number,
+      "recommendedAction": "email" | "chat" | "both" | "hold"
+    }
+  ],
+  "analysisTimestamp": "ISO8601形式",
+  "confidence": 0.0-1.0の数値
+}
 
-3. **Output Structure**: Return a JSON object with:
-   - unreportedMembers: Array of unreported member objects
-   - escalationTargets: Array of escalation target objects with recommended actions
-   - analysisTimestamp: ISO 8601 timestamp of analysis
+【判定ルール】
+- escalationLevel: 1=初回催促, 2=2回目, 3=3回目以上
+- recommendedAction: 
+  * "email": メール送信のみ
+  * "chat": チャット送信のみ
+  * "both": メール+チャット送信
+  * "hold": 上限到達のため保留
+- confidence: 判定の確信度（0.0-1.0）
 
-### Constraints:
-- Only identify members explicitly mentioned in the confirmation email as unreported or delayed
-- Escalation level should not exceed 3 (prevent excessive reminders)
-- Ensure member IDs and names are accurately extracted
-- Timestamp should be in ISO 8601 format
-
-### Output Format:
-Return ONLY valid JSON matching the expected structure. No additional text or explanation.`;
+【注意事項】
+- 同一部員への催促回数上限は3回とする
+- 複数回催促後も報告がない場合は"hold"を推奨
+- システムエラーで判定不可の場合は理由を記録`;
 }

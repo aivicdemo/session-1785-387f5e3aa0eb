@@ -6,7 +6,7 @@ export interface User {
   name: string;
   email: string;
   departmentId: string;
-  role: "manager" | "engineer" | "admin";
+  role: "manager" | "engineer";
   status: "active" | "inactive";
   createdAt: Date;
   updatedAt: Date;
@@ -46,13 +46,7 @@ export interface ReportSubmissionHistory {
 export interface AuditLog {
   id?: string;
   agentId: string;
-  eventType:
-    | "started"
-    | "completed"
-    | "failed"
-    | "step_in_progress"
-    | "step_completed"
-    | "handoff";
+  eventType: "started" | "step_in_progress" | "step_completed" | "completed" | "failed";
   stepName?: string;
   timestamp: Date;
   details: Record<string, unknown>;

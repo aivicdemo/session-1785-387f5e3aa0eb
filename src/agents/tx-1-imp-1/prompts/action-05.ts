@@ -7,83 +7,90 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedAt: string;
-  reportContent: {
-    yesterdayAccomplishments: string;
-    todayPlan: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
-  managementSystemId: string;
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
-export interface Action05PromptResult {
+export interface Action05ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  validatedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
+}
+
+export interface Action05PromptInput {
+  context: Action05Context;
+  validationRules: {
+    minYesterdayLength: number;
+    minTodayLength: number;
+    minIssuesLength: number;
+    maxYesterdayLength: number;
+    maxTodayLength: number;
+    maxIssuesLength: number;
+  };
+}
+
+export interface Action05PromptOutput {
   version: string;
-  action: string;
   systemPrompt: string;
   userPrompt: string;
   context: Action05Context;
 }
 
 export function buildAction05Prompt(
-  context: Action05Context
-): Action05PromptResult {
-  const systemPrompt = `You are an automated report management system assistant responsible for registering daily engineer reports into the management system.
+  input: Action05PromptInput
+): Action05PromptOutput {
+  const { context, validationRules } = input;
 
-Your role in Action 5 is to:
-1. Validate that the report has been properly submitted
-2. Prepare the report data for registration into the management system
-3. Confirm all required fields are present and properly formatted
-4. Generate a registration confirmation message
+  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-You must ensure:
-- The report contains all three required sections (yesterday's accomplishments, today's plan, issues)
-- The data is properly formatted for system registration
-- The submission timestamp is recorded
-- The engineer's information is correctly associated with the report
+Your role is to:
+1. Validate the completeness and appropriateness of engineer daily reports
+2. Check that all required fields are filled with sufficient detail
+3. Identify any inconsistencies or concerning patterns in the report content
+4. Provide clear feedback on validation results
+5. Escalate issues that require human review
 
-Respond with a JSON object containing:
-{
-  "isValid": boolean,
-  "registrationReady": boolean,
-  "validationErrors": string[],
-  "registrationData": {
-    "engineerId": string,
-    "engineerName": string,
-    "reportDate": string,
-    "submittedAt": string,
-    "content": {
-      "yesterdayAccomplishments": string,
-      "todayPlan": string,
-      "issues": string
-    }
-  },
-  "confirmationMessage": string
-}`;
+Validation criteria:
+- Yesterday's accomplishments: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
+- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
+- Issues/concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
 
-  const userPrompt = `Register the following daily report into the management system:
+Be thorough but fair in validation. Flag incomplete or vague entries, but accept reasonable variations in reporting style.`;
 
-Engineer ID: ${context.engineerId}
-Engineer Name: ${context.engineerName}
+  const userPrompt = `Please validate the following daily report submission:
+
+Engineer: ${context.engineerName} (ID: ${context.engineerId})
 Report Date: ${context.reportDate}
-Submitted At: ${context.submittedAt}
+Submission Deadline: ${context.submissionDeadline}
+System Timestamp: ${context.systemTimestamp}
 
-Report Content:
 Yesterday's Accomplishments:
-${context.reportContent.yesterdayAccomplishments}
+${context.previousReportContent.yesterday}
 
 Today's Plan:
-${context.reportContent.todayPlan}
+${context.previousReportContent.today}
 
-Issues/Challenges:
-${context.reportContent.issues}
+Issues/Concerns:
+${context.previousReportContent.issues}
 
-Management System ID: ${context.managementSystemId}
-
-Please validate this report and prepare it for registration. Confirm that all required information is present and properly formatted.`;
+Please provide:
+1. Overall validation status (VALID / INVALID / NEEDS_REVIEW)
+2. Specific validation errors (if any)
+3. Warnings or suggestions for improvement
+4. Recommendation for next action (APPROVE / REQUEST_REVISION / ESCALATE)`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,
-    action: "action-05",
     systemPrompt,
     userPrompt,
     context,
