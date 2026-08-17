@@ -30,9 +30,9 @@
         }
         .deadline-section {
             background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 20px;
+            border: 1px solid #ffc107;
             border-radius: 4px;
+            padding: 20px;
             margin-bottom: 30px;
         }
         .deadline-section h2 {
@@ -43,7 +43,7 @@
         .deadline-text {
             color: #856404;
             font-size: 18px;
-            font-weight: 600;
+            font-weight: bold;
         }
         .summary-section {
             margin-bottom: 30px;
@@ -56,24 +56,21 @@
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            background-color: #f9f9f9;
+            background: white;
         }
-        .summary-table thead {
-            background-color: #007bff;
-            color: white;
-        }
-        .summary-table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            border: 1px solid #ddd;
-        }
+        .summary-table th,
         .summary-table td {
             padding: 15px;
-            border: 1px solid #ddd;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .summary-table tbody tr:hover {
-            background-color: #f0f0f0;
+        .summary-table th {
+            background-color: #f9f9f9;
+            font-weight: 600;
+            color: #333;
+        }
+        .summary-table tr:hover {
+            background-color: #f5f5f5;
         }
         .progress-bar {
             width: 100%;
@@ -92,7 +89,7 @@
             justify-content: center;
             color: white;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: bold;
         }
         .nav-link {
             display: inline-block;
@@ -104,20 +101,18 @@
         .nav-link:hover {
             text-decoration: underline;
         }
-        .btn {
+        .btn-report {
             display: inline-block;
+            margin-top: 20px;
             padding: 10px 20px;
             background-color: #007bff;
             color: white;
             text-decoration: none;
             border-radius: 4px;
             font-size: 14px;
-            margin-top: 20px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s;
         }
-        .btn:hover {
+        .btn-report:hover {
             background-color: #0056b3;
         }
     </style>
@@ -128,7 +123,7 @@
         
         <div class="deadline-section">
             <h2>提出期限</h2>
-            <div class="deadline-text" id="deadlineText">本日 17:00 まで</div>
+            <div class="deadline-text" id="deadlineText">本日 18:00 まで</div>
         </div>
         
         <div class="summary-section">
@@ -137,80 +132,69 @@
                 <thead>
                     <tr>
                         <th>部門名</th>
-                        <th>提出済み</th>
-                        <th>未提出</th>
+                        <th>提出済み / 総人数</th>
                         <th>提出率</th>
-                        <th>進捗</th>
                     </tr>
                 </thead>
                 <tbody id="summaryBody">
                     <tr>
-                        <td>営業部</td>
-                        <td>8</td>
-                        <td>2</td>
-                        <td>80%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 80%;">80%</div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>企画部</td>
-                        <td>6</td>
-                        <td>1</td>
-                        <td>86%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 86%;">86%</div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>技術部</td>
-                        <td>10</td>
-                        <td>0</td>
-                        <td>100%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 100%;">100%</div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>管理部</td>
-                        <td>4</td>
-                        <td>1</td>
-                        <td>80%</td>
-                        <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 80%;">80%</div>
-                            </div>
-                        </td>
+                        <td colspan="3" style="text-align: center; color: #999;">読み込み中...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
         
-        <a href="./daily-report.html" class="btn">日報を入力する</a>
+        <a href="./daily-report.html" class="btn-report">日報を入力する</a>
     </div>
     
     <script>
-        // Initialize deadline
-        function initDeadline() {
-            const today = new Date();
-            const deadline = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0, 0);
-            const deadlineText = deadline.toLocaleString('ja-JP', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('deadlineText').textContent = `${deadlineText} まで`;
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                
+                // Update deadline
+                const deadlineText = document.getElementById('deadlineText');
+                if (data.deadline) {
+                    deadlineText.textContent = data.deadline;
+                }
+                
+                // Update summary table
+                const summaryBody = document.getElementById('summaryBody');
+                summaryBody.innerHTML = '';
+                
+                if (data.departments && data.departments.length > 0) {
+                    data.departments.forEach(dept => {
+                        const row = document.createElement('tr');
+                        const submitted = dept.submitted || 0;
+                        const total = dept.total || 0;
+                        const percentage = total > 0 ? Math.round((submitted / total) * 100) : 0;
+                        
+                        row.innerHTML = `
+                            <td>${dept.name}</td>
+                            <td>${submitted} / ${total}</td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${percentage}%">
+                                        ${percentage}%
+                                    </div>
+                                </div>
+                            </td>
+                        `;
+                        summaryBody.appendChild(row);
+                    });
+                } else {
+                    summaryBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">データがありません</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+                const summaryBody = document.getElementById('summaryBody');
+                summaryBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">読み込みに失敗しました</td></tr>';
+            }
         }
         
-        initDeadline();
+        // Load dashboard on page load
+        loadDashboard();
     </script>
 </body>
 </html>

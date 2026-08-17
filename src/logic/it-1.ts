@@ -1332,7 +1332,8 @@ const __aivicBundle_12_validateAndSubmitReport_fixed = (() => {
       }
     }
 
-    const submissionId = require("crypto").randomUUID();
+    const { randomUUID } = require("crypto");
+    const submissionId = randomUUID();
     const submittedAt = new Date();
 
     const result: any = {
@@ -2566,7 +2567,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData?.yesterday_achievement ||
       reportData?.yesterdayAccomplishment ||
       reportData?.yesterday ||
-      reportData?.yesterdayAccomplishment ||
+      reportData?.yesterday_accomplished ||
       "";
     const todayPlan =
       reportData?.today_plan || reportData?.todays_plan || reportData?.todayPlan || reportData?.today || "";
@@ -2608,6 +2609,7 @@ const __aivicBundle_submitDailyReport_fixed = (() => {
       reportData?.reportDate ||
       reportData?.submission_date ||
       reportData?.submissionDate ||
+      reportData?.send_date ||
       (submittedAt ? submittedAt.toISOString().split("T")[0] : "");
 
     if (!yesterdayWork || !todayPlan || !currentIssues) {

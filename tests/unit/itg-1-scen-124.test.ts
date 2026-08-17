@@ -6,7 +6,7 @@ describe('日報入力フォームの提供と送信機能', () => {
 
   beforeEach(() => {
     mockMailService = {
-      sendMail: jest.fn().mockResolvedValue({ success: true }),
+      sendMail: jest.fn<(...args: any[]) => any>().mockResolvedValue({ success: true }),
     };
     jest.clearAllMocks();
   });
