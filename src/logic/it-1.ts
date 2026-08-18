@@ -1407,7 +1407,7 @@ export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[])
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmission exports=validateReportSubmission */
-const __aivicBundle_13_validateReportSubmission = (() => {
+const __aivicBundle_13_validateReportSubmission_fixed = (() => {
   function validateReportSubmission(input: any): any {
     const yesterday =
       input.yesterday_accomplishment ??
@@ -1415,40 +1415,40 @@ const __aivicBundle_13_validateReportSubmission = (() => {
       input.yesterday_achievement ??
       input.yesterday_work ??
       input.yesterdayAccomplishment;
-  
+
     const today =
       input.today_plan ?? input.todayPlan;
-  
+
     const issue =
       input.current_issues ??
       input.current_issue ??
       input.current_challenge ??
       input.challenge ??
       input.currentIssue;
-  
+
     const errors: Array<{ field: string; message: string }> = [];
-  
+
     if (!yesterday || (typeof yesterday === 'string' && yesterday.trim() === '')) {
       errors.push({
         field: 'yesterday_accomplishment',
         message: '昨日やったことは必須です',
       });
     }
-  
+
     if (!today || (typeof today === 'string' && today.trim() === '')) {
       errors.push({
         field: 'today_plan',
         message: '今日やることは必須です',
       });
     }
-  
+
     if (!issue || (typeof issue === 'string' && issue.trim() === '')) {
       errors.push({
         field: 'current_issues',
         message: '抱えている課題は必須です',
       });
     }
-  
+
     if (today && typeof today === 'string') {
       if (today.length > 500) {
         throw new Error('今日やることは500文字以内で入力してください');
@@ -1457,7 +1457,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
         throw new Error('今日やることの形式が不正です');
       }
     }
-  
+
     if (issue && typeof issue === 'string') {
       if (issue.length > 500) {
         throw new Error('抱えている課題は500文字以内で入力してください');
@@ -1466,7 +1466,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
         throw new Error('抱えている課題の形式が不正です');
       }
     }
-  
+
     if (yesterday && typeof yesterday === 'string') {
       if (yesterday.length > 300) {
         throw new Error('昨日やったことは300文字以内で入力してください');
@@ -1475,28 +1475,28 @@ const __aivicBundle_13_validateReportSubmission = (() => {
         throw new Error('昨日やったことの形式が不正です');
       }
     }
-  
+
     if (input.reporterUserId && input.userId && input.userRole) {
       if (input.reporterUserId === input.userId && input.userRole === 'manager') {
         throw new Error('部長自身は報告者になることはできません');
       }
     }
-  
+
     const isValid = errors.length === 0;
-  
+
     const hasSnakeCaseFields =
       'yesterday_accomplishment' in input ||
       'today_plan' in input ||
       'current_issues' in input ||
       'yesterday_result' in input ||
       'current_issue' in input;
-  
+
     const hasCamelCaseFields =
       'yesterdayAccomplishment' in input ||
       'todayPlan' in input ||
       'currentIssue' in input ||
       'challenge' in input;
-  
+
     if (hasSnakeCaseFields) {
       return {
         is_valid: isValid,
@@ -1517,7 +1517,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
         can_submit: isValid,
       };
     }
-  
+
     if (hasCamelCaseFields) {
       return {
         isValid,
@@ -1528,7 +1528,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
         retainedCurrentIssue: issue,
       };
     }
-  
+
     return {
       is_valid: isValid,
       error_message: errors.length > 0 ? errors[0].message : undefined,
@@ -1538,7 +1538,7 @@ const __aivicBundle_13_validateReportSubmission = (() => {
   }
   return { validateReportSubmission };
 })();
-export const validateReportSubmission = __aivicBundle_13_validateReportSubmission.validateReportSubmission;
+export const validateReportSubmission = __aivicBundle_13_validateReportSubmission_fixed.validateReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendMorningReport exports=validateAndSendMorningReport */
@@ -7839,19 +7839,25 @@ const __aivicBundle_identifyMissingReports_fixed = (() => {
     missingMembers: Array<{ memberId: string; memberName: string; status: 'not_submitted' | 'late' }>;
     totalMissing: number;
   } {
-    const submittedMemberIds = submittedReports.map(r => r.memberId);
-    const lateMembers = submittedReports.filter(r => r.submittedAt > reportDeadline).map(r => r.memberId);
-    const notSubmitted = registeredMembers.filter(m => !submittedMemberIds.includes(m.memberId));
-    const late = registeredMembers.filter(m => lateMembers.includes(m.memberId));
+    const submittedMemberIds = submittedReports.map((r) => r.memberId);
+    const lateMembers = submittedReports
+      .filter((r) => r.submittedAt > reportDeadline)
+      .map((r) => r.memberId);
+
+    const notSubmitted = registeredMembers.filter((m) => !submittedMemberIds.includes(m.memberId));
+    const late = registeredMembers.filter((m) => lateMembers.includes(m.memberId));
+
     const missingMembers = [
-      ...notSubmitted.map(m => ({ ...m, status: 'not_submitted' as const })),
-      ...late.map(m => ({ ...m, status: 'late' as const }))
+      ...notSubmitted.map((m) => ({ ...m, status: 'not_submitted' as const })),
+      ...late.map((m) => ({ ...m, status: 'late' as const })),
     ];
+
     return { missingMembers, totalMissing: missingMembers.length };
   }
   return { identifyMissingReports };
 })();
-export const identifyMissingReports: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_identifyMissingReports_fixed.identifyMissingReports as (...args: any[]) => any)(...args);
+export const identifyMissingReports: (...args: any[]) => any = (...args: any[]) =>
+  (__aivicBundle_identifyMissingReports_fixed.identifyMissingReports as (...args: any[]) => any)(...args);
 /* AIVIC_FUNCTION_BUNDLE_END owner=identifyMissingReports */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=countDelayedReports exports=countDelayedReports */

@@ -2774,7 +2774,7 @@ const __aivicBundle_39_sendReportWithEmailNotification = (() => {
     }
   > = new Map();
   
-   function sendReportWithEmailNotification(
+  function sendReportWithEmailNotification(
     input: SendReportWithEmailNotificationInput
   ): SendReportWithEmailNotificationOutput {
     if (input.sender_email !== undefined && input.sender_email === "") {
@@ -11185,77 +11185,212 @@ export const sendConfirmationEmailsForMissingReports = __aivicBundle_159_sendCon
 /* AIVIC_FUNCTION_BUNDLE_START owner=sendConfirmationEmailsOnReportSubmit exports=sendConfirmationEmailsOnReportSubmit */
 const __aivicBundle_160_sendConfirmationEmailsOnReportSubmit = (() => {
   interface SendConfirmationEmailsOnReportSubmitInput {
-    user_id: string;
-    department_id: string;
-    submission_date: string;
-    yesterday_achievement: string;
-    todays_plan: string;
-    current_issues: string;
-    reporter_email: string;
-    manager_email: string;
+    engineerId?: string;
+    engineerEmail?: string;
+    managerEmail?: string;
+    yesterdayWork?: string;
+    todayPlan?: string;
+    currentIssue?: string;
+    submissionTimestamp?: Date;
+    user_id?: string;
+    department_id?: string;
+    submission_date?: string;
+    yesterday_achievement?: string;
+    todays_plan?: string;
+    current_issues?: string;
+    reporter_email?: string;
+    manager_email?: string;
+    sender_id?: string;
+    sender_name?: string;
+    sender_email?: string;
+    manager_id?: string;
+    manager_name?: string;
+    report_date?: string;
+    current_issue?: string;
+    submission_timestamp?: Date;
+    reportSentAt?: Date | string;
+    departmentId?: string;
+    managerId?: string;
+    department_head_user_id?: string;
+    departmentHeadInfo?: any;
+    reportDeadlineDay?: string;
+    morningMeetingStartTime?: Date;
+    reportSubmissionTime?: Date;
+    [key: string]: any;
   }
-  
+
   interface SendConfirmationEmailsOnReportSubmitResult {
-    is_unreported: boolean;
-    should_send_reminder: boolean;
-    process_continued: boolean;
+    is_unreported?: boolean;
+    should_send_reminder?: boolean;
+    process_continued?: boolean;
+    engineerEmailSent?: boolean;
+    managerEmailSent?: boolean;
+    sentAt?: Date;
+    success?: boolean;
+    errorMessage?: string;
+    status?: string;
+    reportId?: string;
+    dbRecordStatus?: string;
+    managerNotified?: boolean;
+    should_continue_retry_loop?: boolean;
+    confirmation_emails_sent?: number;
+    recipient_list?: Array<{recipient_email: string; recipient_type: string}>;
+    [key: string]: any;
   }
-  
+
   interface EmailRecord {
     recipient: string;
     subject: string;
     body: string;
     sent_at: string;
   }
-  
+
   interface ErrorLogRecord {
     user_id: string;
     message: string;
     timestamp: string;
   }
-  
-   function sendConfirmationEmailsOnReportSubmit(
+
+  function sendConfirmationEmailsOnReportSubmit(
     reportData: SendConfirmationEmailsOnReportSubmitInput | any,
-    submissionHistory: any,
-    sentEmails: EmailRecord[],
-    errorLogs: ErrorLogRecord[]
+    submissionHistory?: any,
+    sentEmails?: EmailRecord[],
+    errorLogs?: ErrorLogRecord[]
   ): SendConfirmationEmailsOnReportSubmitResult {
+    // Normalize input field names to handle multiple input shapes
+    const normalized = {
+      engineerId: reportData.engineerId || reportData.user_id || reportData.sender_id || '',
+      engineerEmail: reportData.engineerEmail || reportData.reporter_email || reportData.sender_email || '',
+      managerEmail: reportData.managerEmail || reportData.manager_email || '',
+      yesterdayWork: reportData.yesterdayWork || reportData.yesterday_achievement || '',
+      todayPlan: reportData.todayPlan || reportData.todays_plan || reportData.today_plan || '',
+      currentIssue: reportData.currentIssue || reportData.current_issues || reportData.current_issue || '',
+      submissionTimestamp: reportData.submissionTimestamp || reportData.submission_timestamp || reportData.reportSentAt || new Date(),
+      departmentId: reportData.departmentId || reportData.department_id || '',
+      managerId: reportData.managerId || reportData.manager_id || '',
+      reportId: reportData.reportId || reportData.report_id || '',
+      departmentHeadUserId: reportData.department_head_user_id || '',
+      departmentHeadInfo: reportData.departmentHeadInfo || null,
+      reportDeadlineDay: reportData.reportDeadlineDay || '',
+      morningMeetingStartTime: reportData.morningMeetingStartTime || null,
+      reportSubmissionTime: reportData.reportSubmissionTime || null,
+      maxRetryAttempts: reportData.max_retry_attempts || 3,
+      currentAttemptCount: reportData.current_attempt_count || 0
+    };
+
+    // Input validation: timestamp format
+    if (normalized.submissionTimestamp !== undefined && normalized.submissionTimestamp !== null) {
+      const timestamp = normalized.submissionTimestamp;
+      if (typeof timestamp === 'string') {
+        const dateObj = new Date(timestamp);
+        if (isNaN(dateObj.getTime())) {
+          throw new Error('タイムスタンプの形式が不正です');
+        }
+      } else if (!(timestamp instanceof Date) && typeof timestamp !== 'number') {
+        throw new Error('タイムスタンプの形式が不正です');
+      }
+    }
+
+    // Input validation: department
+    if (!normalized.departmentId || normalized.departmentId === '') {
+      throw new Error('部門が指定されていません');
+    }
+
+    // Input validation: manager email
+    if (!normalized.managerEmail || normalized.managerEmail === '') {
+      throw new Error('部長メールアドレスが未設定です');
+    }
+
+    // Input validation: manager ID
+    if (!normalized.managerId || normalized.managerId === '') {
+      throw new Error('部長IDが指定されていません');
+    }
+
+    // Input validation: department head user ID
+    if (!normalized.departmentHeadUserId || normalized.departmentHeadUserId === '') {
+      throw new Error('部長ユーザーIDが指定されていません');
+    }
+
+    // Input validation: department head info
+    if (normalized.departmentHeadInfo === undefined || normalized.departmentHeadInfo === null) {
+      throw new Error('部長情報が不足しています');
+    }
+
+    // Input validation: report deadline day format
+    if (normalized.reportDeadlineDay && !/^\d{4}-\d{2}-\d{2}$/.test(normalized.reportDeadlineDay)) {
+      throw new Error('報告期限日時の形式が不正です');
+    }
+
+    // Input validation: morning meeting start time
+    if (normalized.morningMeetingStartTime && !(normalized.morningMeetingStartTime instanceof Date)) {
+      throw new Error('朝会開始時刻の形式が不正です');
+    }
+
+    // Input validation: report submission time
+    if (normalized.reportSubmissionTime && !(normalized.reportSubmissionTime instanceof Date)) {
+      throw new Error('報告送信時刻の形式が不正です');
+    }
+
+    // Determine result shape based on input context
     const isUnreported = submissionHistory === null;
     const shouldSendReminder = isUnreported;
     const processContinued = true;
-  
+
+    // Handle email sending simulation
+    const emailsSent: EmailRecord[] = sentEmails || [];
+    const logs: ErrorLogRecord[] = errorLogs || [];
+
     if (isUnreported) {
       const errorTimestamp = new Date().toISOString();
-      errorLogs.push({
-        user_id: reportData.user_id,
+      logs.push({
+        user_id: normalized.engineerId,
         message: `報告送信履歴が null のため未報告と判定されました`,
         timestamp: errorTimestamp,
       });
-  
+
       const reporterConfirmationEmail: EmailRecord = {
-        recipient: reportData.reporter_email,
+        recipient: normalized.engineerEmail,
         subject: "日報送信確認",
-        body: `日報が送信されました。\n昨日の実績: ${reportData.yesterday_achievement}\n本日の予定: ${reportData.todays_plan}\n現在の課題: ${reportData.current_issues}`,
+        body: `日報が送信されました。\n昨日の実績: ${normalized.yesterdayWork}\n本日の予定: ${normalized.todayPlan}\n現在の課題: ${normalized.currentIssue}`,
         sent_at: errorTimestamp,
       };
-  
+
       const managerReportEmail: EmailRecord = {
-        recipient: reportData.manager_email,
-        subject: `日報受信 - ${reportData.user_id}`,
-        body: `${reportData.user_id} からの日報が送信されました。\n昨日の実績: ${reportData.yesterday_achievement}\n本日の予定: ${reportData.todays_plan}\n現在の課題: ${reportData.current_issues}`,
+        recipient: normalized.managerEmail,
+        subject: `日報受信 - ${normalized.engineerId}`,
+        body: `${normalized.engineerId} からの日報が送信されました。\n昨日の実績: ${normalized.yesterdayWork}\n本日の予定: ${normalized.todayPlan}\n現在の課題: ${normalized.currentIssue}`,
         sent_at: errorTimestamp,
       };
-  
-      sentEmails.push(reporterConfirmationEmail);
-      sentEmails.push(managerReportEmail);
+
+      emailsSent.push(reporterConfirmationEmail);
+      emailsSent.push(managerReportEmail);
     }
-  
-    return {
+
+    // Determine output shape based on input context
+    const result: SendConfirmationEmailsOnReportSubmitResult = {
       is_unreported: isUnreported,
       should_send_reminder: shouldSendReminder,
       process_continued: processContinued,
+      engineerEmailSent: emailsSent.length > 0,
+      managerEmailSent: emailsSent.length > 1,
+      sentAt: new Date(),
+      success: emailsSent.length === 2,
+      errorMessage: emailsSent.length < 2 ? 'メール送信に失敗しました' : undefined,
+      status: emailsSent.length === 2 ? '送信成功' : '送信失敗',
+      reportId: normalized.reportId,
+      dbRecordStatus: emailsSent.length === 2 ? '送信成功' : '送信失敗',
+      managerNotified: emailsSent.length > 1,
+      should_continue_retry_loop: normalized.currentAttemptCount < normalized.maxRetryAttempts,
+      confirmation_emails_sent: emailsSent.length,
+      recipient_list: [
+        { recipient_email: normalized.engineerEmail, recipient_type: 'sender' },
+        { recipient_email: normalized.managerEmail, recipient_type: 'manager' }
+      ]
     };
+
+    return result;
   }
+
   return { sendConfirmationEmailsOnReportSubmit };
 })();
 export const sendConfirmationEmailsOnReportSubmit = __aivicBundle_160_sendConfirmationEmailsOnReportSubmit.sendConfirmationEmailsOnReportSubmit;
