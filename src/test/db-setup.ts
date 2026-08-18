@@ -17,45 +17,42 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-const memoryStore: Map<TableName, TableRow[]> = new Map([
-  ["users", []],
-  ["daily_reports", []],
-  ["report_send_history", []],
-  ["audit_events", []],
-]);
+const memoryStore: Map<TableName, TableRow[]> = new Map();
+
+function initializeMemoryStore(): void {
+  memoryStore.set("users", []);
+  memoryStore.set("daily_reports", []);
+  memoryStore.set("report_send_history", []);
+  memoryStore.set("audit_events", []);
+}
 
 function createTableOperations(tableName: TableName): TableOperations {
   return {
     async del(): Promise<number> {
-      const store = memoryStore.get(tableName) || [];
-      const count = store.length;
+      const table = memoryStore.get(tableName) || [];
+      const count = table.length;
       memoryStore.set(tableName, []);
       return count;
     },
 
     async insert(row: TableRow | TableRow[]): Promise<void> {
-      const store = memoryStore.get(tableName) || [];
+      const table = memoryStore.get(tableName) || [];
       const rows = Array.isArray(row) ? row : [row];
-      store.push(...rows);
-      memoryStore.set(tableName, store);
+      table.push(...rows);
+      memoryStore.set(tableName, table);
     },
 
     async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-      const store = memoryStore.get(tableName) || [];
-      return store.filter((item) => {
-        return Object.entries(conditions).every(([key, value]) => {
-          return item[key] === value;
-        });
+      const table = memoryStore.get(tableName) || [];
+      return table.filter((row) => {
+        return Object.entries(conditions).every(([key, value]) => row[key] === value);
       });
     },
   };
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  memoryStore.set("users", []);
-  memoryStore.set("daily_reports", []);
-  memoryStore.set("report_send_history", []);
-  memoryStore.set("audit_events", []);
+  initializeMemoryStore();
 
   return (tableName: TableName): TableOperations => {
     return createTableOperations(tableName);
@@ -63,9 +60,16 @@ export async function createTestDatabase(): Promise<TestDatabase> {
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  await db("users").del();
-  await db("daily_reports").del();
-  await db("report_send_history").del();
-  await db("audit_events").del();
+  const tableNames: TableName[] = [
+    "users",
+    "daily_reports",
+    "report_send_history",
+    "audit_events",
+  ];
+
+  for (const tableName of tableNames) {
+    await db(tableName).del();
+  }
+
   memoryStore.clear();
 }

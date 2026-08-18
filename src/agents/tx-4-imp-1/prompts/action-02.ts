@@ -4,62 +4,82 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportContent: string;
+  reportDate: string;
   engineerName: string;
-  submissionDate: string;
-  validationRules?: {
-    minLength?: number;
-    maxLength?: number;
-    requiredFields?: string[];
-  };
+  engineerId: string;
+  previousReportContent?: string;
+  systemContext?: string;
 }
 
 export interface Action02PromptOutput {
-  isValid: boolean;
-  validationErrors: string[];
-  sanitizedContent: string;
-  severity: "critical" | "warning" | "info";
+  prompt: string;
+  version: string;
+  metadata: {
+    action: string;
+    timestamp: string;
+    engineerId: string;
+  };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
   const {
-    reportContent,
+    reportDate,
     engineerName,
-    submissionDate,
-    validationRules = {
-      minLength: 10,
-      maxLength: 5000,
-      requiredFields: ["yesterday", "today", "issues"],
-    },
+    engineerId,
+    previousReportContent = "",
+    systemContext = "",
   } = input;
 
-  const requiredFieldsText =
-    validationRules.requiredFields?.join(", ") || "yesterday, today, issues";
-  const minLength = validationRules.minLength || 10;
-  const maxLength = validationRules.maxLength || 5000;
+  const basePrompt = `You are an AI agent responsible for collecting and validating daily reports in the morning meeting report management system.
 
-  return `You are a daily report validation agent for the morning meeting report management system.
+## Current Task: Action 02 - Receive and Validate Engineer Input
 
-Your task is to validate the daily report submission from engineer: ${engineerName}
-Submission date: ${submissionDate}
+### Context
+- Report Date: ${reportDate}
+- Engineer Name: ${engineerName}
+- Engineer ID: ${engineerId}
+- System Context: ${systemContext || "Standard daily report collection"}
 
-Report content to validate:
-"""
-${reportContent}
-"""
+### Objective
+Receive the engineer's input content for:
+1. Yesterday's achievements
+2. Today's plans
+3. Current issues/challenges
 
-Validation rules:
-1. Content length must be between ${minLength} and ${maxLength} characters
-2. Required sections must be present: ${requiredFieldsText}
-3. Content must be coherent and professional
-4. No sensitive information should be exposed
-5. Content should be relevant to daily work reporting
+Then validate the input for completeness and appropriateness.
 
-Please analyze the report and provide:
-1. Whether the report is valid (true/false)
-2. List of any validation errors found
-3. Sanitized version of the content (with any sensitive data removed)
-4. Severity level of any issues (critical/warning/info)
+### Validation Criteria
+- All three sections (achievements, plans, issues) must be provided
+- Content must be substantive and relevant to work activities
+- No empty or placeholder-only submissions
+- Issues should be clearly articulated with context
+- Text length should be reasonable (not too brief, not excessive)
 
-Respond in JSON format with keys: isValid, validationErrors (array), sanitizedContent, severity`;
+### Previous Report Reference
+${previousReportContent ? `Previous report for context:\n${previousReportContent}` : "No previous report available"}
+
+### Expected Output Format
+Provide validation results with:
+- Validation status (VALID / INVALID)
+- Specific issues if validation fails
+- Recommendations for improvement if needed
+- Confidence score (0-100)
+
+### Escalation Triggers
+- Input is incomplete or missing required sections
+- Content appears inappropriate or off-topic
+- Submission contains concerning indicators
+- System cannot process the input format`;
+
+  const timestamp = new Date().toISOString();
+
+  return {
+    prompt: basePrompt,
+    version: ACTION_02_PROMPT_VERSION,
+    metadata: {
+      action: "action-02",
+      timestamp,
+      engineerId,
+    },
+  };
 }

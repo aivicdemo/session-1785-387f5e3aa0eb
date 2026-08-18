@@ -3,72 +3,77 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayReport: string;
-  todayPlan: string;
-  issues: string;
-  submissionDeadline: string;
-  systemName: string;
+  submittedContent: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  };
+  submissionTimestamp: string;
+  systemTimestamp: string;
 }
 
-export interface Action03PromptOutput {
-  prompt: string;
-  version: string;
+export interface Action03ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  validatedContent: {
+    yesterdayAccomplishments: string;
+    todayPlan: string;
+    issues: string;
+  };
 }
 
-export function buildAction03Prompt(
-  input: Action03PromptInput
-): Action03PromptOutput {
-  const {
-    engineerName,
-    engineerEmail,
-    yesterdayReport,
-    todayPlan,
-    issues,
-    submissionDeadline,
-    systemName,
-  } = input;
+export function buildAction03Prompt(context: Action03Context): string {
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the "${systemName}" system.
+**Task: Validate Daily Report Input Content**
 
-Engineer Information:
-- Name: ${engineerName}
-- Email: ${engineerEmail}
-- Submission Deadline: ${submissionDeadline}
+**Engineer Information:**
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Submission Time: ${context.submissionTimestamp}
+- System Time: ${context.systemTimestamp}
 
-Submitted Report Content:
-- Yesterday's Achievements: ${yesterdayReport}
-- Today's Plan: ${todayPlan}
-- Current Issues: ${issues}
+**Submitted Content:**
+1. Yesterday's Accomplishments:
+${context.submittedContent.yesterdayAccomplishments}
 
-Your Task (Action 3: Validate Input Content):
-1. Verify that all required fields are completed and not empty
-2. Check that the content is appropriate and meaningful (not placeholder text)
-3. Validate that yesterday's achievements are specific and measurable
-4. Validate that today's plan is clear and actionable
-5. Validate that issues are clearly described with context
-6. Identify any missing or incomplete information
-7. Flag any content that appears to be low-quality or insufficient
+2. Today's Plan:
+${context.submittedContent.todayPlan}
 
-Validation Criteria:
-- Yesterday's Achievements: Must contain specific accomplishments (minimum 20 characters)
-- Today's Plan: Must contain concrete tasks (minimum 20 characters)
-- Issues: Must be clearly described if present (minimum 10 characters if provided)
-- All fields must be in appropriate language and format
+3. Issues/Challenges:
+${context.submittedContent.issues}
 
-Output your validation result as JSON with the following structure:
+**Validation Requirements:**
+1. Check that all three sections contain meaningful content (not empty or placeholder text)
+2. Verify that yesterday's accomplishments are specific and measurable
+3. Ensure today's plan is realistic and actionable
+4. Validate that issues are clearly described and relevant
+5. Check for consistency between yesterday's plan and today's accomplishments
+6. Identify any red flags or unusual patterns
+
+**Output Format:**
+Return a JSON object with the following structure:
 {
   "isValid": boolean,
-  "validationErrors": string[],
-  "validationWarnings": string[],
-  "summary": string,
-  "recommendedAction": "approve" | "request_revision" | "escalate"
-}`;
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterdayAccomplishments": string,
+    "todayPlan": string,
+    "issues": string
+  }
+}
 
-  return {
-    prompt,
-    version: ACTION_03_PROMPT_VERSION,
-  };
+**Validation Rules:**
+- Errors: Critical issues that prevent registration (empty sections, incoherent content)
+- Warnings: Non-critical issues that should be noted (vague descriptions, potential conflicts)
+- validatedContent: Cleaned and normalized version of the submitted content
+
+Perform the validation and return the JSON response.`;
+
+  return prompt;
 }

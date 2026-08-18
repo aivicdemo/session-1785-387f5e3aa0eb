@@ -7,84 +7,67 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  reportContent: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
   submissionDeadline: string;
-  systemTimestamp: string;
+  managementSystemUrl: string;
 }
 
 export interface Action05PromptResult {
   version: string;
-  action: string;
-  prompt: string;
+  action: number;
+  systemPrompt: string;
+  userPrompt: string;
   context: Action05Context;
 }
 
-export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
-  const prompt = `
-You are an AI agent responsible for registering daily reports to the management system.
+export function buildAction05Prompt(
+  context: Action05Context
+): Action05PromptResult {
+  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system.
+Your task is to:
+1. Validate the report content for completeness and appropriateness
+2. Register the validated report into the management system
+3. Ensure all required fields are present and properly formatted
+4. Handle any registration errors gracefully
+5. Provide confirmation of successful registration
 
-**Action 5: Register Daily Report to Management System**
+You must follow these guidelines:
+- Verify that yesterday's achievements, today's plans, and issues are all present
+- Check that the content is appropriate and professional
+- Ensure the report is registered with the correct timestamp
+- Log all registration attempts for audit purposes
+- Escalate any validation failures or system errors`;
 
-**Context:**
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
-- System Timestamp: ${context.systemTimestamp}
+  const userPrompt = `Please register the following daily report into the management system:
 
-**Report Content:**
-Yesterday's Accomplishments:
-${context.reportContent.yesterdayAccomplishments}
+Engineer ID: ${context.engineerId}
+Engineer Name: ${context.engineerName}
+Report Date: ${context.reportDate}
+Submission Deadline: ${context.submissionDeadline}
 
-Today's Plans:
-${context.reportContent.todayPlans}
+Report Content:
+- Yesterday's Achievements: ${context.previousReportContent.yesterday}
+- Today's Plans: ${context.previousReportContent.today}
+- Issues/Challenges: ${context.previousReportContent.issues}
 
-Issues/Challenges:
-${context.reportContent.issues}
+Management System URL: ${context.managementSystemUrl}
 
-**Task:**
-1. Validate that all required fields in the report are complete and appropriate
-2. Format the report data according to management system specifications
-3. Register the report to the management system database
-4. Generate a registration confirmation with timestamp and registration ID
-5. Prepare data for confirmation email distribution in the next action
-
-**Output Format:**
-Return a JSON object with:
-{
-  "status": "success" | "validation_error" | "system_error",
-  "registrationId": string,
-  "registeredAt": string,
-  "validationMessages": string[],
-  "readyForEmailDistribution": boolean,
-  "nextActionData": {
-    "engineerId": string,
-    "engineerName": string,
-    "reportDate": string,
-    "registrationId": string,
-    "registeredAt": string
-  }
-}
-
-**Error Handling:**
-- If validation fails, return status "validation_error" with specific messages
-- If system registration fails, return status "system_error"
-- Do not proceed to email distribution if registration fails
-
-**Escalation Triggers:**
-- Incomplete or inappropriate report content
-- System registration failure
-- Data format incompatibility
-`;
+Please:
+1. Validate the report content for completeness
+2. Check for any inappropriate or incomplete information
+3. Register the report into the management system
+4. Confirm successful registration
+5. Note any issues that require escalation`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,
-    action: "action-05",
-    prompt: prompt.trim(),
+    action: 5,
+    systemPrompt,
+    userPrompt,
     context,
   };
 }

@@ -5,92 +5,75 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
+  engineerName: string;
+  submissionDate: string;
   previousIssues?: string[];
-  teamContext?: string;
 }
 
 interface Action03PromptOutput {
   extractedIssues: Array<{
     issue: string;
-    description: string;
-    affectedMembers?: string[];
-  }>;
-  priorityClassification: Array<{
-    issue: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
+    category: string;
+    severity: "high" | "medium" | "low";
   }>;
   bottlenecks: string[];
-  recommendations: string[];
+  progressSummary: string;
+  validationStatus: "valid" | "incomplete" | "anomaly";
 }
 
 function buildAction03Prompt(input: Action03PromptInput): string {
   const sections: string[] = [];
 
-  sections.push("# 課題抽出・優先度判定プロンプト");
+  sections.push("# 日報内容の課題抽出と優先度判定");
   sections.push("");
-
-  sections.push("## 目的");
-  sections.push(
-    "日報内容から課題・ボトルネックを自動抽出し、優先度を判定・分類します。"
-  );
+  sections.push("## 入力情報");
+  sections.push(`エンジニア名: ${input.engineerName}`);
+  sections.push(`提出日: ${input.submissionDate}`);
   sections.push("");
-
   sections.push("## 日報内容");
   sections.push(input.reportContent);
   sections.push("");
 
   if (input.previousIssues && input.previousIssues.length > 0) {
-    sections.push("## 前回抽出された課題");
+    sections.push("## 前日の課題");
     input.previousIssues.forEach((issue, index) => {
       sections.push(`${index + 1}. ${issue}`);
     });
     sections.push("");
   }
 
-  if (input.teamContext) {
-    sections.push("## チームコンテキスト");
-    sections.push(input.teamContext);
-    sections.push("");
-  }
-
   sections.push("## 実行タスク");
-  sections.push("1. 日報から課題・ボトルネックを抽出");
-  sections.push("2. 各課題の優先度を判定（critical/high/medium/low）");
-  sections.push("3. 優先度判定の根拠を記述");
-  sections.push("4. 推奨アクションを提示");
-  sections.push("");
-
-  sections.push("## 優先度判定基準");
-  sections.push("- critical: 朝会開始前に対応が必要、プロジェクト全体に影響");
-  sections.push("- high: 本日中に対応が必要、複数チームに影響");
-  sections.push("- medium: 今週中に対応が必要、特定チームに影響");
-  sections.push("- low: 来週以降の対応可能、個別対応で対応可能");
+  sections.push("1. 日報内容から課題・ボトルネックを抽出する");
+  sections.push("2. 各課題をカテゴリ分類する（技術的課題、リソース不足、依存関係、その他）");
+  sections.push("3. 各課題の重要度を判定する（高・中・低）");
+  sections.push("4. 進捗状況を要約する");
+  sections.push("5. 日報内容の妥当性を検証する");
   sections.push("");
 
   sections.push("## 出力形式");
   sections.push("JSON形式で以下の構造で返却してください:");
   sections.push("{");
   sections.push('  "extractedIssues": [');
-  sections.push("    {");
-  sections.push('      "issue": "課題タイトル",');
-  sections.push('      "description": "詳細説明",');
-  sections.push('      "affectedMembers": ["メンバー1", "メンバー2"]');
-  sections.push("    }");
-  sections.push("  ],");
-  sections.push('  "priorityClassification": [');
-  sections.push("    {");
-  sections.push('      "issue": "課題タイトル",');
-  sections.push('      "priority": "critical|high|medium|low",');
-  sections.push('      "reasoning": "優先度判定の根拠"');
-  sections.push("    }");
+  sections.push('    { "issue": "課題内容", "category": "カテゴリ", "severity": "high|medium|low" }');
   sections.push("  ],");
   sections.push('  "bottlenecks": ["ボトルネック1", "ボトルネック2"],');
-  sections.push('  "recommendations": ["推奨アクション1", "推奨アクション2"]');
+  sections.push('  "progressSummary": "進捗状況の要約",');
+  sections.push('  "validationStatus": "valid|incomplete|anomaly"');
   sections.push("}");
+  sections.push("");
+
+  sections.push("## 判定基準");
+  sections.push("- 高: プロジェクト全体に影響する、解決に時間がかかる、複数部門に関連する");
+  sections.push("- 中: 特定タスクに影響する、解決に数日要する、単一部門に関連する");
+  sections.push("- 低: 軽微な問題、短時間で解決可能、個人レベルの対応で済む");
+  sections.push("");
+
+  sections.push("## 検証ルール");
+  sections.push("- valid: 必須項目が全て記載され、内容が適切");
+  sections.push("- incomplete: 必須項目が不足している");
+  sections.push("- anomaly: 内容に矛盾や異常がある");
 
   return sections.join("\n");
 }
 
-export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
-export type { Action03PromptInput, Action03PromptOutput };
+export { buildAction03Prompt, ACTION_03_PROMPT_VERSION, Action03PromptInput, Action03PromptOutput };

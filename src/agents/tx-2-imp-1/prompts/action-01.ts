@@ -18,90 +18,84 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
+  templateId: string;
   templateContent: string;
-  distributionPlan: {
-    recipients: string[];
-    scheduledTime: string;
-    channels: string[];
-  };
-  validationRules: Array<{
-    field: string;
-    required: boolean;
-    constraints: string[];
-  }>;
+  distributionList: string[];
+  scheduledTime: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
   const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelList = input.systemContext.notificationChannels.join("、");
+  const channelInfo = input.systemContext.notificationChannels.join("、");
 
-  const prompt = `# 日報テンプレート自動生成・配信アクション
-
-## 目的
-前日の日報テンプレートを自動生成して、全エンジニアに配信する。
+  return `# 日報テンプレート自動生成・配信プロンプト
 
 ## 実行日時
-対象日: ${input.targetDate}
-提出期限: ${input.reportingDeadline}
+${new Date().toISOString()}
 
-## 対象者
+## 対象日付
+${input.targetDate}
+
+## 対象エンジニア
 ${engineerNames}
 
-## 配信チャネル
-${channelList}
+## 提出期限
+${input.reportingDeadline}
 
-## 生成するテンプレート内容
-以下の項目を含む日報テンプレートを生成してください:
+## 実行タスク
 
-1. **昨日の実績**
-   - 完了したタスク
-   - 進捗状況
-   - 実績の詳細
+### タスク1: 日報テンプレートの自動生成
+以下の項目を含む日報テンプレートを生成してください：
+- 前日の実績（昨日実施した内容、完了したタスク）
+- 本日の予定（今日実施予定の内容、予定タスク）
+- 抱えている課題（現在の課題、ボトルネック、リスク）
+- その他特記事項
 
-2. **本日の予定**
-   - 予定されたタスク
-   - 優先順位
-   - 予定時間
+テンプレートは以下の形式で出力してください：
+\`\`\`
+【日報】${input.targetDate}
+エンジニア名: ___________
 
-3. **抱えている課題**
-   - 現在の課題
-   - 影響範囲
-   - 対応予定
+【前日の実績】
+- 
 
-4. **その他**
-   - 特記事項
-   - 相談事項
+【本日の予定】
+- 
 
-## 配信計画
-- 配信先: 全エンジニア (${input.engineerList.length}名)
-- 配信チャネル: ${channelList}
+【抱えている課題】
+- 
+
+【特記事項】
+
+\`\`\`
+
+### タスク2: 配信対象の確認
+以下のエンジニアに配信します：
+${input.engineerList.map((e) => `- ${e.name} (${e.email})`).join("\n")}
+
+### タスク3: 配信チャネルの確認
+配信チャネル: ${channelInfo}
+
+### タスク4: 配信スケジュール
+- 配信予定時刻: ${input.reportingDeadline}の1時間前
 - 提出期限: ${input.reportingDeadline}
-- 管理システムURL: ${input.systemContext.reportManagementSystemUrl}
-
-## 検証ルール
-生成されたテンプレートは以下の検証ルールに従うこと:
-- 全ての必須項目が含まれていること
-- 項目の説明が明確であること
-- 入力形式が統一されていること
-- 提出期限が明記されていること
 
 ## 出力形式
-JSON形式で以下の構造で返却してください:
+以下の JSON 形式で結果を返してください：
+\`\`\`json
 {
-  "templateContent": "生成されたテンプレートの完全なテキスト",
-  "distributionPlan": {
-    "recipients": ["engineer1@example.com", "engineer2@example.com"],
-    "scheduledTime": "配信予定時刻",
-    "channels": ["email", "chat"]
-  },
-  "validationRules": [
-    {
-      "field": "フィールド名",
-      "required": true,
-      "constraints": ["制約条件"]
-    }
-  ]
-}`;
+  "templateId": "string",
+  "templateContent": "string",
+  "distributionList": ["email1", "email2"],
+  "scheduledTime": "ISO8601形式の日時",
+  "status": "success" | "failure",
+  "message": "string"
+}
+\`\`\`
 
-  return prompt;
+## 注意事項
+- テンプレートは簡潔で記入しやすい形式にしてください
+- 配信時刻は提出期限の1時間前に設定してください
+- すべてのエンジニアに公平に配信してください
+- 配信失敗時はエラーメッセージを記録してください`;
 }

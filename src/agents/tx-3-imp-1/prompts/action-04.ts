@@ -7,55 +7,99 @@ export interface Action04PromptInput {
   reportContent: string;
   reporterName: string;
   reportDate: string;
-  escalationHistory?: string[];
+  escalationThreshold?: number;
+  previousReminders?: number;
 }
 
 export interface Action04PromptOutput {
-  urgentIssues: Array<{
-    issue: string;
-    priority: "critical" | "high" | "medium" | "low";
-    recommendation: string;
-  }>;
-  escalationRequired: boolean;
+  shouldEscalate: boolean;
   escalationReason?: string;
+  reminderCount: number;
+  targetChannels: ("email" | "chat")[];
+  messageTemplate: string;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const escalationHistoryText =
-    input.escalationHistory && input.escalationHistory.length > 0
-      ? `\n過去の催促履歴:\n${input.escalationHistory.join("\n")}`
-      : "";
+  const {
+    reportContent,
+    reporterName,
+    reportDate,
+    escalationThreshold = 2,
+    previousReminders = 0,
+  } = input;
 
-  return `あなたは朝会報告管理システムのAIエージェントです。
-以下の日報内容から、報告漏れ・遅延部員への催促判定と、エスカレーション対象を自動判定してください。
+  const reminderCount = previousReminders + 1;
+  const shouldEscalate = reminderCount > escalationThreshold;
 
-【日報情報】
-報告者: ${input.reporterName}
-報告日: ${input.reportDate}
-報告内容:
-${input.reportContent}${escalationHistoryText}
+  const basePrompt = `
+You are an AI agent responsible for determining escalation actions for missing or delayed daily reports.
 
-【判定タスク】
-1. 報告内容から緊急度の高い課題・ボトルネックを抽出してください
-2. 各課題に対して優先度（critical/high/medium/low）を付与してください
-3. 各課題に対する推奨対応を記述してください
-4. 以下の場合はエスカレーション対象と判定してください:
-   - 同一部員への複数回催促後も報告がない場合
-   - システムエラーでメール・チャット送信に失敗した場合
-   - 催促ルールに該当しない特殊ケース
-   - 重大なリスク課題が検出された場合
+Report Details:
+- Reporter: ${reporterName}
+- Report Date: ${reportDate}
+- Report Content: ${reportContent}
+- Previous Reminders: ${previousReminders}
+- Current Reminder Count: ${reminderCount}
+- Escalation Threshold: ${escalationThreshold}
 
-【出力形式】
-JSON形式で以下の構造で返してください:
-{
-  "urgentIssues": [
-    {
-      "issue": "課題内容",
-      "priority": "critical|high|medium|low",
-      "recommendation": "推奨対応"
+Task:
+1. Analyze whether the report is missing or significantly delayed
+2. Determine if escalation is needed based on reminder count and threshold
+3. Select appropriate communication channels (email, chat, or both)
+4. Generate a professional reminder message template
+
+Escalation Rules:
+- If reminder count <= threshold: Send standard reminder via email and chat
+- If reminder count > threshold: Escalate to manager with detailed notification
+- If report is completely missing: Use urgent tone
+- If report is late but present: Use standard follow-up tone
+
+Output the decision in JSON format with fields:
+- shouldEscalate: boolean
+- escalationReason: string (if escalating)
+- reminderCount: number
+- targetChannels: array of "email" or "chat"
+- messageTemplate: string (the reminder message to send)
+`;
+
+  return basePrompt;
+}
+
+export function parseAction04Response(
+  response: string
+): Action04PromptOutput {
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return {
+        shouldEscalate: false,
+        reminderCount: 1,
+        targetChannels: ["email"],
+        messageTemplate:
+          "Please submit your daily report as soon as possible.",
+      };
     }
-  ],
-  "escalationRequired": true|false,
-  "escalationReason": "エスカレーション理由（必要な場合のみ）"
-}`;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    return {
+      shouldEscalate: parsed.shouldEscalate ?? false,
+      escalationReason: parsed.escalationReason,
+      reminderCount: parsed.reminderCount ?? 1,
+      targetChannels: Array.isArray(parsed.targetChannels)
+        ? parsed.targetChannels
+        : ["email"],
+      messageTemplate:
+        parsed.messageTemplate ||
+        "Please submit your daily report as soon as possible.",
+    };
+  } catch {
+    return {
+      shouldEscalate: false,
+      reminderCount: 1,
+      targetChannels: ["email"],
+      messageTemplate:
+        "Please submit your daily report as soon as possible.",
+    };
+  }
 }

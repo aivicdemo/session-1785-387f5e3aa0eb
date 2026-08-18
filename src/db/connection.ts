@@ -70,7 +70,7 @@ class InMemoryDatabase implements DatabaseConnection {
 
     const keysToDelete: string[] = [];
     table.forEach((row, key) => {
-      if (this.evaluateWhere(whereClause, row, params)) {
+      if (this.matchesWhere(row, whereClause, params)) {
         keysToDelete.push(key);
       }
     });
@@ -81,7 +81,7 @@ class InMemoryDatabase implements DatabaseConnection {
 
   private handleInsert(sql: string, params: unknown[]): Promise<QueryResult[]> {
     const insertMatch = sql.match(
-      /INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s+VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i
+      /INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i
     );
     if (!insertMatch) {
       return Promise.resolve([]);
@@ -91,9 +91,7 @@ class InMemoryDatabase implements DatabaseConnection {
     const columns = insertMatch[2]
       .split(',')
       .map((c) => c.trim().toLowerCase());
-    const returningColumns = insertMatch[4]
-      ? insertMatch[4].split(',').map((c) => c.trim().toLowerCase())
-      : [];
+    const returningClause = insertMatch[4];
 
     const table = this.tables.get(tableName);
     if (!table) {
@@ -108,7 +106,10 @@ class InMemoryDatabase implements DatabaseConnection {
     const key = `${tableName}_${Date.now()}_${Math.random()}`;
     table.set(key, row);
 
-    if (returningColumns.length > 0) {
+    if (returningClause) {
+      const returningColumns = returningClause
+        .split(',')
+        .map((c) => c.trim().toLowerCase());
       const result: QueryResult = {};
       returningColumns.forEach((col) => {
         result[col] = row[col];
@@ -127,9 +128,7 @@ class InMemoryDatabase implements DatabaseConnection {
       return Promise.resolve([]);
     }
 
-    const columns = selectMatch[1]
-      .split(',')
-      .map((c) => c.trim().toLowerCase());
+    const selectClause = selectMatch[1].trim();
     const tableName = selectMatch[2].toLowerCase();
     const whereClause = selectMatch[3];
 
@@ -138,36 +137,24 @@ class InMemoryDatabase implements DatabaseConnection {
       return Promise.resolve([]);
     }
 
-    const results: QueryResult[] = [];
+    let results: QueryResult[] = [];
 
     table.forEach((row) => {
-      if (!whereClause || this.evaluateWhere(whereClause, row, params)) {
-        const result: QueryResult = {};
-
-        if (columns[0] === '*') {
-          Object.assign(result, row);
-        } else {
-          columns.forEach((col) => {
-            if (col.includes('count(*)')) {
-              result['cnt'] = table.size;
-            } else if (col.includes('count')) {
-              result['cnt'] = 1;
-            } else {
-              result[col] = row[col];
-            }
-          });
-        }
-
-        results.push(result);
+      if (!whereClause || this.matchesWhere(row, whereClause, params)) {
+        results.push(row);
       }
     });
+
+    if (selectClause.toUpperCase() === 'COUNT(*)') {
+      return Promise.resolve([{ cnt: results.length }]);
+    }
 
     return Promise.resolve(results);
   }
 
-  private evaluateWhere(
-    whereClause: string,
+  private matchesWhere(
     row: QueryResult,
+    whereClause: string,
     params: unknown[]
   ): boolean {
     const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/i);
@@ -175,7 +162,6 @@ class InMemoryDatabase implements DatabaseConnection {
       const column = eqMatch[1].toLowerCase();
       return row[column] === params[0];
     }
-
     return true;
   }
 }

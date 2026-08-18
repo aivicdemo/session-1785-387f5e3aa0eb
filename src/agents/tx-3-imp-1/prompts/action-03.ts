@@ -5,9 +5,12 @@ export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 export interface Action03PromptInput {
   confirmationEmailContent: string;
-  reportingDeadline: string;
-  currentTimestamp: string;
-  escalationThreshold: number;
+  reportDeadline: string;
+  currentDateTime: string;
+  escalationRules?: {
+    maxReminders?: number;
+    reminderIntervalHours?: number;
+  };
 }
 
 export interface Action03PromptOutput {
@@ -15,41 +18,122 @@ export interface Action03PromptOutput {
     employeeId: string;
     employeeName: string;
     status: "non-reported" | "delayed";
-    daysOverdue: number;
+    daysSinceDeadline: number;
   }>;
-  urgencyLevel: "low" | "medium" | "high" | "critical";
-  recommendedAction: string;
+  escalationTargets: Array<{
+    employeeId: string;
+    employeeName: string;
+    escalationReason: string;
+    priority: "high" | "medium" | "low";
+  }>;
+  reminderContent: {
+    emailSubject: string;
+    emailBody: string;
+    chatMessage: string;
+  };
+  executionTimestamp: string;
 }
 
 export function buildAction03Prompt(input: Action03PromptInput): string {
   const {
     confirmationEmailContent,
-    reportingDeadline,
-    currentTimestamp,
-    escalationThreshold,
+    reportDeadline,
+    currentDateTime,
+    escalationRules = {
+      maxReminders: 3,
+      reminderIntervalHours: 24,
+    },
   } = input;
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting and delayed reporting employees from confirmation email content.
+  return `# Action 03: 報告漏れ特定から催促送信までの自動実行
 
-Your task is to:
-1. Parse the confirmation email content to identify which employees have not submitted their reports
-2. Determine if any employees are delayed in their submissions
-3. Assess the urgency level based on the time elapsed since the deadline
-4. Recommend appropriate escalation actions
+## 目的
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してメール・チャットの送信を完結させる。
 
-Reporting Deadline: ${reportingDeadline}
-Current Timestamp: ${currentTimestamp}
-Escalation Threshold (days): ${escalationThreshold}
+## 入力情報
 
-Email Content to Analyze:
+### 確認メール内容
+\`\`\`
 ${confirmationEmailContent}
+\`\`\`
 
-Provide your analysis in a structured format identifying:
-- Each non-reporting or delayed employee with their ID and name
-- The status (non-reported or delayed)
-- Days overdue if applicable
-- Overall urgency level
-- Recommended action for escalation`;
+### 提出期限
+${reportDeadline}
 
-  return systemPrompt;
+### 現在日時
+${currentDateTime}
+
+### 催促ルール設定
+- 最大催促回数: ${escalationRules.maxReminders}回
+- 催促間隔: ${escalationRules.reminderIntervalHours}時間
+
+## 実行ステップ
+
+### ステップ 1: 報告漏れ・遅延部員の特定
+確認メール内容を解析し、以下の情報を抽出してください：
+- 報告未提出者のリスト（従業員ID、名前）
+- 提出遅延者のリスト（従業員ID、名前、遅延時間）
+- 各部員の現在の報告状況
+
+### ステップ 2: 催促対象部員の判定
+以下の条件に基づいて催促対象を判定してください：
+- 提出期限を超過している
+- 前回の催促から${escalationRules.reminderIntervalHours}時間以上経過している
+- 催促回数が${escalationRules.maxReminders}回未満である
+- システムエラーで登録に失敗していない
+
+### ステップ 3: 催促メール・チャットの作成
+催促対象者ごとに以下の内容を作成してください：
+- メール件名：簡潔で緊急性を伝える内容
+- メール本文：丁寧で催促の理由を明確にした内容
+- チャットメッセージ：即座に目に入る簡潔な内容
+
+### ステップ 4: 送信結果のログ記録
+以下の情報をログに記録してください：
+- 送信対象者の従業員ID・名前
+- 送信日時
+- 送信方法（メール/チャット）
+- 送信ステータス（成功/失敗）
+
+## 出力形式
+
+JSON形式で以下の構造で返してください：
+
+\`\`\`json
+{
+  "identifiedNonReporters": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "status": "non-reported" | "delayed",
+      "daysSinceDeadline": number
+    }
+  ],
+  "escalationTargets": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationReason": "string",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
+  "reminderContent": {
+    "emailSubject": "string",
+    "emailBody": "string",
+    "chatMessage": "string"
+  },
+  "executionTimestamp": "string"
+}
+\`\`\`
+
+## エスカレーション条件
+以下の場合は処理を中断し、エスカレーション情報を返してください：
+- 同一部員への複数回催促後も報告がない場合
+- システムエラーでメール・チャット送信に失敗した場合
+- 催促ルールに該当しない特殊ケースが検出された場合
+
+## 注意事項
+- 送信履歴を保存し、誤送信時に取り消し・修正できるようにしてください
+- 催促回数の上限を厳密に守り、過度な催促を防いでください
+- 部員の心理的負担を考慮した丁寧な表現を心がけてください`;
 }

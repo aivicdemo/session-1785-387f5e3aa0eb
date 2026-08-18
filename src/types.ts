@@ -6,7 +6,7 @@ export interface User {
   name: string;
   email: string;
   departmentId: string;
-  role: "manager" | "engineer";
+  role: "manager" | "engineer" | "admin";
   status: "active" | "inactive";
   createdAt: Date;
   updatedAt: Date;

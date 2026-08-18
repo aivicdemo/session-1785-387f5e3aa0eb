@@ -15,30 +15,89 @@ export interface Action01PromptOutput {
     memberId: string;
     memberName: string;
     reason: "not_submitted" | "delayed";
-    submissionTime?: string;
+    daysSinceDeadline: number;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
     escalationLevel: number;
-    recommendedAction: "first_reminder" | "second_reminder" | "escalate_to_manager";
+    shouldEscalate: boolean;
   }>;
-  analysisTimestamp: string;
-  confidence: number;
+  summary: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const lines: string[] = [];
+  const {
+    confirmationEmailContent,
+    reportDeadline,
+    currentTimestamp,
+    previousEscalationCount = {},
+  } = input;
 
-  lines.push("# Action 01: 確認メール内容から報告漏れ・遅延部員を特定");
-  lines.push("");
-  lines.push("## 目的");
-  lines.push("確認メール内容を分析し、報告漏れ・遅延部員を自動特定する");
-  lines.push("");
-  lines.push("## 入力情報");
-  lines.push("");
-  lines.push("### 確認メール内容");
-  lines.push("");
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([memberId, count]) => `${memberId}: ${count}回`)
+    .join(", ");
 
-  return lines.join("\n");
+  return `# 報告漏れ特定から催促送信までの自動実行 - Action 01
+
+## タスク
+確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してください。
+
+## 入力情報
+
+### 確認メール内容
+\`\`\`
+${confirmationEmailContent}
+\`\`\`
+
+### 報告期限
+${reportDeadline}
+
+### 現在時刻
+${currentTimestamp}
+
+### 過去の催促履歴
+${escalationCountSummary || "なし"}
+
+## 実行内容
+
+1. 確認メール内容から報告漏れ・遅延部員を特定する
+   - 未提出者を抽出
+   - 期限超過者を抽出
+   - 各部員の遅延日数を計算
+
+2. 催促対象部員を判定する
+   - 初回催促対象：未提出または1日以上遅延
+   - 2回目以上：前回催促から24時間以上経過かつ未提出
+   - 上限：同一部員への催促は最大3回まで
+
+3. 出力形式に従って結果を構造化する
+
+## 出力形式（JSON）
+\`\`\`json
+{
+  "unreportedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "reason": "not_submitted" | "delayed",
+      "daysSinceDeadline": number
+    }
+  ],
+  "escalationTargets": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "escalationLevel": number,
+      "shouldEscalate": boolean
+    }
+  ],
+  "summary": "string"
+}
+\`\`\`
+
+## 制約条件
+- 催促回数の上限を超えた部員は escalationTargets に含めない
+- daysSinceDeadline は負の値（期限前）の場合は0とする
+- summary には特定された部員数と催促対象数を含める`;
 }

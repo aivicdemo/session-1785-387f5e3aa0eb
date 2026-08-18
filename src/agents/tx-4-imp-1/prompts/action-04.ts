@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04Context {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,120 +11,137 @@ export interface Action04PromptInput {
     description: string;
     category: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
   }>;
-  priorityFramework: {
-    criteria: string[];
-    levels: string[];
+  departmentHead: string;
+  timestamp: string;
+}
+
+export interface Action04Input {
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportText: string;
+    submittedAt: string;
+  }>;
+  previousIssues?: Array<{
+    id: string;
+    title: string;
+    status: string;
+  }>;
+  priorityRules?: {
+    criticalKeywords: string[];
+    highKeywords: string[];
+    mediumKeywords: string[];
   };
 }
 
-export interface Action04PromptOutput {
-  prioritizedIssues: Array<{
+export interface Action04Output {
+  success: boolean;
+  extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
     category: string;
-    priority: string;
-    priorityScore: number;
-    reasoning: string;
-    affectedMembers: string[];
-    recommendedAction: string;
+    relatedEmployees: string[];
+    firstMentionedAt: string;
   }>;
-  issueClassification: {
-    critical: string[];
-    high: string[];
-    medium: string[];
-    low: string[];
+  prioritizedIssues: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+    affectedAreas: string[];
+  }>;
+  reportSummary: {
+    totalReports: number;
+    processedAt: string;
+    issueCount: number;
+    criticalCount: number;
   };
-  riskAssessment: {
-    hasBlocker: boolean;
-    blockerDescription?: string;
-    estimatedImpact: string;
-  };
+  escalationFlags: Array<{
+    type: "repeated_issue" | "new_critical" | "blocked_dependency" | "resource_constraint";
+    description: string;
+    requiresReview: boolean;
+  }>;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const priorityLevels = input.priorityFramework.levels.join(", ");
-  const criteria = input.priorityFramework.criteria
-    .map((c, i) => `${i + 1}. ${c}`)
-    .join("\n");
-
-  const issuesText = input.extractedIssues
+export function buildAction04Prompt(input: Action04Input): string {
+  const reportsList = input.confirmedReports
     .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
+      (report) =>
+        `[${report.employeeName}] ${report.reportText}`
     )
-    .join("\n");
+    .join("\n\n");
 
-  const membersText = input.teamMembers
-    .map((m) => `- ${m.name} (${m.department})`)
-    .join("\n");
+  const previousIssuesContext =
+    input.previousIssues && input.previousIssues.length > 0
+      ? `\n\n## 前日までの課題状況:\n${input.previousIssues
+          .map((issue) => `- ${issue.title} (${issue.status})`)
+          .join("\n")}`
+      : "";
 
-  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
+  const priorityRulesContext =
+    input.priorityRules
+      ? `\n\n## 優先度判定ルール:
+- 緊急度高: ${input.priorityRules.criticalKeywords.join(", ")}
+- 高: ${input.priorityRules.highKeywords.join(", ")}
+- 中: ${input.priorityRules.mediumKeywords.join(", ")}`
+      : "";
 
-## Task: Prioritize and Classify Extracted Issues
+  return `あなたは日報管理システムの課題抽出・優先度判定エージェントです。
 
-### Input Report Content:
-${input.reportContent}
+以下の日報内容から、課題・ボトルネックを自動抽出し、優先度を判定してください。
 
-### Extracted Issues to Prioritize:
-${issuesText}
+## 本日の日報内容:
+${reportsList}
+${previousIssuesContext}
+${priorityRulesContext}
 
-### Team Members Context:
-${membersText}
+## 実行タスク:
+1. 各日報から課題・ボトルネック・リスク要因を抽出する
+2. 抽出した課題を分類する（技術的課題、リソース不足、依存関係、その他）
+3. 各課題に対して優先度を判定する（critical/high/medium/low）
+4. 前日までの課題との関連性を確認する
+5. 複数部員に関連する課題を特定する
+6. エスカレーション対象を判定する
 
-### Priority Framework:
-Priority Levels: ${priorityLevels}
-
-Prioritization Criteria:
-${criteria}
-
-### Instructions:
-1. Analyze each extracted issue against the prioritization criteria
-2. Assign a priority level (${priorityLevels}) to each issue
-3. Provide a numerical priority score (1-100, where 100 is highest priority)
-4. Classify issues into categories: critical, high, medium, low
-5. Identify which team members are affected by each issue
-6. Provide recommended actions for each issue
-7. Assess overall risk: identify any blockers or critical issues
-8. Explain your reasoning for each priority assignment
-
-### Output Format:
-Return a JSON object with the following structure:
+## 出力形式:
+JSON形式で以下の構造で返してください:
 {
-  "prioritizedIssues": [
+  "success": boolean,
+  "extractedIssues": [
     {
-      "id": "issue_id",
-      "title": "issue_title",
-      "description": "issue_description",
-      "category": "issue_category",
-      "priority": "priority_level",
-      "priorityScore": number,
-      "reasoning": "explanation_of_priority_assignment",
-      "affectedMembers": ["member_id_1", "member_id_2"],
-      "recommendedAction": "suggested_action"
+      "id": "ISSUE_YYYYMMDD_NNN",
+      "title": "課題タイトル",
+      "description": "詳細説明",
+      "category": "技術的課題|リソース不足|依存関係|その他",
+      "relatedEmployees": ["従業員名"],
+      "firstMentionedAt": "ISO8601形式のタイムスタンプ"
     }
   ],
-  "issueClassification": {
-    "critical": ["issue_id_1", "issue_id_2"],
-    "high": ["issue_id_3"],
-    "medium": ["issue_id_4"],
-    "low": ["issue_id_5"]
+  "prioritizedIssues": [
+    {
+      "issueId": "ISSUE_YYYYMMDD_NNN",
+      "priority": "critical|high|medium|low",
+      "reasoning": "優先度判定の理由",
+      "affectedAreas": ["影響を受ける領域"]
+    }
+  ],
+  "reportSummary": {
+    "totalReports": 数値,
+    "processedAt": "ISO8601形式のタイムスタンプ",
+    "issueCount": 数値,
+    "criticalCount": 数値
   },
-  "riskAssessment": {
-    "hasBlocker": boolean,
-    "blockerDescription": "description_if_blocker_exists",
-    "estimatedImpact": "description_of_overall_impact"
-  }
-}
-
-### Quality Checks:
-- Ensure all extracted issues are included in the prioritization
-- Verify that priority assignments are consistent with the framework
-- Confirm that affected members are correctly identified
-- Validate that critical/blocker issues are clearly marked`;
+  "escalationFlags": [
+    {
+      "type": "repeated_issue|new_critical|blocked_dependency|resource_constraint",
+      "description": "エスカレーション内容",
+      "requiresReview": boolean
+    }
+  ]
+}`;
 }

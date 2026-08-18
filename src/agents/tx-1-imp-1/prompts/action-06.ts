@@ -7,68 +7,84 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemApiEndpoint: string;
+  adminEmailList: string[];
 }
 
 export interface Action06PromptResult {
-  version: string;
-  action: string;
   systemPrompt: string;
   userPrompt: string;
-  context: Action06Context;
+  version: string;
 }
 
-export function buildAction06Prompt(
-  context: Action06Context
-): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management system.
-Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
-You must:
-1. Determine if a reminder notification should be sent based on submission status
-2. Generate an appropriate reminder message considering the days overdue
-3. Decide on the notification channel (email/chat)
-4. Log the reminder action for audit purposes
+export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
+  const systemPrompt = `You are an automated daily report confirmation email distribution agent for the morning meeting report management system.
 
-Guidelines:
-- Be professional and respectful in tone
-- Escalate if the same engineer has received multiple reminders
-- Consider timezone and working hours when determining urgency
-- Provide clear instructions for report submission`;
+Your role is to:
+1. Generate and send confirmation emails to administrators after a daily report has been successfully registered
+2. Ensure all relevant stakeholders receive timely notification of report submission
+3. Maintain accurate records of confirmation email delivery
+4. Handle any delivery failures gracefully
 
-  const userPrompt = `Process the following late report submission case:
+You operate as part of the tx_1_imp_1 workflow, specifically handling Action 6: automated confirmation email distribution to administrators.
 
-Engineer: ${context.engineerName}
-Email: ${context.engineerEmail}
+Key responsibilities:
+- Compose professional confirmation emails with report summary details
+- Distribute emails to all administrators in the configured list
+- Log all distribution attempts and results
+- Verify email delivery status
+- Handle retry logic for failed deliveries
+
+Important constraints:
+- Do not modify or alter the submitted report content
+- Ensure emails are not flagged as spam by using proper formatting and sender configuration
+- Maintain confidentiality of engineer information
+- Follow the configured email frequency limits to avoid notification fatigue
+- All timestamps must be in the organization's configured timezone`;
+
+  const userPrompt = `Please generate and send a confirmation email for the following daily report submission:
+
+Engineer Name: ${context.engineerName}
+Engineer Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Days Overdue: ${context.daysOverdue}
-Submission Status: Late (submitted at ${context.submissionTimestamp})
+Submission Deadline: ${context.submissionDeadline}
+System API Endpoint: ${context.systemApiEndpoint}
 
-Yesterday's Accomplishments:
-${context.yesterdayAccomplishments}
+Administrator Recipients:
+${context.adminEmailList.map((email) => `- ${email}`).join("\n")}
 
-Today's Plans:
-${context.todayPlans}
+${context.previousReportTemplate ? `Previous Report Template Reference:\n${context.previousReportTemplate}\n` : ""}
 
-Current Issues:
-${context.currentIssues}
+Please:
+1. Compose a professional confirmation email that includes:
+   - Confirmation that the report was successfully received and registered
+   - Engineer name and submission timestamp
+   - Report date covered
+   - Summary of report content (if available from the system)
+   - Link to view the full report in the management system
+   - Next steps in the morning meeting workflow
 
-Tasks:
-1. Evaluate if this submission requires a reminder notification despite being late
-2. Determine the appropriate reminder message
-3. Specify the notification channel (email or chat)
-4. Generate a log entry for this action
-5. Recommend escalation if needed`;
+2. Send the confirmation email to all administrators in the recipient list
+
+3. Log the following information:
+   - Timestamp of email generation
+   - List of recipients
+   - Delivery status for each recipient
+   - Any errors or delivery failures
+
+4. Return a structured result containing:
+   - emailsSent: number of successfully sent emails
+   - emailsFailed: number of failed email attempts
+   - recipientList: array of recipient email addresses
+   - timestamp: ISO 8601 formatted timestamp
+   - status: "success" | "partial_failure" | "failure"
+   - errorDetails: any error messages if applicable`;
 
   return {
-    version: ACTION_06_PROMPT_VERSION,
-    action: "action-06",
     systemPrompt,
     userPrompt,
-    context,
+    version: ACTION_06_PROMPT_VERSION,
   };
 }

@@ -6,15 +6,14 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Tx3Imp1ConfirmationEmailContent {
   emailId: string;
   sentAt: string;
-  recipientId: string;
-  recipientName: string;
+  recipients: string[];
   subject: string;
   body: string;
-  reportedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    status: "submitted" | "pending" | "overdue";
-    submittedAt?: string;
+  reportDetails: Array<{
+    employeeId: string;
+    employeeName: string;
+    submissionStatus: "submitted" | "pending" | "overdue";
+    submissionTime?: string;
   }>;
 }
 
@@ -22,85 +21,92 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThreshold: number;
+  escalationThresholdMinutes: number;
 }
 
-export interface Tx3Imp1Action02Result {
-  identifiedNonReporters: Array<{
-    memberId: string;
-    memberName: string;
-    status: "not_submitted" | "delayed";
-    daysOverdue: number;
-  }>;
-  escalationTargets: Array<{
-    memberId: string;
-    memberName: string;
-    escalationReason: string;
-    priority: "high" | "medium" | "low";
-  }>;
+export interface Tx3Imp1IdentifiedMember {
+  employeeId: string;
+  employeeName: string;
+  status: "missing_report" | "overdue_report";
+  hoursOverdue?: number;
+  escalationLevel: "first_notice" | "second_notice" | "critical";
+}
+
+export interface Tx3Imp1Action02Output {
+  identifiedMembers: Tx3Imp1IdentifiedMember[];
+  escalationTargets: Tx3Imp1IdentifiedMember[];
   analysisTimestamp: string;
+  totalMembersAnalyzed: number;
+  missingReportCount: number;
+  overdueReportCount: number;
 }
 
-export function buildAction02Prompt(
-  context: Tx3Imp1PromptContext
-): string {
+export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
   const {
     confirmationEmailContent,
     currentTimestamp,
     submissionDeadline,
-    escalationThreshold,
+    escalationThresholdMinutes,
   } = context;
 
-  const nonSubmittedMembers = confirmationEmailContent.reportedMembers
-    .filter((m) => m.status === "pending" || m.status === "overdue")
-    .map((m) => `- ${m.memberName} (ID: ${m.memberId}): ${m.status}`)
+  const reportSummary = confirmationEmailContent.reportDetails
+    .map(
+      (detail) =>
+        `- ${detail.employeeName} (ID: ${detail.employeeId}): ${detail.submissionStatus}${
+          detail.submissionTime ? ` at ${detail.submissionTime}` : ""
+        }`
+    )
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying non-reporters and determining escalation targets from confirmation email content.
+  const prompt = `You are an AI agent responsible for identifying missing and overdue daily reports from the confirmation email content.
 
-## Current Context
+## Task: Identify Missing and Overdue Report Members
+
+### Confirmation Email Content:
+Subject: ${confirmationEmailContent.subject}
+Sent At: ${confirmationEmailContent.sentAt}
+Recipients: ${confirmationEmailContent.recipients.join(", ")}
+
+### Report Status Summary:
+${reportSummary}
+
+### Current Context:
 - Current Timestamp: ${currentTimestamp}
 - Submission Deadline: ${submissionDeadline}
-- Escalation Threshold (days): ${escalationThreshold}
+- Escalation Threshold: ${escalationThresholdMinutes} minutes
 
-## Confirmation Email Content
-- Email ID: ${confirmationEmailContent.emailId}
-- Sent At: ${confirmationEmailContent.sentAt}
-- Recipient: ${confirmationEmailContent.recipientName} (${confirmationEmailContent.recipientId})
-- Subject: ${confirmationEmailContent.subject}
+### Your Analysis Tasks:
+1. Identify all members with "pending" or "overdue" submission status
+2. For overdue reports, calculate hours overdue from the deadline
+3. Determine escalation level based on:
+   - First notice: 0-60 minutes overdue
+   - Second notice: 60-240 minutes overdue
+   - Critical: 240+ minutes overdue or multiple overdue instances
+4. Categorize each identified member as either "missing_report" or "overdue_report"
+5. Return structured data with all identified members and escalation targets
 
-## Reported Members Status
-${nonSubmittedMembers}
-
-## Task
-1. Identify all members who have not submitted their reports (status: "pending" or "overdue")
-2. Calculate days overdue for each delayed member
-3. Determine which members should be escalated based on:
-   - Status is "overdue" AND days overdue >= escalation threshold
-   - Assign priority: "high" if days overdue > 2x threshold, "medium" if >= threshold, "low" otherwise
-4. Return structured analysis with identified non-reporters and escalation targets
-
-## Output Format
-Return a JSON object with:
+### Output Format:
+Return a JSON object with the following structure:
 {
-  "identifiedNonReporters": [
+  "identifiedMembers": [
     {
-      "memberId": "string",
-      "memberName": "string",
-      "status": "not_submitted" | "delayed",
-      "daysOverdue": number
+      "employeeId": "string",
+      "employeeName": "string",
+      "status": "missing_report" | "overdue_report",
+      "hoursOverdue": number (optional, only for overdue),
+      "escalationLevel": "first_notice" | "second_notice" | "critical"
     }
   ],
   "escalationTargets": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "escalationReason": "string",
-      "priority": "high" | "medium" | "low"
-    }
+    // Members requiring immediate escalation (critical level)
   ],
-  "analysisTimestamp": "${currentTimestamp}"
-}`;
+  "analysisTimestamp": "${currentTimestamp}",
+  "totalMembersAnalyzed": number,
+  "missingReportCount": number,
+  "overdueReportCount": number
+}
+
+Ensure accuracy in status determination and escalation level assignment.`;
 
   return prompt;
 }

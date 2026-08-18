@@ -5,86 +5,96 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  currentTime: string;
-  nonSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-  }>;
-  delayedSubmitters: Array<{
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    submittedAt: string;
-  }>;
-  escalationThreshold: number;
+  overdueThresholdHours: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPrompt: string;
-  context: {
-    taskDescription: string;
-    objectives: string[];
-    constraints: string[];
-  };
+  userPromptTemplate: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed submitters of daily reports in a morning meeting management system.
+  const systemPrompt = `You are an AI agent responsible for identifying non-reporting and delayed reporting members from confirmation email content, determining escalation targets, and completing the process of sending reminder emails and chat messages.
 
-Your role is to:
-1. Analyze the current reporting status against the deadline
-2. Identify employees who have not submitted their reports
-3. Identify employees who submitted reports after the deadline
-4. Determine escalation priority based on submission delay duration
-5. Prepare a structured list for manager notification
+Your role:
+- Analyze confirmation email content to identify members who have not submitted reports or submitted late
+- Determine which members require escalation based on defined rules
+- Generate and send reminder emails and chat messages to escalation targets
+- Log all sending results for audit purposes
 
-You must be precise and objective in your analysis. All timestamps should be compared against the reporting deadline: ${input.reportingDeadline}
+Escalation Rules:
+- Maximum reminders per member: ${input.escalationRules.maxReminders}
+- Reminder interval: ${input.escalationRules.reminderIntervalMinutes} minutes
+- Reporting deadline: ${input.reportingDeadline}
+- Overdue threshold: ${input.overdueThresholdHours} hours
 
-Current system time: ${input.currentTime}`;
+You must:
+1. Parse confirmation email content accurately
+2. Identify non-reporting and delayed members with clear reasoning
+3. Apply escalation rules consistently
+4. Generate professional reminder communications
+5. Record all actions with timestamps and outcomes`;
 
-  const userPrompt = `Please analyze the following daily report submission status and prepare a notification for the department manager.
+  const userPromptTemplate = `Analyze the following confirmation email content and determine escalation targets:
 
-Reporting Deadline: ${input.reportingDeadline}
-Current Time: ${input.currentTime}
+Email Content:
+{emailContent}
 
-Non-Submitters (${input.nonSubmitters.length} employees):
-${input.nonSubmitters.map((emp) => `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department})`).join("\n")}
+Current timestamp: {currentTimestamp}
 
-Delayed Submitters (${input.delayedSubmitters.length} employees):
-${input.delayedSubmitters.map((emp) => `- ${emp.employeeName} (ID: ${emp.employeeId}, Department: ${emp.department}, Submitted at: ${emp.submittedAt})`).join("\n")}
+Based on the reporting deadline of ${input.reportingDeadline} and overdue threshold of ${input.overdueThresholdHours} hours:
 
-Escalation Threshold: ${input.escalationThreshold} minutes
+1. Identify members who have not submitted reports
+2. Identify members whose reports are overdue
+3. Determine which members meet escalation criteria (max ${input.escalationRules.maxReminders} reminders)
+4. Generate reminder messages for each escalation target
+5. Log the escalation decision with reasoning
 
-Please provide:
-1. Summary of submission status
-2. List of non-submitters requiring immediate follow-up
-3. List of delayed submitters with delay duration
-4. Escalation priority classification
-5. Recommended actions for each category`;
+Provide your analysis in the following JSON format:
+{
+  "nonReportingMembers": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "reason": string,
+      "escalationRequired": boolean
+    }
+  ],
+  "delayedMembers": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "submissionTime": string,
+      "delayHours": number,
+      "escalationRequired": boolean
+    }
+  ],
+  "escalationTargets": [
+    {
+      "memberId": string,
+      "memberName": string,
+      "escalationType": "email" | "chat" | "both",
+      "reminderCount": number,
+      "messageContent": string
+    }
+  ],
+  "executionLog": {
+    "timestamp": string,
+    "totalMembersAnalyzed": number,
+    "escalationsTriggered": number,
+    "notes": string
+  }
+}`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPrompt,
-    context: {
-      taskDescription:
-        "Identify and classify non-submitters and delayed submitters of daily reports for manager notification",
-      objectives: [
-        "Accurately identify all non-submitters against the deadline",
-        "Calculate delay duration for each delayed submission",
-        "Classify escalation priority based on delay threshold",
-        "Prepare structured notification content for manager",
-      ],
-      constraints: [
-        "Must use the exact reporting deadline provided",
-        "Must compare all timestamps against current system time",
-        "Must respect the escalation threshold for priority classification",
-        "Must maintain employee privacy while providing necessary identification",
-      ],
-    },
+    userPromptTemplate,
   };
 }
 

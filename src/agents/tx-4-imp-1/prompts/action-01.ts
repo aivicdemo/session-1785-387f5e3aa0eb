@@ -4,59 +4,47 @@
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
 export interface Action01PromptContext {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  departmentName: string;
-  submissionDeadline: string;
-  previousReportTemplate?: string;
+  reportingDeadline: string;
+  targetDate: string;
+  engineerCount: number;
+  systemName: string;
 }
 
 export interface Action01PromptResult {
-  promptText: string;
-  version: string;
-  context: Action01PromptContext;
+  templateContent: string;
+  distributionChannels: string[];
+  scheduledTime: string;
 }
 
-export function buildAction01Prompt(
-  context: Action01PromptContext
-): Action01PromptResult {
-  const promptText = `
-あなたは朝会報告管理システムのAIエージェントです。
-以下の情報に基づいて、エンジニアに対する日報テンプレートを自動生成して配信してください。
+export function buildAction01Prompt(context: Action01PromptContext): string {
+  const {
+    reportingDeadline,
+    targetDate,
+    engineerCount,
+    systemName,
+  } = context;
 
-【対象エンジニア情報】
-- 名前: ${context.engineerName}
-- ID: ${context.engineerId}
-- 部門: ${context.departmentName}
-- 報告日: ${context.reportDate}
-- 提出期限: ${context.submissionDeadline}
+  return `You are an AI agent responsible for the first action in the daily report management system.
 
-【タスク】
-1. 前日の日報テンプレートを参考にして、本日の日報入力フォームを生成する
-2. 以下の項目を含める:
-   - 昨日の実績（具体的な成果・完了タスク）
-   - 本日の予定（予定されたタスク・目標）
-   - 抱えている課題（ボトルネック・リスク・懸念事項）
-3. テンプレートをメール形式で整形する
-4. 提出期限と提出方法を明記する
+System: ${systemName}
+Target Date: ${targetDate}
+Reporting Deadline: ${reportingDeadline}
+Number of Engineers: ${engineerCount}
 
-${context.previousReportTemplate ? `【前日のテンプレート参考】\n${context.previousReportTemplate}` : ""}
+Your task is to:
+1. Generate a daily report template for the previous day's accomplishments
+2. Prepare the template content for distribution
+3. Determine the optimal distribution channels and timing
 
-生成したテンプレートを以下のJSON形式で返してください:
-{
-  "templateId": "string",
-  "engineerId": "string",
-  "reportDate": "string",
-  "templateContent": "string",
-  "submissionDeadline": "string",
-  "status": "generated"
-}
-  `.trim();
+The template should include sections for:
+- Yesterday's accomplishments
+- Today's planned tasks
+- Current issues and blockers
 
-  return {
-    promptText,
-    version: ACTION_01_PROMPT_VERSION,
-    context,
-  };
+Generate a comprehensive prompt that will be used to create and distribute the daily report template to all engineers.
+
+Respond with a structured plan that includes:
+- Template content structure
+- Distribution channels (email, chat, etc.)
+- Recommended distribution time`;
 }

@@ -21,124 +21,144 @@ export interface Action06Context {
 }
 
 export interface Action06PromptInput {
-  context: Action06Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
   }>;
-  systemInstructions: string;
+  previousIssues: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+  }>;
+  departmentContext: string;
+  priorityClassificationRules: string;
 }
 
 export interface Action06PromptOutput {
-  version: string;
-  actionNumber: 6;
-  prompt: string;
-  expectedOutputFormat: {
-    type: "structured";
-    schema: {
-      reportPresentation: string;
-      prioritizedIssuesList: Array<{
-        rank: number;
-        issueId: string;
-        title: string;
-        priority: string;
-        actionItems: string[];
-      }>;
-      recommendedNextSteps: string[];
-      escalationFlags: string[];
-    };
-  };
+  context: Action06Context;
+  formattedReport: string;
+  prioritizedIssuesList: string;
+  escalationFlags: Array<{
+    type: string;
+    description: string;
+    severity: "low" | "medium" | "high" | "critical";
+  }>;
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): Action06PromptOutput {
-  const {
-    context,
-    previousActions,
-    systemInstructions,
-  } = input;
+export function buildAction06Prompt(input: Action06PromptInput): string {
+  const reportSection = buildReportAggregationSection(input.confirmedReports);
+  const issueExtractionSection = buildIssueExtractionSection(
+    input.confirmedReports,
+    input.previousIssues
+  );
+  const prioritizationSection = buildPrioritizationSection(
+    input.priorityClassificationRules,
+    input.departmentContext
+  );
+  const escalationSection = buildEscalationSection();
 
-  const previousActionsSummary = previousActions
-    .map(
-      (action) =>
-        `Action ${action.actionNumber}: ${action.result}`
-    )
+  return `# Action 06: 課題抽出・優先度判定の自動実行
+
+## 目的
+確認メール送信後に収集された日報から、進捗状況を集約し、課題・ボトルネックを抽出して優先度を自動判定する。
+
+## 入力情報
+${reportSection}
+
+${issueExtractionSection}
+
+${prioritizationSection}
+
+${escalationSection}
+
+## 実行手順
+1. 提出された全日報の内容を読み込む
+2. 進捗状況を部門別・プロジェクト別に集約する
+3. 報告内容から課題・ボトルネックを自動抽出する
+4. 抽出された課題に対して優先度を判定・分類する
+5. 整理済みレポートを生成する
+6. エスカレーション対象を特定する
+
+## 出力形式
+- 集約済み進捗レポート（JSON形式）
+- 優先度付き課題リスト（CSV形式）
+- エスカレーション判定結果（JSON形式）
+`;
+}
+
+function buildReportAggregationSection(
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>
+): string {
+  const reportCount = confirmedReports.length;
+  const submissionTimestamps = confirmedReports
+    .map((r) => r.submittedAt)
+    .sort();
+
+  return `### 日報集約情報
+- 提出済み日報数: ${reportCount}件
+- 最初の提出時刻: ${submissionTimestamps[0] || "未提出"}
+- 最後の提出時刻: ${submissionTimestamps[submissionTimestamps.length - 1] || "未提出"}
+- 提出者一覧: ${confirmedReports.map((r) => r.employeeName).join(", ")}`;
+}
+
+function buildIssueExtractionSection(
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>,
+  previousIssues: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+  }>
+): string {
+  const previousIssuesSummary = previousIssues
+    .map((issue) => `- ${issue.title} (優先度: ${issue.priority}, 状態: ${issue.status})`)
     .join("\n");
 
-  const issuesWithPriority = context.priorityAssignments
-    .map((assignment) => {
-      const issue = context.extractedIssues.find(
-        (i) => i.id === assignment.issueId
-      );
-      return {
-        issueId: assignment.issueId,
-        title: issue?.title || "Unknown",
-        priority: assignment.priority,
-        reasoning: assignment.reasoning,
-      };
-    })
-    .sort((a, b) => {
-      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-      return (
-        priorityOrder[a.priority as keyof typeof priorityOrder] -
-        priorityOrder[b.priority as keyof typeof priorityOrder]
-      );
-    });
+  return `### 課題抽出対象
+#### 前回の課題状況
+${previousIssuesSummary || "前回の課題なし"}
 
-  const promptText = `${systemInstructions}
+#### 新規報告内容
+${confirmedReports.map((r) => `**${r.employeeName}**: ${r.reportContent.substring(0, 100)}...`).join("\n")}
 
-## Previous Actions Summary
-${previousActionsSummary}
+#### 抽出対象キーワード
+- ボトルネック、遅延、リスク、問題、課題、懸念、対応が必要、確認待ち、ブロック、依存関係`;
+}
 
-## Current Context
-- Reporting Date: ${context.reportingDate}
-- Department Head: ${context.departmentHead}
-- Overall Report Summary:
-${context.reportSummary}
+function buildPrioritizationSection(
+  priorityClassificationRules: string,
+  departmentContext: string
+): string {
+  return `### 優先度判定基準
+${priorityClassificationRules || `
+- Critical: システム停止、重大なセキュリティ問題、納期に直結する遅延
+- High: 複数部門に影響、1日以上の遅延見込み、重要な機能障害
+- Medium: 単一部門への影響、軽微な遅延、改善が必要な状況
+- Low: 将来への改善提案、軽微な問題、情報共有のみ
+`}
 
-## Extracted Issues and Priority Assignments
-${issuesWithPriority
-  .map(
-    (item, index) =>
-      `${index + 1}. [${item.priority.toUpperCase()}] ${item.title} (ID: ${item.issueId})
-   Reasoning: ${item.reasoning}`
-  )
-  .join("\n")}
+### 部門コンテキスト
+${departmentContext || "一般的な部門"}`;
+}
 
-## Task
-You are the final action in the daily report processing workflow. Your role is to:
-
-1. Present the collected daily report in a clear, executive-friendly format
-2. Validate and finalize the prioritized issues list
-3. Identify any escalation flags or critical concerns
-4. Recommend immediate next steps based on the prioritized issues
-5. Prepare a comprehensive summary for the department head
-
-Please structure your response with:
-- A concise executive summary of today's progress
-- The prioritized issues list with action items for each
-- Any escalation flags that require immediate attention
-- Recommended next steps for the department head
-
-Ensure that critical and high-priority issues are clearly highlighted and actionable steps are specific and time-bound.`;
-
-  return {
-    version: ACTION_06_PROMPT_VERSION,
-    actionNumber: 6,
-    prompt: promptText,
-    expectedOutputFormat: {
-      type: "structured",
-      schema: {
-        reportPresentation: "",
-        prioritizedIssuesList: issuesWithPriority.map((item, index) => ({
-          rank: index + 1,
-          issueId: item.issueId,
-          title: item.title,
-          priority: item.priority,
-          actionItems: [],
-        })),
-        recommendedNextSteps: [],
-        escalationFlags: [],
-      },
-    },
-  };
+function buildEscalationSection(): string {
+  return `### エスカレーション判定条件
+- 同一課題が複数部門から報告されている
+- 前回から状態が改善していない課題
+- 新規の重大課題（Critical判定）
+- 複数課題の優先度が同等で判定困難
+- 通常と異なる事象の検出`;
 }

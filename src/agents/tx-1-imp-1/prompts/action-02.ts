@@ -18,8 +18,15 @@ export interface Action02ValidationResult {
   warnings: string[];
 }
 
+export interface Action02Output {
+  validationResult: Action02ValidationResult;
+  reportId?: string;
+  registrationStatus: "pending" | "success" | "failed";
+  message: string;
+}
+
 export function buildAction02Prompt(input: Action02Input): string {
-  const prompt = `You are validating a daily report submission from an engineer.
+  const prompt = `You are validating a daily report submission for an engineer.
 
 Engineer Information:
 - Name: ${input.engineerName}
@@ -27,21 +34,16 @@ Engineer Information:
 - Submission Time: ${input.submissionTimestamp}
 
 Report Content:
-Yesterday's Accomplishments:
-${input.yesterdayAccomplishments}
-
-Today's Plans:
-${input.todayPlans}
-
-Current Issues:
-${input.currentIssues}
+- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
+- Today's Plans: ${input.todayPlans}
+- Current Issues: ${input.currentIssues}
 
 Please validate the following:
 1. All required fields are filled (not empty)
 2. Content is appropriate and professional
-3. No obvious errors or inconsistencies
-4. Content length is reasonable (not too short or too long)
-5. Issues are clearly described if present
+3. Yesterday's accomplishments are specific and measurable
+4. Today's plans are clear and achievable
+5. Current issues are clearly described
 
 Respond with a JSON object containing:
 {
@@ -50,8 +52,8 @@ Respond with a JSON object containing:
   "warnings": string[]
 }
 
-Errors should indicate critical issues that prevent registration.
-Warnings should indicate minor issues that should be reviewed but don't block submission.`;
+Errors should be critical issues that prevent registration.
+Warnings should be minor issues that don't prevent registration but should be noted.`;
 
   return prompt;
 }

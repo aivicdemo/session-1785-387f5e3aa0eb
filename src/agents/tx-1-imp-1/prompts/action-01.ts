@@ -21,24 +21,27 @@ export interface Action01PromptResult {
 
 export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
   const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
-Your role is to generate and distribute the daily report template for the previous day's work.
-You must ensure the template is clear, comprehensive, and ready for engineers to fill in.
-The template should include sections for:
+Your role is to generate and distribute daily report templates to engineers.
+You must ensure the template is clear, includes all required fields, and is delivered on time.
+The template should guide engineers to provide:
 - Yesterday's achievements
 - Today's planned tasks
 - Current challenges or blockers
-- Any additional notes
+- Any risks or dependencies
 
-Be professional and encouraging in tone.`;
+Be professional, concise, and encouraging in your communication.`;
 
-  const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
-The report is for work completed on ${context.previousDayReportDate}.
-The submission deadline is ${context.reportDeadline}.
+  const userPrompt = `Generate a daily report template for engineer: ${context.engineerName} (ID: ${context.engineerId})
+Previous report date: ${context.previousDayReportDate}
+Report submission deadline: ${context.reportDeadline}
 System name: ${context.systemName}
 
-Please create a well-structured template that can be distributed via email.
-Include clear instructions for each section.
-Ensure the template is ready for immediate distribution.`;
+Please create a clear, structured template that:
+1. References the previous day's report date
+2. Clearly states the submission deadline
+3. Includes sections for yesterday's achievements, today's plans, and current challenges
+4. Provides examples or guidance for each section
+5. Includes a submission confirmation mechanism`;
 
   return {
     version: ACTION_01_PROMPT_VERSION,

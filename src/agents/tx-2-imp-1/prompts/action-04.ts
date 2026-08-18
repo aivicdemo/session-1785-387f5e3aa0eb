@@ -28,34 +28,28 @@ export interface Action04PromptInput {
 export interface Action04PromptOutput {
   overdueMembers: Array<{
     memberId: string;
-    name: string;
+    memberName: string;
     email: string;
-    department: string;
-    submittedAt: string | null;
     hoursOverdue: number;
     reminderCount: number;
     shouldEscalate: boolean;
-    escalationReason: string;
   }>;
-  reminderActions: Array<{
+  escalationActions: Array<{
     memberId: string;
-    name: string;
-    email: string;
-    reminderType: "first" | "second" | "escalation";
+    actionType: "email" | "chat" | "manager_notification";
+    priority: "high" | "medium" | "low";
     message: string;
-    sendAt: string;
   }>;
   summary: {
     totalMembers: number;
     submittedCount: number;
     overdueCount: number;
     escalationCount: number;
-    generatedAt: string;
   };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const systemPrompt = `You are an automated report escalation agent for the morning report management system.
+  const systemPrompt = `You are an automated escalation management agent for the morning report system.
 Your task is to identify overdue reports and determine appropriate escalation actions.
 
 Current Time: ${input.currentTime}
@@ -63,24 +57,28 @@ Reporting Deadline: ${input.reportingDeadline}
 Overdue Threshold: ${input.overdueThresholdHours} hours
 
 Escalation Rules:
-- First Reminder: After ${input.escalationRules.firstReminderHours} hours overdue
-- Second Reminder: After ${input.escalationRules.secondReminderHours} hours overdue
-- Maximum Reminders: ${input.escalationRules.maxReminders}
+- First reminder after ${input.escalationRules.firstReminderHours} hours overdue
+- Second reminder after ${input.escalationRules.secondReminderHours} hours overdue
+- Maximum reminders per member: ${input.escalationRules.maxReminders}
 
 Department Members:
 ${input.departmentMembers.map((m) => `- ${m.id}: ${m.name} (${m.email}) - ${m.department}`).join("\n")}
 
 Submitted Reports:
-${input.submittedReports.map((r) => `- Member ${r.memberId}: Submitted at ${r.submittedAt}`).join("\n")}
+${input.submittedReports.map((r) => `- Member ${r.memberId}: submitted at ${r.submittedAt}`).join("\n")}
 
 Analyze the submission status and determine:
-1. Which members have not submitted reports
-2. Which members submitted after the deadline
-3. How many hours each overdue member is past the deadline
-4. Whether escalation actions are needed based on the rules
-5. What type of reminder should be sent (first, second, or escalation)
+1. Which members have overdue reports
+2. How many hours each member is overdue
+3. Whether escalation actions are needed based on the rules
+4. What type of escalation action (email, chat, or manager notification) is appropriate
 
-Return a JSON object matching the Action04PromptOutput interface.`;
+Return a JSON object with the structure:
+{
+  "overdueMembers": [...],
+  "escalationActions": [...],
+  "summary": {...}
+}`;
 
   return systemPrompt;
 }

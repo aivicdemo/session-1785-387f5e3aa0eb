@@ -4,9 +4,13 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportingDeadline: string;
-  overdueThresholdHours: number;
-  notificationRecipients: string[];
+  reportDate: string;
+  targetEngineers: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  submissionDeadline: string;
   systemContext: string;
 }
 
@@ -16,40 +20,37 @@ export interface Action02PromptOutput {
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const {
-    reportingDeadline,
-    overdueThresholdHours,
-    notificationRecipients,
-    systemContext,
-  } = input;
+  const engineerList = input.targetEngineers
+    .map((eng) => `- ${eng.name} (${eng.email})`)
+    .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying unreported and delayed report submissions.
+  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
+
+Date: ${input.reportDate}
+Submission Deadline: ${input.submissionDeadline}
+
+Target Engineers:
+${engineerList}
 
 System Context:
-${systemContext}
+${input.systemContext}
 
-Task: Analyze the current report submission status and identify:
-1. Team members who have not submitted their reports
-2. Team members whose reports are delayed beyond the deadline
-3. Generate a comprehensive list of unreported and delayed members
+Action 2: Automatically determine which engineers have not submitted their reports and which have submitted late.
 
-Reporting Deadline: ${reportingDeadline}
-Overdue Threshold: ${overdueThresholdHours} hours
-Notification Recipients: ${notificationRecipients.join(", ")}
+Your task:
+1. Check the submission status of each engineer against the deadline
+2. Identify engineers who have not submitted (未提出者)
+3. Identify engineers who have submitted late (遅延者)
+4. Create a structured list categorizing engineers by submission status
+5. Prepare data for notification to the department head
 
-Instructions:
-- Check all team members' submission status against the deadline
-- Classify members into: "On-time", "Delayed", "Not submitted"
-- Create a structured list with member names, submission status, and delay duration if applicable
-- Prepare notification content for the department head
-- Ensure accuracy to prevent false positives
+Output format:
+- List of non-submitters with their details
+- List of late submitters with submission timestamps
+- Summary statistics
+- Recommended notification priority
 
-Output Format:
-- Provide a JSON structure with:
-  - unreportedMembers: array of member objects with name and last check time
-  - delayedMembers: array of member objects with name, submission time, and delay duration
-  - summary: brief summary of the status
-  - recommendedActions: suggested next steps`;
+Ensure accuracy in status determination and provide clear categorization for the next action.`;
 
   return {
     prompt,
