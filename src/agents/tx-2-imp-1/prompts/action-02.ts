@@ -6,127 +6,119 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Action02PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
-  reminderFrequencyHours: number;
-  maxReminderAttempts: number;
-  departmentName: string;
-  reportingPeriod: string;
+  notificationChannels: string[];
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalHours: number;
+  };
 }
 
 export interface Action02PromptOutput {
   prompt: string;
   version: string;
   metadata: {
-    action: string;
+    actionNumber: number;
+    contractId: string;
     purpose: string;
-    targetAudience: string;
   };
 }
 
-export function buildAction02Prompt(
-  input: Action02PromptInput
-): Action02PromptOutput {
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
   const {
     reportingDeadline,
     overdueThresholdHours,
-    reminderFrequencyHours,
-    maxReminderAttempts,
-    departmentName,
-    reportingPeriod,
+    notificationChannels,
+    escalationRules,
   } = input;
 
-  const prompt = `# Action 2: 未提出者と遅延者の自動判定
+  const channelsList = notificationChannels.join("、");
+  const purpose =
+    "報告漏れ・遅延部員を特定し、催促対象を判定して、メール・チャットの送信まで完結させる";
+
+  const prompt = `# Action 02: 報告漏れ特定から催促送信までの自動実行
 
 ## 目的
-設定時刻に全員の日報受信状況を確認し、未提出者と遅延者を自動判定する。
+${purpose}
 
 ## 実行条件
 - 報告期限: ${reportingDeadline}
-- 遅延判定閾値: ${overdueThresholdHours}時間以上の遅延
-- 催促間隔: ${reminderFrequencyHours}時間ごと
-- 最大催促回数: ${maxReminderAttempts}回
+- 遅延判定閾値: ${overdueThresholdHours}時間以上
+- 通知チャネル: ${channelsList}
 
-## 判定ロジック
+## 実行ステップ
 
-### 未提出者の判定
-1. 現在時刻が報告期限 (${reportingDeadline}) を超過している
-2. 日報管理システムに該当エンジニアの日報レコードが存在しない
-3. 確認メール配信ログに送信記録がある
+### ステップ 1: 確認メール内容から報告漏れ・遅延部員を特定する
+- 送信済み確認メールの受信状況を確認
+- 未返信者を報告漏れ対象として抽出
+- 返信時刻が期限を超過した者を遅延対象として抽出
+- 各対象者の遅延時間を計算
 
-### 遅延者の判定
-1. 現在時刻が報告期限を超過している
-2. 日報管理システムに該当エンジニアの日報レコードが存在する
-3. 日報の送信タイムスタンプが報告期限より後である
-4. 遅延時間が ${overdueThresholdHours}時間以上である
+### ステップ 2: 催促対象部員を判定する
+- 報告漏れ対象: 即座に催促対象に指定
+- 遅延対象: 遅延時間が ${overdueThresholdHours} 時間以上の場合に催促対象に指定
+- 過去の催促履歴を確認し、催促回数が ${escalationRules.maxReminders} 回未満の場合のみ対象
+- 前回催促からの経過時間が ${escalationRules.reminderIntervalHours} 時間以上の場合に再催促を許可
+
+### ステップ 3: 催促メール・チャットを自動送信する
+- 催促対象者ごとに個別メッセージを作成
+- 報告漏れ理由の確認と提出期限の再通知を含める
+- 指定チャネル (${channelsList}) 経由で送信
+- 送信失敗時はログに記録し、エスカレーション対象に追加
+
+### ステップ 4: 送信結果をログに記録する
+- 送信日時、対象者、チャネル、メッセージ内容を記録
+- 送信成功/失敗の状態を記録
+- 催促回数をインクリメント
+
+## エスカレーション条件
+- 同一部員への複数回催促後も報告がない場合
+- システムエラーでメール・チャット送信に失敗した場合
+- 催促ルールに該当しない特殊ケース
 
 ## 出力形式
-
-未提出者と遅延者を以下の形式で分類して返す:
-
 \`\`\`json
 {
-  "nonSubmitted": [
+  "action": "send_reminders",
+  "timestamp": "ISO8601形式",
+  "targetMembers": [
     {
-      "engineerId": "string",
-      "engineerName": "string",
-      "department": "${departmentName}",
-      "reportingPeriod": "${reportingPeriod}",
+      "memberId": "string",
+      "name": "string",
+      "status": "non_reported | delayed",
+      "overdueHours": number,
       "reminderCount": number,
-      "lastReminderTime": "ISO8601 timestamp or null",
-      "escalationRequired": boolean
-    }
-  ],
-  "delayed": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "department": "${departmentName}",
-      "reportingPeriod": "${reportingPeriod}",
-      "submissionTime": "ISO8601 timestamp",
-      "delayHours": number,
-      "reminderCount": number,
-      "lastReminderTime": "ISO8601 timestamp or null",
-      "escalationRequired": boolean
-    }
-  ],
-  "onTime": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "department": "${departmentName}",
-      "reportingPeriod": "${reportingPeriod}",
-      "submissionTime": "ISO8601 timestamp"
+      "channels": ["email" | "chat"],
+      "messagesSent": [
+        {
+          "channel": "string",
+          "sentAt": "ISO8601形式",
+          "success": boolean,
+          "errorMessage": "string | null"
+        }
+      ]
     }
   ],
   "summary": {
-    "totalEngineers": number,
-    "nonSubmittedCount": number,
-    "delayedCount": number,
-    "onTimeCount": number,
-    "submissionRate": number,
-    "evaluationTime": "ISO8601 timestamp"
+    "totalTargets": number,
+    "successCount": number,
+    "failureCount": number,
+    "escalationCases": number
   }
 }
 \`\`\`
 
-## エスカレーション判定基準
-
-以下の条件で escalationRequired を true に設定:
-- 未提出者: 催促回数が ${maxReminderAttempts} に達した場合
-- 遅延者: 遅延時間が ${overdueThresholdHours * 2}時間以上の場合、または催促回数が ${maxReminderAttempts} に達した場合
-
 ## 注意事項
-- 同一エンジニアへの催促は ${reminderFrequencyHours}時間ごとに制限する
-- 催促回数は報告期限ごとにリセットする
-- システム障害時は詳細なエラーログを記録し、部長への通知を優先する
-`;
+- 送信履歴は保存し、誤送信時に取り消し・修正できる仕組みを用意する
+- 催促回数の上限を設定して過度な催促を防ぐ
+- 部長への最終確認が必要な例外ケースは別途フラグを立てる`;
 
   return {
     prompt,
     version: ACTION_02_PROMPT_VERSION,
     metadata: {
-      action: "action-02",
-      purpose: "未提出者と遅延者の自動判定",
-      targetAudience: "AIエージェント (tx-2-imp-1)",
+      actionNumber: 2,
+      contractId: "tx_3_imp_1",
+      purpose,
     },
   };
 }

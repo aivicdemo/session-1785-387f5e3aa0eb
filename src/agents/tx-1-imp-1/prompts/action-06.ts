@@ -7,10 +7,12 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  submissionDeadline: string;
-  previousReportTemplate?: string;
-  systemApiEndpoint: string;
-  adminEmails: string[];
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionTime: string;
+  isLate: boolean;
+  daysOverdue: number;
 }
 
 export interface Action06PromptResult {
@@ -22,49 +24,35 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated daily report management agent responsible for sending confirmation emails to administrators after a daily report has been successfully registered in the system.
+  const systemPrompt = `You are an automated notification system for the morning report management workflow.
+Your role is to send confirmation emails to administrators after a report has been successfully registered in the system.
+You must compose professional, clear confirmation messages that include:
+- Engineer name and submission timestamp
+- Summary of submitted report content
+- Confirmation of successful registration
+- Next steps in the workflow
 
-Your role in Action 6 is to:
-1. Verify that the daily report was successfully registered in the management system
-2. Compose and send confirmation emails to all specified administrators
-3. Include relevant report details and submission confirmation in the email
-4. Log the email sending results for audit purposes
-5. Handle any email delivery failures gracefully
+Maintain a formal tone appropriate for business communication.`;
 
-You must ensure:
-- Confirmation emails are sent to all administrators in the admin email list
-- Email content clearly indicates successful report registration
-- The engineer's name, report date, and key submission details are included
-- Email sending is logged with timestamp and delivery status
-- Any failures are reported for escalation`;
+  const userPrompt = `Please generate a confirmation email for the following report submission:
 
-  const userPrompt = `Please send confirmation emails for the following daily report submission:
-
-Engineer Name: ${context.engineerName}
-Engineer Email: ${context.engineerEmail}
+Engineer: ${context.engineerName}
+Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-System API Endpoint: ${context.systemApiEndpoint}
-Administrator Email List: ${context.adminEmails.join(", ")}
+Submission Time: ${context.submissionTime}
+${context.isLate ? `Status: LATE (${context.daysOverdue} days overdue)` : "Status: ON TIME"}
 
-${context.previousReportTemplate ? `Previous Report Template Reference:\n${context.previousReportTemplate}\n` : ""}
+Report Content:
+- Yesterday's Accomplishments: ${context.yesterdayAccomplishments}
+- Today's Plans: ${context.todayPlans}
+- Current Issues: ${context.currentIssues}
 
-Action 6 Task: Send Confirmation Emails to Administrators
-
-Steps to execute:
-1. Verify the report registration status in the management system
-2. Prepare a professional confirmation email with:
-   - Subject: Daily Report Submission Confirmation - [Engineer Name] - [Report Date]
-   - Body including: engineer name, submission timestamp, report date, confirmation of successful registration
-3. Send the confirmation email to each administrator
-4. Record the sending timestamp and delivery status for each email
-5. If any email fails to send, log the failure reason and prepare for escalation
-
-Expected output:
-- Confirmation that emails were sent to all administrators
-- List of email addresses that received the confirmation
-- Timestamp of email sending
-- Any delivery failures or issues encountered`;
+Generate a confirmation email that:
+1. Acknowledges successful registration
+2. Summarizes the key points from the report
+3. Notes if submission was late
+4. Confirms the report is now available for the morning meeting
+5. Provides next steps for the administrator`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

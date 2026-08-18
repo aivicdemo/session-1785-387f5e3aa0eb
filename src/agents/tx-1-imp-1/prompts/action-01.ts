@@ -21,24 +21,24 @@ export interface Action01PromptResult {
 
 export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
   const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
-Your role is to generate and distribute a daily report template based on the previous day's report.
-You must ensure the template is clear, structured, and ready for engineer input.
+Your role is to generate and distribute the daily report template for the previous day's work.
+You must ensure the template is clear, comprehensive, and ready for engineer input.
 The template should include sections for:
 - Yesterday's achievements
 - Today's planned tasks
-- Current issues or blockers
+- Current challenges or blockers
 - Any additional notes
 
 Be professional and encouraging in tone.`;
 
   const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
-The report is for the date: ${context.previousDayReportDate}
-Submission deadline: ${context.reportDeadline}
+The report is for work completed on ${context.previousDayReportDate}.
+The submission deadline is ${context.reportDeadline}.
 System name: ${context.systemName}
 
-Please create a structured template that the engineer can easily fill out.
+Please create a well-structured template that can be distributed via email.
 Include clear instructions for each section.
-Format the output as a ready-to-send template.`;
+Ensure the template is easy to fill out and submit.`;
 
   return {
     version: ACTION_01_PROMPT_VERSION,

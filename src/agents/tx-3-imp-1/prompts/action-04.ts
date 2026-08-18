@@ -7,12 +7,12 @@ export interface Action04PromptInput {
   confirmationEmailContent: string;
   reportingDeadline: string;
   currentTimestamp: string;
-  previousReminders: Array<{
+  previousReminders?: Array<{
     employeeId: string;
     reminderCount: number;
     lastReminderTime: string;
   }>;
-  reminderRules: {
+  reminderRules?: {
     maxReminderCount: number;
     reminderIntervalMinutes: number;
   };
@@ -23,114 +23,125 @@ export interface Action04PromptOutput {
     employeeId: string;
     employeeName: string;
     reason: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
+    submissionTime?: string;
   }>;
   remindersToSend: Array<{
     employeeId: string;
     employeeName: string;
-    reminderCount: number;
-    shouldSendEmail: boolean;
-    shouldSendChat: boolean;
-    message: string;
+    reminderType: "email" | "chat" | "both";
+    reminderContent: string;
+    priority: "high" | "normal" | "low";
   }>;
   escalationCases: Array<{
     employeeId: string;
     employeeName: string;
-    reason: string;
-    requiresHumanReview: boolean;
+    escalationReason: string;
+    recommendedAction: string;
   }>;
-  sendingLog: Array<{
-    employeeId: string;
-    channel: "email" | "chat";
+  executionLog: {
     timestamp: string;
-    status: "pending" | "sent" | "failed";
-    messageId?: string;
-  }>;
+    processedCount: number;
+    remindersScheduled: number;
+    escalationsIdentified: number;
+  };
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const reminderRulesText = `
-催促ルール:
-- 最大催促回数: ${input.reminderRules.maxReminderCount}回
-- 催促間隔: ${input.reminderRules.reminderIntervalMinutes}分
-`;
+  const reminderRules = input.reminderRules || {
+    maxReminderCount: 3,
+    reminderIntervalMinutes: 30,
+  };
 
-  const previousRemindersText =
-    input.previousReminders.length > 0
-      ? `
-前回の催促履歴:
-${input.previousReminders
-  .map(
-    (r) =>
-      `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}回, 最終催促時刻: ${r.lastReminderTime}`
-  )
-  .join("\n")}
-`
-      : "前回の催促履歴: なし";
+  const previousRemindersInfo = input.previousReminders
+    ? input.previousReminders
+        .map(
+          (r) =>
+            `- Employee ${r.employeeId}: ${r.reminderCount} reminder(s) sent, last at ${r.lastReminderTime}`
+        )
+        .join("\n")
+    : "No previous reminders recorded";
 
-  return `あなたは朝会報告管理システムのAIエージェントです。確認メール内容から報告漏れ・遅延部員を特定し、催促対象を判定してメール・チャットを送信します。
+  return `You are an AI agent responsible for identifying non-reporting employees and sending automated reminders.
 
-【現在の状況】
-確認メール内容:
+## Current Task: Identify Non-Reporters and Send Reminders
+
+### Input Information:
+- Confirmation Email Content:
 ${input.confirmationEmailContent}
 
-報告期限: ${input.reportingDeadline}
-現在時刻: ${input.currentTimestamp}
+- Reporting Deadline: ${input.reportingDeadline}
+- Current Timestamp: ${input.currentTimestamp}
 
-${reminderRulesText}
+### Previous Reminder History:
+${previousRemindersInfo}
 
-${previousRemindersText}
+### Reminder Rules:
+- Maximum reminders per employee: ${reminderRules.maxReminderCount}
+- Minimum interval between reminders: ${reminderRules.reminderIntervalMinutes} minutes
 
-【あなたのタスク】
-1. 確認メール内容から報告漏れ・遅延部員を特定してください
-2. 催促対象部員を判定してください（催促ルールに基づいて）
-3. 各部員に対して送信すべき催促メール・チャットを決定してください
-4. 送信結果をログに記録してください
-5. 複数回催促後も報告がない場合や特殊ケースはエスカレーション対象として特定してください
+## Your Responsibilities:
 
-【出力形式】
-以下のJSON形式で結果を返してください:
+1. **Identify Non-Reporting Employees**: Parse the confirmation email content to identify which employees have not submitted their reports or have submitted late.
+
+2. **Determine Reminder Eligibility**: Check if each non-reporting employee is eligible for a reminder based on:
+   - Previous reminder count (must not exceed ${reminderRules.maxReminderCount})
+   - Time since last reminder (must be at least ${reminderRules.reminderIntervalMinutes} minutes)
+
+3. **Classify Reminder Type**: Determine whether to send email, chat, or both based on:
+   - First reminder: email
+   - Second reminder: email + chat
+   - Third reminder: email + chat with escalation flag
+
+4. **Identify Escalation Cases**: Flag cases that require human review:
+   - Employees who have already received ${reminderRules.maxReminderCount} reminders
+   - System errors or delivery failures
+   - Special circumstances requiring manager judgment
+
+5. **Generate Reminder Content**: Create appropriate reminder messages that:
+   - Are professional and non-accusatory
+   - Include the deadline and current status
+   - Provide clear next steps
+   - Reference previous reminders if applicable
+
+## Output Format:
+Return a JSON object with the following structure:
 {
   "identifiedNonReporters": [
     {
       "employeeId": "string",
       "employeeName": "string",
       "reason": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
+      "submissionTime": "ISO 8601 timestamp or null"
     }
   ],
   "remindersToSend": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "reminderCount": number,
-      "shouldSendEmail": boolean,
-      "shouldSendChat": boolean,
-      "message": "string"
+      "reminderType": "email" | "chat" | "both",
+      "reminderContent": "string",
+      "priority": "high" | "normal" | "low"
     }
   ],
   "escalationCases": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "reason": "string",
-      "requiresHumanReview": boolean
+      "escalationReason": "string",
+      "recommendedAction": "string"
     }
   ],
-  "sendingLog": [
-    {
-      "employeeId": "string",
-      "channel": "email" | "chat",
-      "timestamp": "string",
-      "status": "pending" | "sent" | "failed",
-      "messageId": "string (optional)"
-    }
-  ]
+  "executionLog": {
+    "timestamp": "ISO 8601 timestamp",
+    "processedCount": "number",
+    "remindersScheduled": "number",
+    "escalationsIdentified": "number"
+  }
 }
 
-【注意事項】
-- 催促回数が上限に達した場合はエスカレーション対象にしてください
-- 同一部員への過度な催促を避けてください
-- 送信履歴は正確に記録してください
-- 特殊ケースや判定が困難な場合は人間レビューが必要と判定してください`;
+## Important Notes:
+- Ensure accuracy in identifying non-reporters to avoid false positives
+- Respect reminder frequency limits to prevent over-notification
+- Maintain professional tone in all reminder communications
+- Log all actions for audit trail purposes`;
 }

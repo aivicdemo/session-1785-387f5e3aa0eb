@@ -7,7 +7,7 @@ export interface Action05Context {
   confirmationEmailContent: string;
   reportSubmissionDeadline: string;
   currentTimestamp: string;
-  previousEscalations: Array<{
+  previousEscalationHistory: Array<{
     employeeId: string;
     escalationCount: number;
     lastEscalationTime: string;
@@ -15,16 +15,17 @@ export interface Action05Context {
   escalationRules: {
     maxEscalationCount: number;
     escalationIntervalMinutes: number;
-    considerLateAfterMinutes: number;
+    escalationThresholdMinutes: number;
   };
 }
 
 export interface ExtractedIssue {
-  issueId: string;
+  id: string;
+  title: string;
   description: string;
-  affectedEmployees: string[];
-  severity: "critical" | "high" | "medium" | "low";
   category: string;
+  severity: "critical" | "high" | "medium" | "low";
+  affectedEmployees: string[];
   detectedAt: string;
 }
 
@@ -37,122 +38,130 @@ export interface PrioritizedIssue extends ExtractedIssue {
 export interface Action05Output {
   extractedIssues: ExtractedIssue[];
   prioritizedIssues: PrioritizedIssue[];
-  escalationRecommendations: Array<{
+  escalationTargets: Array<{
     employeeId: string;
+    employeeName: string;
+    escalationReason: string;
+    escalationMethod: "email" | "chat" | "both";
     shouldEscalate: boolean;
-    reason: string;
-    suggestedAction: string;
   }>;
-  summaryReport: {
-    totalIssuesFound: number;
-    criticalIssueCount: number;
-    employeesWithIssues: string[];
-    recommendedNextSteps: string[];
+  reportSummary: {
+    totalReports: number;
+    submittedReports: number;
+    pendingReports: number;
+    overdueReports: number;
   };
+  timestamp: string;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const escalationRulesDescription = `
-最大エスカレーション回数: ${context.escalationRules.maxEscalationCount}
-エスカレーション間隔: ${context.escalationRules.escalationIntervalMinutes}分
-遅延と判定する時間: ${context.escalationRules.considerLateAfterMinutes}分
-`;
+  const {
+    confirmationEmailContent,
+    reportSubmissionDeadline,
+    currentTimestamp,
+    previousEscalationHistory,
+    escalationRules,
+  } = context;
 
-  const previousEscalationsDescription =
-    context.previousEscalations.length > 0
-      ? `
-過去のエスカレーション履歴:
-${context.previousEscalations
-  .map(
-    (e) =>
-      `- 従業員ID: ${e.employeeId}, エスカレーション回数: ${e.escalationCount}, 最終実行時刻: ${e.lastEscalationTime}`
-  )
-  .join("\n")}
-`
-      : "過去のエスカレーション履歴: なし";
+  const escalationHistoryText =
+    previousEscalationHistory.length > 0
+      ? previousEscalationHistory
+          .map(
+            (h) =>
+              `- Employee ID: ${h.employeeId}, Escalation Count: ${h.escalationCount}, Last Escalation: ${h.lastEscalationTime}`
+          )
+          .join("\n")
+      : "No previous escalation history";
 
-  return `あなたは日報管理システムのAIエージェント（Action 05: 課題抽出・優先度判定）です。
+  const prompt = `You are an AI agent responsible for analyzing confirmation email content to extract issues, determine priorities, and identify escalation targets.
 
-【タスク】
-確認メールの内容から以下を自動実行してください:
-1. 日報内容から課題・ボトルネックを抽出する
-2. 抽出した課題に優先度を判定・分類する
-3. エスカレーション対象を判定する
-4. 整理済みレポートを生成する
+## Current Context
+- Confirmation Email Content:
+${confirmationEmailContent}
 
-【入力情報】
-確認メール内容:
-${context.confirmationEmailContent}
+- Report Submission Deadline: ${reportSubmissionDeadline}
+- Current Timestamp: ${currentTimestamp}
+- Previous Escalation History:
+${escalationHistoryText}
 
-日報提出期限: ${context.reportSubmissionDeadline}
-現在時刻: ${context.currentTimestamp}
+## Escalation Rules
+- Maximum Escalation Count per Employee: ${escalationRules.maxEscalationCount}
+- Escalation Interval (minutes): ${escalationRules.escalationIntervalMinutes}
+- Escalation Threshold (minutes after deadline): ${escalationRules.escalationThresholdMinutes}
 
-エスカレーションルール:
-${escalationRulesDescription}
+## Your Tasks
 
-${previousEscalationsDescription}
+1. **Extract Issues**: Analyze the confirmation email content and identify all issues, bottlenecks, and concerns mentioned. For each issue:
+   - Assign a unique ID
+   - Provide a clear title and description
+   - Categorize the issue (e.g., technical, resource, timeline, dependency, quality)
+   - Determine severity (critical, high, medium, low)
+   - List affected employees
 
-【出力要件】
-以下の形式でJSON形式の結果を返してください:
+2. **Prioritize Issues**: Based on severity, impact scope, and business context:
+   - Assign a priority number (1 = highest priority)
+   - Provide reasoning for the priority assignment
+   - Recommend specific actions for each issue
 
+3. **Identify Escalation Targets**: Determine which employees require escalation:
+   - Check if they have pending reports beyond the deadline
+   - Consider previous escalation history
+   - Respect the maximum escalation count and interval rules
+   - Recommend escalation method (email, chat, or both)
+
+4. **Generate Report Summary**: Provide statistics on:
+   - Total number of reports expected
+   - Number of submitted reports
+   - Number of pending reports
+   - Number of overdue reports
+
+## Output Format
+Return a JSON object with the following structure:
 {
   "extractedIssues": [
     {
-      "issueId": "ISSUE_001",
-      "description": "課題の説明",
-      "affectedEmployees": ["従業員ID1", "従業員ID2"],
+      "id": "ISSUE_001",
+      "title": "Issue Title",
+      "description": "Detailed description",
+      "category": "Category",
       "severity": "critical|high|medium|low",
-      "category": "課題カテゴリ",
-      "detectedAt": "ISO8601形式の検出時刻"
+      "affectedEmployees": ["EMP_001", "EMP_002"],
+      "detectedAt": "ISO8601 timestamp"
     }
   ],
   "prioritizedIssues": [
     {
-      "issueId": "ISSUE_001",
-      "description": "課題の説明",
-      "affectedEmployees": ["従業員ID1"],
+      "id": "ISSUE_001",
+      "title": "Issue Title",
+      "description": "Detailed description",
+      "category": "Category",
       "severity": "critical|high|medium|low",
-      "category": "課題カテゴリ",
-      "detectedAt": "ISO8601形式の検出時刻",
+      "affectedEmployees": ["EMP_001", "EMP_002"],
+      "detectedAt": "ISO8601 timestamp",
       "priority": 1,
-      "priorityReason": "優先度判定の理由",
-      "recommendedAction": "推奨アクション"
+      "priorityReason": "Reason for this priority",
+      "recommendedAction": "Specific action to take"
     }
   ],
-  "escalationRecommendations": [
+  "escalationTargets": [
     {
-      "employeeId": "従業員ID",
-      "shouldEscalate": true|false,
-      "reason": "エスカレーション判定の理由",
-      "suggestedAction": "推奨アクション"
+      "employeeId": "EMP_001",
+      "employeeName": "Employee Name",
+      "escalationReason": "Reason for escalation",
+      "escalationMethod": "email|chat|both",
+      "shouldEscalate": true
     }
   ],
-  "summaryReport": {
-    "totalIssuesFound": 5,
-    "criticalIssueCount": 2,
-    "employeesWithIssues": ["従業員ID1", "従業員ID2"],
-    "recommendedNextSteps": ["推奨ステップ1", "推奨ステップ2"]
-  }
+  "reportSummary": {
+    "totalReports": 10,
+    "submittedReports": 8,
+    "pendingReports": 2,
+    "overdueReports": 1
+  },
+  "timestamp": "ISO8601 timestamp"
 }
 
-【課題抽出のポイント】
-- 日報内容から明示的な課題だけでなく、潜在的なボトルネックも抽出する
-- 複数の従業員に共通する課題は統合する
-- 課題の重大度（severity）を正確に判定する
+Ensure all timestamps are in ISO8601 format. Be thorough in issue extraction and prioritization.`;
 
-【優先度判定のポイント】
-- 重大度（severity）を基準に優先度を決定する
-- 影響範囲（affected employees数）を考慮する
-- 提出期限超過の課題は優先度を上げる
-- 同じ課題の繰り返しは優先度を上げる
-
-【エスカレーション判定のポイント】
-- 提出期限を${context.escalationRules.considerLateAfterMinutes}分以上超過している場合
-- 過去${context.escalationRules.maxEscalationCount}回以上のエスカレーション履歴がある場合は慎重に判定
-- エスカレーション間隔が${context.escalationRules.escalationIntervalMinutes}分以上経過している場合のみ実行推奨
-
-【重要な制約】
-- 必ずJSON形式で返す
-- 不完全な情報は推測で補わない
-- 判定に確信がない場合は理由を詳細に記載する`;
+  return prompt;
 }

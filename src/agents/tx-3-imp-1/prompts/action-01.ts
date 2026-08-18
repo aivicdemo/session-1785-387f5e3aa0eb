@@ -11,29 +11,22 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
-  missingReporters: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportStatus: "missing" | "delayed";
-    daysSinceDeadline: number;
+  unreportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    reason: "not_submitted" | "delayed";
+    submissionTime?: string;
   }>;
   escalationTargets: Array<{
-    employeeId: string;
-    employeeName: string;
-    escalationReason: string;
-    escalationCount: number;
-    shouldEscalate: boolean;
+    memberId: string;
+    memberName: string;
+    escalationLevel: number;
+    recommendedAction: "first_reminder" | "second_reminder" | "manager_escalation";
   }>;
-  summary: {
-    totalMissingCount: number;
-    totalDelayedCount: number;
-    escalationCandidateCount: number;
-  };
+  analysisTimestamp: string;
 }
 
-export function buildAction01Prompt(
-  input: Action01PromptInput
-): string {
+export function buildAction01Prompt(input: Action01PromptInput): string {
   const {
     confirmationEmailContent,
     reportDeadline,
@@ -42,77 +35,62 @@ export function buildAction01Prompt(
   } = input;
 
   const escalationCountSummary = Object.entries(previousEscalationCount)
-    .map(([empId, count]) => `  - Employee ${empId}: ${count} escalations`)
+    .map(([memberId, count]) => `- ${memberId}: ${count}回`)
     .join("\n");
 
-  return `You are an AI agent responsible for identifying missing and delayed daily reports from the confirmation email content.
+  return `# 報告漏れ・遅延部員の自動特定と催促対象判定
 
-## Task: Identify Missing/Delayed Reporters and Determine Escalation Targets
-
-### Input Information:
-- Confirmation Email Content:
+## 入力情報
+- 確認メール内容:
+\`\`\`
 ${confirmationEmailContent}
+\`\`\`
+- 報告期限: ${reportDeadline}
+- 現在時刻: ${currentTimestamp}
+- 過去の催促履歴:
+${escalationCountSummary || "なし"}
 
-- Report Deadline: ${reportDeadline}
-- Current Timestamp: ${currentTimestamp}
-- Previous Escalation Count:
-${escalationCountSummary || "  (No previous escalations)"}
+## タスク
+以下の手順で報告漏れ・遅延部員を特定し、催促対象を判定してください:
 
-### Your Responsibilities:
+1. 確認メール内容から以下を抽出:
+   - 報告済みの部員リスト（提出時刻付き）
+   - 未報告の部員リスト
+   - 遅延報告の部員リスト（期限超過時刻付き）
 
-1. **Parse the confirmation email content** to extract:
-   - List of employees who submitted reports
-   - List of employees who did NOT submit reports
-   - Submission timestamps for each report
+2. 各未報告・遅延部員について催促対象を判定:
+   - 初回催促対象: 期限超過から30分以内
+   - 第2回催促対象: 期限超過から1時間以上、かつ過去催促回数が1回以下
+   - マネージャー報告対象: 期限超過から2時間以上、または過去催促回数が2回以上
 
-2. **Classify reporters**:
-   - Mark as "missing" if no report was submitted by the deadline
-   - Mark as "delayed" if report was submitted after the deadline
+3. 結果をJSON形式で出力
 
-3. **Calculate days since deadline** for delayed/missing reports
-
-4. **Determine escalation targets** based on:
-   - First escalation: Any missing or delayed report
-   - Subsequent escalations: Only if previous escalation count >= 1
-   - Maximum escalation threshold: 3 times per employee
-   - Do NOT escalate if escalation count already reached 3
-
-5. **Generate structured output** with:
-   - List of missing reporters with details
-   - List of escalation targets with reason and count
-   - Summary statistics
-
-### Output Format:
-Return a JSON object with the following structure:
+## 出力形式
+\`\`\`json
 {
-  "missingReporters": [
+  "unreportedMembers": [
     {
-      "employeeId": "string",
-      "employeeName": "string",
-      "reportStatus": "missing" | "delayed",
-      "daysSinceDeadline": number
+      "memberId": "string",
+      "memberName": "string",
+      "reason": "not_submitted" | "delayed",
+      "submissionTime": "ISO8601形式 または null"
     }
   ],
   "escalationTargets": [
     {
-      "employeeId": "string",
-      "employeeName": "string",
-      "escalationReason": "string",
-      "escalationCount": number,
-      "shouldEscalate": boolean
+      "memberId": "string",
+      "memberName": "string",
+      "escalationLevel": 1 | 2 | 3,
+      "recommendedAction": "first_reminder" | "second_reminder" | "manager_escalation"
     }
   ],
-  "summary": {
-    "totalMissingCount": number,
-    "totalDelayedCount": number,
-    "escalationCandidateCount": number
-  }
+  "analysisTimestamp": "ISO8601形式"
 }
+\`\`\`
 
-### Rules:
-- Only include employees with missing or delayed reports
-- Escalation count should reflect the number of times this employee has been escalated
-- shouldEscalate should be true only if escalation count < 3
-- Be precise with timestamps and deadline calculations
-- Return valid JSON only, no additional text`;
+## 注意事項
+- 同一部員への催促は1日あたり最大2回まで
+- 3回以上の催促後は自動送信を停止し、マネージャー判断に委ねる
+- 時刻判定は秒単位で正確に行う
+- 部員名が不明な場合は memberId のみで記録する`;
 }

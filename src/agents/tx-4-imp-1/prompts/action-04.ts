@@ -16,73 +16,126 @@ export interface Action04Context {
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  escalationFlags: Array<{
-    issueId: string;
-    reason: string;
-    requiresHumanReview: boolean;
-  }>;
+  departmentHead: string;
+  reportingDate: string;
 }
 
-export interface Action04Input {
-  reportId: string;
-  reportContent: string;
-  reporterName: string;
-  reportDate: string;
+export interface Action04PromptInput {
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>;
   previousIssues?: Array<{
     id: string;
     title: string;
     status: string;
   }>;
+  priorityFramework?: {
+    criticalThreshold: string;
+    highThreshold: string;
+    mediumThreshold: string;
+  };
+  departmentContext?: string;
 }
 
-export interface Action04Output {
-  success: boolean;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-  }>;
-  escalationRequired: boolean;
-  escalationReasons: string[];
-  timestamp: string;
+export interface Action04PromptOutput {
+  systemPrompt: string;
+  userPrompt: string;
+  version: string;
 }
 
-export function buildAction04Prompt(input: Action04Input): string {
-  const basePrompt = `You are an AI agent responsible for extracting issues and assigning priorities from daily reports.
+export function buildAction04Prompt(
+  input: Action04PromptInput
+): Action04PromptOutput {
+  const systemPrompt = buildSystemPrompt();
+  const userPrompt = buildUserPrompt(input);
 
-Report ID: ${input.reportId}
-Reporter: ${input.reporterName}
-Report Date: ${input.reportDate}
-
-Report Content:
-${input.reportContent}
-
-${
-  input.previousIssues && input.previousIssues.length > 0
-    ? `Previous Issues Context:
-${input.previousIssues.map((issue) => `- [${issue.id}] ${issue.title} (Status: ${issue.status})`).join("\n")}`
-    : ""
+  return {
+    systemPrompt,
+    userPrompt,
+    version: ACTION_04_PROMPT_VERSION,
+  };
 }
 
-Your tasks:
-1. Extract all issues, bottlenecks, and risks mentioned in the report
-2. Categorize each issue (e.g., technical, resource, dependency, process, other)
-3. Assign priority levels (critical, high, medium, low) based on:
-   - Impact on project timeline
-   - Number of people affected
-   - Severity of the issue
-   - Dependencies on other work
-4. Identify any escalation conditions that require human review
+function buildSystemPrompt(): string {
+  return `You are an AI agent responsible for analyzing daily reports and extracting issues with priority classification.
+
+Your role is to:
+1. Read and comprehend confirmed daily reports from team members
+2. Identify and extract issues, bottlenecks, and risks mentioned in the reports
+3. Categorize each issue appropriately
+4. Assign priority levels based on impact and urgency
 5. Provide reasoning for each priority assignment
+6. Generate a structured report for the department head
 
-Output format:
-- For each issue: [ISSUE_ID] Title | Category | Priority | Reasoning
-- Escalation flags: [ESCALATION] Reason | Requires Human Review: Yes/No
+When analyzing reports:
+- Look for explicit problems, blockers, and risks
+- Identify implicit issues from context and patterns
+- Consider dependencies between issues
+- Assess impact on overall project progress
+- Evaluate urgency based on timeline and severity
 
-Be concise and structured in your response.`;
+Priority levels:
+- CRITICAL: Immediate action required, blocks multiple tasks or high-impact deliverables
+- HIGH: Should be addressed within 1-2 days, affects project timeline
+- MEDIUM: Should be addressed within a week, moderate impact
+- LOW: Can be addressed in normal workflow, minimal impact
 
-  return basePrompt;
+Output format must be JSON with the following structure:
+{
+  "issues": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "category": "string",
+      "source": "string (employee name)",
+      "priority": "critical|high|medium|low",
+      "reasoning": "string",
+      "suggestedAction": "string"
+    }
+  ],
+  "summary": {
+    "totalIssuesFound": number,
+    "criticalCount": number,
+    "highCount": number,
+    "mediumCount": number,
+    "lowCount": number,
+    "overallRiskLevel": "critical|high|medium|low"
+  },
+  "recommendations": ["string"]
+}`;
+}
+
+function buildUserPrompt(input: Action04PromptInput): string {
+  const reportsSummary = input.confirmedReports
+    .map(
+      (report) =>
+        `[${report.employeeName}] (Submitted: ${report.submittedAt})\n${report.reportContent}`
+    )
+    .join("\n\n---\n\n");
+
+  const previousIssuesContext =
+    input.previousIssues && input.previousIssues.length > 0
+      ? `\nPrevious Issues Status:\n${input.previousIssues
+          .map((issue) => `- ${issue.title} (${issue.status})`)
+          .join("\n")}`
+      : "";
+
+  const priorityFrameworkContext = input.priorityFramework
+    ? `\nPriority Framework:\n- Critical: ${input.priorityFramework.criticalThreshold}\n- High: ${input.priorityFramework.highThreshold}\n- Medium: ${input.priorityFramework.mediumThreshold}`
+    : "";
+
+  const departmentContextInfo = input.departmentContext
+    ? `\nDepartment Context:\n${input.departmentContext}`
+    : "";
+
+  return `Please analyze the following daily reports and extract all issues, bottlenecks, and risks. Assign priority levels and provide reasoning for each.
+
+Daily Reports:
+${reportsSummary}${previousIssuesContext}${priorityFrameworkContext}${departmentContextInfo}
+
+Extract and prioritize all issues found in these reports. Consider both explicit problems and implicit risks based on the context.`;
 }

@@ -22,88 +22,98 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThreshold: number;
+  escalationThresholds: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Tx3Imp1Action02Result {
-  identifiedNonReporters: Array<{
+  identifiedNonSubmitters: Array<{
     memberId: string;
     memberName: string;
-    status: "not_submitted" | "delayed";
-    daysOverdue?: number;
+    daysOverdue: number;
+    reminderCount: number;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
-    reason: string;
-    priority: "high" | "medium" | "low";
+    escalationReason: string;
+    shouldSendReminder: boolean;
   }>;
   analysisTimestamp: string;
 }
 
-export function buildAction02Prompt(
-  context: Tx3Imp1PromptContext
-): string {
+export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
   const {
     confirmationEmailContent,
     currentTimestamp,
     submissionDeadline,
-    escalationThreshold,
+    escalationThresholds,
   } = context;
 
-  const nonSubmittedMembers = confirmationEmailContent.reportedMembers
+  const pendingMembers = confirmationEmailContent.reportedMembers
     .filter((member) => member.status !== "submitted")
-    .map((member) => `- ${member.memberName} (ID: ${member.memberId})`)
+    .map(
+      (member) =>
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}`
+    )
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying non-reporters and determining escalation targets from confirmation email content.
+  const deadlineDate = new Date(submissionDeadline);
+  const currentDate = new Date(currentTimestamp);
+  const daysOverdue = Math.floor(
+    (currentDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
-## Current Context
-- Current Timestamp: ${currentTimestamp}
-- Submission Deadline: ${submissionDeadline}
-- Escalation Threshold (days overdue): ${escalationThreshold}
+  return `You are an AI agent responsible for identifying non-submitting members from confirmation email content and determining escalation targets.
 
-## Confirmation Email Content
+## Confirmation Email Information
 - Email ID: ${confirmationEmailContent.emailId}
 - Sent At: ${confirmationEmailContent.sentAt}
 - Subject: ${confirmationEmailContent.subject}
 
-## Reported Members Status
-${nonSubmittedMembers || "All members have submitted their reports."}
+## Current Status
+- Current Timestamp: ${currentTimestamp}
+- Submission Deadline: ${submissionDeadline}
+- Days Overdue: ${daysOverdue}
+
+## Pending/Overdue Members
+${pendingMembers}
+
+## Escalation Configuration
+- Maximum Reminders per Member: ${escalationThresholds.maxReminders}
+- Reminder Interval: ${escalationThresholds.reminderIntervalMinutes} minutes
 
 ## Task
-1. Identify all members who have not submitted their reports (status: "not_submitted" or "overdue")
-2. Calculate days overdue for delayed submissions
-3. Determine which members should be escalated based on the escalation threshold
-4. Assign priority levels (high/medium/low) to escalation targets
+1. Analyze the confirmation email content to identify members who have not submitted their reports
+2. Classify each non-submitter as either "pending" (within grace period) or "overdue" (past deadline)
+3. Determine which members should receive reminder notifications based on:
+   - Current submission status
+   - Days overdue (if applicable)
+   - Reminder count (not to exceed ${escalationThresholds.maxReminders})
+   - Time since last reminder (should respect ${escalationThresholds.reminderIntervalMinutes} minute interval)
+4. Identify escalation targets that require special handling or human review
 
 ## Output Format
 Return a JSON object with the following structure:
 {
-  "identifiedNonReporters": [
+  "identifiedNonSubmitters": [
     {
       "memberId": "string",
       "memberName": "string",
-      "status": "not_submitted" | "delayed",
-      "daysOverdue": number (optional, only for delayed)
+      "daysOverdue": number,
+      "reminderCount": number
     }
   ],
   "escalationTargets": [
     {
       "memberId": "string",
       "memberName": "string",
-      "reason": "string",
-      "priority": "high" | "medium" | "low"
+      "escalationReason": "string",
+      "shouldSendReminder": boolean
     }
   ],
   "analysisTimestamp": "${currentTimestamp}"
-}
-
-## Escalation Rules
-- High Priority: Days overdue >= ${escalationThreshold}
-- Medium Priority: Days overdue between ${Math.ceil(escalationThreshold / 2)} and ${escalationThreshold - 1}
-- Low Priority: Days overdue < ${Math.ceil(escalationThreshold / 2)}
-- Not submitted members are automatically high priority`;
-
-  return prompt;
+}`;
 }

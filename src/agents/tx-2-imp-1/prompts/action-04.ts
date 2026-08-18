@@ -6,75 +6,80 @@ export const ACTION_04_PROMPT_VERSION = "1.0.0";
 export interface Action04PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
-  reminderContext: {
-    totalEngineers: number;
-    submittedCount: number;
-    overdueCount: number;
-    notSubmittedCount: number;
-  };
   escalationRules: {
-    maxReminderAttempts: number;
-    reminderIntervalMinutes: number;
+    maxReminders: number;
+    reminderIntervalHours: number;
   };
+  departmentMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    department: string;
+  }>;
+  submissionStatus: Array<{
+    memberId: string;
+    submitted: boolean;
+    submittedAt?: string;
+    isOverdue: boolean;
+  }>;
 }
 
 export interface Action04PromptOutput {
-  systemPrompt: string;
-  userPrompt: string;
-  version: string;
+  escalationCandidates: Array<{
+    memberId: string;
+    memberName: string;
+    memberEmail: string;
+    reason: string;
+    reminderCount: number;
+    shouldEscalate: boolean;
+  }>;
+  escalationSummary: {
+    totalCandidates: number;
+    criticalCases: number;
+    recommendedActions: string[];
+  };
 }
 
-export function buildAction04Prompt(
-  input: Action04PromptInput
-): Action04PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have not submitted their daily reports.
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const systemPrompt = `You are an AI agent responsible for escalation decision-making in the morning report management system.
+Your task is to analyze submission status and determine which members require escalation based on predefined rules.
 
-Your role is to:
-1. Identify engineers who have not submitted reports or submitted late
-2. Determine which engineers should receive reminders based on escalation rules
-3. Generate appropriate reminder messages
-4. Track reminder attempts to prevent over-notification
+Escalation Criteria:
+- Members who have not submitted reports by the deadline
+- Members whose reports are overdue by more than ${input.overdueThresholdHours} hours
+- Members who have received reminders but still have not submitted (up to ${input.escalationRules.maxReminders} reminders)
 
-Reporting deadline: ${input.reportingDeadline}
-Overdue threshold: ${input.overdueThresholdHours} hours
-Maximum reminder attempts per engineer: ${input.escalationRules.maxReminderAttempts}
-Reminder interval: ${input.escalationRules.reminderIntervalMinutes} minutes
+Department Members:
+${input.departmentMembers.map((m) => `- ${m.id}: ${m.name} (${m.email}) - ${m.department}`).join("\n")}
 
-Current status:
-- Total engineers: ${input.reminderContext.totalEngineers}
-- Submitted: ${input.reminderContext.submittedCount}
-- Overdue: ${input.reminderContext.overdueCount}
-- Not submitted: ${input.reminderContext.notSubmittedCount}
+Current Submission Status:
+${input.submissionStatus
+  .map((s) => {
+    const member = input.departmentMembers.find((m) => m.id === s.memberId);
+    return `- ${member?.name || s.memberId}: ${s.submitted ? `Submitted at ${s.submittedAt}` : "Not submitted"} (Overdue: ${s.isOverdue})`;
+  })
+  .join("\n")}
 
-Guidelines:
-- Only send reminders to engineers who have not submitted or are overdue
-- Respect the maximum reminder attempts limit
-- Maintain a professional and supportive tone
-- Log all reminder attempts with timestamps
-- Escalate cases where engineers have received multiple reminders without response`;
+Reporting Deadline: ${input.reportingDeadline}
 
-  const userPrompt = `Based on the current reporting status and escalation rules, please:
+Your response must be a valid JSON object with the following structure:
+{
+  "escalationCandidates": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "memberEmail": "string",
+      "reason": "string describing why escalation is needed",
+      "reminderCount": number,
+      "shouldEscalate": boolean
+    }
+  ],
+  "escalationSummary": {
+    "totalCandidates": number,
+    "criticalCases": number,
+    "recommendedActions": ["string"]
+  }
+}`;
 
-1. Identify which engineers should receive reminder notifications
-2. Determine the appropriate reminder message for each engineer
-3. Check if any engineers have exceeded the maximum reminder attempts
-4. Flag any cases that require human review or escalation
-
-Current context:
-- Reporting deadline: ${input.reportingDeadline}
-- Engineers not submitted: ${input.reminderContext.notSubmittedCount}
-- Engineers overdue: ${input.reminderContext.overdueCount}
-- Maximum reminders allowed: ${input.escalationRules.maxReminderAttempts}
-
-Please provide:
-1. List of engineers to send reminders to
-2. Recommended reminder message template
-3. Any escalation flags for human review
-4. Timestamp for reminder batch processing`;
-
-  return {
-    systemPrompt,
-    userPrompt,
-    version: ACTION_04_PROMPT_VERSION,
-  };
+  return systemPrompt;
 }

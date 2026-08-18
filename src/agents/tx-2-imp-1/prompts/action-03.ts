@@ -3,72 +3,59 @@
 
 const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-interface Action03PromptInput {
+interface Action03PromptContext {
   reportingDeadline: string;
   escalationThreshold: number;
-  reportSubmissionStatus: Array<{
-    employeeId: string;
-    employeeName: string;
-    submitted: boolean;
-    submittedAt?: string;
-  }>;
+  systemErrorRetryCount: number;
 }
 
-interface Action03PromptOutput {
+interface Action03PromptResult {
   version: string;
-  systemPrompt: string;
-  userPrompt: string;
+  action: string;
+  instructions: string;
+  validationRules: string[];
+  escalationConditions: string[];
 }
 
-function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const unsubmittedEmployees = input.reportSubmissionStatus.filter(
-    (status) => !status.submitted
-  );
-
-  const systemPrompt = `You are an AI agent responsible for identifying unreported employees and determining escalation actions in the morning report management system.
-
-Your role is to:
-1. Analyze the report submission status provided
-2. Identify employees who have not submitted their reports
-3. Determine which employees require escalation based on the escalation threshold
-4. Generate a clear list of unreported and delayed employees
-5. Prepare notification content for the department head
-
-You must be precise and factual in your analysis. Only flag employees as unreported if they have not submitted by the deadline.`;
-
-  const userPrompt = `Analyze the following report submission status and identify unreported employees:
-
-Reporting Deadline: ${input.reportingDeadline}
-Escalation Threshold (hours after deadline): ${input.escalationThreshold}
-
-Current Submission Status:
-${input.reportSubmissionStatus
-  .map(
-    (status) =>
-      `- ${status.employeeName} (ID: ${status.employeeId}): ${
-        status.submitted ? `Submitted at ${status.submittedAt}` : "Not submitted"
-      }`
-  )
-  .join("\n")}
-
-Unreported Employees (${unsubmittedEmployees.length}):
-${
-  unsubmittedEmployees.length > 0
-    ? unsubmittedEmployees
-        .map((emp) => `- ${emp.employeeName} (ID: ${emp.employeeId})`)
-        .join("\n")
-    : "None"
-}
-
-Please provide:
-1. A summary of the current submission status
-2. List of employees requiring immediate escalation
-3. Recommended notification actions for the department head`;
-
+function buildAction03Prompt(context: Action03PromptContext): Action03PromptResult {
   return {
     version: ACTION_03_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
+    action: "validate-report-content",
+    instructions: `
+You are an AI agent responsible for validating daily report content submitted by engineers.
+
+Your task is to:
+1. Receive engineer input containing: yesterday's achievements, today's plans, and current issues
+2. Validate the completeness and appropriateness of the input
+3. Check against the following criteria:
+   - All required fields are filled
+   - Content is relevant and coherent
+   - No sensitive information is exposed
+   - Length is within acceptable bounds
+4. If validation passes, prepare for system registration
+5. If validation fails, identify specific issues and prepare escalation
+
+Reporting Deadline: ${context.reportingDeadline}
+Escalation Threshold: ${context.escalationThreshold} validation failures
+System Error Retry Count: ${context.systemErrorRetryCount}
+
+Validation Rules:
+${context ? context : ""}
+    `,
+    validationRules: [
+      "All required fields must be present",
+      "Content must be non-empty and meaningful",
+      "No duplicate or contradictory information",
+      "Submission must be within deadline",
+      "Content length must be within bounds",
+      "No sensitive data exposure",
+    ],
+    escalationConditions: [
+      "Input content is incomplete or inappropriate",
+      "Submission deadline significantly exceeded",
+      "System error during registration",
+      "Validation failure threshold exceeded",
+    ],
   };
 }
 

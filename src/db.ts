@@ -3,7 +3,7 @@
 
 // src/db.ts
 
-// In-memory storage for all entities
+// In-memory storage for database records
 const transactionLogs: Array<{
   exec_id: string;
   action_type: string;
@@ -28,20 +28,13 @@ const priorityJudgmentLogs: Array<{
 
 const confirmationEmailHistories: Array<{
   exec_id?: string;
-  manager_id?: string;
-  timestamp?: Date;
-  status?: string;
+  [key: string]: unknown;
 }> = [];
 
 export async function insertConfirmationEmailHistory(
-  history: {
-    exec_id?: string;
-    manager_id?: string;
-    timestamp?: Date;
-    status?: string;
-  }
+  record: Record<string, unknown>
 ): Promise<void> {
-  confirmationEmailHistories.push(history);
+  confirmationEmailHistories.push(record);
 }
 
 export async function getTransactionLogByExecId(
@@ -56,12 +49,12 @@ export async function getTransactionLogByExecId(
   return transactionLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertTransactionLog(log: {
+export async function insertTransactionLog(record: {
   exec_id: string;
   action_type: string;
   count: number;
 }): Promise<{ inserted: boolean }> {
-  transactionLogs.push(log);
+  transactionLogs.push(record);
   return { inserted: true };
 }
 
@@ -77,12 +70,12 @@ export async function getMailSendLogsByExecId(
   return mailSendLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertMailSendLog(log: {
+export async function insertMailSendLog(record: {
   exec_id: string;
   recipient_id: string;
   mail_type: string;
 }): Promise<{ inserted: boolean }> {
-  mailSendLogs.push(log);
+  mailSendLogs.push(record);
   return { inserted: true };
 }
 
@@ -97,11 +90,11 @@ export async function getExtractedIssuesByExecId(
   return extractedIssues.filter((issue) => issue.exec_id === exec_id);
 }
 
-export async function insertExtractedIssue(issue: {
+export async function insertExtractedIssue(record: {
   exec_id: string;
   issue_id: string;
 }): Promise<{ inserted: boolean }> {
-  extractedIssues.push(issue);
+  extractedIssues.push(record);
   return { inserted: true };
 }
 
@@ -116,10 +109,10 @@ export async function getPriorityJudgmentLogsByExecId(
   return priorityJudgmentLogs.filter((log) => log.exec_id === exec_id);
 }
 
-export async function insertPriorityJudgmentLog(log: {
+export async function insertPriorityJudgmentLog(record: {
   exec_id: string;
   judgment_result: string;
 }): Promise<{ inserted: boolean }> {
-  priorityJudgmentLogs.push(log);
+  priorityJudgmentLogs.push(record);
   return { inserted: true };
 }

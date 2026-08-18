@@ -3,87 +3,81 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04Context {
-  engineerId: string;
+export interface Action04PromptInput {
   engineerName: string;
+  engineerEmail: string;
   reportDate: string;
-  previousReportContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
-  };
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
   submissionDeadline: string;
-  systemTimestamp: string;
+  systemName: string;
 }
 
-export interface Action04ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  validatedContent: {
-    yesterday: string;
-    today: string;
-    issues: string;
+export interface Action04PromptOutput {
+  prompt: string;
+  version: string;
+  timestamp: string;
+}
+
+export function buildAction04Prompt(
+  input: Action04PromptInput
+): Action04PromptOutput {
+  const {
+    engineerName,
+    engineerEmail,
+    reportDate,
+    yesterdayAccomplishments,
+    todayPlans,
+    currentIssues,
+    submissionDeadline,
+    systemName,
+  } = input;
+
+  const timestamp = new Date().toISOString();
+
+  const promptContent = `You are an AI agent responsible for registering daily reports into the management system.
+
+**Task: Register Daily Report to Management System**
+
+Engineer Information:
+- Name: ${engineerName}
+- Email: ${engineerEmail}
+- Report Date: ${reportDate}
+- Submission Deadline: ${submissionDeadline}
+
+Report Content:
+- Yesterday's Accomplishments: ${yesterdayAccomplishments}
+- Today's Plans: ${todayPlans}
+- Current Issues: ${currentIssues}
+
+System: ${systemName}
+
+**Your Responsibilities:**
+1. Validate that all required fields are present and properly formatted
+2. Register the daily report into the management system database
+3. Ensure data integrity and consistency
+4. Generate a registration confirmation with timestamp
+5. Prepare for the next action: sending confirmation email to administrators
+
+**Validation Criteria:**
+- Engineer name must not be empty
+- Email must be in valid format
+- Report date must be valid
+- At least one field (accomplishments, plans, or issues) must contain content
+- Submission must be within or before the deadline
+
+**Output Format:**
+Provide a structured response indicating:
+- Registration status (success/failure)
+- Report ID (if successful)
+- Any validation errors (if applicable)
+- Timestamp of registration
+- Next action recommendation`;
+
+  return {
+    prompt: promptContent,
+    version: ACTION_04_PROMPT_VERSION,
+    timestamp,
   };
-}
-
-export function buildAction04Prompt(context: Action04Context): string {
-  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
-
-## Current Context
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Deadline: ${context.submissionDeadline}
-- Current System Time: ${context.systemTimestamp}
-
-## Previous Report Content to Validate
-Yesterday's Achievements:
-${context.previousReportContent.yesterday}
-
-Today's Plans:
-${context.previousReportContent.today}
-
-Current Issues/Challenges:
-${context.previousReportContent.issues}
-
-## Validation Task
-Your task is to validate the submitted report content according to these criteria:
-
-1. **Completeness Check**
-   - Verify that all three sections (yesterday, today, issues) contain meaningful content
-   - Ensure each section has at least 10 characters of substantive text
-   - Flag any empty or placeholder-only sections
-
-2. **Appropriateness Check**
-   - Verify content is work-related and relevant to daily reporting
-   - Check for any inappropriate or off-topic content
-   - Ensure language is professional and clear
-
-3. **Consistency Check**
-   - Verify that today's plans are logically related to yesterday's achievements
-   - Check that identified issues are realistic and actionable
-   - Ensure no contradictions between sections
-
-4. **Format Check**
-   - Verify text is properly formatted and readable
-   - Check for excessive special characters or formatting issues
-   - Ensure content is not excessively long (max 500 chars per section)
-
-## Output Format
-Return a JSON object with the following structure:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "validatedContent": {
-    "yesterday": string,
-    "today": string,
-    "issues": string
-  }
-}
-
-Provide your validation result in valid JSON format only.`;
-
-  return prompt;
 }

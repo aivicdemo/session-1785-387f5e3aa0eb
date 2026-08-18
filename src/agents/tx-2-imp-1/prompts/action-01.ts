@@ -3,87 +3,68 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
+export interface Tx2Imp1Context {
+  engineerId: string;
+  engineerName: string;
   submissionDeadline: string;
-  targetDate: string;
-  engineerCount: number;
-  systemName: string;
+  currentTime: string;
+  systemStatus: "operational" | "degraded" | "error";
 }
 
-export interface Action01PromptOutput {
-  prompt: string;
-  version: string;
+export interface Tx2Imp1SubmissionStatus {
+  engineerId: string;
+  engineerName: string;
+  submitted: boolean;
+  submissionTime?: string;
+  isLate: boolean;
+  daysOverdue?: number;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): Action01PromptOutput {
-  const {
-    submissionDeadline,
-    targetDate,
-    engineerCount,
-    systemName,
-  } = input;
-
-  const prompt = `You are an AI agent responsible for monitoring daily report submission status in the "${systemName}" system.
-
-**Task: Confirm all engineers' daily report submission status**
-
-**Context:**
-- Target date: ${targetDate}
-- Submission deadline: ${submissionDeadline}
-- Total engineers to monitor: ${engineerCount}
-- Current system time: ${new Date().toISOString()}
-
-**Objective:**
-Check the submission status of all ${engineerCount} engineers' daily reports. Identify which engineers have submitted their reports and which have not.
-
-**Required Actions:**
-1. Query the daily report submission system for all engineers' submission records
-2. Compare each engineer's submission timestamp against the deadline: ${submissionDeadline}
-3. Classify engineers into two categories:
-   - Submitted: Engineers who submitted before or at the deadline
-   - Not submitted: Engineers who have not submitted or submitted after the deadline
-4. Record the submission status with timestamps for each engineer
-5. Generate a summary of submission statistics
-
-**Output Format:**
-Return a JSON object with the following structure:
-{
-  "targetDate": "${targetDate}",
-  "submissionDeadline": "${submissionDeadline}",
-  "totalEngineers": ${engineerCount},
-  "submitted": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "submittedAt": "ISO8601 timestamp",
-      "status": "on-time" | "late"
-    }
-  ],
-  "notSubmitted": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "status": "not-submitted"
-    }
-  ],
-  "summary": {
-    "totalSubmitted": number,
-    "totalNotSubmitted": number,
-    "onTimeCount": number,
-    "lateCount": number,
-    "submissionRate": number
-  }
+export interface Tx2Imp1ReportCheckResult {
+  totalEngineers: number;
+  submittedCount: number;
+  notSubmittedEngineers: Tx2Imp1SubmissionStatus[];
+  lateEngineers: Tx2Imp1SubmissionStatus[];
+  onTimeEngineers: Tx2Imp1SubmissionStatus[];
+  checkTimestamp: string;
 }
 
-**Constraints:**
-- Only report factual submission data from the system
-- Do not make assumptions about engineers who have not submitted
-- Include all engineers in the report, whether submitted or not
-- Timestamps must be in ISO 8601 format
-- Submission rate should be calculated as (totalSubmitted / totalEngineers) * 100`;
+export function buildAction01Prompt(context: Tx2Imp1Context): string {
+  const lines: string[] = [
+    "# Action 01: 全員の日報受信状況確認",
+    "",
+    "## 目的",
+    "設定時刻に全員の日報受信状況を確認し、未提出者と遅延者を自動判定する",
+    "",
+    "## 実行コンテキスト",
+    `- 実行時刻: ${context.currentTime}`,
+    `- 提出期限: ${context.submissionDeadline}`,
+    `- システム状態: ${context.systemStatus}`,
+    "",
+    "## 実行手順",
+    "1. 日報管理システムから全エンジニアの提出状況を取得する",
+    "2. 各エンジニアについて以下を判定する:",
+    "   - 提出済み/未提出の判定",
+    "   - 提出済みの場合、提出時刻が期限内か期限超過かを判定",
+    "   - 期限超過の場合、超過日数を計算",
+    "3. 結果を以下のカテゴリに分類する:",
+    "   - 期限内提出済み",
+    "   - 期限超過提出済み（遅延者）",
+    "   - 未提出（報告漏れ）",
+    "4. 集計結果を構造化データとして出力する",
+    "",
+    "## 出力形式",
+    "JSON形式で以下の情報を含める:",
+    "- 総エンジニア数",
+    "- 提出済み数",
+    "- 未提出者リスト（エンジニアID、名前、未提出理由）",
+    "- 遅延者リスト（エンジニアID、名前、提出時刻、超過日数）",
+    "- 期限内提出者数",
+    "- チェック実行時刻",
+    "",
+    "## エラーハンドリング",
+    `システム状態が「${context.systemStatus}」の場合、適切なエラーメッセージを返す`,
+  ];
 
-  return {
-    prompt,
-    version: ACTION_01_PROMPT_VERSION,
-  };
+  return lines.join("\n");
 }

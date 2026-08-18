@@ -3,43 +3,72 @@
 
 type TableName = "users" | "daily_reports" | "report_send_history" | "audit_events";
 
-interface TableRow {
-  [key: string]: unknown;
-}
-
-interface TableOperations {
-  del(): Promise<number>;
-  insert(row: TableRow | TableRow[]): Promise<void>;
-  where(conditions: Record<string, unknown>): Promise<TableRow[]>;
+interface TableData {
+  users: Array<{
+    user_id: string;
+    user_name: string;
+    department: string;
+    role: string;
+  }>;
+  daily_reports: Array<{
+    report_id: string;
+    user_id: string;
+    report_date: string;
+    yesterday_achievement: string;
+    today_plan: string;
+    issues: string;
+    created_at: Date;
+  }>;
+  report_send_history: Array<{
+    history_id: string;
+    user_id: string;
+    report_date: string;
+    sent_at: Date;
+    status: string;
+  }>;
+  audit_events: Array<{
+    event_type: string;
+    target_role: string;
+    unsubmitted_count: number;
+    timestamp: Date;
+    [key: string]: unknown;
+  }>;
 }
 
 interface TestDatabase {
-  (tableName: TableName): TableOperations;
+  (tableName: TableName): TableQuery;
 }
 
-const createTestDatabase = async (): Promise<TestDatabase> => {
-  const tables: Record<TableName, TableRow[]> = {
-    users: [],
-    daily_reports: [],
-    report_send_history: [],
-    audit_events: [],
-  };
+interface TableQuery {
+  del(): Promise<void>;
+  insert(data: Record<string, unknown>): Promise<void>;
+  where(conditions: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+}
 
-  const testDb: TestDatabase = (tableName: TableName): TableOperations => {
+const createInMemoryDatabase = (): {
+  tables: Map<TableName, Array<Record<string, unknown>>>;
+  query: (tableName: TableName) => TableQuery;
+} => {
+  const tables = new Map<TableName, Array<Record<string, unknown>>>([
+    ["users", []],
+    ["daily_reports", []],
+    ["report_send_history", []],
+    ["audit_events", []],
+  ]);
+
+  const query = (tableName: TableName): TableQuery => {
     return {
-      del: async (): Promise<number> => {
-        const count = tables[tableName].length;
-        tables[tableName] = [];
-        return count;
+      del: async () => {
+        tables.set(tableName, []);
       },
-
-      insert: async (row: TableRow | TableRow[]): Promise<void> => {
-        const rows = Array.isArray(row) ? row : [row];
-        tables[tableName].push(...rows);
+      insert: async (data: Record<string, unknown>) => {
+        const table = tables.get(tableName) || [];
+        table.push(data);
+        tables.set(tableName, table);
       },
-
-      where: async (conditions: Record<string, unknown>): Promise<TableRow[]> => {
-        return tables[tableName].filter((row) => {
+      where: async (conditions: Record<string, unknown>) => {
+        const table = tables.get(tableName) || [];
+        return table.filter((row) => {
           return Object.entries(conditions).every(([key, value]) => {
             return row[key] === value;
           });
@@ -48,10 +77,20 @@ const createTestDatabase = async (): Promise<TestDatabase> => {
     };
   };
 
-  return testDb;
+  return { tables, query };
 };
 
-const cleanupTestDatabase = async (db: TestDatabase): Promise<void> => {
+export const createTestDatabase = async (): Promise<TestDatabase> => {
+  const { query } = createInMemoryDatabase();
+
+  return (tableName: TableName): TableQuery => {
+    return query(tableName);
+  };
+};
+
+export const cleanupTestDatabase = async (
+  testDb: TestDatabase
+): Promise<void> => {
   const tableNames: TableName[] = [
     "users",
     "daily_reports",
@@ -60,8 +99,6 @@ const cleanupTestDatabase = async (db: TestDatabase): Promise<void> => {
   ];
 
   for (const tableName of tableNames) {
-    await db(tableName).del();
+    await testDb(tableName).del();
   }
 };
-
-export { createTestDatabase, cleanupTestDatabase };

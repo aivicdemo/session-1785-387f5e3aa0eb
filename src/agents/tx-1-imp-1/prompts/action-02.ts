@@ -3,54 +3,89 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Input {
-  engineerName: string;
-  engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlan: string;
-  currentIssues: string;
-  submissionTimestamp: string;
+export interface Action02Context {
+  engineerInput: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submittedAt: string;
+  };
+  validationRules: {
+    minAccomplishmentsLength: number;
+    minPlansLength: number;
+    minIssuesLength: number;
+    allowedIssueCategories: string[];
+  };
 }
 
-export interface Action02ValidationResult {
+export interface ValidationResult {
   isValid: boolean;
-  errors: string[];
-  warnings: string[];
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
 }
 
-export function buildAction02Prompt(input: Action02Input): string {
-  const prompt = `You are a validation agent for the daily report management system.
+export interface ValidationError {
+  field: string;
+  message: string;
+  severity: "critical" | "high";
+}
 
-Your task is to validate the engineer's daily report input for completeness and appropriateness.
+export interface ValidationWarning {
+  field: string;
+  message: string;
+}
+
+export function buildAction02Prompt(context: Action02Context): string {
+  const {
+    engineerInput,
+    validationRules,
+  } = context;
+
+  const prompt = `You are a validation agent for daily report submissions in a morning meeting management system.
+
+Your task is to validate the engineer's input for completeness and appropriateness.
 
 Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Time: ${input.submissionTimestamp}
+- ID: ${engineerInput.engineerId}
+- Name: ${engineerInput.engineerName}
+- Submission Time: ${engineerInput.submittedAt}
 
-Report Content:
-- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
-- Today's Plan: ${input.todayPlan}
-- Current Issues: ${input.currentIssues}
+Input Content:
+- Yesterday's Accomplishments: ${engineerInput.yesterdayAccomplishments}
+- Today's Plans: ${engineerInput.todayPlans}
+- Current Issues: ${engineerInput.currentIssues}
 
-Validation Criteria:
-1. All fields must be filled (not empty or null)
-2. Yesterday's accomplishments should describe concrete work completed
-3. Today's plan should be specific and actionable
-4. Current issues should be clearly articulated if any exist
-5. Content should be professional and relevant to work
-6. No fields should contain only whitespace or placeholder text
+Validation Rules:
+- Minimum accomplishments length: ${validationRules.minAccomplishmentsLength} characters
+- Minimum plans length: ${validationRules.minPlansLength} characters
+- Minimum issues length: ${validationRules.minIssuesLength} characters
+- Allowed issue categories: ${validationRules.allowedIssueCategories.join(", ")}
 
-Please validate this report and respond with:
-- A validation status (valid/invalid)
-- Any errors found (critical issues that prevent acceptance)
-- Any warnings (non-critical issues to flag)
+Please validate the input and respond with:
+1. Whether the input is valid (true/false)
+2. Any critical or high-severity errors found
+3. Any warnings about the content quality
+4. Specific recommendations for improvement if needed
 
-Format your response as JSON with the following structure:
+Respond in JSON format with the following structure:
 {
   "isValid": boolean,
-  "errors": string[],
-  "warnings": string[]
+  "errors": [
+    {
+      "field": string,
+      "message": string,
+      "severity": "critical" | "high"
+    }
+  ],
+  "warnings": [
+    {
+      "field": string,
+      "message": string
+    }
+  ],
+  "recommendations": string[]
 }`;
 
   return prompt;

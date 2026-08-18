@@ -8,13 +8,18 @@ export interface Action01PromptInput {
   engineerName: string;
   engineerId: string;
   previousReportContent?: string;
-  systemContext?: string;
+  systemContext?: Record<string, unknown>;
 }
 
 export interface Action01PromptOutput {
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
+    targetAudience: string;
+  };
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
@@ -23,44 +28,50 @@ export function buildAction01Prompt(input: Action01PromptInput): string {
     engineerName,
     engineerId,
     previousReportContent = "",
-    systemContext = "",
+    systemContext = {},
   } = input;
 
-  const previousContentSection =
-    previousReportContent.length > 0
-      ? `\n前日の日報内容:\n${previousReportContent}`
-      : "";
+  const basePrompt = `You are an AI agent responsible for generating and distributing daily report templates for engineers.
 
-  const systemContextSection =
-    systemContext.length > 0 ? `\n\nシステムコンテキスト:\n${systemContext}` : "";
+Task: Generate a daily report template for the following engineer and prepare it for distribution.
 
-  const prompt = `あなたは朝会報告管理システムのAIエージェントです。
-以下の情報に基づいて、エンジニアの日報テンプレートを自動生成して配信してください。
+Engineer Information:
+- Name: ${engineerName}
+- ID: ${engineerId}
+- Report Date: ${reportDate}
 
-【実行日時】
-${reportDate}
-
-【対象エンジニア】
-名前: ${engineerName}
-ID: ${engineerId}
-
-【タスク】
-1. 前日の日報内容を参考にしながら、本日の日報テンプレートを生成する
-2. テンプレートには以下のセクションを含める:
-   - 昨日の実績（前日の内容を参考に）
-   - 本日の予定
-   - 抱えている課題
-3. 配信チャネルを決定する（メール、チャット、その他）
-4. 配信スケジュールを設定する
-
-【出力形式】
-以下のJSON形式で返してください:
-{
-  "templateContent": "生成されたテンプレート本文",
-  "distributionChannels": ["email", "chat"],
-  "scheduledTime": "HH:mm"
+${
+  previousReportContent
+    ? `Previous Report Reference:\n${previousReportContent}\n`
+    : ""
 }
-${previousContentSection}${systemContextSection}`;
 
-  return prompt;
+System Context:
+${Object.entries(systemContext)
+  .map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`)
+  .join("\n")}
+
+Requirements:
+1. Generate a structured daily report template with the following sections:
+   - Yesterday's Achievements (実績)
+   - Today's Plans (予定)
+   - Current Issues/Challenges (課題)
+   - Risk Factors (リスク要因)
+   - Additional Notes (備考)
+
+2. Ensure the template is clear, concise, and easy to fill out
+
+3. Prepare distribution information:
+   - Identify appropriate distribution channels (email, chat, etc.)
+   - Determine optimal delivery time
+   - Set up confirmation tracking
+
+4. Include metadata:
+   - Template version
+   - Generation timestamp
+   - Target audience confirmation
+
+Output the template content and distribution plan in a structured format.`;
+
+  return basePrompt;
 }

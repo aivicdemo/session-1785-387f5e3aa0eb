@@ -7,184 +7,83 @@ export interface Action05Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedReportContent: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
-    currentIssues: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
-  submissionTimestamp: string;
-  isLate: boolean;
-  managementSystemId?: string;
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
-export interface Action05PromptInput {
+export interface Action05ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  sanitizedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
+}
+
+export interface Action05PromptConfig {
   context: Action05Context;
-  managementSystemApiEndpoint: string;
-  confirmationEmailTemplate: string;
+  validationRules: {
+    minYesterdayLength: number;
+    maxYesterdayLength: number;
+    minTodayLength: number;
+    maxTodayLength: number;
+    minIssuesLength: number;
+    maxIssuesLength: number;
+    requiredFields: string[];
+  };
+  escalationThresholds: {
+    criticalIssueKeywords: string[];
+    warningIssueKeywords: string[];
+  };
 }
 
-export interface Action05PromptOutput {
-  prompt: string;
-  version: string;
-}
-
-export function buildAction05Prompt(
-  input: Action05PromptInput
-): Action05PromptOutput {
+export function buildAction05Prompt(config: Action05PromptConfig): string {
   const {
     context,
-    managementSystemApiEndpoint,
-    confirmationEmailTemplate,
-  } = input;
+    validationRules,
+    escalationThresholds,
+  } = config;
 
-  const {
-    engineerId,
-    engineerName,
-    reportDate,
-    submittedReportContent,
-    submissionTimestamp,
-    isLate,
-  } = context;
+  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-  const lateIndicator = isLate ? "【遅延】" : "";
+Your task is to validate the engineer's input content for completeness and appropriateness.
 
-  const prompt = `# Action 05: 日報を管理システムに登録する
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
 
-## 目的
-エンジニアから受け取った日報入力内容を検証し、管理システムに登録した後、管理者に確認メールを自動配信する。
+Validation Rules:
+- Yesterday's achievements: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
+- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
+- Issues/Concerns: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
+- Required fields: ${validationRules.requiredFields.join(", ")}
 
-## 入力情報
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- 提出時刻: ${submissionTimestamp}
-- 提出状況: ${lateIndicator}${isLate ? "期限超過" : "期限内"}
+Critical Issue Keywords (escalation triggers): ${escalationThresholds.criticalIssueKeywords.join(", ")}
+Warning Issue Keywords: ${escalationThresholds.warningIssueKeywords.join(", ")}
 
-## 日報内容
-### 昨日の実績
-${submittedReportContent.yesterdayAccomplishment}
+Your validation should:
+1. Check all required fields are present and non-empty
+2. Verify content length constraints
+3. Detect critical or warning keywords in the issues section
+4. Identify incomplete or inappropriate content
+5. Provide specific error messages for each validation failure
+6. Generate warnings for suspicious patterns
+7. Return sanitized content if validation passes
 
-### 本日の予定
-${submittedReportContent.todayPlan}
+Return a structured validation result with:
+- isValid: boolean indicating if all validations passed
+- errors: array of critical validation failures
+- warnings: array of non-critical issues or suspicious patterns
+- sanitizedContent: cleaned and normalized content if valid`;
 
-### 抱えている課題
-${submittedReportContent.currentIssues}
-
-## 実行タスク
-
-### タスク1: 入力内容の最終検証
-以下の項目について検証を実施してください:
-1. 各項目が空白でないか確認
-2. 文字数が適切な範囲か確認（最小10文字、最大2000文字）
-3. 不適切な表現や機密情報が含まれていないか確認
-4. 日本語として正しく記述されているか確認
-
-検証結果を以下の形式で出力してください:
-\`\`\`json
-{
-  "isValid": boolean,
-  "validationErrors": string[],
-  "warnings": string[]
-}
-\`\`\`
-
-### タスク2: 管理システムへの登録
-検証が成功した場合、以下の情報を管理システムに登録してください:
-- エンジニアID: ${engineerId}
-- 報告日: ${reportDate}
-- 昨日の実績: ${submittedReportContent.yesterdayAccomplishment}
-- 本日の予定: ${submittedReportContent.todayPlan}
-- 抱えている課題: ${submittedReportContent.currentIssues}
-- 提出時刻: ${submissionTimestamp}
-- 提出状況: ${isLate ? "遅延" : "期限内"}
-
-管理システムAPI エンドポイント: ${managementSystemApiEndpoint}
-
-登録結果を以下の形式で出力してください:
-\`\`\`json
-{
-  "registrationSuccess": boolean,
-  "managementSystemId": string,
-  "registrationTimestamp": string,
-  "errorMessage": string | null
-}
-\`\`\`
-
-### タスク3: 確認メール配信の準備
-登録成功時、以下の情報を含む確認メールを管理者に配信してください:
-
-メールテンプレート:
-${confirmationEmailTemplate}
-
-置換変数:
-- {engineerName}: ${engineerName}
-- {reportDate}: ${reportDate}
-- {submissionTime}: ${submissionTimestamp}
-- {submissionStatus}: ${isLate ? "遅延提出" : "期限内提出"}
-- {managementSystemId}: ${context.managementSystemId || "未割り当て"}
-
-メール配信結果を以下の形式で出力してください:
-\`\`\`json
-{
-  "emailSent": boolean,
-  "recipientCount": number,
-  "sentTimestamp": string,
-  "errorMessage": string | null
-}
-\`\`\`
-
-## 出力形式
-最終的に以下の形式で統合結果を出力してください:
-\`\`\`json
-{
-  "actionId": "action-05",
-  "engineerId": "${engineerId}",
-  "reportDate": "${reportDate}",
-  "validation": {
-    "isValid": boolean,
-    "validationErrors": string[],
-    "warnings": string[]
-  },
-  "registration": {
-    "registrationSuccess": boolean,
-    "managementSystemId": string,
-    "registrationTimestamp": string,
-    "errorMessage": string | null
-  },
-  "emailDelivery": {
-    "emailSent": boolean,
-    "recipientCount": number,
-    "sentTimestamp": string,
-    "errorMessage": string | null
-  },
-  "overallStatus": "success" | "partial_success" | "failure",
-  "nextAction": string
-}
-\`\`\`
-
-## エスカレーション条件
-以下の場合は処理を中断し、エスカレーション情報を出力してください:
-1. 入力内容が不完全または不適切である場合
-2. 管理システムへの登録に失敗した場合
-3. メール配信に失敗した場合
-
-エスカレーション情報:
-\`\`\`json
-{
-  "escalationRequired": boolean,
-  "escalationReason": string,
-  "escalationLevel": "warning" | "error" | "critical",
-  "recommendedAction": string
-}
-\`\`\`
-
-## 注意事項
-- 提出が遅延している場合でも、内容が有効であれば登録を進めてください
-- メール配信失敗時は、ログに記録し、管理者への通知を試みてください
-- 登録成功後は、次のアクション（催促通知の判定）に進む準備をしてください`;
-
-  return {
-    prompt,
-    version: ACTION_05_PROMPT_VERSION,
-  };
+  return systemPrompt;
 }

@@ -18,107 +18,309 @@ export interface Action06Context {
   }>;
   departmentHead: string;
   reportDate: string;
-  totalReportsCollected: number;
-  reportingRate: number;
 }
 
 export interface Action06PromptInput {
-  context: Action06Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
   }>;
-  escalationFlags?: string[];
+  previousIssues: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+  }>;
+  departmentContext: string;
+  priorityRules: string;
 }
 
 export interface Action06PromptOutput {
-  version: string;
   systemPrompt: string;
   userPrompt: string;
-  expectedOutputFormat: {
-    type: "structured";
-    schema: {
-      reportPresentation: string;
-      priorityClassification: Array<{
-        priority: string;
-        issues: string[];
-        actionItems: string[];
-      }>;
-      recommendedActions: string[];
-      escalationRequired: boolean;
-      escalationReason?: string;
-    };
-  };
+  context: Action06Context;
 }
 
 export function buildAction06Prompt(
   input: Action06PromptInput
 ): Action06PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the daily report management workflow. Your role is to present the collected and analyzed daily reports to the department head in a clear, actionable format.
+  const reportSummary = buildReportSummary(input.confirmedReports);
+  const extractedIssues = extractIssuesFromReports(input.confirmedReports);
+  const priorityAssignments = assignPriorities(
+    extractedIssues,
+    input.priorityRules
+  );
 
-Your responsibilities:
-1. Present the overall progress status in a structured, easy-to-understand format
-2. Display the prioritized list of issues and bottlenecks
-3. Provide recommended actions based on the priority classification
-4. Flag any escalation-required situations
-5. Ensure the department head has all necessary information for the morning meeting
-
-Context:
-- Total reports collected: ${input.context.totalReportsCollected}
-- Reporting rate: ${(input.context.reportingRate * 100).toFixed(1)}%
-- Report date: ${input.context.reportDate}
-- Department head: ${input.context.departmentHead}
-
-Output format must be structured JSON with clear sections for priority classification and recommended actions.`;
-
-  const issuesSection = input.context.extractedIssues
-    .map((issue) => {
-      const priority = input.context.priorityAssignments.find(
-        (p) => p.issueId === issue.id
-      );
-      return `- [${priority?.priority || "unassigned"}] ${issue.title}: ${issue.description} (Category: ${issue.category})`;
-    })
-    .join("\n");
-
-  const userPrompt = `Based on the following collected daily reports and extracted issues, prepare a final presentation for the department head:
-
-Report Summary:
-${input.context.reportSummary}
-
-Extracted Issues and Priority Assignments:
-${issuesSection}
-
-Previous action results:
-${input.previousActions.map((a) => `Action ${a.actionNumber}: ${a.result}`).join("\n")}
-
-${input.escalationFlags && input.escalationFlags.length > 0 ? `Escalation flags to consider:\n${input.escalationFlags.join("\n")}` : ""}
-
-Please provide:
-1. A clear presentation of the overall progress status
-2. Issues grouped by priority level (critical, high, medium, low)
-3. Specific action items for each priority level
-4. Any recommendations for the department head
-5. Assessment of whether escalation is required and why`;
+  const systemPrompt = buildSystemPrompt(input.departmentContext);
+  const userPrompt = buildUserPrompt(
+    input.confirmedReports,
+    extractedIssues,
+    priorityAssignments,
+    input.previousIssues
+  );
 
   return {
-    version: ACTION_06_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
-    expectedOutputFormat: {
-      type: "structured",
-      schema: {
-        reportPresentation: "string",
-        priorityClassification: [
-          {
-            priority: "string",
-            issues: ["string"],
-            actionItems: ["string"],
-          },
-        ],
-        recommendedActions: ["string"],
-        escalationRequired: true,
-        escalationReason: "string (optional)",
-      },
+    context: {
+      reportSummary,
+      extractedIssues,
+      priorityAssignments,
+      departmentHead: input.departmentContext,
+      reportDate: new Date().toISOString().split("T")[0],
     },
   };
+}
+
+function buildReportSummary(
+  reports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>
+): string {
+  const summaryLines = reports.map(
+    (report) =>
+      `${report.employeeName} (${report.employeeId}): ${report.reportContent}`
+  );
+  return summaryLines.join("\n");
+}
+
+function extractIssuesFromReports(
+  reports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>
+): Array<{
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+}> {
+  const issues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }> = [];
+  const issueKeywords = [
+    "issue",
+    "problem",
+    "blocker",
+    "risk",
+    "challenge",
+    "bottleneck",
+  ];
+
+  reports.forEach((report, reportIndex) => {
+    const contentLower = report.reportContent.toLowerCase();
+    issueKeywords.forEach((keyword) => {
+      if (contentLower.includes(keyword)) {
+        const issueId = `issue_${reportIndex}_${keyword}`;
+        issues.push({
+          id: issueId,
+          title: `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} from ${report.employeeName}`,
+          description: report.reportContent,
+          category: categorizeIssue(report.reportContent),
+        });
+      }
+    });
+  });
+
+  return issues;
+}
+
+function categorizeIssue(content: string): string {
+  const contentLower = content.toLowerCase();
+  if (
+    contentLower.includes("technical") ||
+    contentLower.includes("code") ||
+    contentLower.includes("bug")
+  ) {
+    return "technical";
+  }
+  if (
+    contentLower.includes("resource") ||
+    contentLower.includes("team") ||
+    contentLower.includes("staff")
+  ) {
+    return "resource";
+  }
+  if (
+    contentLower.includes("schedule") ||
+    contentLower.includes("deadline") ||
+    contentLower.includes("timeline")
+  ) {
+    return "schedule";
+  }
+  if (
+    contentLower.includes("communication") ||
+    contentLower.includes("coordination")
+  ) {
+    return "communication";
+  }
+  return "other";
+}
+
+function assignPriorities(
+  issues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>,
+  priorityRules: string
+): Array<{
+  issueId: string;
+  priority: "critical" | "high" | "medium" | "low";
+  reasoning: string;
+}> {
+  return issues.map((issue) => {
+    const priority = determinePriority(issue, priorityRules);
+    return {
+      issueId: issue.id,
+      priority,
+      reasoning: generateReasoningForPriority(issue, priority),
+    };
+  });
+}
+
+function determinePriority(
+  issue: {
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  },
+  priorityRules: string
+): "critical" | "high" | "medium" | "low" {
+  const descriptionLower = issue.description.toLowerCase();
+
+  if (
+    descriptionLower.includes("critical") ||
+    descriptionLower.includes("blocker") ||
+    descriptionLower.includes("urgent")
+  ) {
+    return "critical";
+  }
+
+  if (
+    descriptionLower.includes("high") ||
+    issue.category === "technical" ||
+    issue.category === "schedule"
+  ) {
+    return "high";
+  }
+
+  if (
+    descriptionLower.includes("medium") ||
+    issue.category === "resource"
+  ) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function generateReasoningForPriority(
+  issue: {
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  },
+  priority: "critical" | "high" | "medium" | "low"
+): string {
+  const categoryReasoning: Record<string, string> = {
+    technical: "Technical issues can impact development velocity",
+    resource: "Resource constraints affect team capacity",
+    schedule: "Schedule issues may delay project milestones",
+    communication: "Communication gaps can cause misalignment",
+    other: "General issue requiring attention",
+  };
+
+  const priorityReasoning: Record<string, string> = {
+    critical: "Requires immediate action to prevent project impact",
+    high: "Should be addressed in current sprint or cycle",
+    medium: "Can be scheduled for near-term resolution",
+    low: "Can be addressed in future planning cycles",
+  };
+
+  return `${categoryReasoning[issue.category] || categoryReasoning.other}. ${priorityReasoning[priority]}`;
+}
+
+function buildSystemPrompt(departmentContext: string): string {
+  return `You are an AI assistant specialized in analyzing daily reports and extracting key issues and bottlenecks.
+Your role is to:
+1. Analyze submitted daily reports from team members
+2. Identify and extract issues, challenges, and bottlenecks
+3. Categorize issues by type (technical, resource, schedule, communication, other)
+4. Assign priority levels (critical, high, medium, low) based on impact and urgency
+5. Provide clear reasoning for each priority assignment
+6. Generate a comprehensive summary report for department leadership
+
+Department Context: ${departmentContext}
+
+Always maintain objectivity and base priority assignments on concrete evidence from the reports.`;
+}
+
+function buildUserPrompt(
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
+  }>,
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>,
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
+  }>,
+  previousIssues: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+  }>
+): string {
+  const reportSection = confirmedReports
+    .map(
+      (report) =>
+        `[${report.employeeName}] (${report.submittedAt})\n${report.reportContent}`
+    )
+    .join("\n\n");
+
+  const previousIssuesSection =
+    previousIssues.length > 0
+      ? `\nPrevious Issues (for context):\n${previousIssues.map((issue) => `- ${issue.title} (${issue.priority}, ${issue.status})`).join("\n")}`
+      : "";
+
+  return `Please analyze the following daily reports and provide a comprehensive issue analysis:
+
+SUBMITTED REPORTS:
+${reportSection}
+${previousIssuesSection}
+
+EXTRACTED ISSUES FOR REVIEW:
+${extractedIssues.map((issue) => `- ${issue.title} (${issue.category}): ${issue.description}`).join("\n")}
+
+PRIORITY ASSIGNMENTS:
+${priorityAssignments.map((assignment) => `- ${assignment.issueId}: ${assignment.priority} - ${assignment.reasoning}`).join("\n")}
+
+Please:
+1. Validate the extracted issues and priority assignments
+2. Identify any missing issues or misclassifications
+3. Provide recommendations for addressing critical and high-priority issues
+4. Generate a summary report suitable for department leadership`;
 }

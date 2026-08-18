@@ -3,89 +3,135 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03PromptInput {
+export interface Action03Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionDeadline: string;
-  systemName: string;
+  submittedContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    issues: string;
+  };
+  submissionTimestamp: string;
+  systemId: string;
+}
+
+export interface Action03ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  validatedContent: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    issues: string;
+  };
+}
+
+export interface Action03PromptInput {
+  context: Action03Context;
+  validationRules: {
+    minAccomplishmentLength: number;
+    minPlanLength: number;
+    minIssueLength: number;
+    maxAccomplishmentLength: number;
+    maxPlanLength: number;
+    maxIssueLength: number;
+  };
+  previousValidationErrors?: string[];
 }
 
 export interface Action03PromptOutput {
-  validationStatus: "valid" | "invalid";
-  validationErrors: string[];
-  registrationPayload: {
-    engineerName: string;
-    engineerEmail: string;
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    submittedAt: string;
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  expectedOutputFormat: {
+    type: "json";
+    schema: {
+      isValid: "boolean";
+      errors: "string[]";
+      warnings: "string[]";
+      validatedContent: {
+        yesterdayAccomplishments: "string";
+        todayPlans: "string";
+        issues: "string";
+      };
+    };
   };
-  confirmationEmailRecipients: string[];
-  escalationRequired: boolean;
-  escalationReason?: string;
 }
 
-export function buildAction03Prompt(input: Action03PromptInput): string {
-  const prompt = `You are an AI agent responsible for validating daily report submissions and preparing them for system registration.
+export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const {
+    context,
+    validationRules,
+    previousValidationErrors = [],
+  } = input;
 
-## Task: Validate and Prepare Daily Report for Registration
+  const systemPrompt = `You are a validation agent for the morning report management system (朝会報告管理システム).
+Your role is to validate engineer daily report submissions for completeness and appropriateness.
 
-### Input Information:
-- Engineer Name: ${input.engineerName}
-- Engineer Email: ${input.engineerEmail}
-- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
-- Today's Plans: ${input.todayPlans}
-- Current Issues: ${input.currentIssues}
-- Submission Deadline: ${input.submissionDeadline}
-- System Name: ${input.systemName}
+Validation Responsibilities:
+1. Check that all required fields are present and non-empty
+2. Verify content length meets minimum and maximum requirements
+3. Detect incomplete, vague, or inappropriate content
+4. Identify potential issues or concerns in the submission
+5. Provide constructive feedback for improvement
 
-### Validation Rules:
-1. All fields must be non-empty
-2. Yesterday's accomplishments must be specific and measurable
-3. Today's plans must be realistic and achievable
-4. Current issues must be clearly described with context
-5. Submission must be within or close to the deadline
-6. Text length constraints:
-   - Accomplishments: 50-500 characters
-   - Plans: 50-500 characters
-   - Issues: 50-1000 characters
+Validation Rules:
+- Yesterday's Accomplishments: ${validationRules.minAccomplishmentLength}-${validationRules.maxAccomplishmentLength} characters
+- Today's Plans: ${validationRules.minPlanLength}-${validationRules.maxPlanLength} characters
+- Issues/Concerns: ${validationRules.minIssueLength}-${validationRules.maxIssueLength} characters
 
-### Your Responsibilities:
-1. Validate the submission against all rules
-2. If valid, prepare the registration payload with current timestamp
-3. Identify confirmation email recipients (system administrators)
-4. Determine if escalation is needed for incomplete or inappropriate content
-5. Provide clear validation error messages if validation fails
-
-### Output Format:
+Output Format:
 Return a JSON object with the following structure:
 {
-  "validationStatus": "valid" | "invalid",
-  "validationErrors": ["error1", "error2"],
-  "registrationPayload": {
-    "engineerName": "string",
-    "engineerEmail": "string",
-    "yesterdayAccomplishments": "string",
-    "todayPlans": "string",
-    "currentIssues": "string",
-    "submittedAt": "ISO8601 timestamp"
-  },
-  "confirmationEmailRecipients": ["admin@example.com"],
-  "escalationRequired": boolean,
-  "escalationReason": "string or null"
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterdayAccomplishments": string,
+    "todayPlans": string,
+    "issues": string
+  }
 }
 
-### Escalation Triggers:
-- Incomplete or vague descriptions
-- Inappropriate or off-topic content
-- Submission significantly past deadline
-- Suspicious patterns or anomalies
+Errors should indicate critical issues that prevent acceptance.
+Warnings should indicate minor issues or suggestions for improvement.`;
 
-Perform the validation and return the structured response.`;
+  const previousErrorContext = previousValidationErrors.length > 0
+    ? `\n\nPrevious validation errors to address:\n${previousValidationErrors.map((e) => `- ${e}`).join("\n")}`
+    : "";
 
-  return prompt;
+  const userPrompt = `Validate the following daily report submission from engineer ${context.engineerName} (ID: ${context.engineerId}):
+
+Submitted at: ${context.submissionTimestamp}
+System ID: ${context.systemId}
+
+Yesterday's Accomplishments:
+${context.submittedContent.yesterdayAccomplishments}
+
+Today's Plans:
+${context.submittedContent.todayPlans}
+
+Issues/Concerns:
+${context.submittedContent.issues}${previousErrorContext}
+
+Please validate this submission and return the validation result in JSON format.`;
+
+  return {
+    version: ACTION_03_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    expectedOutputFormat: {
+      type: "json",
+      schema: {
+        isValid: "boolean",
+        errors: "string[]",
+        warnings: "string[]",
+        validatedContent: {
+          yesterdayAccomplishments: "string",
+          todayPlans: "string",
+          issues: "string",
+        },
+      },
+    },
+  };
 }
