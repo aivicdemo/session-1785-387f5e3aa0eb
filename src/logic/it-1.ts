@@ -2210,8 +2210,8 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
 
     const reportDate = formData?.reportDate || formData?.report_date || '';
     const department = formData?.department || formData?.department_id || '';
-    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || formData?.yesterday_result || '';
-    const today = formData?.today || formData?.todayPlan || formData?.today_plan || formData?.today_work || '';
+    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
+    const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
     const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || formData?.current_issues || '';
 
     if (!reportDate || String(reportDate).trim() === '') {
@@ -5512,13 +5512,11 @@ export const determineReportDelay = __aivicBundle_69_determineReportDelay.determ
 /* AIVIC_FUNCTION_BUNDLE_START owner=generateManagerConfirmationEmail exports=generateManagerConfirmationEmail */
 const __aivicBundle_70_generateManagerConfirmationEmail = (() => {
   function generateManagerConfirmationEmail(input: any): string {
-    // Handle both new interface format and legacy snake_case format
-    const yesterday = input.yesterday_achievement ?? input.submittedReports?.[0]?.yesterday ?? '';
-    const today = input.today_plan ?? input.submittedReports?.[0]?.today ?? '';
-    const issues = input.current_issues ?? input.submittedReports?.[0]?.issues ?? '';
-    const delayFlag = input.delay_flag ?? false;
+    const yesterday = input?.yesterday_achievement ?? input?.submittedReports?.[0]?.yesterday ?? '';
+    const today = input?.today_plan ?? input?.submittedReports?.[0]?.today ?? '';
+    const issues = input?.current_issues ?? input?.submittedReports?.[0]?.issues ?? '';
+    const delayFlag = input?.delay_flag ?? false;
 
-    // Build email content with required sections
     let emailContent = '';
 
     emailContent += '昨日やったこと\n';
@@ -5530,7 +5528,6 @@ const __aivicBundle_70_generateManagerConfirmationEmail = (() => {
     emailContent += '抱えている課題\n';
     emailContent += issues + '\n\n';
 
-    // Do NOT include delay-related keywords when delay_flag is false
     if (delayFlag) {
       emailContent += '遅延情報\n';
       emailContent += '報告に遅延があります\n';
@@ -6670,14 +6667,12 @@ const __aivicBundle_85_checkAllReportsComplete = (() => {
     input: any,
     checkTime?: Date,
   ): any {
-    // 入力形状の判定
     const isArrayInput = Array.isArray(input);
     const isObjectWithExpectedCount =
       input && typeof input === 'object' && 'expected_count' in input;
     const isObjectWithExpectedReportCount =
       input && typeof input === 'object' && 'expectedReportCount' in input;
   
-    // ケース1: expected_count / completed_count を持つ object
     if (isObjectWithExpectedCount) {
       const expectedCount = input.expected_count;
       const completedCount = input.completed_count;
@@ -6701,14 +6696,11 @@ const __aivicBundle_85_checkAllReportsComplete = (() => {
       };
     }
   
-    // ケース2: expectedReportCount を持つ object（async 対応）
     if (isObjectWithExpectedReportCount) {
       const expectedReportCount = input.expectedReportCount;
       const databaseClient = input.databaseClient;
       const logger = input.logger;
   
-      // 非同期処理をシミュレート（同期で返す場合）
-      // test が await を使っているため、実装は async 相当の結果を返す
       return Promise.resolve().then(() => {
         if (!databaseClient || !databaseClient.getReportedCount) {
           return {
@@ -6768,7 +6760,6 @@ const __aivicBundle_85_checkAllReportsComplete = (() => {
       });
     }
   
-    // ケース3: 配列入力（報告オブジェクトの配列）
     if (isArrayInput) {
       const reports = input as Array<{
         user_id?: string;
@@ -6787,7 +6778,6 @@ const __aivicBundle_85_checkAllReportsComplete = (() => {
       };
     }
   
-    // デフォルト戻り値
     return {
       is_error: true,
       error_code: 'INVALID_INPUT',
@@ -6863,6 +6853,7 @@ const __aivicBundle_validateAllReportsCompleted_fixed = (() => {
       totalCount,
     };
   }
+
   return { validateAllReportsCompleted };
 })();
 export const validateAllReportsCompleted = __aivicBundle_validateAllReportsCompleted_fixed.validateAllReportsCompleted;
@@ -6955,12 +6946,10 @@ const __aivicBundle_88_validateExpectedReportCount = (() => {
   function validateExpectedReportCount(
     input: number | { expectedCount: number; actualCount: number; tolerance: number }
   ): { isWithinTolerance: boolean; difference: number; message: string } {
-    // Handle single number argument (error case from test)
     if (typeof input === 'number') {
       if (input < 0) {
         throw new Error('期待報告人数は0以上の整数である必要があります');
       }
-      // If only expectedCount is provided, treat as validation of that value alone
       return {
         isWithinTolerance: true,
         difference: 0,
@@ -6968,21 +6957,16 @@ const __aivicBundle_88_validateExpectedReportCount = (() => {
       };
     }
   
-    // Handle object argument (normal case)
     const { expectedCount, actualCount, tolerance } = input;
   
-    // Validate expectedCount is non-negative integer
     if (expectedCount < 0) {
       throw new Error('期待報告人数は0以上の整数である必要があります');
     }
   
-    // Calculate difference (negative means shortage, positive means excess)
     const difference = actualCount - expectedCount;
   
-    // Check if within tolerance
     const isWithinTolerance = Math.abs(difference) <= tolerance;
   
-    // Generate appropriate message
     let message: string;
     if (difference === 0) {
       message = '全員から報告を受け取りました';
@@ -7236,23 +7220,15 @@ export const judgeAllReportingComplete = __aivicBundle_91_judgeAllReportingCompl
 /* AIVIC_FUNCTION_BUNDLE_START owner=checkAllReportsCompleted exports=checkAllReportsCompleted */
 const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
   function checkAllReportsCompleted(input: any): any {
-    // Handle both array input (from test) and object input (from plan)
-    let teamMembers: Array<any>;
+    let teamMembers: Array<any> = [];
     let expectedUserIds: string[] = [];
-    let deadlineTime: Date = new Date();
 
     if (Array.isArray(input)) {
-      // Test case: direct array of team members
       teamMembers = input;
-      // Extract expected user IDs from team members
-      expectedUserIds = teamMembers.map((member) => member.user_id);
-      // Default deadline to current time for test compatibility
-      deadlineTime = new Date();
+      expectedUserIds = teamMembers.map((member) => member.user_id || member.userId);
     } else if (input && typeof input === "object") {
-      // Plan case: object with submittedReports, expectedUserIds, deadlineTime
       teamMembers = input.submittedReports || [];
       expectedUserIds = input.expectedUserIds || [];
-      deadlineTime = input.deadlineTime || new Date();
     } else {
       teamMembers = [];
     }
@@ -7264,13 +7240,11 @@ const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
       }
     }
 
-    // Determine which property names are used (snake_case from test or camelCase from plan)
     const isSnakeCase = teamMembers.length > 0 && "user_id" in teamMembers[0];
     const userIdKey = isSnakeCase ? "user_id" : "userId";
     const userNameKey = isSnakeCase ? "user_name" : "userName";
     const submittedKey = isSnakeCase ? "report_submitted" : "submitted";
 
-    // Build set of submitted user IDs
     const submittedUserIds = new Set<string>();
     for (const member of teamMembers) {
       if (member[submittedKey] === true) {
@@ -7278,15 +7252,12 @@ const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
       }
     }
 
-    // Determine expected user IDs
     let finalExpectedUserIds = expectedUserIds;
     if (finalExpectedUserIds.length === 0 && teamMembers.length > 0) {
-      // If no explicit expectedUserIds, use all team members
       finalExpectedUserIds = teamMembers.map((m) => m[userIdKey]);
     }
 
-    // Find not submitted users
-    const notSubmittedUsers: Array<{ userId?: string; userName?: string; user_id?: string; user_name?: string }> = [];
+    const notSubmittedUsers: Array<any> = [];
     for (const userId of finalExpectedUserIds) {
       if (!submittedUserIds.has(userId)) {
         const member = teamMembers.find((m) => m[userIdKey] === userId);
@@ -7303,7 +7274,6 @@ const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
             });
           }
         } else {
-          // User not in team members list, add with ID only
           if (isSnakeCase) {
             notSubmittedUsers.push({
               user_id: userId,
@@ -7323,7 +7293,6 @@ const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
     const submittedCount = submittedUserIds.size;
     const expectedCount = finalExpectedUserIds.length;
 
-    // Return format matching test expectations (snake_case)
     if (isSnakeCase) {
       return {
         completed,
@@ -7333,7 +7302,6 @@ const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
       };
     }
 
-    // Return format matching plan expectations (camelCase)
     return {
       completed,
       submittedCount,
@@ -7341,9 +7309,10 @@ const __aivicBundle_checkAllReportsCompleted_fixed = (() => {
       notSubmittedUsers,
     };
   }
+
   return { checkAllReportsCompleted };
 })();
-export const checkAllReportsCompleted: (...args: any[]) => any = (...args: any[]) => (__aivicBundle_checkAllReportsCompleted_fixed.checkAllReportsCompleted as (...args: any[]) => any)(...args);
+export const checkAllReportsCompleted = __aivicBundle_checkAllReportsCompleted_fixed.checkAllReportsCompleted;
 /* AIVIC_FUNCTION_BUNDLE_END owner=checkAllReportsCompleted */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAllReportSubmissionComplete exports=validateAllReportSubmissionComplete */
@@ -7425,7 +7394,6 @@ const __aivicBundle_94_isReportOnTime = (() => {
     submissionTime?: Date;
     deadline?: Date;
   }): boolean | { onTime: boolean; minutesBeforeDeadline: number } {
-    // Handle both naming conventions from tests and plan
     const submissionTime = input.report_submission_time ?? input.submissionTime;
     const deadlineTime = input.meeting_start_time ?? input.deadline;
   
@@ -7439,14 +7407,10 @@ const __aivicBundle_94_isReportOnTime = (() => {
     const minutesBeforeDeadline = Math.floor(diffMs / (1000 * 60));
     const onTime = submissionMs <= deadlineMs;
   
-    // If called with meeting_start_time/report_submission_time (test case),
-    // return boolean for backward compatibility
     if (input.meeting_start_time !== undefined && input.report_submission_time !== undefined) {
       return onTime;
     }
   
-    // If called with submissionTime/deadline (plan signature),
-    // return detailed object
     return {
       onTime,
       minutesBeforeDeadline,
