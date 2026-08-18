@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { sendPromptionMailForUnreportedMembers } from '../../src/logic/it-1-br-1-1-1';
 
 // Mock for email sending
-const mockEmailSender = jest.fn<(...args: any[]) => any>();
+const mockEmailSender = jest.fn();
 
 describe('未報告催促メール通知機能', () => {
   beforeEach(() => {

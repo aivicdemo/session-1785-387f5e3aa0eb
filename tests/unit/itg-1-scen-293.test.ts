@@ -8,7 +8,7 @@ describe("確認メール配信機能", () => {
 
   beforeEach(() => {
     mockAiClient = {
-      send: jest.fn<(...args: any[]) => any>().mockResolvedValue({ success: true }),
+      send: jest.fn().mockResolvedValue({ success: true }),
     } as unknown as jest.Mocked<Tx2Imp1AiClient>;
 
     logSpy = jest.spyOn(console, "error").mockImplementation();
