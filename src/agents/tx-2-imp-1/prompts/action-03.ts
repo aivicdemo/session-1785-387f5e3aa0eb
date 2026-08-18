@@ -6,15 +6,11 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 interface Action03PromptInput {
   reportingDeadline: string;
   escalationThreshold: number;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
+  reportSubmissionStatus: Array<{
+    employeeId: string;
+    employeeName: string;
+    submitted: boolean;
+    submittedAt?: string;
   }>;
 }
 
@@ -22,113 +18,57 @@ interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
   userPrompt: string;
-  context: {
-    deadline: string;
-    threshold: number;
-    totalMembers: number;
-    submittedCount: number;
-    unsubmittedMembers: Array<{
-      memberId: string;
-      memberName: string;
-      email: string;
-    }>;
-    delayedMembers: Array<{
-      memberId: string;
-      memberName: string;
-      email: string;
-      submittedAt: string;
-      delayMinutes: number;
-    }>;
-  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const deadlineTime = new Date(input.reportingDeadline);
-  const now = new Date();
-
-  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
-  const unsubmittedMembers = input.reportingMembers.filter(
-    m => !submittedMemberIds.has(m.memberId)
+  const unsubmittedEmployees = input.reportSubmissionStatus.filter(
+    (status) => !status.submitted
   );
 
-  const delayedMembers = input.submittedReports
-    .map(report => {
-      const member = input.reportingMembers.find(m => m.memberId === report.memberId);
-      if (!member) return null;
+  const systemPrompt = `You are an AI agent responsible for identifying unreported employees and determining escalation actions in the morning report management system.
 
-      const submittedTime = new Date(report.submittedAt);
-      const delayMs = submittedTime.getTime() - deadlineTime.getTime();
-      const delayMinutes = Math.floor(delayMs / 60000);
+Your role is to:
+1. Analyze the report submission status provided
+2. Identify employees who have not submitted their reports
+3. Determine which employees require escalation based on the escalation threshold
+4. Generate a clear list of unreported and delayed employees
+5. Prepare notification content for the department head
 
-      if (delayMinutes > 0) {
-        return {
-          memberId: member.memberId,
-          memberName: member.memberName,
-          email: member.email,
-          submittedAt: report.submittedAt,
-          delayMinutes,
-        };
-      }
-      return null;
-    })
-    .filter((m): m is NonNullable<typeof m> => m !== null);
+You must be precise and factual in your analysis. Only flag employees as unreported if they have not submitted by the deadline.`;
 
-  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed reporters from daily report submissions.
-Your task is to:
-1. Identify members who have not submitted their daily reports by the deadline
-2. Identify members who submitted reports after the deadline
-3. Determine which members require escalation based on the escalation threshold
-4. Generate a clear summary of submission status for management review
-
-Be precise and factual in your analysis. Focus on identifying patterns and providing actionable information.`;
-
-  const userPrompt = `Analyze the following daily report submission status:
+  const userPrompt = `Analyze the following report submission status and identify unreported employees:
 
 Reporting Deadline: ${input.reportingDeadline}
-Escalation Threshold (minutes): ${input.escalationThreshold}
-Total Team Members: ${input.reportingMembers.length}
-Reports Submitted: ${input.submittedReports.length}
+Escalation Threshold (hours after deadline): ${input.escalationThreshold}
 
-Non-Submitters (${unsubmittedMembers.length}):
-${unsubmittedMembers.length > 0
-  ? unsubmittedMembers
-      .map(m => `- ${m.memberName} (${m.memberId}): ${m.email}`)
-      .join('\n')
-  : 'None'}
+Current Submission Status:
+${input.reportSubmissionStatus
+  .map(
+    (status) =>
+      `- ${status.employeeName} (ID: ${status.employeeId}): ${
+        status.submitted ? `Submitted at ${status.submittedAt}` : "Not submitted"
+      }`
+  )
+  .join("\n")}
 
-Delayed Submitters (${delayedMembers.length}):
-${delayedMembers.length > 0
-  ? delayedMembers
-      .map(
-        m =>
-          `- ${m.memberName} (${m.memberId}): Submitted at ${m.submittedAt} (${m.delayMinutes} minutes late)`
-      )
-      .join('\n')
-  : 'None'}
-
-Escalation Required (delay > ${input.escalationThreshold} minutes):
-${delayedMembers
-  .filter(m => m.delayMinutes > input.escalationThreshold)
-  .map(m => `- ${m.memberName}: ${m.delayMinutes} minutes delay`)
-  .join('\n') || 'None'}
+Unreported Employees (${unsubmittedEmployees.length}):
+${
+  unsubmittedEmployees.length > 0
+    ? unsubmittedEmployees
+        .map((emp) => `- ${emp.employeeName} (ID: ${emp.employeeId})`)
+        .join("\n")
+    : "None"
+}
 
 Please provide:
 1. A summary of the current submission status
-2. List of members requiring immediate escalation
-3. Recommended actions for non-submitters and delayed submitters`;
+2. List of employees requiring immediate escalation
+3. Recommended notification actions for the department head`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
-    context: {
-      deadline: input.reportingDeadline,
-      threshold: input.escalationThreshold,
-      totalMembers: input.reportingMembers.length,
-      submittedCount: input.submittedReports.length,
-      unsubmittedMembers,
-      delayedMembers,
-    },
   };
 }
 

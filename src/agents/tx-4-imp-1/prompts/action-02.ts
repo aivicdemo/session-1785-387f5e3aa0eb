@@ -5,67 +5,82 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportContent: string;
-  engineerName: string;
-  submissionDate: string;
-  validationRules?: {
-    minLength?: number;
-    maxLength?: number;
-    requiredFields?: string[];
-  };
+  submissionDeadline: string;
+  escalationThreshold: number;
+  previousEscalationCount: number;
 }
 
 export interface Action02PromptOutput {
-  isValid: boolean;
-  validationErrors: string[];
-  sanitizedContent: string;
-  warnings: string[];
+  shouldEscalate: boolean;
+  escalationReason: string;
+  recommendedAction: string;
+  riskLevel: "low" | "medium" | "high";
+  details: {
+    isOverdue: boolean;
+    daysOverdue: number;
+    escalationCount: number;
+    nextEscalationDate: string;
+  };
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
   const {
     reportContent,
-    engineerName,
-    submissionDate,
-    validationRules = {},
+    submissionDeadline,
+    escalationThreshold,
+    previousEscalationCount,
   } = input;
 
-  const {
-    minLength = 10,
-    maxLength = 5000,
-    requiredFields = ["yesterday", "today", "issues"],
-  } = validationRules;
+  const deadlineDate = new Date(submissionDeadline);
+  const now = new Date();
+  const isOverdue = now > deadlineDate;
+  const daysOverdue = isOverdue
+    ? Math.floor((now.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
-  const requiredFieldsText = requiredFields
-    .map((field) => `- ${field}`)
-    .join("\n");
+  const shouldEscalate =
+    previousEscalationCount < escalationThreshold && isOverdue;
 
-  return `You are a validation agent for the daily report management system.
+  const riskLevel =
+    daysOverdue > 7 ? "high" : daysOverdue > 3 ? "medium" : "low";
 
-Your task is to validate the daily report submission from engineer: ${engineerName}
-Submission date: ${submissionDate}
+  const prompt = `You are an AI agent responsible for determining escalation actions for overdue daily reports in a morning meeting management system.
 
-Report content to validate:
----
-${reportContent}
----
+## Current Status
+- Report Content: ${reportContent}
+- Submission Deadline: ${submissionDeadline}
+- Current Time: ${now.toISOString()}
+- Days Overdue: ${daysOverdue}
+- Previous Escalation Count: ${previousEscalationCount}
+- Escalation Threshold: ${escalationThreshold}
+- Risk Level: ${riskLevel}
 
-Validation criteria:
-1. Content length must be between ${minLength} and ${maxLength} characters
-2. Report must contain the following required sections:
-${requiredFieldsText}
-3. Content must be professional and appropriate
-4. No sensitive information should be exposed
-5. Grammar and clarity should be acceptable
+## Task
+Analyze whether this report requires escalation action based on:
+1. Whether the deadline has passed
+2. How many days overdue the report is
+3. How many times escalation has already been attempted
+4. The escalation threshold policy
 
-Please perform the following:
-1. Check if the report meets all validation criteria
-2. Identify any validation errors or issues
-3. Provide sanitized version of the content (remove any sensitive data)
-4. List any warnings about content quality
+## Decision Criteria
+- Escalate if: deadline is passed AND escalation count < threshold
+- Do not escalate if: escalation count >= threshold (to prevent over-notification)
+- Risk increases with days overdue
 
-Return your analysis in a structured format with:
-- isValid: boolean indicating if report passes all validations
-- validationErrors: array of specific validation failures
-- sanitizedContent: cleaned version of the report
-- warnings: array of non-critical issues or suggestions`;
+## Output Format
+Provide a JSON response with:
+{
+  "shouldEscalate": boolean,
+  "escalationReason": string,
+  "recommendedAction": string,
+  "riskLevel": "low" | "medium" | "high",
+  "details": {
+    "isOverdue": boolean,
+    "daysOverdue": number,
+    "escalationCount": number,
+    "nextEscalationDate": string
+  }
+}`;
+
+  return prompt;
 }

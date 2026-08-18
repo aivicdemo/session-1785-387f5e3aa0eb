@@ -3,65 +3,64 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
-  reportingDeadline: string;
-  targetDate: string;
-  engineerCount: number;
-  escalationThreshold: number;
+export interface Action01PromptInput {
+  reportDate: string;
+  engineerName: string;
+  engineerId: string;
+  previousReportContent?: string;
+  systemContext?: string;
 }
 
-export interface Action01PromptResult {
-  systemPrompt: string;
-  userPrompt: string;
-  version: string;
+export interface Action01PromptOutput {
+  templateContent: string;
+  distributionChannels: string[];
+  scheduledTime: string;
 }
 
-export function buildAction01Prompt(
-  context: Action01PromptContext
-): Action01PromptResult {
-  const systemPrompt = `You are an AI agent responsible for the first action in the morning report collection workflow.
-Your task is to read confirmation email contents and automatically extract engineers who have not submitted their reports or have submitted late.
+export function buildAction01Prompt(input: Action01PromptInput): string {
+  const {
+    reportDate,
+    engineerName,
+    engineerId,
+    previousReportContent = "",
+    systemContext = "",
+  } = input;
 
-You must:
-1. Identify all engineers who should have submitted reports by the deadline
-2. Determine which engineers have not submitted or submitted late
-3. Extract their names, departments, and submission status
-4. Classify them into two categories: "not_submitted" and "late_submitted"
-5. Provide clear reasoning for each classification
+  const previousContentSection =
+    previousReportContent.length > 0
+      ? `\n前日の日報内容:\n${previousReportContent}`
+      : "";
 
-Output format must be JSON with the following structure:
+  const systemContextSection =
+    systemContext.length > 0 ? `\n\nシステムコンテキスト:\n${systemContext}` : "";
+
+  const prompt = `あなたは朝会報告管理システムのAIエージェントです。
+以下の情報に基づいて、エンジニアの日報テンプレートを自動生成して配信してください。
+
+【実行日時】
+${reportDate}
+
+【対象エンジニア】
+名前: ${engineerName}
+ID: ${engineerId}
+
+【タスク】
+1. 前日の日報内容を参考にしながら、本日の日報テンプレートを生成する
+2. テンプレートには以下のセクションを含める:
+   - 昨日の実績（前日の内容を参考に）
+   - 本日の予定
+   - 抱えている課題
+3. 配信チャネルを決定する（メール、チャット、その他）
+4. 配信スケジュールを設定する
+
+【出力形式】
+以下のJSON形式で返してください:
 {
-  "not_submitted": [
-    {
-      "name": "string",
-      "department": "string",
-      "deadline": "string"
-    }
-  ],
-  "late_submitted": [
-    {
-      "name": "string",
-      "department": "string",
-      "submitted_at": "string",
-      "deadline": "string",
-      "delay_minutes": number
-    }
-  ],
-  "total_engineers": number,
-  "submission_rate": number
-}`;
+  "templateContent": "生成されたテンプレート本文",
+  "distributionChannels": ["email", "chat"],
+  "scheduledTime": "HH:mm"
+}
+${previousContentSection}${systemContextSection}`;
 
-  const userPrompt = `Please analyze the confirmation email contents for the report collection dated ${context.targetDate}.
-
-Reporting deadline: ${context.reportingDeadline}
-Total engineers expected to submit: ${context.engineerCount}
-Escalation threshold (minutes late): ${context.escalationThreshold}
-
-Extract and classify all engineers based on their submission status. Provide the analysis in the specified JSON format.`;
-
-  return {
-    systemPrompt,
-    userPrompt,
-    version: ACTION_01_PROMPT_VERSION,
-  };
+  return prompt;
 }

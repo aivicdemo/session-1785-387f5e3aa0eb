@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04Context {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,123 +11,78 @@ export interface Action04PromptInput {
     description: string;
     category: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
+  priorityAssignments: Array<{
+    issueId: string;
+    priority: "critical" | "high" | "medium" | "low";
+    reasoning: string;
   }>;
-  priorityFramework: {
-    criteria: string[];
-    levels: string[];
-  };
+  escalationFlags: Array<{
+    issueId: string;
+    reason: string;
+    requiresHumanReview: boolean;
+  }>;
 }
 
-export interface Action04PromptOutput {
-  prioritizedIssues: Array<{
+export interface Action04Input {
+  reportId: string;
+  reportContent: string;
+  reporterName: string;
+  reportDate: string;
+  previousIssues?: Array<{
+    id: string;
+    title: string;
+    status: string;
+  }>;
+}
+
+export interface Action04Output {
+  success: boolean;
+  extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
     category: string;
-    priority: string;
-    priorityScore: number;
+    priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
-    affectedMembers: string[];
-    recommendedAction: string;
   }>;
-  criticalIssues: Array<{
-    id: string;
-    title: string;
-    severity: string;
-    escalationRequired: boolean;
-  }>;
-  issueClassification: {
-    blocking: string[];
-    highPriority: string[];
-    mediumPriority: string[];
-    lowPriority: string[];
-  };
-  summary: string;
+  escalationRequired: boolean;
+  escalationReasons: string[];
+  timestamp: string;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const priorityLevels = input.priorityFramework.levels.join(", ");
-  const criteria = input.priorityFramework.criteria
-    .map((c, i) => `${i + 1}. ${c}`)
-    .join("\n");
+export function buildAction04Prompt(input: Action04Input): string {
+  const basePrompt = `You are an AI agent responsible for extracting issues and assigning priorities from daily reports.
 
-  const issuesText = input.extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
-    )
-    .join("\n");
+Report ID: ${input.reportId}
+Reporter: ${input.reporterName}
+Report Date: ${input.reportDate}
 
-  const membersText = input.teamMembers
-    .map((m) => `- ${m.name} (${m.department})`)
-    .join("\n");
-
-  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
-
-## Task: Prioritize and Classify Extracted Issues
-
-### Input Report Content:
+Report Content:
 ${input.reportContent}
 
-### Extracted Issues to Prioritize:
-${issuesText}
-
-### Team Members:
-${membersText}
-
-### Priority Framework:
-Priority Levels: ${priorityLevels}
-
-Prioritization Criteria:
-${criteria}
-
-### Your Responsibilities:
-1. Analyze each extracted issue against the prioritization criteria
-2. Assign a priority level (${priorityLevels}) to each issue
-3. Provide a numerical priority score (1-100, where 100 is highest priority)
-4. Explain the reasoning for each priority assignment
-5. Identify which team members are affected by each issue
-6. Recommend specific actions for each issue
-7. Classify issues into categories: blocking, high priority, medium priority, low priority
-8. Identify any critical issues requiring immediate escalation
-9. Provide a summary of the overall issue landscape
-
-### Output Format:
-Return a JSON object with the following structure:
-{
-  "prioritizedIssues": [
-    {
-      "id": "issue_id",
-      "title": "issue_title",
-      "description": "issue_description",
-      "category": "issue_category",
-      "priority": "priority_level",
-      "priorityScore": number,
-      "reasoning": "explanation_of_priority_assignment",
-      "affectedMembers": ["member_id_1", "member_id_2"],
-      "recommendedAction": "specific_action_recommendation"
-    }
-  ],
-  "criticalIssues": [
-    {
-      "id": "issue_id",
-      "title": "issue_title",
-      "severity": "severity_level",
-      "escalationRequired": boolean
-    }
-  ],
-  "issueClassification": {
-    "blocking": ["issue_id_1"],
-    "highPriority": ["issue_id_2"],
-    "mediumPriority": ["issue_id_3"],
-    "lowPriority": ["issue_id_4"]
-  },
-  "summary": "overall_summary_of_issues_and_recommendations"
+${
+  input.previousIssues && input.previousIssues.length > 0
+    ? `Previous Issues Context:
+${input.previousIssues.map((issue) => `- [${issue.id}] ${issue.title} (Status: ${issue.status})`).join("\n")}`
+    : ""
 }
 
-Ensure all prioritization decisions are consistent with the framework and clearly justified.`;
+Your tasks:
+1. Extract all issues, bottlenecks, and risks mentioned in the report
+2. Categorize each issue (e.g., technical, resource, dependency, process, other)
+3. Assign priority levels (critical, high, medium, low) based on:
+   - Impact on project timeline
+   - Number of people affected
+   - Severity of the issue
+   - Dependencies on other work
+4. Identify any escalation conditions that require human review
+5. Provide reasoning for each priority assignment
+
+Output format:
+- For each issue: [ISSUE_ID] Title | Category | Priority | Reasoning
+- Escalation flags: [ESCALATION] Reason | Requires Human Review: Yes/No
+
+Be concise and structured in your response.`;
+
+  return basePrompt;
 }

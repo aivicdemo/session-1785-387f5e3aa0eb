@@ -13,8 +13,8 @@ interface DatabaseConnection {
 
 // In-memory database implementation
 class InMemoryDatabase implements DatabaseConnection {
-  private tables: Map<string, Map<string, QueryResult>> = new Map();
-  private sequences: Map<string, number> = new Map();
+  private tables: Map<string, Map<string, unknown>> = new Map();
+  private autoIncrementCounters: Map<string, number> = new Map();
 
   constructor() {
     this.initializeTables();
@@ -62,8 +62,8 @@ class InMemoryDatabase implements DatabaseConnection {
     }
 
     const keysToDelete: string[] = [];
-    table.forEach((row, key) => {
-      if (this.evaluateWhere(whereClause, row, params)) {
+    table.forEach((value, key) => {
+      if (this.evaluateWhereClause(whereClause, value, params)) {
         keysToDelete.push(key);
       }
     });
@@ -73,7 +73,9 @@ class InMemoryDatabase implements DatabaseConnection {
   }
 
   private handleInsert(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(/INSERT INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i);
+    const match = sql.match(
+      /INSERT INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+RETURNING\s+(.+))?/i
+    );
     if (!match) return Promise.resolve([]);
 
     const tableName = match[1].toLowerCase();
@@ -82,25 +84,25 @@ class InMemoryDatabase implements DatabaseConnection {
 
     if (!table) return Promise.resolve([]);
 
-    const row: QueryResult = {};
-    let paramIndex = 0;
-
-    columns.forEach((col) => {
-      if (paramIndex < params.length) {
-        row[col] = params[paramIndex];
-        paramIndex++;
-      }
+    const record: QueryResult = {};
+    columns.forEach((col, idx) => {
+      record[col] = params[idx];
     });
 
-    const key = `${tableName}_${Date.now()}_${Math.random()}`;
-    table.set(key, row);
+    const keyColumn = this.getKeyColumn(tableName);
+    const key = String(record[keyColumn] || this.generateId(tableName));
+    record[keyColumn] = key;
+
+    table.set(key, record);
 
     const returningClause = match[4];
     if (returningClause) {
-      const returningColumns = returningClause.split(',').map((c) => c.trim().toLowerCase());
+      const returningColumns = returningClause
+        .split(',')
+        .map((c) => c.trim().toLowerCase());
       const result: QueryResult = {};
       returningColumns.forEach((col) => {
-        result[col] = row[col];
+        result[col] = record[col];
       });
       return Promise.resolve([result]);
     }
@@ -109,7 +111,9 @@ class InMemoryDatabase implements DatabaseConnection {
   }
 
   private handleSelect(sql: string, params: unknown[]): Promise<QueryResult[]> {
-    const match = sql.match(/SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
+    const match = sql.match(
+      /SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER BY\s+(.+?))?$/i
+    );
     if (!match) return Promise.resolve([]);
 
     const selectClause = match[1].trim();
@@ -119,47 +123,64 @@ class InMemoryDatabase implements DatabaseConnection {
 
     if (!table) return Promise.resolve([]);
 
-    const results: QueryResult[] = [];
+    let results: QueryResult[] = [];
 
-    table.forEach((row) => {
-      if (!whereClause || this.evaluateWhere(whereClause, row, params)) {
-        if (selectClause === '*') {
-          results.push(row);
-        } else if (selectClause.toUpperCase().includes('COUNT(*)')) {
-          results.push({ cnt: results.length + 1 });
-        } else {
-          const selectedRow: QueryResult = {};
-          const columns = selectClause.split(',').map((c) => c.trim().toLowerCase());
-          columns.forEach((col) => {
-            if (col in row) {
-              selectedRow[col] = row[col];
-            }
-          });
-          results.push(selectedRow);
+    if (selectClause.toUpperCase() === 'COUNT(*)') {
+      let count = 0;
+      table.forEach((value) => {
+        if (!whereClause || this.evaluateWhereClause(whereClause, value, params)) {
+          count++;
         }
+      });
+      return Promise.resolve([{ cnt: count }]);
+    }
+
+    table.forEach((value) => {
+      if (!whereClause || this.evaluateWhereClause(whereClause, value, params)) {
+        results.push(value as QueryResult);
       }
     });
-
-    if (selectClause.toUpperCase().includes('COUNT(*)') && results.length === 0) {
-      results.push({ cnt: 0 });
-    }
 
     return Promise.resolve(results);
   }
 
-  private evaluateWhere(whereClause: string, row: QueryResult, params: unknown[]): boolean {
+  private evaluateWhereClause(
+    whereClause: string,
+    record: unknown,
+    params: unknown[]
+  ): boolean {
+    const rec = record as QueryResult;
     const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/i);
     if (eqMatch) {
       const column = eqMatch[1].toLowerCase();
-      return row[column] === params[0];
+      return rec[column] === params[0];
     }
-
     return true;
+  }
+
+  private getKeyColumn(tableName: string): string {
+    const keyMap: Record<string, string> = {
+      departments: 'department_id',
+      users: 'user_id',
+      unreported_members: 'list_id',
+      mail_queue: 'queue_id',
+      audit_log: 'log_id',
+    };
+    return keyMap[tableName] || 'id';
+  }
+
+  private generateId(tableName: string): string {
+    const counter = this.autoIncrementCounters.get(tableName) || 0;
+    this.autoIncrementCounters.set(tableName, counter + 1);
+    return `${tableName}_${counter + 1}`;
   }
 }
 
-const connectionInstance = new InMemoryDatabase();
+let connectionInstance: DatabaseConnection | null = null;
 
 export function getConnection(): DatabaseConnection {
+  if (!connectionInstance) {
+    connectionInstance = new InMemoryDatabase();
+  }
   return connectionInstance;
 }

@@ -7,80 +7,112 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  previousReminders?: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
-  }>;
-}
-
-export interface IdentifiedNonReporter {
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  status: "not_submitted" | "delayed";
-  daysSinceDeadline: number;
-  reminderCount: number;
+  previousEscalationCount?: Record<string, number>;
 }
 
 export interface Action01PromptOutput {
-  nonReporters: IdentifiedNonReporter[];
-  analysisTimestamp: string;
-  totalEmployeesExpected: number;
-  totalNonReporters: number;
+  missingReporters: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportStatus: "missing" | "delayed";
+    daysSinceDeadline: number;
+  }>;
+  escalationTargets: Array<{
+    employeeId: string;
+    employeeName: string;
+    escalationReason: string;
+    escalationCount: number;
+    shouldEscalate: boolean;
+  }>;
+  summary: {
+    totalMissingCount: number;
+    totalDelayedCount: number;
+    escalationCandidateCount: number;
+  };
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const reminderContext =
-    input.previousReminders && input.previousReminders.length > 0
-      ? `\n\n過去の催促履歴:\n${input.previousReminders
-          .map(
-            (r) =>
-              `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
-          )
-          .join("\n")}`
-      : "";
+export function buildAction01Prompt(
+  input: Action01PromptInput
+): string {
+  const {
+    confirmationEmailContent,
+    reportDeadline,
+    currentTimestamp,
+    previousEscalationCount = {},
+  } = input;
 
-  return `あなたは朝会報告管理システムのAIエージェントです。確認メールの内容から報告漏れ・遅延部員を自動特定するタスクを実行してください。
+  const escalationCountSummary = Object.entries(previousEscalationCount)
+    .map(([empId, count]) => `  - Employee ${empId}: ${count} escalations`)
+    .join("\n");
 
-【タスク】
-確認メール内容を分析し、以下の情報を抽出してください:
-1. 報告を提出していない従業員のリスト
-2. 提出期限を超過している従業員のリスト
-3. 各従業員の催促対象判定
+  return `You are an AI agent responsible for identifying missing and delayed daily reports from the confirmation email content.
 
-【入力情報】
-確認メール内容:
-${input.confirmationEmailContent}
+## Task: Identify Missing/Delayed Reporters and Determine Escalation Targets
 
-提出期限: ${input.reportDeadline}
-現在時刻: ${input.currentTimestamp}${reminderContext}
+### Input Information:
+- Confirmation Email Content:
+${confirmationEmailContent}
 
-【出力形式】
-以下のJSON形式で結果を返してください:
+- Report Deadline: ${reportDeadline}
+- Current Timestamp: ${currentTimestamp}
+- Previous Escalation Count:
+${escalationCountSummary || "  (No previous escalations)"}
+
+### Your Responsibilities:
+
+1. **Parse the confirmation email content** to extract:
+   - List of employees who submitted reports
+   - List of employees who did NOT submit reports
+   - Submission timestamps for each report
+
+2. **Classify reporters**:
+   - Mark as "missing" if no report was submitted by the deadline
+   - Mark as "delayed" if report was submitted after the deadline
+
+3. **Calculate days since deadline** for delayed/missing reports
+
+4. **Determine escalation targets** based on:
+   - First escalation: Any missing or delayed report
+   - Subsequent escalations: Only if previous escalation count >= 1
+   - Maximum escalation threshold: 3 times per employee
+   - Do NOT escalate if escalation count already reached 3
+
+5. **Generate structured output** with:
+   - List of missing reporters with details
+   - List of escalation targets with reason and count
+   - Summary statistics
+
+### Output Format:
+Return a JSON object with the following structure:
 {
-  "nonReporters": [
+  "missingReporters": [
     {
       "employeeId": "string",
       "employeeName": "string",
-      "department": "string",
-      "status": "not_submitted" | "delayed",
-      "daysSinceDeadline": number,
-      "reminderCount": number
+      "reportStatus": "missing" | "delayed",
+      "daysSinceDeadline": number
     }
   ],
-  "analysisTimestamp": "ISO8601形式の現在時刻",
-  "totalEmployeesExpected": number,
-  "totalNonReporters": number
+  "escalationTargets": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "escalationReason": "string",
+      "escalationCount": number,
+      "shouldEscalate": boolean
+    }
+  ],
+  "summary": {
+    "totalMissingCount": number,
+    "totalDelayedCount": number,
+    "escalationCandidateCount": number
+  }
 }
 
-【判定ルール】
-- status: "not_submitted" = 報告未提出、"delayed" = 提出期限超過
-- daysSinceDeadline: 負の値は期限前、0以上は期限超過日数
-- reminderCount: 過去の催促回数を集計
-
-【注意事項】
-- 確認メール内容から正確に従業員情報を抽出してください
-- 提出期限との比較は正確に行ってください
-- 催促履歴がある場合は回数を正確に計算してください`;
+### Rules:
+- Only include employees with missing or delayed reports
+- Escalation count should reflect the number of times this employee has been escalated
+- shouldEscalate should be true only if escalation count < 3
+- Be precise with timestamps and deadline calculations
+- Return valid JSON only, no additional text`;
 }

@@ -5,71 +5,128 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
   reportingDeadline: string;
-  overdueThresholdMinutes: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  overdueThresholdHours: number;
+  reminderFrequencyHours: number;
+  maxReminderAttempts: number;
+  departmentName: string;
+  reportingPeriod: string;
 }
 
 export interface Action02PromptOutput {
   prompt: string;
   version: string;
+  metadata: {
+    action: string;
+    purpose: string;
+    targetAudience: string;
+  };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+export function buildAction02Prompt(
+  input: Action02PromptInput
+): Action02PromptOutput {
   const {
     reportingDeadline,
-    overdueThresholdMinutes,
-    escalationRules,
+    overdueThresholdHours,
+    reminderFrequencyHours,
+    maxReminderAttempts,
+    departmentName,
+    reportingPeriod,
   } = input;
 
-  const prompt = `You are an AI agent responsible for identifying non-reporting and delayed report submissions.
+  const prompt = `# Action 2: 未提出者と遅延者の自動判定
 
-Your task is to:
-1. Check the submission status of all engineers' daily reports
-2. Identify engineers who have not submitted their reports
-3. Identify engineers whose reports are delayed beyond the threshold
-4. Create a list of non-reporting and delayed engineers
-5. Prepare notification content for the department head
+## 目的
+設定時刻に全員の日報受信状況を確認し、未提出者と遅延者を自動判定する。
 
-Configuration:
-- Reporting Deadline: ${reportingDeadline}
-- Overdue Threshold: ${overdueThresholdMinutes} minutes after deadline
-- Maximum Reminders: ${escalationRules.maxReminders}
-- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
+## 実行条件
+- 報告期限: ${reportingDeadline}
+- 遅延判定閾値: ${overdueThresholdHours}時間以上の遅延
+- 催促間隔: ${reminderFrequencyHours}時間ごと
+- 最大催促回数: ${maxReminderAttempts}回
 
-Output Format:
-Return a JSON object with the following structure:
+## 判定ロジック
+
+### 未提出者の判定
+1. 現在時刻が報告期限 (${reportingDeadline}) を超過している
+2. 日報管理システムに該当エンジニアの日報レコードが存在しない
+3. 確認メール配信ログに送信記録がある
+
+### 遅延者の判定
+1. 現在時刻が報告期限を超過している
+2. 日報管理システムに該当エンジニアの日報レコードが存在する
+3. 日報の送信タイムスタンプが報告期限より後である
+4. 遅延時間が ${overdueThresholdHours}時間以上である
+
+## 出力形式
+
+未提出者と遅延者を以下の形式で分類して返す:
+
+\`\`\`json
 {
-  "nonReportingEngineers": [
+  "nonSubmitted": [
     {
-      "engineerId": string,
-      "name": string,
-      "department": string,
-      "lastSubmissionTime": string | null
+      "engineerId": "string",
+      "engineerName": "string",
+      "department": "${departmentName}",
+      "reportingPeriod": "${reportingPeriod}",
+      "reminderCount": number,
+      "lastReminderTime": "ISO8601 timestamp or null",
+      "escalationRequired": boolean
     }
   ],
-  "delayedEngineers": [
+  "delayed": [
     {
-      "engineerId": string,
-      "name": string,
-      "department": string,
-      "submissionTime": string,
-      "delayMinutes": number
+      "engineerId": "string",
+      "engineerName": "string",
+      "department": "${departmentName}",
+      "reportingPeriod": "${reportingPeriod}",
+      "submissionTime": "ISO8601 timestamp",
+      "delayHours": number,
+      "reminderCount": number,
+      "lastReminderTime": "ISO8601 timestamp or null",
+      "escalationRequired": boolean
     }
   ],
-  "notificationContent": {
-    "subject": string,
-    "body": string,
-    "priority": "high" | "medium" | "low"
+  "onTime": [
+    {
+      "engineerId": "string",
+      "engineerName": "string",
+      "department": "${departmentName}",
+      "reportingPeriod": "${reportingPeriod}",
+      "submissionTime": "ISO8601 timestamp"
+    }
+  ],
+  "summary": {
+    "totalEngineers": number,
+    "nonSubmittedCount": number,
+    "delayedCount": number,
+    "onTimeCount": number,
+    "submissionRate": number,
+    "evaluationTime": "ISO8601 timestamp"
   }
 }
+\`\`\`
 
-Ensure accuracy in identifying submission status and calculate delays correctly.`;
+## エスカレーション判定基準
+
+以下の条件で escalationRequired を true に設定:
+- 未提出者: 催促回数が ${maxReminderAttempts} に達した場合
+- 遅延者: 遅延時間が ${overdueThresholdHours * 2}時間以上の場合、または催促回数が ${maxReminderAttempts} に達した場合
+
+## 注意事項
+- 同一エンジニアへの催促は ${reminderFrequencyHours}時間ごとに制限する
+- 催促回数は報告期限ごとにリセットする
+- システム障害時は詳細なエラーログを記録し、部長への通知を優先する
+`;
 
   return {
     prompt,
     version: ACTION_02_PROMPT_VERSION,
+    metadata: {
+      action: "action-02",
+      purpose: "未提出者と遅延者の自動判定",
+      targetAudience: "AIエージェント (tx-2-imp-1)",
+    },
   };
 }

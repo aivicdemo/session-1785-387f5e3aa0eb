@@ -3,79 +3,55 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Context {
-  engineerInputData: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-    engineerId: string;
-    engineerName: string;
-    submissionTimestamp: string;
-  };
-  validationRules: {
-    minAccomplishmentsLength: number;
-    minPlansLength: number;
-    minIssuesLength: number;
-    allowedIssueCategories: string[];
-  };
+export interface Action02Input {
+  engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlan: string;
+  currentIssues: string;
+  submissionTimestamp: string;
 }
 
-export interface Action02PromptResult {
-  version: string;
-  action: string;
-  systemPrompt: string;
-  userPrompt: string;
-  context: Action02Context;
+export interface Action02ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
-export function buildAction02Prompt(
-  context: Action02Context
-): Action02PromptResult {
-  const systemPrompt = `You are an AI agent responsible for validating daily report input content in the morning meeting report management system.
+export function buildAction02Prompt(input: Action02Input): string {
+  const prompt = `You are a validation agent for the daily report management system.
 
-Your task is to validate the engineer's input data against predefined rules and determine if the submission is complete and appropriate.
+Your task is to validate the engineer's daily report input for completeness and appropriateness.
 
-Validation criteria:
-1. Check that all required fields are filled
-2. Verify minimum content length for each field
-3. Ensure issue descriptions are clear and categorized appropriately
-4. Detect any incomplete or inappropriate content
-5. Flag any anomalies or concerns for human review
+Engineer Information:
+- Name: ${input.engineerName}
+- Email: ${input.engineerEmail}
+- Submission Time: ${input.submissionTimestamp}
 
-Respond with a structured validation result including:
-- isValid: boolean indicating if all validations passed
-- issues: array of validation issues found
-- severity: 'critical', 'warning', or 'info'
-- recommendation: next action to take`;
+Report Content:
+- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
+- Today's Plan: ${input.todayPlan}
+- Current Issues: ${input.currentIssues}
 
-  const userPrompt = `Please validate the following daily report submission:
+Validation Criteria:
+1. All fields must be filled (not empty or null)
+2. Yesterday's accomplishments should describe concrete work completed
+3. Today's plan should be specific and actionable
+4. Current issues should be clearly articulated if any exist
+5. Content should be professional and relevant to work
+6. No fields should contain only whitespace or placeholder text
 
-Engineer ID: ${context.engineerInputData.engineerId}
-Engineer Name: ${context.engineerInputData.engineerName}
-Submission Time: ${context.engineerInputData.submissionTimestamp}
+Please validate this report and respond with:
+- A validation status (valid/invalid)
+- Any errors found (critical issues that prevent acceptance)
+- Any warnings (non-critical issues to flag)
 
-Yesterday's Accomplishments:
-${context.engineerInputData.yesterdayAccomplishments}
+Format your response as JSON with the following structure:
+{
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[]
+}`;
 
-Today's Plans:
-${context.engineerInputData.todayPlans}
-
-Current Issues:
-${context.engineerInputData.currentIssues}
-
-Validation Rules:
-- Minimum accomplishments length: ${context.validationRules.minAccomplishmentsLength} characters
-- Minimum plans length: ${context.validationRules.minPlansLength} characters
-- Minimum issues length: ${context.validationRules.minIssuesLength} characters
-- Allowed issue categories: ${context.validationRules.allowedIssueCategories.join(", ")}
-
-Please validate this submission and provide detailed feedback.`;
-
-  return {
-    version: ACTION_02_PROMPT_VERSION,
-    action: "action-02",
-    systemPrompt,
-    userPrompt,
-    context,
-  };
+  return prompt;
 }

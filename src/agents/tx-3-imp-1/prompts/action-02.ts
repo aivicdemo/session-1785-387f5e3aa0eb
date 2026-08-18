@@ -25,18 +25,19 @@ export interface Tx3Imp1PromptContext {
   escalationThreshold: number;
 }
 
-export interface Tx3Imp1IdentifiedMember {
-  memberId: string;
-  memberName: string;
-  status: "missing_report" | "delayed_report" | "submitted";
-  daysOverdue?: number;
-  escalationCount?: number;
-}
-
-export interface Tx3Imp1Action02Output {
-  identifiedMembers: Tx3Imp1IdentifiedMember[];
-  totalMissingReports: number;
-  totalDelayedReports: number;
+export interface Tx3Imp1Action02Result {
+  identifiedNonReporters: Array<{
+    memberId: string;
+    memberName: string;
+    status: "not_submitted" | "delayed";
+    daysOverdue?: number;
+  }>;
+  escalationTargets: Array<{
+    memberId: string;
+    memberName: string;
+    reason: string;
+    priority: "high" | "medium" | "low";
+  }>;
   analysisTimestamp: string;
 }
 
@@ -50,59 +51,59 @@ export function buildAction02Prompt(
     escalationThreshold,
   } = context;
 
-  const reportedMembersText = confirmationEmailContent.reportedMembers
-    .map(
-      (member) =>
-        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
-          member.submittedAt ? ` at ${member.submittedAt}` : ""
-        }`
-    )
+  const nonSubmittedMembers = confirmationEmailContent.reportedMembers
+    .filter((member) => member.status !== "submitted")
+    .map((member) => `- ${member.memberName} (ID: ${member.memberId})`)
     .join("\n");
 
-  return `You are an AI agent responsible for identifying missing and delayed reports from the confirmation email content.
+  const prompt = `You are an AI agent responsible for identifying non-reporters and determining escalation targets from confirmation email content.
 
-## Task: Identify Missing and Delayed Reports
-
-### Input Information:
-- Confirmation Email ID: ${confirmationEmailContent.emailId}
-- Sent At: ${confirmationEmailContent.sentAt}
+## Current Context
 - Current Timestamp: ${currentTimestamp}
 - Submission Deadline: ${submissionDeadline}
-- Escalation Threshold (days): ${escalationThreshold}
+- Escalation Threshold (days overdue): ${escalationThreshold}
 
-### Reported Members Status:
-${reportedMembersText}
+## Confirmation Email Content
+- Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
+- Subject: ${confirmationEmailContent.subject}
 
-### Your Responsibilities:
-1. Analyze the confirmation email content to identify members with missing reports
-2. Identify members whose reports are delayed beyond the submission deadline
-3. Calculate days overdue for delayed reports
-4. Determine escalation count based on the threshold
-5. Classify each member's status as: "missing_report", "delayed_report", or "submitted"
+## Reported Members Status
+${nonSubmittedMembers || "All members have submitted their reports."}
 
-### Output Format:
-Provide a JSON object with the following structure:
+## Task
+1. Identify all members who have not submitted their reports (status: "not_submitted" or "overdue")
+2. Calculate days overdue for delayed submissions
+3. Determine which members should be escalated based on the escalation threshold
+4. Assign priority levels (high/medium/low) to escalation targets
+
+## Output Format
+Return a JSON object with the following structure:
 {
-  "identifiedMembers": [
+  "identifiedNonReporters": [
     {
       "memberId": "string",
       "memberName": "string",
-      "status": "missing_report" | "delayed_report" | "submitted",
-      "daysOverdue": number (optional, only for delayed reports),
-      "escalationCount": number (optional)
+      "status": "not_submitted" | "delayed",
+      "daysOverdue": number (optional, only for delayed)
     }
   ],
-  "totalMissingReports": number,
-  "totalDelayedReports": number,
+  "escalationTargets": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "reason": "string",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
   "analysisTimestamp": "${currentTimestamp}"
 }
 
-### Analysis Rules:
-- A report is "missing" if the member has not submitted anything by the current timestamp
-- A report is "delayed" if submitted after the submission deadline but before current timestamp
-- Calculate daysOverdue as: (currentTimestamp - submissionDeadline) in days
-- Escalation count increases for members with repeated delays
-- Ensure accuracy in member identification to prevent incorrect escalations
+## Escalation Rules
+- High Priority: Days overdue >= ${escalationThreshold}
+- Medium Priority: Days overdue between ${Math.ceil(escalationThreshold / 2)} and ${escalationThreshold - 1}
+- Low Priority: Days overdue < ${Math.ceil(escalationThreshold / 2)}
+- Not submitted members are automatically high priority`;
 
-Begin your analysis now.`;
+  return prompt;
 }

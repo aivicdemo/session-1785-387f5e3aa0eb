@@ -3,80 +3,89 @@
 
 export const ACTION_03_PROMPT_VERSION = "1.0.0";
 
-export interface Action03Context {
-  engineerId: string;
-  engineerName: string;
-  submittedContent: {
-    yesterdayAccomplishments: string;
-    todayPlans: string;
-    currentIssues: string;
-  };
-  submissionTimestamp: string;
-  deadline: string;
-}
-
-export interface Action03ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
 export interface Action03PromptInput {
-  context: Action03Context;
+  engineerName: string;
+  engineerEmail: string;
+  yesterdayAccomplishments: string;
+  todayPlans: string;
+  currentIssues: string;
+  submissionDeadline: string;
+  systemName: string;
 }
 
 export interface Action03PromptOutput {
-  prompt: string;
-  version: string;
-}
-
-export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const { context } = input;
-  
-  const validationInstructions = `
-You are validating a daily report submission for an engineer.
-
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Submission Time: ${context.submissionTimestamp}
-- Deadline: ${context.deadline}
-
-Submitted Content:
-1. Yesterday's Accomplishments:
-${context.submittedContent.yesterdayAccomplishments}
-
-2. Today's Plans:
-${context.submittedContent.todayPlans}
-
-3. Current Issues:
-${context.submittedContent.currentIssues}
-
-Validation Tasks:
-1. Check if all three sections are filled with meaningful content (not empty or placeholder text)
-2. Verify that yesterday's accomplishments are specific and measurable
-3. Verify that today's plans are clear and actionable
-4. Verify that current issues are clearly described with context
-5. Check for consistency between yesterday's plans and today's accomplishments
-6. Identify any red flags or concerns that require escalation
-7. Assess whether the submission is on time or late
-
-Output your validation result as a JSON object with the following structure:
-{
-  "isValid": boolean,
-  "errors": string[],
-  "warnings": string[],
-  "requiresEscalation": boolean,
-  "escalationReason": string | null,
-  "submissionStatus": "on-time" | "late",
-  "hoursLate": number | null
-}
-
-Be thorough but fair in your assessment. Minor formatting issues should be warnings, not errors.
-`;
-
-  return {
-    prompt: validationInstructions,
-    version: ACTION_03_PROMPT_VERSION,
+  validationStatus: "valid" | "invalid";
+  validationErrors: string[];
+  registrationPayload: {
+    engineerName: string;
+    engineerEmail: string;
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+    submittedAt: string;
   };
+  confirmationEmailRecipients: string[];
+  escalationRequired: boolean;
+  escalationReason?: string;
+}
+
+export function buildAction03Prompt(input: Action03PromptInput): string {
+  const prompt = `You are an AI agent responsible for validating daily report submissions and preparing them for system registration.
+
+## Task: Validate and Prepare Daily Report for Registration
+
+### Input Information:
+- Engineer Name: ${input.engineerName}
+- Engineer Email: ${input.engineerEmail}
+- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
+- Today's Plans: ${input.todayPlans}
+- Current Issues: ${input.currentIssues}
+- Submission Deadline: ${input.submissionDeadline}
+- System Name: ${input.systemName}
+
+### Validation Rules:
+1. All fields must be non-empty
+2. Yesterday's accomplishments must be specific and measurable
+3. Today's plans must be realistic and achievable
+4. Current issues must be clearly described with context
+5. Submission must be within or close to the deadline
+6. Text length constraints:
+   - Accomplishments: 50-500 characters
+   - Plans: 50-500 characters
+   - Issues: 50-1000 characters
+
+### Your Responsibilities:
+1. Validate the submission against all rules
+2. If valid, prepare the registration payload with current timestamp
+3. Identify confirmation email recipients (system administrators)
+4. Determine if escalation is needed for incomplete or inappropriate content
+5. Provide clear validation error messages if validation fails
+
+### Output Format:
+Return a JSON object with the following structure:
+{
+  "validationStatus": "valid" | "invalid",
+  "validationErrors": ["error1", "error2"],
+  "registrationPayload": {
+    "engineerName": "string",
+    "engineerEmail": "string",
+    "yesterdayAccomplishments": "string",
+    "todayPlans": "string",
+    "currentIssues": "string",
+    "submittedAt": "ISO8601 timestamp"
+  },
+  "confirmationEmailRecipients": ["admin@example.com"],
+  "escalationRequired": boolean,
+  "escalationReason": "string or null"
+}
+
+### Escalation Triggers:
+- Incomplete or vague descriptions
+- Inappropriate or off-topic content
+- Submission significantly past deadline
+- Suspicious patterns or anomalies
+
+Perform the validation and return the structured response.`;
+
+  return prompt;
 }

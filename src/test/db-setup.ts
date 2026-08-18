@@ -17,48 +17,51 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-const memoryStore: Record<TableName, TableRow[]> = {
-  users: [],
-  daily_reports: [],
-  report_send_history: [],
-  audit_events: [],
+const createTestDatabase = async (): Promise<TestDatabase> => {
+  const tables: Record<TableName, TableRow[]> = {
+    users: [],
+    daily_reports: [],
+    report_send_history: [],
+    audit_events: [],
+  };
+
+  const testDb: TestDatabase = (tableName: TableName): TableOperations => {
+    return {
+      del: async (): Promise<number> => {
+        const count = tables[tableName].length;
+        tables[tableName] = [];
+        return count;
+      },
+
+      insert: async (row: TableRow | TableRow[]): Promise<void> => {
+        const rows = Array.isArray(row) ? row : [row];
+        tables[tableName].push(...rows);
+      },
+
+      where: async (conditions: Record<string, unknown>): Promise<TableRow[]> => {
+        return tables[tableName].filter((row) => {
+          return Object.entries(conditions).every(([key, value]) => {
+            return row[key] === value;
+          });
+        });
+      },
+    };
+  };
+
+  return testDb;
 };
 
-function createTableOperations(tableName: TableName): TableOperations {
-  return {
-    async del(): Promise<number> {
-      const count = memoryStore[tableName].length;
-      memoryStore[tableName] = [];
-      return count;
-    },
+const cleanupTestDatabase = async (db: TestDatabase): Promise<void> => {
+  const tableNames: TableName[] = [
+    "users",
+    "daily_reports",
+    "report_send_history",
+    "audit_events",
+  ];
 
-    async insert(row: TableRow | TableRow[]): Promise<void> {
-      const rows = Array.isArray(row) ? row : [row];
-      memoryStore[tableName].push(...rows);
-    },
+  for (const tableName of tableNames) {
+    await db(tableName).del();
+  }
+};
 
-    async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-      return memoryStore[tableName].filter((row) => {
-        return Object.entries(conditions).every(([key, value]) => row[key] === value);
-      });
-    },
-  };
-}
-
-export async function createTestDatabase(): Promise<TestDatabase> {
-  memoryStore.users = [];
-  memoryStore.daily_reports = [];
-  memoryStore.report_send_history = [];
-  memoryStore.audit_events = [];
-
-  return (tableName: TableName): TableOperations => {
-    return createTableOperations(tableName);
-  };
-}
-
-export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  await db("users").del();
-  await db("daily_reports").del();
-  await db("report_send_history").del();
-  await db("audit_events").del();
-}
+export { createTestDatabase, cleanupTestDatabase };

@@ -7,12 +7,10 @@ export interface Action06Context {
   engineerName: string;
   engineerEmail: string;
   reportDate: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
-  submissionTimestamp: string;
-  isLate: boolean;
-  daysOverdue: number;
+  submissionDeadline: string;
+  previousReportTemplate?: string;
+  systemApiEndpoint: string;
+  adminEmails: string[];
 }
 
 export interface Action06PromptResult {
@@ -24,41 +22,49 @@ export interface Action06PromptResult {
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const systemPrompt = `You are an automated notification system for the morning report management system.
-Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
-You must:
-1. Determine if a reminder notification should be sent based on submission status and time overdue
-2. Compose a professional and encouraging reminder message
-3. Decide on the appropriate communication channel (email or chat)
-4. Log the notification action for audit purposes
-5. Avoid excessive notifications that could burden engineers
+  const systemPrompt = `You are an automated daily report management agent responsible for sending confirmation emails to administrators after a daily report has been successfully registered in the system.
 
-Guidelines:
-- Be respectful and professional in tone
-- Provide clear information about the deadline and current status
-- Offer assistance if needed
-- Consider the number of days overdue when determining urgency
-- Escalate to human review if multiple reminders have already been sent`;
+Your role in Action 6 is to:
+1. Verify that the daily report was successfully registered in the management system
+2. Compose and send confirmation emails to all specified administrators
+3. Include relevant report details and submission confirmation in the email
+4. Log the email sending results for audit purposes
+5. Handle any email delivery failures gracefully
 
-  const userPrompt = `Process the following engineer's report submission status and send an appropriate reminder notification if needed:
+You must ensure:
+- Confirmation emails are sent to all administrators in the admin email list
+- Email content clearly indicates successful report registration
+- The engineer's name, report date, and key submission details are included
+- Email sending is logged with timestamp and delivery status
+- Any failures are reported for escalation`;
+
+  const userPrompt = `Please send confirmation emails for the following daily report submission:
 
 Engineer Name: ${context.engineerName}
 Engineer Email: ${context.engineerEmail}
 Report Date: ${context.reportDate}
-Submission Status: ${context.isLate ? "OVERDUE" : "PENDING"}
-Days Overdue: ${context.daysOverdue}
-Last Submission Timestamp: ${context.submissionTimestamp}
+Submission Deadline: ${context.submissionDeadline}
+System API Endpoint: ${context.systemApiEndpoint}
+Administrator Email List: ${context.adminEmails.join(", ")}
 
-Yesterday's Accomplishments (if submitted): ${context.yesterdayAccomplishments || "Not submitted"}
-Today's Plans (if submitted): ${context.todayPlans || "Not submitted"}
-Current Issues (if submitted): ${context.currentIssues || "Not submitted"}
+${context.previousReportTemplate ? `Previous Report Template Reference:\n${context.previousReportTemplate}\n` : ""}
 
-Tasks:
-1. Evaluate whether a reminder notification should be sent
-2. If yes, compose the reminder message
-3. Specify the communication channel (email or chat)
-4. Provide reasoning for the decision
-5. Flag if escalation to human review is needed`;
+Action 6 Task: Send Confirmation Emails to Administrators
+
+Steps to execute:
+1. Verify the report registration status in the management system
+2. Prepare a professional confirmation email with:
+   - Subject: Daily Report Submission Confirmation - [Engineer Name] - [Report Date]
+   - Body including: engineer name, submission timestamp, report date, confirmation of successful registration
+3. Send the confirmation email to each administrator
+4. Record the sending timestamp and delivery status for each email
+5. If any email fails to send, log the failure reason and prepare for escalation
+
+Expected output:
+- Confirmation that emails were sent to all administrators
+- List of email addresses that received the confirmation
+- Timestamp of email sending
+- Any delivery failures or issues encountered`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,

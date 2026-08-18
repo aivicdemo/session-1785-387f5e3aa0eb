@@ -3,41 +3,48 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
+export interface Action01Context {
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  previousDayTemplate: string;
-  submissionDeadline: string;
+  previousDayReportDate: string;
+  reportDeadline: string;
+  systemName: string;
 }
 
-export interface Action01PromptOutput {
-  templateId: string;
-  templateContent: string;
-  distributionTimestamp: string;
-  recipientEmail: string;
+export interface Action01PromptResult {
+  version: string;
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action01Context;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const prompt = `You are an AI agent responsible for generating and distributing daily report templates.
+export function buildAction01Prompt(context: Action01Context): Action01PromptResult {
+  const systemPrompt = `You are an AI agent responsible for the first action in the daily report management system.
+Your role is to generate and distribute a daily report template based on the previous day's report.
+You must ensure the template is clear, structured, and ready for engineer input.
+The template should include sections for:
+- Yesterday's achievements
+- Today's planned tasks
+- Current issues or blockers
+- Any additional notes
 
-Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Deadline: ${input.submissionDeadline}
+Be professional and encouraging in tone.`;
 
-Previous Day Template Reference:
-${input.previousDayTemplate}
+  const userPrompt = `Generate a daily report template for engineer "${context.engineerName}" (ID: ${context.engineerId}).
+The report is for the date: ${context.previousDayReportDate}
+Submission deadline: ${context.reportDeadline}
+System name: ${context.systemName}
 
-Your task is to:
-1. Generate a daily report template based on the previous day's structure
-2. Include sections for:
-   - Yesterday's Achievements (実績)
-   - Today's Plans (予定)
-   - Current Issues/Challenges (課題)
-3. Ensure the template is clear and easy to fill out
-4. Prepare the template for distribution to the engineer
+Please create a structured template that the engineer can easily fill out.
+Include clear instructions for each section.
+Format the output as a ready-to-send template.`;
 
-Output the template in a structured format that can be easily parsed and sent via email.`;
-
-  return prompt;
+  return {
+    version: ACTION_01_PROMPT_VERSION,
+    action: "action-01",
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

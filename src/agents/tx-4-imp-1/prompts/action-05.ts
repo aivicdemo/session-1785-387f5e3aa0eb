@@ -7,218 +7,152 @@ export interface Action05Context {
   confirmationEmailContent: string;
   reportSubmissionDeadline: string;
   currentTimestamp: string;
-  previousExtractedIssues?: Array<{
-    id: string;
-    title: string;
-    description: string;
-    reportedBy: string;
-    reportDate: string;
+  previousEscalations: Array<{
+    employeeId: string;
+    escalationCount: number;
+    lastEscalationTime: string;
   }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
-    email: string;
-  }>;
-  priorityClassificationRules?: {
-    critical: string[];
-    high: string[];
-    medium: string[];
-    low: string[];
+  escalationRules: {
+    maxEscalationCount: number;
+    escalationIntervalMinutes: number;
+    considerLateAfterMinutes: number;
   };
 }
 
 export interface ExtractedIssue {
-  id: string;
-  title: string;
+  issueId: string;
   description: string;
-  reportedBy: string;
-  reportDate: string;
+  affectedEmployees: string[];
+  severity: "critical" | "high" | "medium" | "low";
   category: string;
-  affectedAreas: string[];
-  estimatedImpact: string;
+  detectedAt: string;
 }
 
 export interface PrioritizedIssue extends ExtractedIssue {
-  priority: "critical" | "high" | "medium" | "low";
+  priority: number;
   priorityReason: string;
   recommendedAction: string;
-  riskLevel: "high" | "medium" | "low";
 }
 
 export interface Action05Output {
   extractedIssues: ExtractedIssue[];
   prioritizedIssues: PrioritizedIssue[];
+  escalationRecommendations: Array<{
+    employeeId: string;
+    shouldEscalate: boolean;
+    reason: string;
+    suggestedAction: string;
+  }>;
   summaryReport: {
-    totalIssuesExtracted: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-    overallRiskAssessment: string;
+    totalIssuesFound: number;
+    criticalIssueCount: number;
+    employeesWithIssues: string[];
+    recommendedNextSteps: string[];
   };
-  timestamp: string;
-  processingStatus: "success" | "partial" | "failed";
-  errorDetails?: string;
 }
 
 export function buildAction05Prompt(context: Action05Context): string {
-  const priorityRulesSection = context.priorityClassificationRules
-    ? `
-## 優先度分類ルール
-- 緊急（Critical）: ${context.priorityClassificationRules.critical.join(", ")}
-- 高（High）: ${context.priorityClassificationRules.high.join(", ")}
-- 中（Medium）: ${context.priorityClassificationRules.medium.join(", ")}
-- 低（Low）: ${context.priorityClassificationRules.low.join(", ")}
-`
-    : "";
+  const escalationRulesDescription = `
+最大エスカレーション回数: ${context.escalationRules.maxEscalationCount}
+エスカレーション間隔: ${context.escalationRules.escalationIntervalMinutes}分
+遅延と判定する時間: ${context.escalationRules.considerLateAfterMinutes}分
+`;
 
-  const previousIssuesSection = context.previousExtractedIssues
-    ? `
-## 前回抽出された課題（参考）
-${context.previousExtractedIssues
+  const previousEscalationsDescription =
+    context.previousEscalations.length > 0
+      ? `
+過去のエスカレーション履歴:
+${context.previousEscalations
   .map(
-    (issue) => `
-- ID: ${issue.id}
-  タイトル: ${issue.title}
-  報告者: ${issue.reportedBy}
-  報告日: ${issue.reportDate}
-`
+    (e) =>
+      `- 従業員ID: ${e.employeeId}, エスカレーション回数: ${e.escalationCount}, 最終実行時刻: ${e.lastEscalationTime}`
   )
-  .join("")}
+  .join("\n")}
 `
-    : "";
+      : "過去のエスカレーション履歴: なし";
 
-  return `# Action 05: 課題・ボトルネックの自動抽出と優先度判定
+  return `あなたは日報管理システムのAIエージェント（Action 05: 課題抽出・優先度判定）です。
 
-## 目的
-確認メール内容から日報の課題・ボトルネックを自動抽出し、優先度を判定・分類して、部長に整理済みの課題優先度リストを提供する。
+【タスク】
+確認メールの内容から以下を自動実行してください:
+1. 日報内容から課題・ボトルネックを抽出する
+2. 抽出した課題に優先度を判定・分類する
+3. エスカレーション対象を判定する
+4. 整理済みレポートを生成する
 
-## 入力情報
-### 確認メール内容
-\`\`\`
+【入力情報】
+確認メール内容:
 ${context.confirmationEmailContent}
-\`\`\`
 
-### メタデータ
-- 報告期限: ${context.reportSubmissionDeadline}
-- 現在時刻: ${context.currentTimestamp}
-- チームメンバー数: ${context.teamMembers.length}
+日報提出期限: ${context.reportSubmissionDeadline}
+現在時刻: ${context.currentTimestamp}
 
-### チームメンバー一覧
-${context.teamMembers.map((member) => `- ${member.name} (${member.department}): ${member.email}`).join("\n")}
+エスカレーションルール:
+${escalationRulesDescription}
 
-${previousIssuesSection}
+${previousEscalationsDescription}
 
-${priorityRulesSection}
+【出力要件】
+以下の形式でJSON形式の結果を返してください:
 
-## 実行手順
-
-### ステップ 1: 課題・ボトルネックの抽出
-確認メール内容から以下の情報を抽出してください：
-1. 明示的に記載された課題・問題点
-2. 進捗遅延の原因となっているボトルネック
-3. リスク要因や懸念事項
-4. 依存関係による阻害要因
-5. リソース不足や人員配置の問題
-
-各課題について以下を特定してください：
-- 課題のタイトル（簡潔に）
-- 詳細な説明
-- 報告者の名前
-- 報告日時
-- 影響を受ける領域・プロジェクト
-- 推定される影響度（軽微/中程度/重大）
-
-### ステップ 2: 優先度判定
-抽出された各課題に対して、以下の基準で優先度を判定してください：
-
-**緊急（Critical）**
-- システム全体の停止につながる可能性がある
-- 本日中の対応が必須
-- 複数プロジェクトに影響
-- 顧客対応に直結する
-
-**高（High）**
-- 主要プロジェクトの進捗に大きな影響
-- 本日中の対応が望ましい
-- 1-2プロジェクトに影響
-- 対応遅延で追加コストが発生
-
-**中（Medium）**
-- 進捗に中程度の影響
-- 本日中の対応が必要だが、翌日対応も可能
-- 限定的な影響範囲
-- 計画的な対応で対処可能
-
-**低（Low）**
-- 進捗への影響が軽微
-- 対応は今週中に実施
-- 単一チーム内の問題
-- 長期的な改善項目
-
-### ステップ 3: リスク評価
-各課題に対して以下のリスク評価を実施してください：
-- リスクレベル（高/中/低）
-- 推奨アクション
-- 対応期限の目安
-
-### ステップ 4: 出力形式
-以下の JSON 形式で結果を出力してください：
-
-\`\`\`json
 {
   "extractedIssues": [
     {
-      "id": "ISSUE-001",
-      "title": "課題のタイトル",
-      "description": "詳細な説明",
-      "reportedBy": "報告者名",
-      "reportDate": "2024-01-15T09:30:00Z",
-      "category": "技術的課題|リソース不足|依存関係|その他",
-      "affectedAreas": ["プロジェクトA", "プロジェクトB"],
-      "estimatedImpact": "軽微|中程度|重大"
+      "issueId": "ISSUE_001",
+      "description": "課題の説明",
+      "affectedEmployees": ["従業員ID1", "従業員ID2"],
+      "severity": "critical|high|medium|low",
+      "category": "課題カテゴリ",
+      "detectedAt": "ISO8601形式の検出時刻"
     }
   ],
   "prioritizedIssues": [
     {
-      "id": "ISSUE-001",
-      "title": "課題のタイトル",
-      "description": "詳細な説明",
-      "reportedBy": "報告者名",
-      "reportDate": "2024-01-15T09:30:00Z",
-      "category": "技術的課題|リソース不足|依存関係|その他",
-      "affectedAreas": ["プロジェクトA", "プロジェクトB"],
-      "estimatedImpact": "軽微|中程度|重大",
-      "priority": "critical|high|medium|low",
+      "issueId": "ISSUE_001",
+      "description": "課題の説明",
+      "affectedEmployees": ["従業員ID1"],
+      "severity": "critical|high|medium|low",
+      "category": "課題カテゴリ",
+      "detectedAt": "ISO8601形式の検出時刻",
+      "priority": 1,
       "priorityReason": "優先度判定の理由",
-      "recommendedAction": "推奨される対応内容",
-      "riskLevel": "high|medium|low"
+      "recommendedAction": "推奨アクション"
+    }
+  ],
+  "escalationRecommendations": [
+    {
+      "employeeId": "従業員ID",
+      "shouldEscalate": true|false,
+      "reason": "エスカレーション判定の理由",
+      "suggestedAction": "推奨アクション"
     }
   ],
   "summaryReport": {
-    "totalIssuesExtracted": 5,
-    "criticalCount": 1,
-    "highCount": 2,
-    "mediumCount": 1,
-    "lowCount": 1,
-    "overallRiskAssessment": "全体的なリスク評価と対応方針"
-  },
-  "timestamp": "2024-01-15T10:00:00Z",
-  "processingStatus": "success"
+    "totalIssuesFound": 5,
+    "criticalIssueCount": 2,
+    "employeesWithIssues": ["従業員ID1", "従業員ID2"],
+    "recommendedNextSteps": ["推奨ステップ1", "推奨ステップ2"]
+  }
 }
-\`\`\`
 
-## 注意事項
-- 前回抽出された課題との重複を避け、新規課題のみを抽出してください
-- 優先度判定は客観的な基準に基づいてください
-- 不明確な情報については、推定根拠を明記してください
-- 複数の課題が同等の優先度の場合は、影響範囲の広さで判定してください
+【課題抽出のポイント】
+- 日報内容から明示的な課題だけでなく、潜在的なボトルネックも抽出する
+- 複数の従業員に共通する課題は統合する
+- 課題の重大度（severity）を正確に判定する
 
-## 成功基準
-- 全ての課題が正確に抽出されている
-- 優先度判定が客観的で一貫性がある
-- リスク評価が適切である
-- 推奨アクションが実行可能である
-`;
+【優先度判定のポイント】
+- 重大度（severity）を基準に優先度を決定する
+- 影響範囲（affected employees数）を考慮する
+- 提出期限超過の課題は優先度を上げる
+- 同じ課題の繰り返しは優先度を上げる
+
+【エスカレーション判定のポイント】
+- 提出期限を${context.escalationRules.considerLateAfterMinutes}分以上超過している場合
+- 過去${context.escalationRules.maxEscalationCount}回以上のエスカレーション履歴がある場合は慎重に判定
+- エスカレーション間隔が${context.escalationRules.escalationIntervalMinutes}分以上経過している場合のみ実行推奨
+
+【重要な制約】
+- 必ずJSON形式で返す
+- 不完全な情報は推測で補わない
+- 判定に確信がない場合は理由を詳細に記載する`;
 }

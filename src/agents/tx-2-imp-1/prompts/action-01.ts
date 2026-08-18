@@ -3,50 +3,87 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
-  reportingDeadline: string;
+export interface Action01PromptInput {
+  submissionDeadline: string;
   targetDate: string;
   engineerCount: number;
   systemName: string;
 }
 
-export interface Action01PromptResult {
-  templateContent: string;
-  distributionChannels: string[];
-  scheduledTime: string;
+export interface Action01PromptOutput {
+  prompt: string;
+  version: string;
 }
 
-export function buildAction01Prompt(context: Action01PromptContext): string {
+export function buildAction01Prompt(input: Action01PromptInput): Action01PromptOutput {
   const {
-    reportingDeadline,
+    submissionDeadline,
     targetDate,
     engineerCount,
     systemName,
-  } = context;
+  } = input;
 
-  return `You are an AI agent responsible for the daily report management system.
+  const prompt = `You are an AI agent responsible for monitoring daily report submission status in the "${systemName}" system.
 
-System: ${systemName}
-Target Date: ${targetDate}
-Reporting Deadline: ${reportingDeadline}
-Number of Engineers: ${engineerCount}
+**Task: Confirm all engineers' daily report submission status**
 
-Action 1: Generate and distribute the previous day's daily report template
+**Context:**
+- Target date: ${targetDate}
+- Submission deadline: ${submissionDeadline}
+- Total engineers to monitor: ${engineerCount}
+- Current system time: ${new Date().toISOString()}
 
-Your task is to:
-1. Generate a daily report template for the previous day
-2. Include sections for:
-   - Yesterday's achievements
-   - Today's planned tasks
-   - Current issues and challenges
-3. Prepare the template for distribution to all engineers
-4. Ensure the template is clear, concise, and easy to fill out
-5. Schedule distribution to reach engineers before their working hours
+**Objective:**
+Check the submission status of all ${engineerCount} engineers' daily reports. Identify which engineers have submitted their reports and which have not.
 
-Output the following:
-- Template content in a structured format
-- Distribution channels (email, chat, etc.)
-- Recommended distribution time
+**Required Actions:**
+1. Query the daily report submission system for all engineers' submission records
+2. Compare each engineer's submission timestamp against the deadline: ${submissionDeadline}
+3. Classify engineers into two categories:
+   - Submitted: Engineers who submitted before or at the deadline
+   - Not submitted: Engineers who have not submitted or submitted after the deadline
+4. Record the submission status with timestamps for each engineer
+5. Generate a summary of submission statistics
 
-Template should be professional, encouraging, and designed to maximize completion rates.`;
+**Output Format:**
+Return a JSON object with the following structure:
+{
+  "targetDate": "${targetDate}",
+  "submissionDeadline": "${submissionDeadline}",
+  "totalEngineers": ${engineerCount},
+  "submitted": [
+    {
+      "engineerId": "string",
+      "engineerName": "string",
+      "submittedAt": "ISO8601 timestamp",
+      "status": "on-time" | "late"
+    }
+  ],
+  "notSubmitted": [
+    {
+      "engineerId": "string",
+      "engineerName": "string",
+      "status": "not-submitted"
+    }
+  ],
+  "summary": {
+    "totalSubmitted": number,
+    "totalNotSubmitted": number,
+    "onTimeCount": number,
+    "lateCount": number,
+    "submissionRate": number
+  }
+}
+
+**Constraints:**
+- Only report factual submission data from the system
+- Do not make assumptions about engineers who have not submitted
+- Include all engineers in the report, whether submitted or not
+- Timestamps must be in ISO 8601 format
+- Submission rate should be calculated as (totalSubmitted / totalEngineers) * 100`;
+
+  return {
+    prompt,
+    version: ACTION_01_PROMPT_VERSION,
+  };
 }

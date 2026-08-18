@@ -13,7 +13,7 @@ export interface Action04Context {
     issues: string;
   };
   submissionDeadline: string;
-  managementSystemUrl: string;
+  systemTimestamp: string;
 }
 
 export interface Action04ValidationResult {
@@ -27,68 +27,52 @@ export interface Action04ValidationResult {
   };
 }
 
-export interface Action04PromptInput {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
-  };
-}
+export function buildAction04Prompt(context: Action04Context): string {
+  const prompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting report management system.
 
-export interface Action04PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  expectedResponseFormat: string;
-}
+## Current Context
+- Engineer ID: ${context.engineerId}
+- Engineer Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
+- Submission Deadline: ${context.submissionDeadline}
+- Current System Time: ${context.systemTimestamp}
 
-export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
-  const { context, validationRules } = input;
-
-  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
-
-Your role is to:
-1. Validate the completeness and appropriateness of engineer's daily report input
-2. Check that all required fields are filled with sufficient content
-3. Identify any inconsistencies or concerning patterns
-4. Provide clear feedback on validation results
-5. Prepare the report for system registration if validation passes
-
-Validation criteria:
-- Yesterday's achievements: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
-- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
-- Issues/challenges: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
-- Content must be specific and actionable, not generic
-- No placeholder or incomplete text allowed
-
-Return validation results in JSON format with:
-- isValid: boolean
-- errors: array of validation errors
-- warnings: array of non-critical issues
-- validatedContent: the cleaned/normalized content if valid`;
-
-  const userPrompt = `Please validate the following daily report submission:
-
-Engineer: ${context.engineerName} (ID: ${context.engineerId})
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
-
+## Previous Report Content to Validate
 Yesterday's Achievements:
 ${context.previousReportContent.yesterday}
 
-Today's Plan:
+Today's Plans:
 ${context.previousReportContent.today}
 
-Issues/Challenges:
+Current Issues/Challenges:
 ${context.previousReportContent.issues}
 
-Validate this report according to the criteria specified in the system prompt. Ensure the content is complete, appropriate, and ready for registration in the management system at ${context.managementSystemUrl}.`;
+## Validation Task
+Your task is to validate the submitted report content according to these criteria:
 
-  const expectedResponseFormat = `{
+1. **Completeness Check**
+   - Verify that all three sections (yesterday, today, issues) contain meaningful content
+   - Ensure each section has at least 10 characters of substantive text
+   - Flag any empty or placeholder-only sections
+
+2. **Appropriateness Check**
+   - Verify content is work-related and relevant to daily reporting
+   - Check for any inappropriate or off-topic content
+   - Ensure language is professional and clear
+
+3. **Consistency Check**
+   - Verify that today's plans are logically related to yesterday's achievements
+   - Check that identified issues are realistic and actionable
+   - Ensure no contradictions between sections
+
+4. **Format Check**
+   - Verify text is properly formatted and readable
+   - Check for excessive special characters or formatting issues
+   - Ensure content is not excessively long (max 500 chars per section)
+
+## Output Format
+Return a JSON object with the following structure:
+{
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
@@ -96,19 +80,10 @@ Validate this report according to the criteria specified in the system prompt. E
     "yesterday": string,
     "today": string,
     "issues": string
-  },
-  "validationDetails": {
-    "yesterdayLength": number,
-    "todayLength": number,
-    "issuesLength": number,
-    "contentQuality": "high" | "medium" | "low"
   }
-}`;
+}
 
-  return {
-    version: ACTION_04_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    expectedResponseFormat,
-  };
+Provide your validation result in valid JSON format only.`;
+
+  return prompt;
 }

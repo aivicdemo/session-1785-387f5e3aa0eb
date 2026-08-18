@@ -4,140 +4,121 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
+  reportSummary: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    reportedBy: string;
-    reportDate: string;
+    category: string;
   }>;
-  priorityClassifications: Array<{
+  priorityAssignments: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
-    category: string;
   }>;
-  reportSummary: {
-    totalReports: number;
-    submittedCount: number;
-    overallProgress: string;
-    keyMetrics: Record<string, unknown>;
-  };
+  departmentHead: string;
+  reportDate: string;
+  totalReportsCollected: number;
+  reportingRate: number;
 }
 
 export interface Action06PromptInput {
-  confirmedReports: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
+  context: Action06Context;
+  previousActions: Array<{
+    actionNumber: number;
+    result: string;
   }>;
-  previousPriorities?: Array<{
-    issueId: string;
-    priority: string;
-  }>;
-  organizationContext?: {
-    department: string;
-    projectPhase: string;
-    criticalDeadlines: string[];
-  };
+  escalationFlags?: string[];
 }
 
 export interface Action06PromptOutput {
   version: string;
   systemPrompt: string;
   userPrompt: string;
-  context: Action06Context;
+  expectedOutputFormat: {
+    type: "structured";
+    schema: {
+      reportPresentation: string;
+      priorityClassification: Array<{
+        priority: string;
+        issues: string[];
+        actionItems: string[];
+      }>;
+      recommendedActions: string[];
+      escalationRequired: boolean;
+      escalationReason?: string;
+    };
+  };
 }
 
 export function buildAction06Prompt(
   input: Action06PromptInput
 ): Action06PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
-Your task is to analyze confirmed daily reports and generate a comprehensive priority-classified issue list for the department head.
+  const systemPrompt = `You are an AI agent responsible for the final step of the daily report management workflow. Your role is to present the collected and analyzed daily reports to the department head in a clear, actionable format.
 
-You must:
-1. Review all submitted daily reports
-2. Identify patterns, risks, and bottlenecks
-3. Classify issues by priority (critical, high, medium, low)
-4. Provide clear reasoning for each priority assignment
-5. Generate an executive summary for leadership review
+Your responsibilities:
+1. Present the overall progress status in a structured, easy-to-understand format
+2. Display the prioritized list of issues and bottlenecks
+3. Provide recommended actions based on the priority classification
+4. Flag any escalation-required situations
+5. Ensure the department head has all necessary information for the morning meeting
 
-Output must be structured, actionable, and ready for morning meeting presentation.`;
+Context:
+- Total reports collected: ${input.context.totalReportsCollected}
+- Reporting rate: ${(input.context.reportingRate * 100).toFixed(1)}%
+- Report date: ${input.context.reportDate}
+- Department head: ${input.context.departmentHead}
 
-  const reportsList = input.confirmedReports
-    .map(
-      (report) =>
-        `[${report.employeeId}] ${report.employeeName} (${report.submittedAt}):\n${report.reportContent}`
-    )
-    .join("\n\n");
+Output format must be structured JSON with clear sections for priority classification and recommended actions.`;
 
-  const contextSection = input.organizationContext
-    ? `\nOrganization Context:
-- Department: ${input.organizationContext.department}
-- Project Phase: ${input.organizationContext.projectPhase}
-- Critical Deadlines: ${input.organizationContext.criticalDeadlines.join(", ")}`
-    : "";
+  const issuesSection = input.context.extractedIssues
+    .map((issue) => {
+      const priority = input.context.priorityAssignments.find(
+        (p) => p.issueId === issue.id
+      );
+      return `- [${priority?.priority || "unassigned"}] ${issue.title}: ${issue.description} (Category: ${issue.category})`;
+    })
+    .join("\n");
 
-  const previousPrioritiesSection =
-    input.previousPriorities && input.previousPriorities.length > 0
-      ? `\nPrevious Priority Classifications (for reference):
-${input.previousPriorities.map((p) => `- Issue ${p.issueId}: ${p.priority}`).join("\n")}`
-      : "";
+  const userPrompt = `Based on the following collected daily reports and extracted issues, prepare a final presentation for the department head:
 
-  const userPrompt = `Process the following daily reports and generate priority classifications:
+Report Summary:
+${input.context.reportSummary}
 
-${reportsList}${contextSection}${previousPrioritiesSection}
+Extracted Issues and Priority Assignments:
+${issuesSection}
 
-Please analyze these reports and provide:
-1. A list of extracted issues with descriptions
-2. Priority classification for each issue (critical/high/medium/low)
-3. Reasoning for each priority assignment
-4. Overall progress summary
-5. Key metrics and observations
+Previous action results:
+${input.previousActions.map((a) => `Action ${a.actionNumber}: ${a.result}`).join("\n")}
 
-Format your response as structured JSON with the following schema:
-{
-  "extractedIssues": [
-    {
-      "id": "string",
-      "title": "string",
-      "description": "string",
-      "reportedBy": "string",
-      "reportDate": "string"
-    }
-  ],
-  "priorityClassifications": [
-    {
-      "issueId": "string",
-      "priority": "critical|high|medium|low",
-      "reasoning": "string",
-      "category": "string"
-    }
-  ],
-  "reportSummary": {
-    "totalReports": number,
-    "submittedCount": number,
-    "overallProgress": "string",
-    "keyMetrics": {}
-  }
-}`;
+${input.escalationFlags && input.escalationFlags.length > 0 ? `Escalation flags to consider:\n${input.escalationFlags.join("\n")}` : ""}
 
-  const context: Action06Context = {
-    extractedIssues: [],
-    priorityClassifications: [],
-    reportSummary: {
-      totalReports: input.confirmedReports.length,
-      submittedCount: input.confirmedReports.length,
-      overallProgress: "pending_analysis",
-      keyMetrics: {},
-    },
-  };
+Please provide:
+1. A clear presentation of the overall progress status
+2. Issues grouped by priority level (critical, high, medium, low)
+3. Specific action items for each priority level
+4. Any recommendations for the department head
+5. Assessment of whether escalation is required and why`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,
     systemPrompt,
     userPrompt,
-    context,
+    expectedOutputFormat: {
+      type: "structured",
+      schema: {
+        reportPresentation: "string",
+        priorityClassification: [
+          {
+            priority: "string",
+            issues: ["string"],
+            actionItems: ["string"],
+          },
+        ],
+        recommendedActions: ["string"],
+        escalationRequired: true,
+        escalationReason: "string (optional)",
+      },
+    },
   };
 }

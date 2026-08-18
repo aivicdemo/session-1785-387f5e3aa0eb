@@ -46,13 +46,7 @@ export interface ReportSubmissionHistory {
 export interface AuditLog {
   id?: string;
   agentId: string;
-  eventType:
-    | "started"
-    | "completed"
-    | "failed"
-    | "step_in_progress"
-    | "step_completed"
-    | "handoff";
+  eventType: "started" | "step_in_progress" | "step_completed" | "completed" | "failed";
   stepName?: string;
   timestamp: Date;
   details: Record<string, unknown>;

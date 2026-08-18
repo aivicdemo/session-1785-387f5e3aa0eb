@@ -4,86 +4,133 @@
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
-  reportContent: string;
-  employeeId: string;
-  employeeName: string;
-  departmentId: string;
-  departmentName: string;
-  submissionDeadline: string;
+  confirmationEmailContent: string;
+  reportingDeadline: string;
   currentTimestamp: string;
+  previousReminders: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+  reminderRules: {
+    maxReminderCount: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Action04PromptOutput {
-  urgencyLevel: "low" | "medium" | "high" | "critical";
-  requiresEscalation: boolean;
-  escalationReason?: string;
-  recommendedAction: string;
-  notificationMessage: string;
+  identifiedNonReporters: Array<{
+    employeeId: string;
+    employeeName: string;
+    reason: "not_submitted" | "delayed";
+    daysSinceDeadline: number;
+  }>;
+  remindersToSend: Array<{
+    employeeId: string;
+    employeeName: string;
+    reminderCount: number;
+    shouldSendEmail: boolean;
+    shouldSendChat: boolean;
+    message: string;
+  }>;
+  escalationCases: Array<{
+    employeeId: string;
+    employeeName: string;
+    reason: string;
+    requiresHumanReview: boolean;
+  }>;
+  sendingLog: Array<{
+    employeeId: string;
+    channel: "email" | "chat";
+    timestamp: string;
+    status: "pending" | "sent" | "failed";
+    messageId?: string;
+  }>;
 }
 
 export function buildAction04Prompt(input: Action04PromptInput): string {
-  const {
-    reportContent,
-    employeeId,
-    employeeName,
-    departmentId,
-    departmentName,
-    submissionDeadline,
-    currentTimestamp,
-  } = input;
+  const reminderRulesText = `
+催促ルール:
+- 最大催促回数: ${input.reminderRules.maxReminderCount}回
+- 催促間隔: ${input.reminderRules.reminderIntervalMinutes}分
+`;
 
-  const deadlineDate = new Date(submissionDeadline);
-  const currentDate = new Date(currentTimestamp);
-  const hoursOverdue = Math.floor(
-    (currentDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60)
-  );
+  const previousRemindersText =
+    input.previousReminders.length > 0
+      ? `
+前回の催促履歴:
+${input.previousReminders
+  .map(
+    (r) =>
+      `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}回, 最終催促時刻: ${r.lastReminderTime}`
+  )
+  .join("\n")}
+`
+      : "前回の催促履歴: なし";
 
-  return `# 催促対象判定プロンプト (Action 04)
+  return `あなたは朝会報告管理システムのAIエージェントです。確認メール内容から報告漏れ・遅延部員を特定し、催促対象を判定してメール・チャットを送信します。
 
-## 入力情報
-- 従業員ID: ${employeeId}
-- 従業員名: ${employeeName}
-- 部門ID: ${departmentId}
-- 部門名: ${departmentName}
-- 提出期限: ${submissionDeadline}
-- 現在時刻: ${currentTimestamp}
-- 超過時間: ${hoursOverdue}時間
+【現在の状況】
+確認メール内容:
+${input.confirmationEmailContent}
 
-## 日報内容
-\`\`\`
-${reportContent}
-\`\`\`
+報告期限: ${input.reportingDeadline}
+現在時刻: ${input.currentTimestamp}
 
-## タスク
-以下の基準に基づいて、催促対象の判定と対応を実施してください:
+${reminderRulesText}
 
-1. **緊急度レベルの判定**
-   - low: 期限内または1時間以内の遅延
-   - medium: 1時間以上6時間以内の遅延
-   - high: 6時間以上24時間以内の遅延
-   - critical: 24時間以上の遅延
+${previousRemindersText}
 
-2. **エスカレーション判定**
-   - 同一従業員への複数回催促後も報告がない場合
-   - 24時間以上の大幅な遅延がある場合
-   - 報告内容が不完全または不適切である場合
+【あなたのタスク】
+1. 確認メール内容から報告漏れ・遅延部員を特定してください
+2. 催促対象部員を判定してください（催促ルールに基づいて）
+3. 各部員に対して送信すべき催促メール・チャットを決定してください
+4. 送信結果をログに記録してください
+5. 複数回催促後も報告がない場合や特殊ケースはエスカレーション対象として特定してください
 
-3. **推奨アクション**
-   - 催促メール送信の要否
-   - チャット通知の要否
-   - 部門長への報告の要否
-
-4. **通知メッセージの作成**
-   - 従業員に対する催促メッセージ
-   - 部門長に対する報告メッセージ
-
-## 出力形式
-JSON形式で以下の構造で返してください:
+【出力形式】
+以下のJSON形式で結果を返してください:
 {
-  "urgencyLevel": "low" | "medium" | "high" | "critical",
-  "requiresEscalation": boolean,
-  "escalationReason": "string or null",
-  "recommendedAction": "string",
-  "notificationMessage": "string"
-}`;
+  "identifiedNonReporters": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "reason": "not_submitted" | "delayed",
+      "daysSinceDeadline": number
+    }
+  ],
+  "remindersToSend": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "reminderCount": number,
+      "shouldSendEmail": boolean,
+      "shouldSendChat": boolean,
+      "message": "string"
+    }
+  ],
+  "escalationCases": [
+    {
+      "employeeId": "string",
+      "employeeName": "string",
+      "reason": "string",
+      "requiresHumanReview": boolean
+    }
+  ],
+  "sendingLog": [
+    {
+      "employeeId": "string",
+      "channel": "email" | "chat",
+      "timestamp": "string",
+      "status": "pending" | "sent" | "failed",
+      "messageId": "string (optional)"
+    }
+  ]
+}
+
+【注意事項】
+- 催促回数が上限に達した場合はエスカレーション対象にしてください
+- 同一部員への過度な催促を避けてください
+- 送信履歴は正確に記録してください
+- 特殊ケースや判定が困難な場合は人間レビューが必要と判定してください`;
 }
