@@ -17,148 +17,102 @@ export interface Action06Context {
     reasoning: string;
   }>;
   departmentHead: string;
-  reportingDate: string;
+  reportDate: string;
+  totalReportsReceived: number;
+  totalReportsExpected: number;
 }
 
 export interface Action06PromptInput {
-  confirmedReports: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
+  context: Action06Context;
+  previousActions: Array<{
+    actionNumber: number;
+    result: string;
   }>;
-  previousIssues: Array<{
-    id: string;
-    title: string;
-    priority: string;
-    status: string;
-  }>;
-  departmentContext: string;
-  priorityClassificationRules: string;
+  escalationFlags?: string[];
 }
 
 export interface Action06PromptOutput {
-  context: Action06Context;
-  formattedReport: string;
-  prioritizedIssuesList: string;
-  escalationFlags: Array<{
-    type: string;
-    description: string;
-    severity: "low" | "medium" | "high" | "critical";
+  finalReport: string;
+  prioritizedIssuesList: Array<{
+    rank: number;
+    issueId: string;
+    title: string;
+    priority: "critical" | "high" | "medium" | "low";
+    recommendedAction: string;
+    estimatedImpact: string;
   }>;
+  readinessForMeeting: {
+    isReady: boolean;
+    completionPercentage: number;
+    remainingTasks: string[];
+  };
+  escalationRequired: boolean;
+  escalationReason?: string;
 }
 
 export function buildAction06Prompt(input: Action06PromptInput): string {
-  const reportSection = buildReportAggregationSection(input.confirmedReports);
-  const issueExtractionSection = buildIssueExtractionSection(
-    input.confirmedReports,
-    input.previousIssues
-  );
-  const prioritizationSection = buildPrioritizationSection(
-    input.priorityClassificationRules,
-    input.departmentContext
-  );
-  const escalationSection = buildEscalationSection();
+  const {
+    context,
+    previousActions,
+    escalationFlags = [],
+  } = input;
 
-  return `# Action 06: 課題抽出・優先度判定の自動実行
-
-## 目的
-確認メール送信後に収集された日報から、進捗状況を集約し、課題・ボトルネックを抽出して優先度を自動判定する。
-
-## 入力情報
-${reportSection}
-
-${issueExtractionSection}
-
-${prioritizationSection}
-
-${escalationSection}
-
-## 実行手順
-1. 提出された全日報の内容を読み込む
-2. 進捗状況を部門別・プロジェクト別に集約する
-3. 報告内容から課題・ボトルネックを自動抽出する
-4. 抽出された課題に対して優先度を判定・分類する
-5. 整理済みレポートを生成する
-6. エスカレーション対象を特定する
-
-## 出力形式
-- 集約済み進捗レポート（JSON形式）
-- 優先度付き課題リスト（CSV形式）
-- エスカレーション判定結果（JSON形式）
-`;
-}
-
-function buildReportAggregationSection(
-  confirmedReports: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
-  }>
-): string {
-  const reportCount = confirmedReports.length;
-  const submissionTimestamps = confirmedReports
-    .map((r) => r.submittedAt)
-    .sort();
-
-  return `### 日報集約情報
-- 提出済み日報数: ${reportCount}件
-- 最初の提出時刻: ${submissionTimestamps[0] || "未提出"}
-- 最後の提出時刻: ${submissionTimestamps[submissionTimestamps.length - 1] || "未提出"}
-- 提出者一覧: ${confirmedReports.map((r) => r.employeeName).join(", ")}`;
-}
-
-function buildIssueExtractionSection(
-  confirmedReports: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
-  }>,
-  previousIssues: Array<{
-    id: string;
-    title: string;
-    priority: string;
-    status: string;
-  }>
-): string {
-  const previousIssuesSummary = previousIssues
-    .map((issue) => `- ${issue.title} (優先度: ${issue.priority}, 状態: ${issue.status})`)
+  const previousActionsText = previousActions
+    .map(
+      (action) =>
+        `Action ${action.actionNumber}: ${action.result}`
+    )
     .join("\n");
 
-  return `### 課題抽出対象
-#### 前回の課題状況
-${previousIssuesSummary || "前回の課題なし"}
+  const escalationText =
+    escalationFlags.length > 0
+      ? `\n\nEscalation Flags:\n${escalationFlags.join("\n")}`
+      : "";
 
-#### 新規報告内容
-${confirmedReports.map((r) => `**${r.employeeName}**: ${r.reportContent.substring(0, 100)}...`).join("\n")}
+  const prompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
 
-#### 抽出対象キーワード
-- ボトルネック、遅延、リスク、問題、課題、懸念、対応が必要、確認待ち、ブロック、依存関係`;
-}
+## Current Context
+- Report Date: ${context.reportDate}
+- Department Head: ${context.departmentHead}
+- Reports Received: ${context.totalReportsReceived}/${context.totalReportsExpected}
+- Report Summary: ${context.reportSummary}
 
-function buildPrioritizationSection(
-  priorityClassificationRules: string,
-  departmentContext: string
-): string {
-  return `### 優先度判定基準
-${priorityClassificationRules || `
-- Critical: システム停止、重大なセキュリティ問題、納期に直結する遅延
-- High: 複数部門に影響、1日以上の遅延見込み、重要な機能障害
-- Medium: 単一部門への影響、軽微な遅延、改善が必要な状況
-- Low: 将来への改善提案、軽微な問題、情報共有のみ
-`}
+## Previously Extracted Issues
+${context.extractedIssues
+  .map(
+    (issue) =>
+      `- [${issue.id}] ${issue.title} (${issue.category})\n  ${issue.description}`
+  )
+  .join("\n")}
 
-### 部門コンテキスト
-${departmentContext || "一般的な部門"}`;
-}
+## Current Priority Assignments
+${context.priorityAssignments
+  .map(
+    (assignment) =>
+      `- Issue ${assignment.issueId}: ${assignment.priority.toUpperCase()}\n  Reasoning: ${assignment.reasoning}`
+  )
+  .join("\n")}
 
-function buildEscalationSection(): string {
-  return `### エスカレーション判定条件
-- 同一課題が複数部門から報告されている
-- 前回から状態が改善していない課題
-- 新規の重大課題（Critical判定）
-- 複数課題の優先度が同等で判定困難
-- 通常と異なる事象の検出`;
+## Previous Actions Completed
+${previousActionsText}
+${escalationText}
+
+## Your Task
+1. Review all extracted issues and their current priority assignments
+2. Validate the priority classifications based on business impact and urgency
+3. Create a final prioritized issues list ranked by importance
+4. Assess overall readiness for the morning meeting
+5. Determine if escalation is required for any critical issues
+6. Generate a comprehensive report for the department head
+
+## Output Requirements
+Provide a structured response with:
+- Final prioritized issues list (ranked 1-N)
+- Meeting readiness assessment
+- Escalation determination
+- Recommended actions for each critical issue
+
+Ensure all decisions are justified and actionable for the department head.`;
+
+  return prompt;
 }

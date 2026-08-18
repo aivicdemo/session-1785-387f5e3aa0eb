@@ -4,102 +4,109 @@
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
-  reportContent: string;
-  reporterName: string;
-  reportDate: string;
-  escalationThreshold?: number;
-  previousReminders?: number;
+  confirmationEmailContent: string;
+  reportingDeadline: string;
+  currentTimestamp: string;
+  previousReminders: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+  reminderRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+    escalationThreshold: number;
+  };
 }
 
 export interface Action04PromptOutput {
-  shouldEscalate: boolean;
-  escalationReason?: string;
-  reminderCount: number;
-  targetChannels: ("email" | "chat")[];
-  messageTemplate: string;
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  expectedOutputFormat: {
+    identifiedNonReporters: Array<{
+      employeeId: string;
+      employeeName: string;
+      reason: "not_submitted" | "delayed";
+      detectionTime: string;
+    }>;
+    reminderTargets: Array<{
+      employeeId: string;
+      employeeName: string;
+      shouldRemind: boolean;
+      reminderCount: number;
+      reminderMethod: ("email" | "chat")[];
+      priority: "high" | "normal" | "low";
+    }>;
+    escalationCases: Array<{
+      employeeId: string;
+      employeeName: string;
+      escalationReason: string;
+      recommendedAction: string;
+    }>;
+    executionLog: {
+      totalIdentified: number;
+      totalReminders: number;
+      totalEscalations: number;
+      timestamp: string;
+    };
+  };
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const {
-    reportContent,
-    reporterName,
-    reportDate,
-    escalationThreshold = 2,
-    previousReminders = 0,
-  } = input;
-
-  const reminderCount = previousReminders + 1;
-  const shouldEscalate = reminderCount > escalationThreshold;
-
-  const basePrompt = `
-You are an AI agent responsible for determining escalation actions for missing or delayed daily reports.
-
-Report Details:
-- Reporter: ${reporterName}
-- Report Date: ${reportDate}
-- Report Content: ${reportContent}
-- Previous Reminders: ${previousReminders}
-- Current Reminder Count: ${reminderCount}
-- Escalation Threshold: ${escalationThreshold}
-
-Task:
-1. Analyze whether the report is missing or significantly delayed
-2. Determine if escalation is needed based on reminder count and threshold
-3. Select appropriate communication channels (email, chat, or both)
-4. Generate a professional reminder message template
-
-Escalation Rules:
-- If reminder count <= threshold: Send standard reminder via email and chat
-- If reminder count > threshold: Escalate to manager with detailed notification
-- If report is completely missing: Use urgent tone
-- If report is late but present: Use standard follow-up tone
-
-Output the decision in JSON format with fields:
-- shouldEscalate: boolean
-- escalationReason: string (if escalating)
-- reminderCount: number
-- targetChannels: array of "email" or "chat"
-- messageTemplate: string (the reminder message to send)
-`;
-
-  return basePrompt;
-}
-
-export function parseAction04Response(
-  response: string
+export function buildAction04Prompt(
+  input: Action04PromptInput
 ): Action04PromptOutput {
-  try {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return {
-        shouldEscalate: false,
-        reminderCount: 1,
-        targetChannels: ["email"],
-        messageTemplate:
-          "Please submit your daily report as soon as possible.",
-      };
-    }
+  const systemPrompt = `You are an AI agent responsible for identifying non-reporting employees from confirmation email content and determining reminder targets.
 
-    const parsed = JSON.parse(jsonMatch[0]);
+Your role:
+1. Parse the confirmation email content to identify employees who have not submitted their daily reports
+2. Distinguish between employees who have not submitted at all and those who submitted late
+3. Determine which employees should receive reminders based on the reminder rules
+4. Identify escalation cases where special handling is needed
+5. Log all actions and decisions
 
-    return {
-      shouldEscalate: parsed.shouldEscalate ?? false,
-      escalationReason: parsed.escalationReason,
-      reminderCount: parsed.reminderCount ?? 1,
-      targetChannels: Array.isArray(parsed.targetChannels)
-        ? parsed.targetChannels
-        : ["email"],
-      messageTemplate:
-        parsed.messageTemplate ||
-        "Please submit your daily report as soon as possible.",
-    };
-  } catch {
-    return {
-      shouldEscalate: false,
-      reminderCount: 1,
-      targetChannels: ["email"],
-      messageTemplate:
-        "Please submit your daily report as soon as possible.",
-    };
-  }
+Rules:
+- Maximum reminders per employee: ${input.reminderRules.maxReminders}
+- Minimum interval between reminders: ${input.reminderRules.reminderIntervalMinutes} minutes
+- Escalation threshold: ${input.reminderRules.escalationThreshold} reminders
+- Reporting deadline: ${input.reportingDeadline}
+- Current time: ${input.currentTimestamp}
+
+Previous reminder history:
+${JSON.stringify(input.previousReminders, null, 2)}
+
+Output format must be valid JSON matching the specified schema.`;
+
+  const userPrompt = `Analyze the following confirmation email content and determine:
+1. Which employees have not submitted their reports
+2. Which employees should receive reminders
+3. Which cases require escalation
+
+Confirmation Email Content:
+${input.confirmationEmailContent}
+
+Based on the reminder rules and previous reminder history, determine:
+- Employees who should receive reminders (email and/or chat)
+- Priority level for each reminder (high/normal/low)
+- Any escalation cases that need human review
+- Summary of actions to be taken
+
+Provide the response in the specified JSON format.`;
+
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    expectedOutputFormat: {
+      identifiedNonReporters: [],
+      reminderTargets: [],
+      escalationCases: [],
+      executionLog: {
+        totalIdentified: 0,
+        totalReminders: 0,
+        totalEscalations: 0,
+        timestamp: input.currentTimestamp,
+      },
+    },
+  };
 }

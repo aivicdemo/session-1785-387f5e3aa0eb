@@ -17,45 +17,59 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-const memoryStore: Map<TableName, TableRow[]> = new Map();
+const databases = new Map<string, Map<TableName, TableRow[]>>();
+let databaseCounter = 0;
 
-function initializeMemoryStore(): void {
-  memoryStore.set("users", []);
-  memoryStore.set("daily_reports", []);
-  memoryStore.set("report_send_history", []);
-  memoryStore.set("audit_events", []);
+function createInMemoryTable(): Map<TableName, TableRow[]> {
+  return new Map<TableName, TableRow[]>([
+    ["users", []],
+    ["daily_reports", []],
+    ["report_send_history", []],
+    ["audit_events", []],
+  ]);
 }
 
-function createTableOperations(tableName: TableName): TableOperations {
+function createTableOperations(
+  tableData: Map<TableName, TableRow[]>,
+  tableName: TableName
+): TableOperations {
   return {
     async del(): Promise<number> {
-      const table = memoryStore.get(tableName) || [];
-      const count = table.length;
-      memoryStore.set(tableName, []);
+      const rows = tableData.get(tableName) || [];
+      const count = rows.length;
+      tableData.set(tableName, []);
       return count;
     },
 
     async insert(row: TableRow | TableRow[]): Promise<void> {
-      const table = memoryStore.get(tableName) || [];
-      const rows = Array.isArray(row) ? row : [row];
-      table.push(...rows);
-      memoryStore.set(tableName, table);
+      const rows = tableData.get(tableName) || [];
+      const rowsToInsert = Array.isArray(row) ? row : [row];
+      rows.push(...rowsToInsert);
+      tableData.set(tableName, rows);
     },
 
     async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-      const table = memoryStore.get(tableName) || [];
-      return table.filter((row) => {
-        return Object.entries(conditions).every(([key, value]) => row[key] === value);
+      const rows = tableData.get(tableName) || [];
+      return rows.filter((row) => {
+        return Object.entries(conditions).every(([key, value]) => {
+          return row[key] === value;
+        });
       });
     },
   };
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  initializeMemoryStore();
+  const dbId = `test_db_${databaseCounter++}`;
+  const tableData = createInMemoryTable();
+  databases.set(dbId, tableData);
 
   return (tableName: TableName): TableOperations => {
-    return createTableOperations(tableName);
+    const data = databases.get(dbId);
+    if (!data) {
+      throw new Error(`Database ${dbId} not found`);
+    }
+    return createTableOperations(data, tableName);
   };
 }
 
@@ -70,6 +84,4 @@ export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
   for (const tableName of tableNames) {
     await db(tableName).del();
   }
-
-  memoryStore.clear();
 }

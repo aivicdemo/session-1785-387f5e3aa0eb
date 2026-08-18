@@ -18,84 +18,65 @@ export interface Action01PromptInput {
 }
 
 export interface Action01PromptOutput {
-  templateId: string;
   templateContent: string;
   distributionList: string[];
   scheduledTime: string;
+  metadata: {
+    version: string;
+    generatedAt: string;
+  };
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
   const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelInfo = input.systemContext.notificationChannels.join("、");
+  const channelsText = input.systemContext.notificationChannels?.join("・") || "メール";
 
-  return `# 日報テンプレート自動生成・配信プロンプト
+  return `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、前日の日報テンプレートを自動生成して配信してください。
 
-## 実行日時
+【実行日時】
 ${new Date().toISOString()}
 
-## 対象日付
+【対象日付】
 ${input.targetDate}
 
-## 対象エンジニア
-${engineerNames}
-
-## 提出期限
+【提出期限】
 ${input.reportingDeadline}
 
-## 実行タスク
+【対象エンジニア】
+${engineerNames}
 
-### タスク1: 日報テンプレートの自動生成
-以下の項目を含む日報テンプレートを生成してください：
-- 前日の実績（昨日実施した内容、完了したタスク）
-- 本日の予定（今日実施予定の内容、予定タスク）
-- 抱えている課題（現在の課題、ボトルネック、リスク）
-- その他特記事項
+【配信チャネル】
+${channelsText}
 
-テンプレートは以下の形式で出力してください：
-\`\`\`
-【日報】${input.targetDate}
-エンジニア名: ___________
+【日報管理システムURL】
+${input.systemContext.reportManagementSystemUrl}
 
-【前日の実績】
-- 
+【実行内容】
+1. 前日の日報テンプレートを生成する
+   - 昨日の実績入力欄
+   - 本日の予定入力欄
+   - 抱えている課題入力欄
+   - その他必要な項目
 
-【本日の予定】
-- 
+2. 生成したテンプレートを以下の方法で配信する
+   - 対象エンジニア全員に配信
+   - 提出期限を明記
+   - 管理システムへのアクセスリンクを含める
 
-【抱えている課題】
-- 
+3. 配信結果をログに記録する
+   - 配信日時
+   - 配信対象者
+   - 配信チャネル
 
-【特記事項】
-
-\`\`\`
-
-### タスク2: 配信対象の確認
-以下のエンジニアに配信します：
-${input.engineerList.map((e) => `- ${e.name} (${e.email})`).join("\n")}
-
-### タスク3: 配信チャネルの確認
-配信チャネル: ${channelInfo}
-
-### タスク4: 配信スケジュール
-- 配信予定時刻: ${input.reportingDeadline}の1時間前
-- 提出期限: ${input.reportingDeadline}
-
-## 出力形式
-以下の JSON 形式で結果を返してください：
-\`\`\`json
+【出力形式】
+JSON形式で以下の構造で返してください：
 {
-  "templateId": "string",
-  "templateContent": "string",
-  "distributionList": ["email1", "email2"],
-  "scheduledTime": "ISO8601形式の日時",
-  "status": "success" | "failure",
-  "message": "string"
-}
-\`\`\`
-
-## 注意事項
-- テンプレートは簡潔で記入しやすい形式にしてください
-- 配信時刻は提出期限の1時間前に設定してください
-- すべてのエンジニアに公平に配信してください
-- 配信失敗時はエラーメッセージを記録してください`;
+  "templateContent": "生成されたテンプレートの内容",
+  "distributionList": ["配信対象者のメールアドレス"],
+  "scheduledTime": "配信予定時刻",
+  "metadata": {
+    "version": "${ACTION_01_PROMPT_VERSION}",
+    "generatedAt": "生成日時"
+  }
+}`;
 }

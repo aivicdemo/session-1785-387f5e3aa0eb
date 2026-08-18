@@ -3,12 +3,14 @@
 
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
-export interface Action02Input {
+export interface Action02Context {
+  engineerInput: {
+    yesterdayAccomplishments: string;
+    todayPlans: string;
+    currentIssues: string;
+  };
+  engineerId: string;
   engineerName: string;
-  engineerEmail: string;
-  yesterdayAccomplishments: string;
-  todayPlans: string;
-  currentIssues: string;
   submissionTimestamp: string;
 }
 
@@ -18,42 +20,46 @@ export interface Action02ValidationResult {
   warnings: string[];
 }
 
-export interface Action02Output {
-  validationResult: Action02ValidationResult;
-  reportId?: string;
-  registrationStatus: "pending" | "success" | "failed";
-  message: string;
-}
-
-export function buildAction02Prompt(input: Action02Input): string {
-  const prompt = `You are validating a daily report submission for an engineer.
+export function buildAction02Prompt(context: Action02Context): string {
+  const prompt = `You are an AI agent responsible for validating daily report input content.
 
 Engineer Information:
-- Name: ${input.engineerName}
-- Email: ${input.engineerEmail}
-- Submission Time: ${input.submissionTimestamp}
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Submission Time: ${context.submissionTimestamp}
 
-Report Content:
-- Yesterday's Accomplishments: ${input.yesterdayAccomplishments}
-- Today's Plans: ${input.todayPlans}
-- Current Issues: ${input.currentIssues}
+Input Content to Validate:
+- Yesterday's Accomplishments: ${context.engineerInput.yesterdayAccomplishments}
+- Today's Plans: ${context.engineerInput.todayPlans}
+- Current Issues: ${context.engineerInput.currentIssues}
 
-Please validate the following:
-1. All required fields are filled (not empty)
-2. Content is appropriate and professional
-3. Yesterday's accomplishments are specific and measurable
-4. Today's plans are clear and achievable
-5. Current issues are clearly described
+Your task is to validate the input content according to these criteria:
 
-Respond with a JSON object containing:
+1. Completeness Check:
+   - All three fields must contain meaningful content (not empty or just whitespace)
+   - Each field should have at least 10 characters of substantive text
+
+2. Appropriateness Check:
+   - Content should be work-related and relevant to daily reporting
+   - No offensive, discriminatory, or inappropriate language
+   - No sensitive personal information
+
+3. Clarity Check:
+   - Content should be clear and understandable
+   - Avoid excessive jargon or unclear abbreviations without explanation
+
+4. Consistency Check:
+   - Today's plans should logically follow from yesterday's accomplishments
+   - Current issues should be relevant to the work context
+
+Provide validation results in the following JSON format:
 {
   "isValid": boolean,
-  "errors": string[],
-  "warnings": string[]
+  "errors": [list of critical validation failures],
+  "warnings": [list of non-critical issues or suggestions]
 }
 
-Errors should be critical issues that prevent registration.
-Warnings should be minor issues that don't prevent registration but should be noted.`;
+Respond ONLY with the JSON object, no additional text.`;
 
   return prompt;
 }

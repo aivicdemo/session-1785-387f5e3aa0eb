@@ -6,95 +6,109 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 interface Action03PromptInput {
   reportingDeadline: string;
   overdueThresholdHours: number;
-  escalationRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  reminderFrequencyMinutes: number;
+  escalationContactEmail: string;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
   userPromptTemplate: string;
+  expectedOutputFormat: string;
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting and delayed reporting members from confirmation email content, determining escalation targets, and completing the process of sending reminder emails and chat messages.
+  const systemPrompt = `You are an AI agent responsible for identifying and notifying engineers who have not submitted their daily reports.
 
-Your role:
-- Analyze confirmation email content to identify members who have not submitted reports or submitted late
-- Determine which members require escalation based on defined rules
-- Generate and send reminder emails and chat messages to escalation targets
-- Log all sending results for audit purposes
+Your role is to:
+1. Monitor the daily report submission status at the configured time
+2. Identify engineers who have not submitted reports (未提出者)
+3. Identify engineers whose reports are delayed (遅延者)
+4. Create a comprehensive list of non-submitters and delayed submitters
+5. Send notification emails to the department head with the compiled list
 
-Escalation Rules:
-- Maximum reminders per member: ${input.escalationRules.maxReminders}
-- Reminder interval: ${input.escalationRules.reminderIntervalMinutes} minutes
+You must follow these constraints:
 - Reporting deadline: ${input.reportingDeadline}
-- Overdue threshold: ${input.overdueThresholdHours} hours
+- Overdue threshold: ${input.overdueThresholdHours} hours after deadline
+- Reminder frequency: ${input.reminderFrequencyMinutes} minutes
+- Escalation contact: ${input.escalationContactEmail}
 
-You must:
-1. Parse confirmation email content accurately
-2. Identify non-reporting and delayed members with clear reasoning
-3. Apply escalation rules consistently
-4. Generate professional reminder communications
-5. Record all actions with timestamps and outcomes`;
+When identifying non-submitters and delayed submitters:
+- Compare current timestamp against the reporting deadline
+- Classify engineers into: submitted on-time, submitted late, not submitted
+- Generate a structured report with clear categorization
+- Include submission timestamps for all submitted reports
+- Flag any system errors that prevent status verification
 
-  const userPromptTemplate = `Analyze the following confirmation email content and determine escalation targets:
+Output must be machine-readable JSON format with clear categorization.`;
 
-Email Content:
-{emailContent}
+  const userPromptTemplate = `Please analyze the current report submission status and generate a notification list.
 
 Current timestamp: {currentTimestamp}
+Reporting deadline: ${input.reportingDeadline}
+Overdue threshold: ${input.overdueThresholdHours} hours
 
-Based on the reporting deadline of ${input.reportingDeadline} and overdue threshold of ${input.overdueThresholdHours} hours:
+Engineer submission data:
+{submissionData}
 
-1. Identify members who have not submitted reports
-2. Identify members whose reports are overdue
-3. Determine which members meet escalation criteria (max ${input.escalationRules.maxReminders} reminders)
-4. Generate reminder messages for each escalation target
-5. Log the escalation decision with reasoning
+Please provide:
+1. List of engineers who submitted on time
+2. List of engineers who submitted late (with delay duration)
+3. List of engineers who have not submitted
+4. Recommended action items for the department head`;
 
-Provide your analysis in the following JSON format:
-{
-  "nonReportingMembers": [
+  const expectedOutputFormat = `{
+  "version": "${ACTION_03_PROMPT_VERSION}",
+  "analysisTimestamp": "ISO8601 timestamp",
+  "reportingDeadline": "${input.reportingDeadline}",
+  "submittedOnTime": [
     {
-      "memberId": string,
-      "memberName": string,
-      "reason": string,
-      "escalationRequired": boolean
+      "engineerId": "string",
+      "engineerName": "string",
+      "submissionTime": "ISO8601 timestamp"
     }
   ],
-  "delayedMembers": [
+  "submittedLate": [
     {
-      "memberId": string,
-      "memberName": string,
-      "submissionTime": string,
-      "delayHours": number,
-      "escalationRequired": boolean
+      "engineerId": "string",
+      "engineerName": "string",
+      "submissionTime": "ISO8601 timestamp",
+      "delayMinutes": number
     }
   ],
-  "escalationTargets": [
+  "notSubmitted": [
     {
-      "memberId": string,
-      "memberName": string,
-      "escalationType": "email" | "chat" | "both",
-      "reminderCount": number,
-      "messageContent": string
+      "engineerId": "string",
+      "engineerName": "string",
+      "email": "string"
     }
   ],
-  "executionLog": {
-    "timestamp": string,
-    "totalMembersAnalyzed": number,
-    "escalationsTriggered": number,
-    "notes": string
-  }
+  "summary": {
+    "totalEngineers": number,
+    "onTimeCount": number,
+    "lateCount": number,
+    "notSubmittedCount": number,
+    "submissionRate": number
+  },
+  "notificationEmail": {
+    "to": "${input.escalationContactEmail}",
+    "subject": "string",
+    "body": "string"
+  },
+  "systemErrors": [
+    {
+      "errorCode": "string",
+      "errorMessage": "string",
+      "affectedEngineers": ["string"]
+    }
+  ]
 }`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
     userPromptTemplate,
+    expectedOutputFormat,
   };
 }
 

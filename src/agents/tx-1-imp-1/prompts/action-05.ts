@@ -14,6 +14,7 @@ export interface Action05Context {
   };
   submissionDeadline: string;
   managementSystemUrl: string;
+  adminEmails: string[];
 }
 
 export interface Action05PromptResult {
@@ -24,44 +25,44 @@ export interface Action05PromptResult {
   context: Action05Context;
 }
 
-export function buildAction05Prompt(
-  context: Action05Context
-): Action05PromptResult {
-  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system.
-Your task is to:
-1. Validate the report content for completeness and appropriateness
-2. Register the validated report into the management system
-3. Ensure all required fields are present and properly formatted
-4. Handle any registration errors gracefully
-5. Provide confirmation of successful registration
+export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
+  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system and sending confirmation emails to administrators.
 
-You must follow these guidelines:
-- Verify that yesterday's achievements, today's plans, and issues are all present
-- Check that the content is appropriate and professional
-- Ensure the report is registered with the correct timestamp
-- Log all registration attempts for audit purposes
-- Escalate any validation failures or system errors`;
+Your role in the daily report automation workflow:
+- Register validated daily report content into the management system
+- Send confirmation emails to administrators with report details
+- Ensure all required fields are properly stored
+- Track registration status and email delivery
 
-  const userPrompt = `Please register the following daily report into the management system:
+You must:
+1. Format the report data according to management system requirements
+2. Prepare confirmation email content with all relevant details
+3. Ensure data integrity during registration
+4. Generate delivery confirmation records`;
 
-Engineer ID: ${context.engineerId}
-Engineer Name: ${context.engineerName}
-Report Date: ${context.reportDate}
-Submission Deadline: ${context.submissionDeadline}
+  const userPrompt = `Register the following daily report and send confirmation emails:
+
+Engineer Information:
+- ID: ${context.engineerId}
+- Name: ${context.engineerName}
+- Report Date: ${context.reportDate}
 
 Report Content:
 - Yesterday's Achievements: ${context.previousReportContent.yesterday}
-- Today's Plans: ${context.previousReportContent.today}
-- Issues/Challenges: ${context.previousReportContent.issues}
+- Today's Plan: ${context.previousReportContent.today}
+- Current Issues: ${context.previousReportContent.issues}
 
-Management System URL: ${context.managementSystemUrl}
+System Details:
+- Management System URL: ${context.managementSystemUrl}
+- Submission Deadline: ${context.submissionDeadline}
+- Administrator Emails: ${context.adminEmails.join(", ")}
 
-Please:
-1. Validate the report content for completeness
-2. Check for any inappropriate or incomplete information
-3. Register the report into the management system
-4. Confirm successful registration
-5. Note any issues that require escalation`;
+Tasks:
+1. Validate all report fields are complete and properly formatted
+2. Register the report into the management system with timestamp
+3. Generate a confirmation email for each administrator
+4. Include report summary, engineer details, and submission confirmation in the email
+5. Return registration status and email delivery confirmation`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,

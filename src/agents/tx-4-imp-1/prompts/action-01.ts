@@ -3,48 +3,51 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptContext {
-  reportingDeadline: string;
-  targetDate: string;
-  engineerCount: number;
-  systemName: string;
+export interface Action01PromptInput {
+  reportDate: string;
+  engineerName: string;
+  engineerId: string;
+  departmentName: string;
+  submissionDeadline: string;
 }
 
-export interface Action01PromptResult {
+export interface Action01PromptOutput {
+  templateId: string;
   templateContent: string;
   distributionChannels: string[];
   scheduledTime: string;
 }
 
-export function buildAction01Prompt(context: Action01PromptContext): string {
+export function buildAction01Prompt(input: Action01PromptInput): string {
   const {
-    reportingDeadline,
-    targetDate,
-    engineerCount,
-    systemName,
-  } = context;
+    reportDate,
+    engineerName,
+    engineerId,
+    departmentName,
+    submissionDeadline,
+  } = input;
 
-  return `You are an AI agent responsible for the first action in the daily report management system.
+  return `You are an AI agent responsible for generating and distributing daily report templates.
 
-System: ${systemName}
-Target Date: ${targetDate}
-Reporting Deadline: ${reportingDeadline}
-Number of Engineers: ${engineerCount}
+Task: Generate a daily report template for the following engineer and prepare it for distribution.
 
-Your task is to:
-1. Generate a daily report template for the previous day's accomplishments
-2. Prepare the template content for distribution
-3. Determine the optimal distribution channels and timing
+Engineer Information:
+- Name: ${engineerName}
+- ID: ${engineerId}
+- Department: ${departmentName}
+- Report Date: ${reportDate}
+- Submission Deadline: ${submissionDeadline}
 
-The template should include sections for:
-- Yesterday's accomplishments
-- Today's planned tasks
-- Current issues and blockers
+The template should include the following sections:
+1. Yesterday's Achievements (実績)
+2. Today's Plans (予定)
+3. Current Issues/Challenges (課題)
 
-Generate a comprehensive prompt that will be used to create and distribute the daily report template to all engineers.
+Requirements:
+- Generate a clear, structured template that is easy for the engineer to fill out
+- Include specific fields for each section
+- Add any relevant context or instructions for completion
+- Ensure the template is ready for immediate distribution via email
 
-Respond with a structured plan that includes:
-- Template content structure
-- Distribution channels (email, chat, etc.)
-- Recommended distribution time`;
+Output the template content and specify the distribution channels (email, chat, etc.).`;
 }

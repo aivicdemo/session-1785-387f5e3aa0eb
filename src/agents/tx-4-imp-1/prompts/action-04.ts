@@ -16,132 +16,147 @@ export interface Action04Context {
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
   }>;
-  departmentHead: string;
-  timestamp: string;
+  escalationFlags: Array<{
+    issueId: string;
+    reason: string;
+    requiresHumanReview: boolean;
+  }>;
 }
 
 export interface Action04Input {
   confirmedReports: Array<{
     employeeId: string;
     employeeName: string;
-    reportText: string;
+    reportContent: string;
     submittedAt: string;
   }>;
-  previousIssues?: Array<{
-    id: string;
-    title: string;
-    status: string;
-  }>;
-  priorityRules?: {
+  previousPriorityContext?: {
+    recentCriticalIssues: string[];
+    ongoingBottlenecks: string[];
+  };
+  priorityJudgmentRules?: {
     criticalKeywords: string[];
-    highKeywords: string[];
-    mediumKeywords: string[];
+    highPriorityIndicators: string[];
+    escalationThresholds: {
+      affectedTeamCount: number;
+      blockerDuration: string;
+    };
   };
 }
 
 export interface Action04Output {
-  success: boolean;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-    relatedEmployees: string[];
-    firstMentionedAt: string;
-  }>;
-  prioritizedIssues: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
-    reasoning: string;
-    affectedAreas: string[];
-  }>;
-  reportSummary: {
-    totalReports: number;
-    processedAt: string;
-    issueCount: number;
-    criticalCount: number;
-  };
-  escalationFlags: Array<{
-    type: "repeated_issue" | "new_critical" | "blocked_dependency" | "resource_constraint";
-    description: string;
-    requiresReview: boolean;
-  }>;
+  context: Action04Context;
+  summary: string;
+  requiresEscalation: boolean;
+  escalationReason?: string;
 }
 
 export function buildAction04Prompt(input: Action04Input): string {
-  const reportsList = input.confirmedReports
+  const rulesSection = input.priorityJudgmentRules
+    ? `
+## 優先度判定ルール
+- 重大度キーワード: ${input.priorityJudgmentRules.criticalKeywords.join(", ")}
+- 高優先度指標: ${input.priorityJudgmentRules.highPriorityIndicators.join(", ")}
+- エスカレーション閾値:
+  - 影響チーム数: ${input.priorityJudgmentRules.escalationThresholds.affectedTeamCount}以上
+  - ブロッカー継続期間: ${input.priorityJudgmentRules.escalationThresholds.blockerDuration}以上
+`
+    : "";
+
+  const contextSection = input.previousPriorityContext
+    ? `
+## 優先度判定の背景情報
+- 最近の重大課題: ${input.previousPriorityContext.recentCriticalIssues.join(", ") || "なし"}
+- 継続中のボトルネック: ${input.previousPriorityContext.ongoingBottlenecks.join(", ") || "なし"}
+`
+    : "";
+
+  const reportsSection = input.confirmedReports
     .map(
-      (report) =>
-        `[${report.employeeName}] ${report.reportText}`
+      (report) => `
+### ${report.employeeName} (ID: ${report.employeeId})
+提出時刻: ${report.submittedAt}
+内容:
+${report.reportContent}
+`
     )
-    .join("\n\n");
+    .join("\n");
 
-  const previousIssuesContext =
-    input.previousIssues && input.previousIssues.length > 0
-      ? `\n\n## 前日までの課題状況:\n${input.previousIssues
-          .map((issue) => `- ${issue.title} (${issue.status})`)
-          .join("\n")}`
-      : "";
+  return `# Action 04: 課題の優先度判定・分類
 
-  const priorityRulesContext =
-    input.priorityRules
-      ? `\n\n## 優先度判定ルール:
-- 緊急度高: ${input.priorityRules.criticalKeywords.join(", ")}
-- 高: ${input.priorityRules.highKeywords.join(", ")}
-- 中: ${input.priorityRules.mediumKeywords.join(", ")}`
-      : "";
+## 目的
+確認メールから収集した日報内容から、課題・ボトルネックを自動抽出し、優先度を判定・分類する。
 
-  return `あなたは日報管理システムの課題抽出・優先度判定エージェントです。
+## 入力情報
 
-以下の日報内容から、課題・ボトルネックを自動抽出し、優先度を判定してください。
+### 収集された日報
+${reportsSection}
 
-## 本日の日報内容:
-${reportsList}
-${previousIssuesContext}
-${priorityRulesContext}
+${contextSection}
 
-## 実行タスク:
-1. 各日報から課題・ボトルネック・リスク要因を抽出する
-2. 抽出した課題を分類する（技術的課題、リソース不足、依存関係、その他）
-3. 各課題に対して優先度を判定する（critical/high/medium/low）
-4. 前日までの課題との関連性を確認する
-5. 複数部員に関連する課題を特定する
-6. エスカレーション対象を判定する
+${rulesSection}
 
-## 出力形式:
-JSON形式で以下の構造で返してください:
+## タスク
+
+1. **課題抽出**: 各日報から課題・ボトルネック・リスクを抽出
+   - 明示的な課題記述
+   - 進捗遅延の兆候
+   - 依存関係の問題
+   - リソース不足の指摘
+
+2. **優先度判定**: 抽出した課題に対して以下の基準で優先度を判定
+   - Critical: システム停止、重大なセキュリティ問題、複数チーム影響
+   - High: 主要機能の障害、1チーム以上の進捗ブロック、期限切迫
+   - Medium: 部分的な機能低下、単一チームの進捗遅延、改善推奨
+   - Low: 軽微な問題、将来対応可能、情報共有のみ
+
+3. **エスカレーション判定**: 以下の条件で人間レビューが必要か判定
+   - 複数課題の優先度が同等で判定困難
+   - 通常と異なる事象
+   - 重大なリスク課題
+   - 判定ルール外の特殊ケース
+
+## 出力形式
+
+JSON形式で以下の構造で返却:
+
+\`\`\`json
 {
-  "success": boolean,
-  "extractedIssues": [
-    {
-      "id": "ISSUE_YYYYMMDD_NNN",
-      "title": "課題タイトル",
-      "description": "詳細説明",
-      "category": "技術的課題|リソース不足|依存関係|その他",
-      "relatedEmployees": ["従業員名"],
-      "firstMentionedAt": "ISO8601形式のタイムスタンプ"
-    }
-  ],
-  "prioritizedIssues": [
-    {
-      "issueId": "ISSUE_YYYYMMDD_NNN",
-      "priority": "critical|high|medium|low",
-      "reasoning": "優先度判定の理由",
-      "affectedAreas": ["影響を受ける領域"]
-    }
-  ],
-  "reportSummary": {
-    "totalReports": 数値,
-    "processedAt": "ISO8601形式のタイムスタンプ",
-    "issueCount": 数値,
-    "criticalCount": 数値
+  "context": {
+    "reportContent": "集約された日報内容の要約",
+    "extractedIssues": [
+      {
+        "id": "ISSUE-001",
+        "title": "課題タイトル",
+        "description": "詳細説明",
+        "category": "performance|blocker|resource|risk|other"
+      }
+    ],
+    "priorityAssignments": [
+      {
+        "issueId": "ISSUE-001",
+        "priority": "critical|high|medium|low",
+        "reasoning": "優先度判定の根拠"
+      }
+    ],
+    "escalationFlags": [
+      {
+        "issueId": "ISSUE-001",
+        "reason": "エスカレーション理由",
+        "requiresHumanReview": true
+      }
+    ]
   },
-  "escalationFlags": [
-    {
-      "type": "repeated_issue|new_critical|blocked_dependency|resource_constraint",
-      "description": "エスカレーション内容",
-      "requiresReview": boolean
-    }
-  ]
-}`;
+  "summary": "全体的な進捗状況と課題の要約",
+  "requiresEscalation": false,
+  "escalationReason": "エスカレーション理由（必要な場合のみ）"
+}
+\`\`\`
+
+## 注意事項
+- 課題IDは ISSUE-XXX 形式で採番
+- 優先度判定は提供されたルールに従う
+- 根拠は具体的で、部長が理解しやすい表現で記述
+- 判定困難な場合は escalationFlags に記録
+`;
 }

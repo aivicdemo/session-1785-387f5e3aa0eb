@@ -5,75 +5,121 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  engineerName: string;
-  submissionDate: string;
-  previousIssues?: string[];
+  extractedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+  }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>;
+  priorityFramework?: {
+    urgency: string[];
+    impact: string[];
+    effort: string[];
+  };
 }
 
 interface Action03PromptOutput {
-  extractedIssues: Array<{
-    issue: string;
-    category: string;
-    severity: "high" | "medium" | "low";
-  }>;
-  bottlenecks: string[];
-  progressSummary: string;
-  validationStatus: "valid" | "incomplete" | "anomaly";
+  version: string;
+  prompt: string;
+  instructions: {
+    objective: string;
+    steps: string[];
+    constraints: string[];
+  };
 }
 
-function buildAction03Prompt(input: Action03PromptInput): string {
-  const sections: string[] = [];
+function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const {
+    reportContent,
+    extractedIssues,
+    teamMembers,
+    priorityFramework = {
+      urgency: ["Critical", "High", "Medium", "Low"],
+      impact: ["Organization-wide", "Team-level", "Individual", "Minor"],
+      effort: ["Minimal", "Low", "Medium", "High"],
+    },
+  } = input;
 
-  sections.push("# 日報内容の課題抽出と優先度判定");
-  sections.push("");
-  sections.push("## 入力情報");
-  sections.push(`エンジニア名: ${input.engineerName}`);
-  sections.push(`提出日: ${input.submissionDate}`);
-  sections.push("");
-  sections.push("## 日報内容");
-  sections.push(input.reportContent);
-  sections.push("");
+  const issuesText = extractedIssues
+    .map(
+      (issue) =>
+        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
+    )
+    .join("\n");
 
-  if (input.previousIssues && input.previousIssues.length > 0) {
-    sections.push("## 前日の課題");
-    input.previousIssues.forEach((issue, index) => {
-      sections.push(`${index + 1}. ${issue}`);
-    });
-    sections.push("");
-  }
+  const teamText = teamMembers
+    .map((member) => `- ${member.name} (${member.department})`)
+    .join("\n");
 
-  sections.push("## 実行タスク");
-  sections.push("1. 日報内容から課題・ボトルネックを抽出する");
-  sections.push("2. 各課題をカテゴリ分類する（技術的課題、リソース不足、依存関係、その他）");
-  sections.push("3. 各課題の重要度を判定する（高・中・低）");
-  sections.push("4. 進捗状況を要約する");
-  sections.push("5. 日報内容の妥当性を検証する");
-  sections.push("");
+  const priorityFrameworkText = `
+Urgency Levels: ${priorityFramework.urgency.join(", ")}
+Impact Levels: ${priorityFramework.impact.join(", ")}
+Effort Levels: ${priorityFramework.effort.join(", ")}
+`;
 
-  sections.push("## 出力形式");
-  sections.push("JSON形式で以下の構造で返却してください:");
-  sections.push("{");
-  sections.push('  "extractedIssues": [');
-  sections.push('    { "issue": "課題内容", "category": "カテゴリ", "severity": "high|medium|low" }');
-  sections.push("  ],");
-  sections.push('  "bottlenecks": ["ボトルネック1", "ボトルネック2"],');
-  sections.push('  "progressSummary": "進捗状況の要約",');
-  sections.push('  "validationStatus": "valid|incomplete|anomaly"');
-  sections.push("}");
-  sections.push("");
+  const prompt = `You are an AI agent responsible for prioritizing and classifying extracted issues from daily reports.
 
-  sections.push("## 判定基準");
-  sections.push("- 高: プロジェクト全体に影響する、解決に時間がかかる、複数部門に関連する");
-  sections.push("- 中: 特定タスクに影響する、解決に数日要する、単一部門に関連する");
-  sections.push("- 低: 軽微な問題、短時間で解決可能、個人レベルの対応で済む");
-  sections.push("");
+## Context
+Report Content Summary:
+${reportContent}
 
-  sections.push("## 検証ルール");
-  sections.push("- valid: 必須項目が全て記載され、内容が適切");
-  sections.push("- incomplete: 必須項目が不足している");
-  sections.push("- anomaly: 内容に矛盾や異常がある");
+## Extracted Issues to Prioritize
+${issuesText}
 
-  return sections.join("\n");
+## Team Members
+${teamText}
+
+## Priority Framework
+${priorityFrameworkText}
+
+## Task
+Analyze each extracted issue and assign:
+1. Priority Level (Critical, High, Medium, Low)
+2. Impact Assessment (Organization-wide, Team-level, Individual, Minor)
+3. Effort Estimate (Minimal, Low, Medium, High)
+4. Recommended Action (Immediate, This Week, Next Week, Monitor)
+5. Assigned Owner (from team members or escalate to management)
+
+## Output Format
+For each issue, provide:
+- Issue ID
+- Priority Level
+- Impact Assessment
+- Effort Estimate
+- Recommended Action
+- Assigned Owner
+- Justification (2-3 sentences)
+
+Ensure prioritization is consistent and based on business impact and urgency.`;
+
+  return {
+    version: ACTION_03_PROMPT_VERSION,
+    prompt,
+    instructions: {
+      objective:
+        "Prioritize and classify extracted issues from daily reports using a structured framework",
+      steps: [
+        "Analyze each issue against the priority framework",
+        "Assess urgency and impact on team/organization",
+        "Estimate effort required for resolution",
+        "Determine recommended action timeline",
+        "Assign appropriate owner from team members",
+        "Provide clear justification for each prioritization",
+      ],
+      constraints: [
+        "Must use only the provided priority framework levels",
+        "Assignments must be from the provided team members list",
+        "Justifications must be concise and data-driven",
+        "Cannot escalate without clear business justification",
+        "Must maintain consistency across all issue prioritizations",
+      ],
+    },
+  };
 }
 
-export { buildAction03Prompt, ACTION_03_PROMPT_VERSION, Action03PromptInput, Action03PromptOutput };
+export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };

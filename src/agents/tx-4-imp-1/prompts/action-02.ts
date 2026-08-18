@@ -4,82 +4,68 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportDate: string;
+  reportContent: string;
   engineerName: string;
-  engineerId: string;
-  previousReportContent?: string;
-  systemContext?: string;
+  submissionDate: string;
+  validationRules?: {
+    minLength?: number;
+    maxLength?: number;
+    requiredFields?: string[];
+  };
 }
 
 export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
-  metadata: {
-    action: string;
-    timestamp: string;
-    engineerId: string;
-  };
+  isValid: boolean;
+  validationErrors: string[];
+  sanitizedContent: string;
+  severity: "critical" | "warning" | "info";
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+export function buildAction02Prompt(input: Action02PromptInput): string {
   const {
-    reportDate,
+    reportContent,
     engineerName,
-    engineerId,
-    previousReportContent = "",
-    systemContext = "",
+    submissionDate,
+    validationRules = {
+      minLength: 10,
+      maxLength: 5000,
+      requiredFields: ["yesterday", "today", "issues"],
+    },
   } = input;
 
-  const basePrompt = `You are an AI agent responsible for collecting and validating daily reports in the morning meeting report management system.
+  const rulesDescription = validationRules.requiredFields
+    ? `Required fields: ${validationRules.requiredFields.join(", ")}`
+    : "";
 
-## Current Task: Action 02 - Receive and Validate Engineer Input
+  const lengthConstraints = `Content length must be between ${validationRules.minLength} and ${validationRules.maxLength} characters`;
 
-### Context
-- Report Date: ${reportDate}
-- Engineer Name: ${engineerName}
-- Engineer ID: ${engineerId}
-- System Context: ${systemContext || "Standard daily report collection"}
+  return `You are a daily report validator for the morning meeting report management system.
 
-### Objective
-Receive the engineer's input content for:
-1. Yesterday's achievements
-2. Today's plans
-3. Current issues/challenges
+Engineer: ${engineerName}
+Submission Date: ${submissionDate}
+Report Content:
+---
+${reportContent}
+---
 
-Then validate the input for completeness and appropriateness.
+Validation Rules:
+- ${lengthConstraints}
+- ${rulesDescription}
+- Check for completeness and appropriateness
+- Identify any missing or incomplete sections
+- Flag any concerning or anomalous content
 
-### Validation Criteria
-- All three sections (achievements, plans, issues) must be provided
-- Content must be substantive and relevant to work activities
-- No empty or placeholder-only submissions
-- Issues should be clearly articulated with context
-- Text length should be reasonable (not too brief, not excessive)
+Your task:
+1. Validate the report content against the rules above
+2. Identify any validation errors or issues
+3. Provide a severity level (critical/warning/info)
+4. Return sanitized content if valid
 
-### Previous Report Reference
-${previousReportContent ? `Previous report for context:\n${previousReportContent}` : "No previous report available"}
-
-### Expected Output Format
-Provide validation results with:
-- Validation status (VALID / INVALID)
-- Specific issues if validation fails
-- Recommendations for improvement if needed
-- Confidence score (0-100)
-
-### Escalation Triggers
-- Input is incomplete or missing required sections
-- Content appears inappropriate or off-topic
-- Submission contains concerning indicators
-- System cannot process the input format`;
-
-  const timestamp = new Date().toISOString();
-
-  return {
-    prompt: basePrompt,
-    version: ACTION_02_PROMPT_VERSION,
-    metadata: {
-      action: "action-02",
-      timestamp,
-      engineerId,
-    },
-  };
+Respond in JSON format with the following structure:
+{
+  "isValid": boolean,
+  "validationErrors": string[],
+  "sanitizedContent": string,
+  "severity": "critical" | "warning" | "info"
+}`;
 }

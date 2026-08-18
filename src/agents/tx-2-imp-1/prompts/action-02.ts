@@ -4,56 +4,138 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  reportDate: string;
-  targetEngineers: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
   submissionDeadline: string;
-  systemContext: string;
+  reportingMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+  }>;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
+  currentTime: string;
 }
 
 export interface Action02PromptOutput {
-  prompt: string;
-  version: string;
+  unsubmittedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+    department: string;
+    status: "unsubmitted" | "delayed";
+    hoursOverdue?: number;
+  }>;
+  summaryList: {
+    totalMembers: number;
+    submittedCount: number;
+    unsubmittedCount: number;
+    delayedCount: number;
+    submissionRate: number;
+  };
+  notificationContent: {
+    recipientEmail: string;
+    subject: string;
+    body: string;
+    attachmentData: string;
+  };
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
-  const engineerList = input.targetEngineers
-    .map((eng) => `- ${eng.name} (${eng.email})`)
+export function buildAction02Prompt(input: Action02PromptInput): string {
+  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
+  
+  const unsubmittedMembers = input.reportingMembers.filter(
+    member => !submittedMemberIds.has(member.memberId)
+  );
+
+  const deadlineTime = new Date(input.submissionDeadline).getTime();
+  const currentTime = new Date(input.currentTime).getTime();
+  const isOverdue = currentTime > deadlineTime;
+  const hoursOverdue = isOverdue 
+    ? Math.floor((currentTime - deadlineTime) / (1000 * 60 * 60))
+    : 0;
+
+  const submittedCount = input.submittedReports.length;
+  const totalMembers = input.reportingMembers.length;
+  const unsubmittedCount = unsubmittedMembers.length;
+  const submissionRate = totalMembers > 0 
+    ? Math.round((submittedCount / totalMembers) * 100)
+    : 0;
+
+  const departmentGroups: Record<string, typeof unsubmittedMembers> = {};
+  unsubmittedMembers.forEach(member => {
+    if (!departmentGroups[member.department]) {
+      departmentGroups[member.department] = [];
+    }
+    departmentGroups[member.department].push(member);
+  });
+
+  const unsubmittedList = unsubmittedMembers
+    .map(m => `- ${m.memberName} (${m.department})`)
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for monitoring daily report submission status.
+  const departmentSummary = Object.entries(departmentGroups)
+    .map(([dept, members]) => `${dept}: ${members.length}名`)
+    .join(", ");
 
-Date: ${input.reportDate}
-Submission Deadline: ${input.submissionDeadline}
+  const prompt = `
+# 日報収集から報告漏れ特定までの自動判定と通知
 
-Target Engineers:
-${engineerList}
+## 現在の状況
+- 提出期限: ${input.submissionDeadline}
+- 現在時刻: ${input.currentTime}
+- 期限超過: ${isOverdue ? `${hoursOverdue}時間` : "未超過"}
 
-System Context:
-${input.systemContext}
+## 提出状況サマリー
+- 総人数: ${totalMembers}名
+- 提出済み: ${submittedCount}名
+- 未提出: ${unsubmittedCount}名
+- 提出率: ${submissionRate}%
 
-Action 2: Automatically determine which engineers have not submitted their reports and which have submitted late.
+## 未提出者一覧
+${unsubmittedList || "全員提出済み"}
 
-Your task:
-1. Check the submission status of each engineer against the deadline
-2. Identify engineers who have not submitted (未提出者)
-3. Identify engineers who have submitted late (遅延者)
-4. Create a structured list categorizing engineers by submission status
-5. Prepare data for notification to the department head
+## 部門別未提出状況
+${departmentSummary || "全員提出済み"}
 
-Output format:
-- List of non-submitters with their details
-- List of late submitters with submission timestamps
-- Summary statistics
-- Recommended notification priority
+## タスク
+以下の情報に基づいて、報告漏れ・遅延部員の一覧を作成し、部長への通知メール内容を生成してください。
 
-Ensure accuracy in status determination and provide clear categorization for the next action.`;
+1. 未提出者を特定
+2. 遅延状況を判定
+3. 部門別の提出状況を集計
+4. 部長への通知メール本文を作成
 
-  return {
-    prompt,
-    version: ACTION_02_PROMPT_VERSION,
-  };
+## 出力形式
+JSON形式で以下の構造で返してください:
+{
+  "unsubmittedMembers": [
+    {
+      "memberId": "string",
+      "memberName": "string",
+      "email": "string",
+      "department": "string",
+      "status": "unsubmitted" | "delayed",
+      "hoursOverdue": number (遅延の場合のみ)
+    }
+  ],
+  "summaryList": {
+    "totalMembers": number,
+    "submittedCount": number,
+    "unsubmittedCount": number,
+    "delayedCount": number,
+    "submissionRate": number
+  },
+  "notificationContent": {
+    "recipientEmail": "string",
+    "subject": "string",
+    "body": "string",
+    "attachmentData": "string"
+  }
+}
+`;
+
+  return prompt;
 }

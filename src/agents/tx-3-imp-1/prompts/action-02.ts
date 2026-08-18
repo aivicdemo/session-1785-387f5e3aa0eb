@@ -21,33 +21,31 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThresholdMinutes: number;
+  escalationThresholds: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
-export interface Tx3Imp1IdentifiedMember {
+export interface Tx3Imp1IdentifiedNonSubmitter {
   employeeId: string;
   employeeName: string;
-  status: "missing_report" | "overdue_report";
-  hoursOverdue?: number;
-  escalationLevel: "first_notice" | "second_notice" | "critical";
+  status: "not_submitted" | "overdue";
+  daysSinceDeadline: number;
+  previousReminderCount: number;
+  shouldEscalate: boolean;
 }
 
 export interface Tx3Imp1Action02Output {
-  identifiedMembers: Tx3Imp1IdentifiedMember[];
-  escalationTargets: Tx3Imp1IdentifiedMember[];
+  identifiedNonSubmitters: Tx3Imp1IdentifiedNonSubmitter[];
+  escalationCandidates: Tx3Imp1IdentifiedNonSubmitter[];
   analysisTimestamp: string;
-  totalMembersAnalyzed: number;
-  missingReportCount: number;
-  overdueReportCount: number;
+  totalAnalyzed: number;
+  totalNonSubmitted: number;
 }
 
 export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
-  const {
-    confirmationEmailContent,
-    currentTimestamp,
-    submissionDeadline,
-    escalationThresholdMinutes,
-  } = context;
+  const { confirmationEmailContent, currentTimestamp, submissionDeadline, escalationThresholds } = context;
 
   const reportSummary = confirmationEmailContent.reportDetails
     .map(
@@ -58,55 +56,47 @@ export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
     )
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying missing and overdue daily reports from the confirmation email content.
+  const prompt = `You are an AI agent responsible for identifying non-submitting employees from confirmation email content and determining escalation targets.
 
-## Task: Identify Missing and Overdue Report Members
-
-### Confirmation Email Content:
-Subject: ${confirmationEmailContent.subject}
-Sent At: ${confirmationEmailContent.sentAt}
-Recipients: ${confirmationEmailContent.recipients.join(", ")}
-
-### Report Status Summary:
-${reportSummary}
-
-### Current Context:
+## Current Context
 - Current Timestamp: ${currentTimestamp}
 - Submission Deadline: ${submissionDeadline}
-- Escalation Threshold: ${escalationThresholdMinutes} minutes
+- Email Sent At: ${confirmationEmailContent.sentAt}
+- Email Subject: ${confirmationEmailContent.subject}
 
-### Your Analysis Tasks:
-1. Identify all members with "pending" or "overdue" submission status
-2. For overdue reports, calculate hours overdue from the deadline
-3. Determine escalation level based on:
-   - First notice: 0-60 minutes overdue
-   - Second notice: 60-240 minutes overdue
-   - Critical: 240+ minutes overdue or multiple overdue instances
-4. Categorize each identified member as either "missing_report" or "overdue_report"
-5. Return structured data with all identified members and escalation targets
+## Confirmation Email Report Details
+${reportSummary}
 
-### Output Format:
-Return a JSON object with the following structure:
+## Escalation Rules
+- Maximum reminders per employee: ${escalationThresholds.maxReminders}
+- Reminder interval: ${escalationThresholds.reminderIntervalMinutes} minutes
+- Escalate if: Employee status is "overdue" AND previous reminder count >= max reminders - 1
+
+## Task
+Analyze the confirmation email content and:
+1. Identify all employees with "not_submitted" or "overdue" status
+2. Calculate days since deadline for each non-submitter
+3. Determine which employees should be escalated based on reminder count and rules
+4. Return structured analysis with identified non-submitters and escalation candidates
+
+## Output Format
+Return a JSON object with:
 {
-  "identifiedMembers": [
+  "identifiedNonSubmitters": [
     {
-      "employeeId": "string",
-      "employeeName": "string",
-      "status": "missing_report" | "overdue_report",
-      "hoursOverdue": number (optional, only for overdue),
-      "escalationLevel": "first_notice" | "second_notice" | "critical"
+      "employeeId": string,
+      "employeeName": string,
+      "status": "not_submitted" | "overdue",
+      "daysSinceDeadline": number,
+      "previousReminderCount": number,
+      "shouldEscalate": boolean
     }
   ],
-  "escalationTargets": [
-    // Members requiring immediate escalation (critical level)
-  ],
-  "analysisTimestamp": "${currentTimestamp}",
-  "totalMembersAnalyzed": number,
-  "missingReportCount": number,
-  "overdueReportCount": number
-}
-
-Ensure accuracy in status determination and escalation level assignment.`;
+  "escalationCandidates": [same structure as above],
+  "analysisTimestamp": string (ISO 8601),
+  "totalAnalyzed": number,
+  "totalNonSubmitted": number
+}`;
 
   return prompt;
 }

@@ -7,11 +7,11 @@ export async function logError(message: string): Promise<void> {
     globalThis.__logErrorStore = [];
   }
   globalThis.__logErrorStore.push({
-    timestamp: new Date(),
     message,
+    timestamp: new Date(),
   });
 }
 
 declare global {
-  var __logErrorStore: Array<{ timestamp: Date; message: string }> | undefined;
+  var __logErrorStore: Array<{ message: string; timestamp: Date }> | undefined;
 }

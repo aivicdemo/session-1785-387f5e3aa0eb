@@ -7,121 +7,97 @@ export interface Action04Context {
   engineerId: string;
   engineerName: string;
   reportDate: string;
-  submittedContent: {
-    yesterdayAccomplishment: string;
-    todayPlan: string;
+  previousReportContent: {
+    yesterday: string;
+    today: string;
     issues: string;
   };
-  submissionTimestamp: string;
+  submissionDeadline: string;
+  systemTimestamp: string;
 }
 
 export interface Action04ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-}
-
-export interface Action04RegistrationResult {
-  success: boolean;
-  reportId: string;
-  registeredAt: string;
-  message: string;
-}
-
-export interface Action04PromptInput {
-  context: Action04Context;
-  validationRules: {
-    minYesterdayLength: number;
-    minTodayLength: number;
-    minIssuesLength: number;
-    maxYesterdayLength: number;
-    maxTodayLength: number;
-    maxIssuesLength: number;
+  validatedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
   };
 }
 
-export interface Action04PromptOutput {
-  action: "register" | "reject" | "escalate";
-  validation: Action04ValidationResult;
-  registration?: Action04RegistrationResult;
-  escalationReason?: string;
-  nextAction: string;
-}
-
-export function buildAction04Prompt(input: Action04PromptInput): string {
+export function buildAction04Prompt(context: Action04Context): string {
   const {
-    context,
-    validationRules,
-  } = input;
+    engineerId,
+    engineerName,
+    reportDate,
+    previousReportContent,
+    submissionDeadline,
+    systemTimestamp,
+  } = context;
 
-  const prompt = `You are an AI agent responsible for validating and registering daily reports in the morning meeting management system.
+  const promptContent = `# 日報入力内容の妥当性検証タスク
 
-## Current Task: Validate and Register Daily Report (Action 04)
+## タスク概要
+エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
 
-### Engineer Information
-- Engineer ID: ${context.engineerId}
-- Engineer Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
-- Submission Timestamp: ${context.submissionTimestamp}
+## 対象エンジニア情報
+- エンジニアID: ${engineerId}
+- エンジニア名: ${engineerName}
+- 報告日: ${reportDate}
+- システム時刻: ${systemTimestamp}
+- 提出期限: ${submissionDeadline}
 
-### Submitted Content
-**Yesterday's Accomplishment:**
-${context.submittedContent.yesterdayAccomplishment}
+## 受け取った入力内容
+### 昨日の実績
+${previousReportContent.yesterday}
 
-**Today's Plan:**
-${context.submittedContent.todayPlan}
+### 本日の予定
+${previousReportContent.today}
 
-**Issues/Challenges:**
-${context.submittedContent.issues}
+### 抱えている課題
+${previousReportContent.issues}
 
-### Validation Rules
-- Minimum yesterday accomplishment length: ${validationRules.minYesterdayLength} characters
-- Minimum today plan length: ${validationRules.minTodayLength} characters
-- Minimum issues length: ${validationRules.minIssuesLength} characters
-- Maximum yesterday accomplishment length: ${validationRules.maxYesterdayLength} characters
-- Maximum today plan length: ${validationRules.maxTodayLength} characters
-- Maximum issues length: ${validationRules.maxIssuesLength} characters
+## 検証ルール
+1. **必須項目の完全性**
+   - 昨日の実績: 100文字以上、具体的な成果が記載されているか
+   - 本日の予定: 100文字以上、実現可能な計画が記載されているか
+   - 抱えている課題: 50文字以上、明確な課題が記載されているか
 
-### Your Task
-1. Validate the submitted content against the validation rules
-2. Check for completeness and appropriateness of the report
-3. Identify any errors or warnings
-4. Determine if the report should be registered, rejected, or escalated
-5. If valid, prepare for registration in the management system
+2. **内容の妥当性**
+   - 昨日の実績が実現不可能な内容でないか
+   - 本日の予定が過度に楽観的でないか
+   - 課題の記述が具体的で対応可能な内容か
 
-### Validation Criteria
-- All fields must meet minimum length requirements
-- All fields must not exceed maximum length requirements
-- Content must be coherent and relevant to the report date
-- No placeholder or empty-like content
-- Language and format must be appropriate for a professional report
+3. **形式の適切性**
+   - テキストが適切にフォーマットされているか
+   - 不適切な文字や記号が含まれていないか
+   - 個人情報が含まれていないか
 
-### Output Format
-Respond with a JSON object containing:
+4. **論理的一貫性**
+   - 昨日の実績と本日の予定に矛盾がないか
+   - 課題が昨日の実績や本日の予定と関連性があるか
+
+## 出力形式
+JSON形式で以下の構造で返してください：
 {
-  "action": "register" | "reject" | "escalate",
-  "validation": {
-    "isValid": boolean,
-    "errors": string[],
-    "warnings": string[]
-  },
-  "registration": {
-    "success": boolean,
-    "reportId": string,
-    "registeredAt": string,
-    "message": string
-  },
-  "escalationReason": string (if action is "escalate"),
-  "nextAction": string
+  "isValid": boolean,
+  "errors": string[],
+  "warnings": string[],
+  "validatedContent": {
+    "yesterday": string,
+    "today": string,
+    "issues": string
+  }
 }
 
-### Decision Logic
-- If all validations pass: action = "register"
-- If critical validations fail: action = "reject"
-- If content is suspicious or requires human review: action = "escalate"
-- If system error occurs: action = "escalate"
+## 判定基準
+- isValid: true の場合、管理システムへの登録を進める
+- isValid: false の場合、エンジニアに修正を依頼する
+- errors: 登録を阻止する重大な問題
+- warnings: 登録は可能だが注意が必要な問題
+- validatedContent: 検証後の確定内容（修正・正規化済み）`;
 
-Proceed with validation and provide your response in the specified JSON format.`;
-
-  return prompt;
+  return promptContent;
 }

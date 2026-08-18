@@ -8,7 +8,7 @@
 /**
  * Retrieves an environment variable by key
  * @param key - The environment variable key to retrieve
- * @returns The value of the environment variable, or undefined if not set
+ * @returns The environment variable value, or undefined if not set
  */
 export function getEnvVariable(key: string): string | undefined {
   return process.env[key];

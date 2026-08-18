@@ -15,73 +15,56 @@ export interface Action01PromptOutput {
     memberId: string;
     memberName: string;
     reason: "not_submitted" | "delayed";
-    daysSinceDeadline: number;
+    submissionTime?: string;
   }>;
   escalationTargets: Array<{
     memberId: string;
     memberName: string;
     escalationLevel: number;
-    shouldEscalate: boolean;
+    recommendedAction: "first_reminder" | "second_reminder" | "escalate_to_manager";
   }>;
-  summary: string;
+  analysisTimestamp: string;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    confirmationEmailContent,
-    reportDeadline,
-    currentTimestamp,
-    previousEscalationCount = {},
-  } = input;
+  const previousEscalationInfo =
+    input.previousEscalationCount && Object.keys(input.previousEscalationCount).length > 0
+      ? `\n\n過去のエスカレーション履歴:\n${Object.entries(input.previousEscalationCount)
+          .map(([memberId, count]) => `- ${memberId}: ${count}回`)
+          .join("\n")}`
+      : "";
 
-  const escalationCountSummary = Object.entries(previousEscalationCount)
-    .map(([memberId, count]) => `${memberId}: ${count}回`)
-    .join(", ");
+  return `あなたは朝会報告管理システムのAIエージェントです。確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定するタスクを実行してください。
 
-  return `# 報告漏れ特定から催促送信までの自動実行 - Action 01
-
-## タスク
-確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定してください。
-
-## 入力情報
-
-### 確認メール内容
-\`\`\`
-${confirmationEmailContent}
-\`\`\`
-
-### 報告期限
-${reportDeadline}
-
-### 現在時刻
-${currentTimestamp}
-
-### 過去の催促履歴
-${escalationCountSummary || "なし"}
-
-## 実行内容
-
-1. 確認メール内容から報告漏れ・遅延部員を特定する
-   - 未提出者を抽出
-   - 期限超過者を抽出
-   - 各部員の遅延日数を計算
-
+【タスク】
+確認メール内容を分析し、以下を実行してください:
+1. 報告漏れ・遅延部員を特定する
 2. 催促対象部員を判定する
-   - 初回催促対象：未提出または1日以上遅延
-   - 2回目以上：前回催促から24時間以上経過かつ未提出
-   - 上限：同一部員への催促は最大3回まで
+3. 各部員に対する推奨アクション（初回催促/2回目催促/マネージャーへのエスカレーション）を決定する
 
-3. 出力形式に従って結果を構造化する
+【入力情報】
+確認メール内容:
+${input.confirmationEmailContent}
 
-## 出力形式（JSON）
-\`\`\`json
+報告期限: ${input.reportDeadline}
+現在時刻: ${input.currentTimestamp}${previousEscalationInfo}
+
+【判定ルール】
+- 報告期限を超過している場合: 遅延として特定
+- 報告期限までに報告がない場合: 未提出として特定
+- 同一部員への催促が2回以上の場合: マネージャーへのエスカレーション対象
+- 初回遅延: 初回催促を推奨
+- 2回目以降の遅延: 2回目催促またはエスカレーションを推奨
+
+【出力形式】
+JSON形式で以下の構造で返してください:
 {
   "unreportedMembers": [
     {
       "memberId": "string",
       "memberName": "string",
       "reason": "not_submitted" | "delayed",
-      "daysSinceDeadline": number
+      "submissionTime": "ISO8601形式またはnull"
     }
   ],
   "escalationTargets": [
@@ -89,15 +72,9 @@ ${escalationCountSummary || "なし"}
       "memberId": "string",
       "memberName": "string",
       "escalationLevel": number,
-      "shouldEscalate": boolean
+      "recommendedAction": "first_reminder" | "second_reminder" | "escalate_to_manager"
     }
   ],
-  "summary": "string"
-}
-\`\`\`
-
-## 制約条件
-- 催促回数の上限を超えた部員は escalationTargets に含めない
-- daysSinceDeadline は負の値（期限前）の場合は0とする
-- summary には特定された部員数と催促対象数を含める`;
+  "analysisTimestamp": "ISO8601形式"
+}`;
 }

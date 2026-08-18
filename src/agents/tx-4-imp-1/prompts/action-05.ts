@@ -4,147 +4,156 @@
 export const ACTION_05_PROMPT_VERSION = "1.0.0";
 
 export interface Action05Context {
-  confirmationEmailContent: string;
-  reportSubmissionDeadline: string;
-  currentTimestamp: string;
-  previousEscalationHistory: Array<{
-    employeeId: string;
-    escalationCount: number;
-    lastEscalationTime: string;
+  confirmationEmailsSent: Array<{
+    recipientId: string;
+    recipientName: string;
+    sentAt: string;
+    status: "sent" | "failed";
   }>;
-}
-
-export interface ExtractedIssue {
-  id: string;
-  title: string;
-  description: string;
-  affectedEmployees: string[];
-  severity: "critical" | "high" | "medium" | "low";
-  category: string;
-}
-
-export interface PrioritizedIssue extends ExtractedIssue {
-  priority: number;
-  reasoning: string;
-  recommendedAction: string;
-}
-
-export interface Action05Result {
-  extractedIssues: ExtractedIssue[];
-  prioritizedIssues: PrioritizedIssue[];
+  dailyReportsReceived: Array<{
+    engineerId: string;
+    engineerName: string;
+    reportContent: string;
+    receivedAt: string;
+    isOnTime: boolean;
+  }>;
   overallProgressSummary: string;
-  bottlenecks: string[];
-  riskFactors: string[];
-  escalationRecommendations: Array<{
-    employeeId: string;
-    reason: string;
-    suggestedAction: string;
+  extractedIssues: Array<{
+    issueId: string;
+    description: string;
+    affectedEngineers: string[];
+    severity: "critical" | "high" | "medium" | "low";
+    category: string;
   }>;
+  prioritizedIssues: Array<{
+    issueId: string;
+    description: string;
+    priority: number;
+    category: string;
+    recommendedAction: string;
+  }>;
+  reportGenerationTimestamp: string;
+  reportDeliveryStatus: "pending" | "in_progress" | "completed" | "failed";
 }
 
-export function buildAction05Prompt(context: Action05Context): string {
-  const {
-    confirmationEmailContent,
-    reportSubmissionDeadline,
-    currentTimestamp,
-    previousEscalationHistory,
-  } = context;
+export interface Action05PromptInput {
+  confirmationEmailContent: string;
+  receivedReports: Array<{
+    engineerId: string;
+    engineerName: string;
+    reportText: string;
+    receivedTimestamp: string;
+  }>;
+  previousContext?: Partial<Action05Context>;
+  priorityClassificationRules?: {
+    criticalKeywords: string[];
+    highKeywords: string[];
+    mediumKeywords: string[];
+    lowKeywords: string[];
+  };
+  escalationThresholds?: {
+    maxCriticalIssues: number;
+    maxHighIssues: number;
+  };
+}
 
-  const escalationHistoryText =
-    previousEscalationHistory.length > 0
-      ? previousEscalationHistory
-          .map(
-            (h) =>
-              `- Employee ${h.employeeId}: ${h.escalationCount} escalations (last: ${h.lastEscalationTime})`
-          )
-          .join("\n")
-      : "No previous escalation history";
+export interface Action05PromptOutput {
+  context: Action05Context;
+  nextAction: "complete" | "escalate" | "retry";
+  escalationReason?: string;
+  formattedReport: string;
+  deliveryInstructions: {
+    recipientId: string;
+    recipientEmail: string;
+    reportFormat: "email" | "dashboard" | "both";
+  }[];
+}
 
-  return `You are an AI agent responsible for analyzing confirmation emails containing daily reports and extracting critical information for morning meeting preparation.
+export function buildAction05Prompt(input: Action05PromptInput): string {
+  const reportsList = input.receivedReports
+    .map(
+      (report) =>
+        `- ${report.engineerName} (${report.engineerId}): ${report.reportText}`
+    )
+    .join("\n");
 
-## Task: Extract Issues, Analyze Progress, and Prioritize Concerns
+  const priorityRules = input.priorityClassificationRules || {
+    criticalKeywords: ["blocker", "critical", "emergency", "down"],
+    highKeywords: ["urgent", "high priority", "risk", "delay"],
+    mediumKeywords: ["issue", "concern", "attention needed"],
+    lowKeywords: ["minor", "note", "information"],
+  };
+
+  const escalationThresholds = input.escalationThresholds || {
+    maxCriticalIssues: 2,
+    maxHighIssues: 5,
+  };
+
+  const prompt = `You are an AI agent responsible for the final stage of daily report processing and analysis.
+
+## Task: Aggregate Daily Reports and Extract/Prioritize Issues
 
 ### Input Data:
 **Confirmation Email Content:**
-${confirmationEmailContent}
+${input.confirmationEmailContent}
 
-**Report Submission Deadline:** ${reportSubmissionDeadline}
-**Current Timestamp:** ${currentTimestamp}
-
-**Previous Escalation History:**
-${escalationHistoryText}
+**Received Daily Reports:**
+${reportsList}
 
 ### Your Responsibilities:
 
-1. **Extract Issues and Bottlenecks**
-   - Identify all mentioned problems, blockers, and concerns from the report content
-   - Categorize each issue by type (technical, resource, process, external dependency, etc.)
-   - Determine affected team members and projects
-   - Assess severity based on impact and urgency
+1. **Aggregate Overall Progress Status**
+   - Summarize the overall progress from all received reports
+   - Identify common themes and patterns
+   - Note any significant achievements or blockers
 
-2. **Analyze Overall Progress**
-   - Summarize the overall team progress status
-   - Identify trends and patterns across multiple reports
-   - Highlight any anomalies or unexpected situations
+2. **Extract Issues and Bottlenecks**
+   - Identify all issues, risks, and bottlenecks mentioned in the reports
+   - Categorize each issue (e.g., technical, resource, process, external dependency)
+   - Note which engineers are affected by each issue
 
-3. **Prioritize Issues**
-   - Assign priority scores (1-10, where 10 is highest priority)
-   - Consider business impact, urgency, and dependencies
-   - Provide reasoning for each priority assignment
-   - Recommend specific actions for high-priority issues
+3. **Classify Issue Priority**
+   - Use the following keyword-based classification rules:
+     * Critical: ${priorityRules.criticalKeywords.join(", ")}
+     * High: ${priorityRules.highKeywords.join(", ")}
+     * Medium: ${priorityRules.mediumKeywords.join(", ")}
+     * Low: ${priorityRules.lowKeywords.join(", ")}
+   - Apply contextual judgment beyond keyword matching
+   - Consider impact scope and urgency
 
-4. **Identify Risk Factors**
-   - Detect potential risks that could impact project delivery
-   - Flag repeated issues from the same team members
-   - Identify resource constraints or capacity issues
+4. **Determine Escalation Status**
+   - Check if critical issues exceed threshold: ${escalationThresholds.maxCriticalIssues}
+   - Check if high-priority issues exceed threshold: ${escalationThresholds.maxHighIssues}
+   - Flag for escalation if thresholds are exceeded
 
-5. **Escalation Assessment**
-   - Review previous escalation history
-   - Determine if additional escalations are needed
-   - Recommend escalation actions with justification
+5. **Generate Formatted Report**
+   - Create a structured report suitable for management review
+   - Include executive summary, progress overview, and prioritized issue list
+   - Provide recommended actions for each issue
 
 ### Output Format:
 Return a JSON object with the following structure:
 {
-  "extractedIssues": [
-    {
-      "id": "ISSUE_001",
-      "title": "Issue Title",
-      "description": "Detailed description",
-      "affectedEmployees": ["emp_id_1", "emp_id_2"],
-      "severity": "high",
-      "category": "technical"
-    }
-  ],
-  "prioritizedIssues": [
-    {
-      "id": "ISSUE_001",
-      "title": "Issue Title",
-      "description": "Detailed description",
-      "affectedEmployees": ["emp_id_1"],
-      "severity": "high",
-      "category": "technical",
-      "priority": 9,
-      "reasoning": "Why this priority was assigned",
-      "recommendedAction": "Specific action to address this issue"
-    }
-  ],
-  "overallProgressSummary": "Summary of team progress status",
-  "bottlenecks": ["Bottleneck 1", "Bottleneck 2"],
-  "riskFactors": ["Risk 1", "Risk 2"],
-  "escalationRecommendations": [
-    {
-      "employeeId": "emp_id",
-      "reason": "Why escalation is needed",
-      "suggestedAction": "Recommended escalation action"
-    }
-  ]
+  "context": {
+    "confirmationEmailsSent": [array of sent confirmations],
+    "dailyReportsReceived": [array of received reports with metadata],
+    "overallProgressSummary": "string summary of overall progress",
+    "extractedIssues": [array of identified issues with details],
+    "prioritizedIssues": [array of issues sorted by priority with recommendations],
+    "reportGenerationTimestamp": "ISO 8601 timestamp",
+    "reportDeliveryStatus": "completed" | "pending" | "failed"
+  },
+  "nextAction": "complete" | "escalate" | "retry",
+  "escalationReason": "reason if escalating, null otherwise",
+  "formattedReport": "formatted report text for management",
+  "deliveryInstructions": [array of delivery targets with format preferences]
 }
 
-### Guidelines:
-- Be thorough but concise in analysis
-- Focus on actionable insights for the morning meeting
-- Consider context from previous escalation history
-- Ensure all identified issues have clear priority and recommended actions
-- Flag any critical or time-sensitive matters for immediate attention`;
+### Constraints:
+- Ensure all extracted issues are substantiated by report content
+- Prioritization must be consistent and defensible
+- Report must be actionable and clear for management review
+- Timestamp all findings with current processing time`;
+
+  return prompt;
 }

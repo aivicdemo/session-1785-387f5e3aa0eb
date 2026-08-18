@@ -3,82 +3,53 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptInput {
+export interface Action04PromptContext {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  escalationRules: {
-    firstReminderHours: number;
-    secondReminderHours: number;
-    maxReminders: number;
-  };
-  departmentMembers: Array<{
-    id: string;
-    name: string;
-    email: string;
-    department: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
-  currentTime: string;
+  targetDate: string;
+  departmentName: string;
+  escalationThreshold: number;
 }
 
-export interface Action04PromptOutput {
-  overdueMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    hoursOverdue: number;
-    reminderCount: number;
-    shouldEscalate: boolean;
-  }>;
-  escalationActions: Array<{
-    memberId: string;
-    actionType: "email" | "chat" | "manager_notification";
-    priority: "high" | "medium" | "low";
-    message: string;
-  }>;
-  summary: {
-    totalMembers: number;
-    submittedCount: number;
-    overdueCount: number;
-    escalationCount: number;
-  };
+export interface Action04PromptResult {
+  version: string;
+  action: string;
+  instructions: string;
+  context: Action04PromptContext;
 }
 
-export function buildAction04Prompt(input: Action04PromptInput): string {
-  const systemPrompt = `You are an automated escalation management agent for the morning report system.
-Your task is to identify overdue reports and determine appropriate escalation actions.
+export function buildAction04Prompt(
+  context: Action04PromptContext
+): Action04PromptResult {
+  const instructions = `
+You are an AI agent responsible for the fourth action in the morning report management system.
 
-Current Time: ${input.currentTime}
-Reporting Deadline: ${input.reportingDeadline}
-Overdue Threshold: ${input.overdueThresholdHours} hours
+Action 4: Send escalation notifications to department heads for overdue reports
 
-Escalation Rules:
-- First reminder after ${input.escalationRules.firstReminderHours} hours overdue
-- Second reminder after ${input.escalationRules.secondReminderHours} hours overdue
-- Maximum reminders per member: ${input.escalationRules.maxReminders}
+Context:
+- Reporting Deadline: ${context.reportingDeadline}
+- Target Date: ${context.targetDate}
+- Department: ${context.departmentName}
+- Escalation Threshold (hours overdue): ${context.escalationThreshold}
 
-Department Members:
-${input.departmentMembers.map((m) => `- ${m.id}: ${m.name} (${m.email}) - ${m.department}`).join("\n")}
+Your task:
+1. Identify all engineers whose reports are overdue beyond the escalation threshold
+2. Prepare escalation notification content for the department head
+3. Include the list of overdue engineers with their delay duration
+4. Provide recommendations for follow-up actions
+5. Log all escalation notifications sent
 
-Submitted Reports:
-${input.submittedReports.map((r) => `- Member ${r.memberId}: submitted at ${r.submittedAt}`).join("\n")}
+Output format:
+- Escalation Status: [ESCALATED | NO_ESCALATION_NEEDED]
+- Overdue Engineers Count: [number]
+- Notification Sent To: [department_head_email]
+- Timestamp: [ISO 8601 format]
+- Next Action: [recommended next step]
+`;
 
-Analyze the submission status and determine:
-1. Which members have overdue reports
-2. How many hours each member is overdue
-3. Whether escalation actions are needed based on the rules
-4. What type of escalation action (email, chat, or manager notification) is appropriate
-
-Return a JSON object with the structure:
-{
-  "overdueMembers": [...],
-  "escalationActions": [...],
-  "summary": {...}
-}`;
-
-  return systemPrompt;
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    action: "send-escalation-notifications",
+    instructions,
+    context,
+  };
 }
