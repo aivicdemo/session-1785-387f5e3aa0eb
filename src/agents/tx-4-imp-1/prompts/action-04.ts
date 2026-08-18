@@ -3,7 +3,7 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04Context {
+export interface Action04PromptInput {
   reportContent: string;
   extractedIssues: Array<{
     id: string;
@@ -11,152 +11,123 @@ export interface Action04Context {
     description: string;
     category: string;
   }>;
-  priorityAssignments: Array<{
-    issueId: string;
-    priority: "critical" | "high" | "medium" | "low";
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    department: string;
+  }>;
+  priorityFramework: {
+    criteria: string[];
+    levels: string[];
+  };
+}
+
+export interface Action04PromptOutput {
+  prioritizedIssues: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    priorityScore: number;
     reasoning: string;
+    affectedMembers: string[];
+    recommendedAction: string;
   }>;
-  escalationFlags: Array<{
-    issueId: string;
-    reason: string;
-    requiresHumanReview: boolean;
+  criticalIssues: Array<{
+    id: string;
+    title: string;
+    severity: string;
+    escalationRequired: boolean;
   }>;
-}
-
-export interface Action04Input {
-  confirmedReports: Array<{
-    employeeId: string;
-    employeeName: string;
-    reportContent: string;
-    submittedAt: string;
-  }>;
-  previousPriorityContext?: {
-    recentCriticalIssues: string[];
-    ongoingBottlenecks: string[];
+  issueClassification: {
+    blocking: string[];
+    highPriority: string[];
+    mediumPriority: string[];
+    lowPriority: string[];
   };
-  priorityJudgmentRules?: {
-    criticalKeywords: string[];
-    highPriorityIndicators: string[];
-    escalationThresholds: {
-      affectedTeamCount: number;
-      blockerDuration: string;
-    };
-  };
-}
-
-export interface Action04Output {
-  context: Action04Context;
   summary: string;
-  requiresEscalation: boolean;
-  escalationReason?: string;
 }
 
-export function buildAction04Prompt(input: Action04Input): string {
-  const rulesSection = input.priorityJudgmentRules
-    ? `
-## 優先度判定ルール
-- 重大度キーワード: ${input.priorityJudgmentRules.criticalKeywords.join(", ")}
-- 高優先度指標: ${input.priorityJudgmentRules.highPriorityIndicators.join(", ")}
-- エスカレーション閾値:
-  - 影響チーム数: ${input.priorityJudgmentRules.escalationThresholds.affectedTeamCount}以上
-  - ブロッカー継続期間: ${input.priorityJudgmentRules.escalationThresholds.blockerDuration}以上
-`
-    : "";
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const priorityLevels = input.priorityFramework.levels.join(", ");
+  const criteria = input.priorityFramework.criteria
+    .map((c, i) => `${i + 1}. ${c}`)
+    .join("\n");
 
-  const contextSection = input.previousPriorityContext
-    ? `
-## 優先度判定の背景情報
-- 最近の重大課題: ${input.previousPriorityContext.recentCriticalIssues.join(", ") || "なし"}
-- 継続中のボトルネック: ${input.previousPriorityContext.ongoingBottlenecks.join(", ") || "なし"}
-`
-    : "";
-
-  const reportsSection = input.confirmedReports
+  const issuesText = input.extractedIssues
     .map(
-      (report) => `
-### ${report.employeeName} (ID: ${report.employeeId})
-提出時刻: ${report.submittedAt}
-内容:
-${report.reportContent}
-`
+      (issue) =>
+        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
     )
     .join("\n");
 
-  return `# Action 04: 課題の優先度判定・分類
+  const membersText = input.teamMembers
+    .map((m) => `- ${m.name} (${m.department})`)
+    .join("\n");
 
-## 目的
-確認メールから収集した日報内容から、課題・ボトルネックを自動抽出し、優先度を判定・分類する。
+  return `You are an AI agent responsible for prioritizing and classifying issues extracted from daily reports.
 
-## 入力情報
+## Task: Prioritize and Classify Extracted Issues
 
-### 収集された日報
-${reportsSection}
+### Input Report Content:
+${input.reportContent}
 
-${contextSection}
+### Extracted Issues to Prioritize:
+${issuesText}
 
-${rulesSection}
+### Team Members:
+${membersText}
 
-## タスク
+### Priority Framework:
+Priority Levels: ${priorityLevels}
 
-1. **課題抽出**: 各日報から課題・ボトルネック・リスクを抽出
-   - 明示的な課題記述
-   - 進捗遅延の兆候
-   - 依存関係の問題
-   - リソース不足の指摘
+Prioritization Criteria:
+${criteria}
 
-2. **優先度判定**: 抽出した課題に対して以下の基準で優先度を判定
-   - Critical: システム停止、重大なセキュリティ問題、複数チーム影響
-   - High: 主要機能の障害、1チーム以上の進捗ブロック、期限切迫
-   - Medium: 部分的な機能低下、単一チームの進捗遅延、改善推奨
-   - Low: 軽微な問題、将来対応可能、情報共有のみ
+### Your Responsibilities:
+1. Analyze each extracted issue against the prioritization criteria
+2. Assign a priority level (${priorityLevels}) to each issue
+3. Provide a numerical priority score (1-100, where 100 is highest priority)
+4. Explain the reasoning for each priority assignment
+5. Identify which team members are affected by each issue
+6. Recommend specific actions for each issue
+7. Classify issues into categories: blocking, high priority, medium priority, low priority
+8. Identify any critical issues requiring immediate escalation
+9. Provide a summary of the overall issue landscape
 
-3. **エスカレーション判定**: 以下の条件で人間レビューが必要か判定
-   - 複数課題の優先度が同等で判定困難
-   - 通常と異なる事象
-   - 重大なリスク課題
-   - 判定ルール外の特殊ケース
-
-## 出力形式
-
-JSON形式で以下の構造で返却:
-
-\`\`\`json
+### Output Format:
+Return a JSON object with the following structure:
 {
-  "context": {
-    "reportContent": "集約された日報内容の要約",
-    "extractedIssues": [
-      {
-        "id": "ISSUE-001",
-        "title": "課題タイトル",
-        "description": "詳細説明",
-        "category": "performance|blocker|resource|risk|other"
-      }
-    ],
-    "priorityAssignments": [
-      {
-        "issueId": "ISSUE-001",
-        "priority": "critical|high|medium|low",
-        "reasoning": "優先度判定の根拠"
-      }
-    ],
-    "escalationFlags": [
-      {
-        "issueId": "ISSUE-001",
-        "reason": "エスカレーション理由",
-        "requiresHumanReview": true
-      }
-    ]
+  "prioritizedIssues": [
+    {
+      "id": "issue_id",
+      "title": "issue_title",
+      "description": "issue_description",
+      "category": "issue_category",
+      "priority": "priority_level",
+      "priorityScore": number,
+      "reasoning": "explanation_of_priority_assignment",
+      "affectedMembers": ["member_id_1", "member_id_2"],
+      "recommendedAction": "specific_action_recommendation"
+    }
+  ],
+  "criticalIssues": [
+    {
+      "id": "issue_id",
+      "title": "issue_title",
+      "severity": "severity_level",
+      "escalationRequired": boolean
+    }
+  ],
+  "issueClassification": {
+    "blocking": ["issue_id_1"],
+    "highPriority": ["issue_id_2"],
+    "mediumPriority": ["issue_id_3"],
+    "lowPriority": ["issue_id_4"]
   },
-  "summary": "全体的な進捗状況と課題の要約",
-  "requiresEscalation": false,
-  "escalationReason": "エスカレーション理由（必要な場合のみ）"
+  "summary": "overall_summary_of_issues_and_recommendations"
 }
-\`\`\`
 
-## 注意事項
-- 課題IDは ISSUE-XXX 形式で採番
-- 優先度判定は提供されたルールに従う
-- 根拠は具体的で、部長が理解しやすい表現で記述
-- 判定困難な場合は escalationFlags に記録
-`;
+Ensure all prioritization decisions are consistent with the framework and clearly justified.`;
 }

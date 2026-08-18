@@ -12,7 +12,6 @@ interface StubMailService {
   sendMail(to: string, subject: string, body: string): Promise<void>;
   clearCallHistory(): void;
   getCallHistory(): MailServiceCallRecord[];
-  getCallCount(): number;
 }
 
 export function getStubMailService(): StubMailService {
@@ -34,10 +33,6 @@ export function getStubMailService(): StubMailService {
 
     getCallHistory(): MailServiceCallRecord[] {
       return [...callHistory];
-    },
-
-    getCallCount(): number {
-      return callHistory.length;
     },
   };
 }

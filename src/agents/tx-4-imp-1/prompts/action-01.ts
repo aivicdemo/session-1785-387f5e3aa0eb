@@ -3,51 +3,65 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
-  reportDate: string;
-  engineerName: string;
-  engineerId: string;
-  departmentName: string;
-  submissionDeadline: string;
+export interface Action01PromptContext {
+  reportingDeadline: string;
+  targetDate: string;
+  engineerCount: number;
+  escalationThreshold: number;
 }
 
-export interface Action01PromptOutput {
-  templateId: string;
-  templateContent: string;
-  distributionChannels: string[];
-  scheduledTime: string;
+export interface Action01PromptResult {
+  systemPrompt: string;
+  userPrompt: string;
+  version: string;
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const {
-    reportDate,
-    engineerName,
-    engineerId,
-    departmentName,
-    submissionDeadline,
-  } = input;
+export function buildAction01Prompt(
+  context: Action01PromptContext
+): Action01PromptResult {
+  const systemPrompt = `You are an AI agent responsible for the first action in the morning report collection workflow.
+Your task is to read confirmation email contents and automatically extract engineers who have not submitted their reports or have submitted late.
 
-  return `You are an AI agent responsible for generating and distributing daily report templates.
+You must:
+1. Identify all engineers who should have submitted reports by the deadline
+2. Determine which engineers have not submitted or submitted late
+3. Extract their names, departments, and submission status
+4. Classify them into two categories: "not_submitted" and "late_submitted"
+5. Provide clear reasoning for each classification
 
-Task: Generate a daily report template for the following engineer and prepare it for distribution.
+Output format must be JSON with the following structure:
+{
+  "not_submitted": [
+    {
+      "name": "string",
+      "department": "string",
+      "deadline": "string"
+    }
+  ],
+  "late_submitted": [
+    {
+      "name": "string",
+      "department": "string",
+      "submitted_at": "string",
+      "deadline": "string",
+      "delay_minutes": number
+    }
+  ],
+  "total_engineers": number,
+  "submission_rate": number
+}`;
 
-Engineer Information:
-- Name: ${engineerName}
-- ID: ${engineerId}
-- Department: ${departmentName}
-- Report Date: ${reportDate}
-- Submission Deadline: ${submissionDeadline}
+  const userPrompt = `Please analyze the confirmation email contents for the report collection dated ${context.targetDate}.
 
-The template should include the following sections:
-1. Yesterday's Achievements (実績)
-2. Today's Plans (予定)
-3. Current Issues/Challenges (課題)
+Reporting deadline: ${context.reportingDeadline}
+Total engineers expected to submit: ${context.engineerCount}
+Escalation threshold (minutes late): ${context.escalationThreshold}
 
-Requirements:
-- Generate a clear, structured template that is easy for the engineer to fill out
-- Include specific fields for each section
-- Add any relevant context or instructions for completion
-- Ensure the template is ready for immediate distribution via email
+Extract and classify all engineers based on their submission status. Provide the analysis in the specified JSON format.`;
 
-Output the template content and specify the distribution channels (email, chat, etc.).`;
+  return {
+    systemPrompt,
+    userPrompt,
+    version: ACTION_01_PROMPT_VERSION,
+  };
 }

@@ -6,14 +6,15 @@ export const ACTION_02_PROMPT_VERSION = "1.0.0";
 export interface Tx3Imp1ConfirmationEmailContent {
   emailId: string;
   sentAt: string;
-  recipients: string[];
+  recipientId: string;
+  recipientName: string;
   subject: string;
   body: string;
-  reportDetails: Array<{
-    employeeId: string;
-    employeeName: string;
-    submissionStatus: "submitted" | "pending" | "overdue";
-    submissionTime?: string;
+  reportedMembers: Array<{
+    memberId: string;
+    memberName: string;
+    status: "submitted" | "pending" | "overdue";
+    submittedAt?: string;
   }>;
 }
 
@@ -21,82 +22,87 @@ export interface Tx3Imp1PromptContext {
   confirmationEmailContent: Tx3Imp1ConfirmationEmailContent;
   currentTimestamp: string;
   submissionDeadline: string;
-  escalationThresholds: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-  };
+  escalationThreshold: number;
 }
 
-export interface Tx3Imp1IdentifiedNonSubmitter {
-  employeeId: string;
-  employeeName: string;
-  status: "not_submitted" | "overdue";
-  daysSinceDeadline: number;
-  previousReminderCount: number;
-  shouldEscalate: boolean;
+export interface Tx3Imp1IdentifiedMember {
+  memberId: string;
+  memberName: string;
+  status: "missing_report" | "delayed_report" | "submitted";
+  daysOverdue?: number;
+  escalationCount?: number;
 }
 
 export interface Tx3Imp1Action02Output {
-  identifiedNonSubmitters: Tx3Imp1IdentifiedNonSubmitter[];
-  escalationCandidates: Tx3Imp1IdentifiedNonSubmitter[];
+  identifiedMembers: Tx3Imp1IdentifiedMember[];
+  totalMissingReports: number;
+  totalDelayedReports: number;
   analysisTimestamp: string;
-  totalAnalyzed: number;
-  totalNonSubmitted: number;
 }
 
-export function buildAction02Prompt(context: Tx3Imp1PromptContext): string {
-  const { confirmationEmailContent, currentTimestamp, submissionDeadline, escalationThresholds } = context;
+export function buildAction02Prompt(
+  context: Tx3Imp1PromptContext
+): string {
+  const {
+    confirmationEmailContent,
+    currentTimestamp,
+    submissionDeadline,
+    escalationThreshold,
+  } = context;
 
-  const reportSummary = confirmationEmailContent.reportDetails
+  const reportedMembersText = confirmationEmailContent.reportedMembers
     .map(
-      (detail) =>
-        `- ${detail.employeeName} (ID: ${detail.employeeId}): ${detail.submissionStatus}${
-          detail.submissionTime ? ` at ${detail.submissionTime}` : ""
+      (member) =>
+        `- ${member.memberName} (ID: ${member.memberId}): ${member.status}${
+          member.submittedAt ? ` at ${member.submittedAt}` : ""
         }`
     )
     .join("\n");
 
-  const prompt = `You are an AI agent responsible for identifying non-submitting employees from confirmation email content and determining escalation targets.
+  return `You are an AI agent responsible for identifying missing and delayed reports from the confirmation email content.
 
-## Current Context
+## Task: Identify Missing and Delayed Reports
+
+### Input Information:
+- Confirmation Email ID: ${confirmationEmailContent.emailId}
+- Sent At: ${confirmationEmailContent.sentAt}
 - Current Timestamp: ${currentTimestamp}
 - Submission Deadline: ${submissionDeadline}
-- Email Sent At: ${confirmationEmailContent.sentAt}
-- Email Subject: ${confirmationEmailContent.subject}
+- Escalation Threshold (days): ${escalationThreshold}
 
-## Confirmation Email Report Details
-${reportSummary}
+### Reported Members Status:
+${reportedMembersText}
 
-## Escalation Rules
-- Maximum reminders per employee: ${escalationThresholds.maxReminders}
-- Reminder interval: ${escalationThresholds.reminderIntervalMinutes} minutes
-- Escalate if: Employee status is "overdue" AND previous reminder count >= max reminders - 1
+### Your Responsibilities:
+1. Analyze the confirmation email content to identify members with missing reports
+2. Identify members whose reports are delayed beyond the submission deadline
+3. Calculate days overdue for delayed reports
+4. Determine escalation count based on the threshold
+5. Classify each member's status as: "missing_report", "delayed_report", or "submitted"
 
-## Task
-Analyze the confirmation email content and:
-1. Identify all employees with "not_submitted" or "overdue" status
-2. Calculate days since deadline for each non-submitter
-3. Determine which employees should be escalated based on reminder count and rules
-4. Return structured analysis with identified non-submitters and escalation candidates
-
-## Output Format
-Return a JSON object with:
+### Output Format:
+Provide a JSON object with the following structure:
 {
-  "identifiedNonSubmitters": [
+  "identifiedMembers": [
     {
-      "employeeId": string,
-      "employeeName": string,
-      "status": "not_submitted" | "overdue",
-      "daysSinceDeadline": number,
-      "previousReminderCount": number,
-      "shouldEscalate": boolean
+      "memberId": "string",
+      "memberName": "string",
+      "status": "missing_report" | "delayed_report" | "submitted",
+      "daysOverdue": number (optional, only for delayed reports),
+      "escalationCount": number (optional)
     }
   ],
-  "escalationCandidates": [same structure as above],
-  "analysisTimestamp": string (ISO 8601),
-  "totalAnalyzed": number,
-  "totalNonSubmitted": number
-}`;
+  "totalMissingReports": number,
+  "totalDelayedReports": number,
+  "analysisTimestamp": "${currentTimestamp}"
+}
 
-  return prompt;
+### Analysis Rules:
+- A report is "missing" if the member has not submitted anything by the current timestamp
+- A report is "delayed" if submitted after the submission deadline but before current timestamp
+- Calculate daysOverdue as: (currentTimestamp - submissionDeadline) in days
+- Escalation count increases for members with repeated delays
+- Ensure accuracy in member identification to prevent incorrect escalations
+
+Begin your analysis now.`;
 }

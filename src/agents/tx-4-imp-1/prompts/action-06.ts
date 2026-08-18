@@ -4,115 +4,140 @@
 export const ACTION_06_PROMPT_VERSION = "1.0.0";
 
 export interface Action06Context {
-  reportSummary: string;
   extractedIssues: Array<{
     id: string;
     title: string;
     description: string;
-    category: string;
+    reportedBy: string;
+    reportDate: string;
   }>;
-  priorityAssignments: Array<{
+  priorityClassifications: Array<{
     issueId: string;
     priority: "critical" | "high" | "medium" | "low";
     reasoning: string;
+    category: string;
   }>;
-  departmentHead: string;
-  reportDate: string;
-  totalReportsReceived: number;
-  totalReportsExpected: number;
+  reportSummary: {
+    totalReports: number;
+    submittedCount: number;
+    overallProgress: string;
+    keyMetrics: Record<string, unknown>;
+  };
 }
 
 export interface Action06PromptInput {
-  context: Action06Context;
-  previousActions: Array<{
-    actionNumber: number;
-    result: string;
+  confirmedReports: Array<{
+    employeeId: string;
+    employeeName: string;
+    reportContent: string;
+    submittedAt: string;
   }>;
-  escalationFlags?: string[];
+  previousPriorities?: Array<{
+    issueId: string;
+    priority: string;
+  }>;
+  organizationContext?: {
+    department: string;
+    projectPhase: string;
+    criticalDeadlines: string[];
+  };
 }
 
 export interface Action06PromptOutput {
-  finalReport: string;
-  prioritizedIssuesList: Array<{
-    rank: number;
-    issueId: string;
-    title: string;
-    priority: "critical" | "high" | "medium" | "low";
-    recommendedAction: string;
-    estimatedImpact: string;
-  }>;
-  readinessForMeeting: {
-    isReady: boolean;
-    completionPercentage: number;
-    remainingTasks: string[];
-  };
-  escalationRequired: boolean;
-  escalationReason?: string;
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action06Context;
 }
 
-export function buildAction06Prompt(input: Action06PromptInput): string {
-  const {
-    context,
-    previousActions,
-    escalationFlags = [],
-  } = input;
+export function buildAction06Prompt(
+  input: Action06PromptInput
+): Action06PromptOutput {
+  const systemPrompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
+Your task is to analyze confirmed daily reports and generate a comprehensive priority-classified issue list for the department head.
 
-  const previousActionsText = previousActions
+You must:
+1. Review all submitted daily reports
+2. Identify patterns, risks, and bottlenecks
+3. Classify issues by priority (critical, high, medium, low)
+4. Provide clear reasoning for each priority assignment
+5. Generate an executive summary for leadership review
+
+Output must be structured, actionable, and ready for morning meeting presentation.`;
+
+  const reportsList = input.confirmedReports
     .map(
-      (action) =>
-        `Action ${action.actionNumber}: ${action.result}`
+      (report) =>
+        `[${report.employeeId}] ${report.employeeName} (${report.submittedAt}):\n${report.reportContent}`
     )
-    .join("\n");
+    .join("\n\n");
 
-  const escalationText =
-    escalationFlags.length > 0
-      ? `\n\nEscalation Flags:\n${escalationFlags.join("\n")}`
+  const contextSection = input.organizationContext
+    ? `\nOrganization Context:
+- Department: ${input.organizationContext.department}
+- Project Phase: ${input.organizationContext.projectPhase}
+- Critical Deadlines: ${input.organizationContext.criticalDeadlines.join(", ")}`
+    : "";
+
+  const previousPrioritiesSection =
+    input.previousPriorities && input.previousPriorities.length > 0
+      ? `\nPrevious Priority Classifications (for reference):
+${input.previousPriorities.map((p) => `- Issue ${p.issueId}: ${p.priority}`).join("\n")}`
       : "";
 
-  const prompt = `You are an AI agent responsible for the final step of the daily report processing workflow.
+  const userPrompt = `Process the following daily reports and generate priority classifications:
 
-## Current Context
-- Report Date: ${context.reportDate}
-- Department Head: ${context.departmentHead}
-- Reports Received: ${context.totalReportsReceived}/${context.totalReportsExpected}
-- Report Summary: ${context.reportSummary}
+${reportsList}${contextSection}${previousPrioritiesSection}
 
-## Previously Extracted Issues
-${context.extractedIssues
-  .map(
-    (issue) =>
-      `- [${issue.id}] ${issue.title} (${issue.category})\n  ${issue.description}`
-  )
-  .join("\n")}
+Please analyze these reports and provide:
+1. A list of extracted issues with descriptions
+2. Priority classification for each issue (critical/high/medium/low)
+3. Reasoning for each priority assignment
+4. Overall progress summary
+5. Key metrics and observations
 
-## Current Priority Assignments
-${context.priorityAssignments
-  .map(
-    (assignment) =>
-      `- Issue ${assignment.issueId}: ${assignment.priority.toUpperCase()}\n  Reasoning: ${assignment.reasoning}`
-  )
-  .join("\n")}
+Format your response as structured JSON with the following schema:
+{
+  "extractedIssues": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "reportedBy": "string",
+      "reportDate": "string"
+    }
+  ],
+  "priorityClassifications": [
+    {
+      "issueId": "string",
+      "priority": "critical|high|medium|low",
+      "reasoning": "string",
+      "category": "string"
+    }
+  ],
+  "reportSummary": {
+    "totalReports": number,
+    "submittedCount": number,
+    "overallProgress": "string",
+    "keyMetrics": {}
+  }
+}`;
 
-## Previous Actions Completed
-${previousActionsText}
-${escalationText}
+  const context: Action06Context = {
+    extractedIssues: [],
+    priorityClassifications: [],
+    reportSummary: {
+      totalReports: input.confirmedReports.length,
+      submittedCount: input.confirmedReports.length,
+      overallProgress: "pending_analysis",
+      keyMetrics: {},
+    },
+  };
 
-## Your Task
-1. Review all extracted issues and their current priority assignments
-2. Validate the priority classifications based on business impact and urgency
-3. Create a final prioritized issues list ranked by importance
-4. Assess overall readiness for the morning meeting
-5. Determine if escalation is required for any critical issues
-6. Generate a comprehensive report for the department head
-
-## Output Requirements
-Provide a structured response with:
-- Final prioritized issues list (ranked 1-N)
-- Meeting readiness assessment
-- Escalation determination
-- Recommended actions for each critical issue
-
-Ensure all decisions are justified and actionable for the department head.`;
-
-  return prompt;
+  return {
+    version: ACTION_06_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

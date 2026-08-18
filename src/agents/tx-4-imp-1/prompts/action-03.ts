@@ -5,121 +5,58 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportContent: string;
-  extractedIssues: Array<{
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-  }>;
-  teamMembers: Array<{
-    id: string;
-    name: string;
-    department: string;
-  }>;
-  priorityFramework?: {
-    urgency: string[];
-    impact: string[];
-    effort: string[];
-  };
+  engineerName: string;
+  submissionDate: string;
+  previousIssues?: string[];
 }
 
 interface Action03PromptOutput {
-  version: string;
-  prompt: string;
-  instructions: {
-    objective: string;
-    steps: string[];
-    constraints: string[];
-  };
+  extractedIssues: Array<{
+    issue: string;
+    category: string;
+    severity: "high" | "medium" | "low";
+  }>;
+  bottlenecks: string[];
+  progressSummary: string;
 }
 
-function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const {
-    reportContent,
-    extractedIssues,
-    teamMembers,
-    priorityFramework = {
-      urgency: ["Critical", "High", "Medium", "Low"],
-      impact: ["Organization-wide", "Team-level", "Individual", "Minor"],
-      effort: ["Minimal", "Low", "Medium", "High"],
-    },
-  } = input;
+function buildAction03Prompt(input: Action03PromptInput): string {
+  const previousIssuesSection =
+    input.previousIssues && input.previousIssues.length > 0
+      ? `\n前回抽出された課題:\n${input.previousIssues.map((issue) => `- ${issue}`).join("\n")}`
+      : "";
 
-  const issuesText = extractedIssues
-    .map(
-      (issue) =>
-        `- [${issue.id}] ${issue.title}\n  Category: ${issue.category}\n  Description: ${issue.description}`
-    )
-    .join("\n");
+  return `あなたは日報分析エージェントです。以下の日報内容から課題・ボトルネックを自動抽出し、優先度を判定してください。
 
-  const teamText = teamMembers
-    .map((member) => `- ${member.name} (${member.department})`)
-    .join("\n");
+【エンジニア】${input.engineerName}
+【提出日】${input.submissionDate}
 
-  const priorityFrameworkText = `
-Urgency Levels: ${priorityFramework.urgency.join(", ")}
-Impact Levels: ${priorityFramework.impact.join(", ")}
-Effort Levels: ${priorityFramework.effort.join(", ")}
-`;
+【日報内容】
+${input.reportContent}
+${previousIssuesSection}
 
-  const prompt = `You are an AI agent responsible for prioritizing and classifying extracted issues from daily reports.
+【タスク】
+1. 日報内容から課題・ボトルネックを抽出してください
+2. 各課題に対して以下の情報を付与してください:
+   - 課題の説明
+   - カテゴリ (技術的課題 / リソース不足 / 依存関係 / その他)
+   - 重要度 (high / medium / low)
+3. 全体の進捗状況を簡潔に要約してください
 
-## Context
-Report Content Summary:
-${reportContent}
-
-## Extracted Issues to Prioritize
-${issuesText}
-
-## Team Members
-${teamText}
-
-## Priority Framework
-${priorityFrameworkText}
-
-## Task
-Analyze each extracted issue and assign:
-1. Priority Level (Critical, High, Medium, Low)
-2. Impact Assessment (Organization-wide, Team-level, Individual, Minor)
-3. Effort Estimate (Minimal, Low, Medium, High)
-4. Recommended Action (Immediate, This Week, Next Week, Monitor)
-5. Assigned Owner (from team members or escalate to management)
-
-## Output Format
-For each issue, provide:
-- Issue ID
-- Priority Level
-- Impact Assessment
-- Effort Estimate
-- Recommended Action
-- Assigned Owner
-- Justification (2-3 sentences)
-
-Ensure prioritization is consistent and based on business impact and urgency.`;
-
-  return {
-    version: ACTION_03_PROMPT_VERSION,
-    prompt,
-    instructions: {
-      objective:
-        "Prioritize and classify extracted issues from daily reports using a structured framework",
-      steps: [
-        "Analyze each issue against the priority framework",
-        "Assess urgency and impact on team/organization",
-        "Estimate effort required for resolution",
-        "Determine recommended action timeline",
-        "Assign appropriate owner from team members",
-        "Provide clear justification for each prioritization",
-      ],
-      constraints: [
-        "Must use only the provided priority framework levels",
-        "Assignments must be from the provided team members list",
-        "Justifications must be concise and data-driven",
-        "Cannot escalate without clear business justification",
-        "Must maintain consistency across all issue prioritizations",
-      ],
-    },
-  };
+【出力形式】
+JSON形式で以下の構造で返してください:
+{
+  "extractedIssues": [
+    {
+      "issue": "課題の説明",
+      "category": "カテゴリ",
+      "severity": "high|medium|low"
+    }
+  ],
+  "bottlenecks": ["ボトルネック1", "ボトルネック2"],
+  "progressSummary": "進捗状況の要約"
+}`;
 }
 
 export { buildAction03Prompt, ACTION_03_PROMPT_VERSION };
+export type { Action03PromptInput, Action03PromptOutput };

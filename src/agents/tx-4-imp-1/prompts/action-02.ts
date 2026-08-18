@@ -18,7 +18,7 @@ export interface Action02PromptOutput {
   isValid: boolean;
   validationErrors: string[];
   sanitizedContent: string;
-  severity: "critical" | "warning" | "info";
+  warnings: string[];
 }
 
 export function buildAction02Prompt(input: Action02PromptInput): string {
@@ -26,46 +26,46 @@ export function buildAction02Prompt(input: Action02PromptInput): string {
     reportContent,
     engineerName,
     submissionDate,
-    validationRules = {
-      minLength: 10,
-      maxLength: 5000,
-      requiredFields: ["yesterday", "today", "issues"],
-    },
+    validationRules = {},
   } = input;
 
-  const rulesDescription = validationRules.requiredFields
-    ? `Required fields: ${validationRules.requiredFields.join(", ")}`
-    : "";
+  const {
+    minLength = 10,
+    maxLength = 5000,
+    requiredFields = ["yesterday", "today", "issues"],
+  } = validationRules;
 
-  const lengthConstraints = `Content length must be between ${validationRules.minLength} and ${validationRules.maxLength} characters`;
+  const requiredFieldsText = requiredFields
+    .map((field) => `- ${field}`)
+    .join("\n");
 
-  return `You are a daily report validator for the morning meeting report management system.
+  return `You are a validation agent for the daily report management system.
 
-Engineer: ${engineerName}
-Submission Date: ${submissionDate}
-Report Content:
+Your task is to validate the daily report submission from engineer: ${engineerName}
+Submission date: ${submissionDate}
+
+Report content to validate:
 ---
 ${reportContent}
 ---
 
-Validation Rules:
-- ${lengthConstraints}
-- ${rulesDescription}
-- Check for completeness and appropriateness
-- Identify any missing or incomplete sections
-- Flag any concerning or anomalous content
+Validation criteria:
+1. Content length must be between ${minLength} and ${maxLength} characters
+2. Report must contain the following required sections:
+${requiredFieldsText}
+3. Content must be professional and appropriate
+4. No sensitive information should be exposed
+5. Grammar and clarity should be acceptable
 
-Your task:
-1. Validate the report content against the rules above
+Please perform the following:
+1. Check if the report meets all validation criteria
 2. Identify any validation errors or issues
-3. Provide a severity level (critical/warning/info)
-4. Return sanitized content if valid
+3. Provide sanitized version of the content (remove any sensitive data)
+4. List any warnings about content quality
 
-Respond in JSON format with the following structure:
-{
-  "isValid": boolean,
-  "validationErrors": string[],
-  "sanitizedContent": string,
-  "severity": "critical" | "warning" | "info"
-}`;
+Return your analysis in a structured format with:
+- isValid: boolean indicating if report passes all validations
+- validationErrors: array of specific validation failures
+- sanitizedContent: cleaned version of the report
+- warnings: array of non-critical issues or suggestions`;
 }

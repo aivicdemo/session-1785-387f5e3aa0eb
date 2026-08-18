@@ -13,7 +13,7 @@ export interface Action04Context {
     issues: string;
   };
   submissionDeadline: string;
-  systemTimestamp: string;
+  managementSystemUrl: string;
 }
 
 export interface Action04ValidationResult {
@@ -27,61 +27,68 @@ export interface Action04ValidationResult {
   };
 }
 
-export function buildAction04Prompt(context: Action04Context): string {
-  const {
-    engineerId,
-    engineerName,
-    reportDate,
-    previousReportContent,
-    submissionDeadline,
-    systemTimestamp,
-  } = context;
+export interface Action04PromptInput {
+  context: Action04Context;
+  validationRules: {
+    minYesterdayLength: number;
+    minTodayLength: number;
+    minIssuesLength: number;
+    maxYesterdayLength: number;
+    maxTodayLength: number;
+    maxIssuesLength: number;
+  };
+}
 
-  const promptContent = `# 日報入力内容の妥当性検証タスク
+export interface Action04PromptOutput {
+  version: string;
+  systemPrompt: string;
+  userPrompt: string;
+  expectedResponseFormat: string;
+}
 
-## タスク概要
-エンジニアから受け取った日報入力内容の妥当性を検証し、管理システムへの登録可否を判定してください。
+export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
+  const { context, validationRules } = input;
 
-## 対象エンジニア情報
-- エンジニアID: ${engineerId}
-- エンジニア名: ${engineerName}
-- 報告日: ${reportDate}
-- システム時刻: ${systemTimestamp}
-- 提出期限: ${submissionDeadline}
+  const systemPrompt = `You are an AI agent responsible for validating daily report submissions in the morning meeting management system.
 
-## 受け取った入力内容
-### 昨日の実績
-${previousReportContent.yesterday}
+Your role is to:
+1. Validate the completeness and appropriateness of engineer's daily report input
+2. Check that all required fields are filled with sufficient content
+3. Identify any inconsistencies or concerning patterns
+4. Provide clear feedback on validation results
+5. Prepare the report for system registration if validation passes
 
-### 本日の予定
-${previousReportContent.today}
+Validation criteria:
+- Yesterday's achievements: ${validationRules.minYesterdayLength}-${validationRules.maxYesterdayLength} characters
+- Today's plan: ${validationRules.minTodayLength}-${validationRules.maxTodayLength} characters
+- Issues/challenges: ${validationRules.minIssuesLength}-${validationRules.maxIssuesLength} characters
+- Content must be specific and actionable, not generic
+- No placeholder or incomplete text allowed
 
-### 抱えている課題
-${previousReportContent.issues}
+Return validation results in JSON format with:
+- isValid: boolean
+- errors: array of validation errors
+- warnings: array of non-critical issues
+- validatedContent: the cleaned/normalized content if valid`;
 
-## 検証ルール
-1. **必須項目の完全性**
-   - 昨日の実績: 100文字以上、具体的な成果が記載されているか
-   - 本日の予定: 100文字以上、実現可能な計画が記載されているか
-   - 抱えている課題: 50文字以上、明確な課題が記載されているか
+  const userPrompt = `Please validate the following daily report submission:
 
-2. **内容の妥当性**
-   - 昨日の実績が実現不可能な内容でないか
-   - 本日の予定が過度に楽観的でないか
-   - 課題の記述が具体的で対応可能な内容か
+Engineer: ${context.engineerName} (ID: ${context.engineerId})
+Report Date: ${context.reportDate}
+Submission Deadline: ${context.submissionDeadline}
 
-3. **形式の適切性**
-   - テキストが適切にフォーマットされているか
-   - 不適切な文字や記号が含まれていないか
-   - 個人情報が含まれていないか
+Yesterday's Achievements:
+${context.previousReportContent.yesterday}
 
-4. **論理的一貫性**
-   - 昨日の実績と本日の予定に矛盾がないか
-   - 課題が昨日の実績や本日の予定と関連性があるか
+Today's Plan:
+${context.previousReportContent.today}
 
-## 出力形式
-JSON形式で以下の構造で返してください：
-{
+Issues/Challenges:
+${context.previousReportContent.issues}
+
+Validate this report according to the criteria specified in the system prompt. Ensure the content is complete, appropriate, and ready for registration in the management system at ${context.managementSystemUrl}.`;
+
+  const expectedResponseFormat = `{
   "isValid": boolean,
   "errors": string[],
   "warnings": string[],
@@ -89,15 +96,19 @@ JSON形式で以下の構造で返してください：
     "yesterday": string,
     "today": string,
     "issues": string
+  },
+  "validationDetails": {
+    "yesterdayLength": number,
+    "todayLength": number,
+    "issuesLength": number,
+    "contentQuality": "high" | "medium" | "low"
   }
-}
+}`;
 
-## 判定基準
-- isValid: true の場合、管理システムへの登録を進める
-- isValid: false の場合、エンジニアに修正を依頼する
-- errors: 登録を阻止する重大な問題
-- warnings: 登録は可能だが注意が必要な問題
-- validatedContent: 検証後の確定内容（修正・正規化済み）`;
-
-  return promptContent;
+  return {
+    version: ACTION_04_PROMPT_VERSION,
+    systemPrompt,
+    userPrompt,
+    expectedResponseFormat,
+  };
 }

@@ -3,53 +3,63 @@
 
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
-export interface Action04PromptContext {
+export interface Action04PromptInput {
   reportingDeadline: string;
-  targetDate: string;
-  departmentName: string;
-  escalationThreshold: number;
+  overdueThresholdHours: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
-export interface Action04PromptResult {
+export interface Action04PromptOutput {
+  prompt: string;
   version: string;
-  action: string;
-  instructions: string;
-  context: Action04PromptContext;
 }
 
-export function buildAction04Prompt(
-  context: Action04PromptContext
-): Action04PromptResult {
-  const instructions = `
-You are an AI agent responsible for the fourth action in the morning report management system.
+export function buildAction04Prompt(input: Action04PromptInput): Action04PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdHours,
+    escalationRules,
+  } = input;
 
-Action 4: Send escalation notifications to department heads for overdue reports
+  const prompt = `You are an AI agent responsible for identifying non-reporting and delayed reporting members from confirmation email content, determining escalation targets, and completing the process of sending reminder emails and chat messages.
 
-Context:
-- Reporting Deadline: ${context.reportingDeadline}
-- Target Date: ${context.targetDate}
-- Department: ${context.departmentName}
-- Escalation Threshold (hours overdue): ${context.escalationThreshold}
+## Context
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdHours} hours
+- Maximum Reminders per Member: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-Your task:
-1. Identify all engineers whose reports are overdue beyond the escalation threshold
-2. Prepare escalation notification content for the department head
-3. Include the list of overdue engineers with their delay duration
-4. Provide recommendations for follow-up actions
-5. Log all escalation notifications sent
+## Task
+Analyze the confirmation email content to:
+1. Identify members who have not submitted reports (non-reporting members)
+2. Identify members whose reports are delayed beyond the threshold
+3. Determine which members require escalation based on:
+   - Current reminder count
+   - Time since deadline
+   - Escalation rules
+4. Generate reminder emails and chat messages for escalation targets
+5. Log all sending results
 
-Output format:
-- Escalation Status: [ESCALATED | NO_ESCALATION_NEEDED]
-- Overdue Engineers Count: [number]
-- Notification Sent To: [department_head_email]
-- Timestamp: [ISO 8601 format]
-- Next Action: [recommended next step]
-`;
+## Output Format
+Provide a structured response containing:
+- List of non-reporting members with timestamps
+- List of delayed members with submission times
+- Escalation targets with justification
+- Generated reminder messages
+- Sending status for each target
+
+## Escalation Conditions
+- Same member receiving multiple reminders without submission
+- System errors preventing email/chat delivery
+- Special cases not covered by standard escalation rules
+
+Ensure all actions are logged and traceable for audit purposes.`;
 
   return {
+    prompt,
     version: ACTION_04_PROMPT_VERSION,
-    action: "send-escalation-notifications",
-    instructions,
-    context,
   };
 }

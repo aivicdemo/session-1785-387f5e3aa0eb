@@ -4,109 +4,86 @@
 export const ACTION_04_PROMPT_VERSION = "1.0.0";
 
 export interface Action04PromptInput {
-  confirmationEmailContent: string;
-  reportingDeadline: string;
+  reportContent: string;
+  employeeId: string;
+  employeeName: string;
+  departmentId: string;
+  departmentName: string;
+  submissionDeadline: string;
   currentTimestamp: string;
-  previousReminders: Array<{
-    employeeId: string;
-    reminderCount: number;
-    lastReminderTime: string;
-  }>;
-  reminderRules: {
-    maxReminders: number;
-    reminderIntervalMinutes: number;
-    escalationThreshold: number;
-  };
 }
 
 export interface Action04PromptOutput {
-  version: string;
-  systemPrompt: string;
-  userPrompt: string;
-  expectedOutputFormat: {
-    identifiedNonReporters: Array<{
-      employeeId: string;
-      employeeName: string;
-      reason: "not_submitted" | "delayed";
-      detectionTime: string;
-    }>;
-    reminderTargets: Array<{
-      employeeId: string;
-      employeeName: string;
-      shouldRemind: boolean;
-      reminderCount: number;
-      reminderMethod: ("email" | "chat")[];
-      priority: "high" | "normal" | "low";
-    }>;
-    escalationCases: Array<{
-      employeeId: string;
-      employeeName: string;
-      escalationReason: string;
-      recommendedAction: string;
-    }>;
-    executionLog: {
-      totalIdentified: number;
-      totalReminders: number;
-      totalEscalations: number;
-      timestamp: string;
-    };
-  };
+  urgencyLevel: "low" | "medium" | "high" | "critical";
+  requiresEscalation: boolean;
+  escalationReason?: string;
+  recommendedAction: string;
+  notificationMessage: string;
 }
 
-export function buildAction04Prompt(
-  input: Action04PromptInput
-): Action04PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying non-reporting employees from confirmation email content and determining reminder targets.
+export function buildAction04Prompt(input: Action04PromptInput): string {
+  const {
+    reportContent,
+    employeeId,
+    employeeName,
+    departmentId,
+    departmentName,
+    submissionDeadline,
+    currentTimestamp,
+  } = input;
 
-Your role:
-1. Parse the confirmation email content to identify employees who have not submitted their daily reports
-2. Distinguish between employees who have not submitted at all and those who submitted late
-3. Determine which employees should receive reminders based on the reminder rules
-4. Identify escalation cases where special handling is needed
-5. Log all actions and decisions
+  const deadlineDate = new Date(submissionDeadline);
+  const currentDate = new Date(currentTimestamp);
+  const hoursOverdue = Math.floor(
+    (currentDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60)
+  );
 
-Rules:
-- Maximum reminders per employee: ${input.reminderRules.maxReminders}
-- Minimum interval between reminders: ${input.reminderRules.reminderIntervalMinutes} minutes
-- Escalation threshold: ${input.reminderRules.escalationThreshold} reminders
-- Reporting deadline: ${input.reportingDeadline}
-- Current time: ${input.currentTimestamp}
+  return `# 催促対象判定プロンプト (Action 04)
 
-Previous reminder history:
-${JSON.stringify(input.previousReminders, null, 2)}
+## 入力情報
+- 従業員ID: ${employeeId}
+- 従業員名: ${employeeName}
+- 部門ID: ${departmentId}
+- 部門名: ${departmentName}
+- 提出期限: ${submissionDeadline}
+- 現在時刻: ${currentTimestamp}
+- 超過時間: ${hoursOverdue}時間
 
-Output format must be valid JSON matching the specified schema.`;
+## 日報内容
+\`\`\`
+${reportContent}
+\`\`\`
 
-  const userPrompt = `Analyze the following confirmation email content and determine:
-1. Which employees have not submitted their reports
-2. Which employees should receive reminders
-3. Which cases require escalation
+## タスク
+以下の基準に基づいて、催促対象の判定と対応を実施してください:
 
-Confirmation Email Content:
-${input.confirmationEmailContent}
+1. **緊急度レベルの判定**
+   - low: 期限内または1時間以内の遅延
+   - medium: 1時間以上6時間以内の遅延
+   - high: 6時間以上24時間以内の遅延
+   - critical: 24時間以上の遅延
 
-Based on the reminder rules and previous reminder history, determine:
-- Employees who should receive reminders (email and/or chat)
-- Priority level for each reminder (high/normal/low)
-- Any escalation cases that need human review
-- Summary of actions to be taken
+2. **エスカレーション判定**
+   - 同一従業員への複数回催促後も報告がない場合
+   - 24時間以上の大幅な遅延がある場合
+   - 報告内容が不完全または不適切である場合
 
-Provide the response in the specified JSON format.`;
+3. **推奨アクション**
+   - 催促メール送信の要否
+   - チャット通知の要否
+   - 部門長への報告の要否
 
-  return {
-    version: ACTION_04_PROMPT_VERSION,
-    systemPrompt,
-    userPrompt,
-    expectedOutputFormat: {
-      identifiedNonReporters: [],
-      reminderTargets: [],
-      escalationCases: [],
-      executionLog: {
-        totalIdentified: 0,
-        totalReminders: 0,
-        totalEscalations: 0,
-        timestamp: input.currentTimestamp,
-      },
-    },
-  };
+4. **通知メッセージの作成**
+   - 従業員に対する催促メッセージ
+   - 部門長に対する報告メッセージ
+
+## 出力形式
+JSON形式で以下の構造で返してください:
+{
+  "urgencyLevel": "low" | "medium" | "high" | "critical",
+  "requiresEscalation": boolean,
+  "escalationReason": "string or null",
+  "recommendedAction": "string",
+  "notificationMessage": "string"
+}`;
 }

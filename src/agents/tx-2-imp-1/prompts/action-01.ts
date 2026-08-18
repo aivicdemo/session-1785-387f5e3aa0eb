@@ -3,80 +3,50 @@
 
 export const ACTION_01_PROMPT_VERSION = "1.0.0";
 
-export interface Action01PromptInput {
+export interface Action01PromptContext {
   reportingDeadline: string;
   targetDate: string;
-  engineerList: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  systemContext: {
-    reportManagementSystemUrl: string;
-    notificationChannels: string[];
-  };
+  engineerCount: number;
+  systemName: string;
 }
 
-export interface Action01PromptOutput {
+export interface Action01PromptResult {
   templateContent: string;
-  distributionList: string[];
+  distributionChannels: string[];
   scheduledTime: string;
-  metadata: {
-    version: string;
-    generatedAt: string;
-  };
 }
 
-export function buildAction01Prompt(input: Action01PromptInput): string {
-  const engineerNames = input.engineerList.map((e) => e.name).join("、");
-  const channelsText = input.systemContext.notificationChannels?.join("・") || "メール";
+export function buildAction01Prompt(context: Action01PromptContext): string {
+  const {
+    reportingDeadline,
+    targetDate,
+    engineerCount,
+    systemName,
+  } = context;
 
-  return `あなたは朝会報告管理システムのAIエージェントです。以下の情報に基づいて、前日の日報テンプレートを自動生成して配信してください。
+  return `You are an AI agent responsible for the daily report management system.
 
-【実行日時】
-${new Date().toISOString()}
+System: ${systemName}
+Target Date: ${targetDate}
+Reporting Deadline: ${reportingDeadline}
+Number of Engineers: ${engineerCount}
 
-【対象日付】
-${input.targetDate}
+Action 1: Generate and distribute the previous day's daily report template
 
-【提出期限】
-${input.reportingDeadline}
+Your task is to:
+1. Generate a daily report template for the previous day
+2. Include sections for:
+   - Yesterday's achievements
+   - Today's planned tasks
+   - Current issues and challenges
+3. Prepare the template for distribution to all engineers
+4. Ensure the template is clear, concise, and easy to fill out
+5. Schedule distribution to reach engineers before their working hours
 
-【対象エンジニア】
-${engineerNames}
+Output the following:
+- Template content in a structured format
+- Distribution channels (email, chat, etc.)
+- Recommended distribution time
 
-【配信チャネル】
-${channelsText}
-
-【日報管理システムURL】
-${input.systemContext.reportManagementSystemUrl}
-
-【実行内容】
-1. 前日の日報テンプレートを生成する
-   - 昨日の実績入力欄
-   - 本日の予定入力欄
-   - 抱えている課題入力欄
-   - その他必要な項目
-
-2. 生成したテンプレートを以下の方法で配信する
-   - 対象エンジニア全員に配信
-   - 提出期限を明記
-   - 管理システムへのアクセスリンクを含める
-
-3. 配信結果をログに記録する
-   - 配信日時
-   - 配信対象者
-   - 配信チャネル
-
-【出力形式】
-JSON形式で以下の構造で返してください：
-{
-  "templateContent": "生成されたテンプレートの内容",
-  "distributionList": ["配信対象者のメールアドレス"],
-  "scheduledTime": "配信予定時刻",
-  "metadata": {
-    "version": "${ACTION_01_PROMPT_VERSION}",
-    "generatedAt": "生成日時"
-  }
-}`;
+Template should be professional, encouraging, and designed to maximize completion rates.`;
 }

@@ -17,71 +17,48 @@ interface TestDatabase {
   (tableName: TableName): TableOperations;
 }
 
-const databases = new Map<string, Map<TableName, TableRow[]>>();
-let databaseCounter = 0;
+const memoryStore: Record<TableName, TableRow[]> = {
+  users: [],
+  daily_reports: [],
+  report_send_history: [],
+  audit_events: [],
+};
 
-function createInMemoryTable(): Map<TableName, TableRow[]> {
-  return new Map<TableName, TableRow[]>([
-    ["users", []],
-    ["daily_reports", []],
-    ["report_send_history", []],
-    ["audit_events", []],
-  ]);
-}
-
-function createTableOperations(
-  tableData: Map<TableName, TableRow[]>,
-  tableName: TableName
-): TableOperations {
+function createTableOperations(tableName: TableName): TableOperations {
   return {
     async del(): Promise<number> {
-      const rows = tableData.get(tableName) || [];
-      const count = rows.length;
-      tableData.set(tableName, []);
+      const count = memoryStore[tableName].length;
+      memoryStore[tableName] = [];
       return count;
     },
 
     async insert(row: TableRow | TableRow[]): Promise<void> {
-      const rows = tableData.get(tableName) || [];
-      const rowsToInsert = Array.isArray(row) ? row : [row];
-      rows.push(...rowsToInsert);
-      tableData.set(tableName, rows);
+      const rows = Array.isArray(row) ? row : [row];
+      memoryStore[tableName].push(...rows);
     },
 
     async where(conditions: Record<string, unknown>): Promise<TableRow[]> {
-      const rows = tableData.get(tableName) || [];
-      return rows.filter((row) => {
-        return Object.entries(conditions).every(([key, value]) => {
-          return row[key] === value;
-        });
+      return memoryStore[tableName].filter((row) => {
+        return Object.entries(conditions).every(([key, value]) => row[key] === value);
       });
     },
   };
 }
 
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const dbId = `test_db_${databaseCounter++}`;
-  const tableData = createInMemoryTable();
-  databases.set(dbId, tableData);
+  memoryStore.users = [];
+  memoryStore.daily_reports = [];
+  memoryStore.report_send_history = [];
+  memoryStore.audit_events = [];
 
   return (tableName: TableName): TableOperations => {
-    const data = databases.get(dbId);
-    if (!data) {
-      throw new Error(`Database ${dbId} not found`);
-    }
-    return createTableOperations(data, tableName);
+    return createTableOperations(tableName);
   };
 }
 
 export async function cleanupTestDatabase(db: TestDatabase): Promise<void> {
-  const tableNames: TableName[] = [
-    "users",
-    "daily_reports",
-    "report_send_history",
-    "audit_events",
-  ];
-
-  for (const tableName of tableNames) {
-    await db(tableName).del();
-  }
+  await db("users").del();
+  await db("daily_reports").del();
+  await db("report_send_history").del();
+  await db("audit_events").del();
 }

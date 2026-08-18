@@ -7,74 +7,80 @@ export interface Action01PromptInput {
   confirmationEmailContent: string;
   reportDeadline: string;
   currentTimestamp: string;
-  previousEscalationCount?: Record<string, number>;
+  previousReminders?: Array<{
+    employeeId: string;
+    reminderCount: number;
+    lastReminderTime: string;
+  }>;
+}
+
+export interface IdentifiedNonReporter {
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  status: "not_submitted" | "delayed";
+  daysSinceDeadline: number;
+  reminderCount: number;
 }
 
 export interface Action01PromptOutput {
-  unreportedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    reason: "not_submitted" | "delayed";
-    submissionTime?: string;
-  }>;
-  escalationTargets: Array<{
-    memberId: string;
-    memberName: string;
-    escalationLevel: number;
-    recommendedAction: "first_reminder" | "second_reminder" | "escalate_to_manager";
-  }>;
+  nonReporters: IdentifiedNonReporter[];
   analysisTimestamp: string;
+  totalEmployeesExpected: number;
+  totalNonReporters: number;
 }
 
 export function buildAction01Prompt(input: Action01PromptInput): string {
-  const previousEscalationInfo =
-    input.previousEscalationCount && Object.keys(input.previousEscalationCount).length > 0
-      ? `\n\n過去のエスカレーション履歴:\n${Object.entries(input.previousEscalationCount)
-          .map(([memberId, count]) => `- ${memberId}: ${count}回`)
+  const reminderContext =
+    input.previousReminders && input.previousReminders.length > 0
+      ? `\n\n過去の催促履歴:\n${input.previousReminders
+          .map(
+            (r) =>
+              `- 従業員ID: ${r.employeeId}, 催促回数: ${r.reminderCount}, 最終催促時刻: ${r.lastReminderTime}`
+          )
           .join("\n")}`
       : "";
 
-  return `あなたは朝会報告管理システムのAIエージェントです。確認メール内容から報告漏れ・遅延部員を自動特定し、催促対象を判定するタスクを実行してください。
+  return `あなたは朝会報告管理システムのAIエージェントです。確認メールの内容から報告漏れ・遅延部員を自動特定するタスクを実行してください。
 
 【タスク】
-確認メール内容を分析し、以下を実行してください:
-1. 報告漏れ・遅延部員を特定する
-2. 催促対象部員を判定する
-3. 各部員に対する推奨アクション（初回催促/2回目催促/マネージャーへのエスカレーション）を決定する
+確認メール内容を分析し、以下の情報を抽出してください:
+1. 報告を提出していない従業員のリスト
+2. 提出期限を超過している従業員のリスト
+3. 各従業員の催促対象判定
 
 【入力情報】
 確認メール内容:
 ${input.confirmationEmailContent}
 
-報告期限: ${input.reportDeadline}
-現在時刻: ${input.currentTimestamp}${previousEscalationInfo}
-
-【判定ルール】
-- 報告期限を超過している場合: 遅延として特定
-- 報告期限までに報告がない場合: 未提出として特定
-- 同一部員への催促が2回以上の場合: マネージャーへのエスカレーション対象
-- 初回遅延: 初回催促を推奨
-- 2回目以降の遅延: 2回目催促またはエスカレーションを推奨
+提出期限: ${input.reportDeadline}
+現在時刻: ${input.currentTimestamp}${reminderContext}
 
 【出力形式】
-JSON形式で以下の構造で返してください:
+以下のJSON形式で結果を返してください:
 {
-  "unreportedMembers": [
+  "nonReporters": [
     {
-      "memberId": "string",
-      "memberName": "string",
-      "reason": "not_submitted" | "delayed",
-      "submissionTime": "ISO8601形式またはnull"
+      "employeeId": "string",
+      "employeeName": "string",
+      "department": "string",
+      "status": "not_submitted" | "delayed",
+      "daysSinceDeadline": number,
+      "reminderCount": number
     }
   ],
-  "escalationTargets": [
-    {
-      "memberId": "string",
-      "memberName": "string",
-      "escalationLevel": number,
-      "recommendedAction": "first_reminder" | "second_reminder" | "escalate_to_manager"
-    }
-  ],
-  "analysisTimestamp": "ISO8601形式"
-}`;
+  "analysisTimestamp": "ISO8601形式の現在時刻",
+  "totalEmployeesExpected": number,
+  "totalNonReporters": number
+}
+
+【判定ルール】
+- status: "not_submitted" = 報告未提出、"delayed" = 提出期限超過
+- daysSinceDeadline: 負の値は期限前、0以上は期限超過日数
+- reminderCount: 過去の催促回数を集計
+
+【注意事項】
+- 確認メール内容から正確に従業員情報を抽出してください
+- 提出期限との比較は正確に行ってください
+- 催促履歴がある場合は回数を正確に計算してください`;
 }

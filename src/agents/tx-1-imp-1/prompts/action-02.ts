@@ -4,62 +4,78 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02Context {
-  engineerInput: {
+  engineerInputData: {
     yesterdayAccomplishments: string;
     todayPlans: string;
     currentIssues: string;
+    engineerId: string;
+    engineerName: string;
+    submissionTimestamp: string;
   };
-  engineerId: string;
-  engineerName: string;
-  submissionTimestamp: string;
+  validationRules: {
+    minAccomplishmentsLength: number;
+    minPlansLength: number;
+    minIssuesLength: number;
+    allowedIssueCategories: string[];
+  };
 }
 
-export interface Action02ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
+export interface Action02PromptResult {
+  version: string;
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
+  context: Action02Context;
 }
 
-export function buildAction02Prompt(context: Action02Context): string {
-  const prompt = `You are an AI agent responsible for validating daily report input content.
+export function buildAction02Prompt(
+  context: Action02Context
+): Action02PromptResult {
+  const systemPrompt = `You are an AI agent responsible for validating daily report input content in the morning meeting report management system.
 
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Submission Time: ${context.submissionTimestamp}
+Your task is to validate the engineer's input data against predefined rules and determine if the submission is complete and appropriate.
 
-Input Content to Validate:
-- Yesterday's Accomplishments: ${context.engineerInput.yesterdayAccomplishments}
-- Today's Plans: ${context.engineerInput.todayPlans}
-- Current Issues: ${context.engineerInput.currentIssues}
+Validation criteria:
+1. Check that all required fields are filled
+2. Verify minimum content length for each field
+3. Ensure issue descriptions are clear and categorized appropriately
+4. Detect any incomplete or inappropriate content
+5. Flag any anomalies or concerns for human review
 
-Your task is to validate the input content according to these criteria:
+Respond with a structured validation result including:
+- isValid: boolean indicating if all validations passed
+- issues: array of validation issues found
+- severity: 'critical', 'warning', or 'info'
+- recommendation: next action to take`;
 
-1. Completeness Check:
-   - All three fields must contain meaningful content (not empty or just whitespace)
-   - Each field should have at least 10 characters of substantive text
+  const userPrompt = `Please validate the following daily report submission:
 
-2. Appropriateness Check:
-   - Content should be work-related and relevant to daily reporting
-   - No offensive, discriminatory, or inappropriate language
-   - No sensitive personal information
+Engineer ID: ${context.engineerInputData.engineerId}
+Engineer Name: ${context.engineerInputData.engineerName}
+Submission Time: ${context.engineerInputData.submissionTimestamp}
 
-3. Clarity Check:
-   - Content should be clear and understandable
-   - Avoid excessive jargon or unclear abbreviations without explanation
+Yesterday's Accomplishments:
+${context.engineerInputData.yesterdayAccomplishments}
 
-4. Consistency Check:
-   - Today's plans should logically follow from yesterday's accomplishments
-   - Current issues should be relevant to the work context
+Today's Plans:
+${context.engineerInputData.todayPlans}
 
-Provide validation results in the following JSON format:
-{
-  "isValid": boolean,
-  "errors": [list of critical validation failures],
-  "warnings": [list of non-critical issues or suggestions]
-}
+Current Issues:
+${context.engineerInputData.currentIssues}
 
-Respond ONLY with the JSON object, no additional text.`;
+Validation Rules:
+- Minimum accomplishments length: ${context.validationRules.minAccomplishmentsLength} characters
+- Minimum plans length: ${context.validationRules.minPlansLength} characters
+- Minimum issues length: ${context.validationRules.minIssuesLength} characters
+- Allowed issue categories: ${context.validationRules.allowedIssueCategories.join(", ")}
 
-  return prompt;
+Please validate this submission and provide detailed feedback.`;
+
+  return {
+    version: ACTION_02_PROMPT_VERSION,
+    action: "action-02",
+    systemPrompt,
+    userPrompt,
+    context,
+  };
 }

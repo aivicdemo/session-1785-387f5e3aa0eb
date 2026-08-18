@@ -2,16 +2,13 @@
 // module: src/services/log-service.ts
 
 export async function logError(message: string): Promise<void> {
-  // メモリ内ログストレージ
-  if (!globalThis.__logErrorStore) {
-    globalThis.__logErrorStore = [];
+  // メモリ内ログバッファに記録
+  if (!globalThis.__logBuffer) {
+    (globalThis as any).__logBuffer = [];
   }
-  globalThis.__logErrorStore.push({
-    message,
+  (globalThis as any).__logBuffer.push({
     timestamp: new Date(),
+    level: 'error',
+    message,
   });
-}
-
-declare global {
-  var __logErrorStore: Array<{ message: string; timestamp: Date }> | undefined;
 }

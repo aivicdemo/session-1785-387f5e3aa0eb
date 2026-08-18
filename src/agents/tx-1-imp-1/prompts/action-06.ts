@@ -10,50 +10,61 @@ export interface Action06Context {
   yesterdayAccomplishments: string;
   todayPlans: string;
   currentIssues: string;
-  submissionTime: string;
+  submissionTimestamp: string;
   isLate: boolean;
   daysOverdue: number;
 }
 
 export interface Action06PromptResult {
   version: string;
-  action: number;
-  prompt: string;
+  action: string;
+  systemPrompt: string;
+  userPrompt: string;
   context: Action06Context;
 }
 
 export function buildAction06Prompt(context: Action06Context): Action06PromptResult {
-  const basePrompt = `You are an AI agent responsible for sending reminder notifications to engineers who have not submitted their daily reports.
+  const systemPrompt = `You are an automated notification system for the morning report management system.
+Your role is to send reminder notifications to engineers who have not submitted their daily reports by the deadline.
+You must:
+1. Determine if a reminder notification should be sent based on submission status and time overdue
+2. Compose a professional and encouraging reminder message
+3. Decide on the appropriate communication channel (email or chat)
+4. Log the notification action for audit purposes
+5. Avoid excessive notifications that could burden engineers
 
-Context:
-- Engineer Name: ${context.engineerName}
-- Engineer Email: ${context.engineerEmail}
-- Report Date: ${context.reportDate}
-- Submission Status: ${context.isLate ? "OVERDUE" : "SUBMITTED"}
-- Days Overdue: ${context.daysOverdue}
-- Submission Time: ${context.submissionTime}
+Guidelines:
+- Be respectful and professional in tone
+- Provide clear information about the deadline and current status
+- Offer assistance if needed
+- Consider the number of days overdue when determining urgency
+- Escalate to human review if multiple reminders have already been sent`;
 
-Task:
-1. Evaluate whether a reminder notification should be sent based on the overdue status
-2. Determine the appropriate reminder message tone (first reminder vs. escalated reminder)
-3. Generate a reminder notification that includes:
-   - Clear indication of the overdue status
-   - The specific report date that is overdue
-   - A deadline for submission
-   - Escalation level if this is a repeated offense
-4. Prepare the notification for delivery via email and chat systems
+  const userPrompt = `Process the following engineer's report submission status and send an appropriate reminder notification if needed:
 
-Escalation Rules:
-- First reminder: Polite and informative tone
-- Second reminder (2-3 days overdue): Firm but professional tone
-- Third reminder (4+ days overdue): Escalation to manager notification
+Engineer Name: ${context.engineerName}
+Engineer Email: ${context.engineerEmail}
+Report Date: ${context.reportDate}
+Submission Status: ${context.isLate ? "OVERDUE" : "PENDING"}
+Days Overdue: ${context.daysOverdue}
+Last Submission Timestamp: ${context.submissionTimestamp}
 
-Output the reminder notification content and delivery method.`;
+Yesterday's Accomplishments (if submitted): ${context.yesterdayAccomplishments || "Not submitted"}
+Today's Plans (if submitted): ${context.todayPlans || "Not submitted"}
+Current Issues (if submitted): ${context.currentIssues || "Not submitted"}
+
+Tasks:
+1. Evaluate whether a reminder notification should be sent
+2. If yes, compose the reminder message
+3. Specify the communication channel (email or chat)
+4. Provide reasoning for the decision
+5. Flag if escalation to human review is needed`;
 
   return {
     version: ACTION_06_PROMPT_VERSION,
-    action: 6,
-    prompt: basePrompt,
+    action: "action-06",
+    systemPrompt,
+    userPrompt,
     context,
   };
 }

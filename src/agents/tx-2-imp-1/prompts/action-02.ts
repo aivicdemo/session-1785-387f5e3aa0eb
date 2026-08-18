@@ -4,138 +4,72 @@
 export const ACTION_02_PROMPT_VERSION = "1.0.0";
 
 export interface Action02PromptInput {
-  submissionDeadline: string;
-  reportingMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-  }>;
-  submittedReports: Array<{
-    memberId: string;
-    submittedAt: string;
-    content: string;
-  }>;
-  currentTime: string;
+  reportingDeadline: string;
+  overdueThresholdMinutes: number;
+  escalationRules: {
+    maxReminders: number;
+    reminderIntervalMinutes: number;
+  };
 }
 
 export interface Action02PromptOutput {
-  unsubmittedMembers: Array<{
-    memberId: string;
-    memberName: string;
-    email: string;
-    department: string;
-    status: "unsubmitted" | "delayed";
-    hoursOverdue?: number;
-  }>;
-  summaryList: {
-    totalMembers: number;
-    submittedCount: number;
-    unsubmittedCount: number;
-    delayedCount: number;
-    submissionRate: number;
-  };
-  notificationContent: {
-    recipientEmail: string;
-    subject: string;
-    body: string;
-    attachmentData: string;
-  };
+  prompt: string;
+  version: string;
 }
 
-export function buildAction02Prompt(input: Action02PromptInput): string {
-  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
-  
-  const unsubmittedMembers = input.reportingMembers.filter(
-    member => !submittedMemberIds.has(member.memberId)
-  );
+export function buildAction02Prompt(input: Action02PromptInput): Action02PromptOutput {
+  const {
+    reportingDeadline,
+    overdueThresholdMinutes,
+    escalationRules,
+  } = input;
 
-  const deadlineTime = new Date(input.submissionDeadline).getTime();
-  const currentTime = new Date(input.currentTime).getTime();
-  const isOverdue = currentTime > deadlineTime;
-  const hoursOverdue = isOverdue 
-    ? Math.floor((currentTime - deadlineTime) / (1000 * 60 * 60))
-    : 0;
+  const prompt = `You are an AI agent responsible for identifying non-reporting and delayed report submissions.
 
-  const submittedCount = input.submittedReports.length;
-  const totalMembers = input.reportingMembers.length;
-  const unsubmittedCount = unsubmittedMembers.length;
-  const submissionRate = totalMembers > 0 
-    ? Math.round((submittedCount / totalMembers) * 100)
-    : 0;
+Your task is to:
+1. Check the submission status of all engineers' daily reports
+2. Identify engineers who have not submitted their reports
+3. Identify engineers whose reports are delayed beyond the threshold
+4. Create a list of non-reporting and delayed engineers
+5. Prepare notification content for the department head
 
-  const departmentGroups: Record<string, typeof unsubmittedMembers> = {};
-  unsubmittedMembers.forEach(member => {
-    if (!departmentGroups[member.department]) {
-      departmentGroups[member.department] = [];
-    }
-    departmentGroups[member.department].push(member);
-  });
+Configuration:
+- Reporting Deadline: ${reportingDeadline}
+- Overdue Threshold: ${overdueThresholdMinutes} minutes after deadline
+- Maximum Reminders: ${escalationRules.maxReminders}
+- Reminder Interval: ${escalationRules.reminderIntervalMinutes} minutes
 
-  const unsubmittedList = unsubmittedMembers
-    .map(m => `- ${m.memberName} (${m.department})`)
-    .join("\n");
-
-  const departmentSummary = Object.entries(departmentGroups)
-    .map(([dept, members]) => `${dept}: ${members.length}名`)
-    .join(", ");
-
-  const prompt = `
-# 日報収集から報告漏れ特定までの自動判定と通知
-
-## 現在の状況
-- 提出期限: ${input.submissionDeadline}
-- 現在時刻: ${input.currentTime}
-- 期限超過: ${isOverdue ? `${hoursOverdue}時間` : "未超過"}
-
-## 提出状況サマリー
-- 総人数: ${totalMembers}名
-- 提出済み: ${submittedCount}名
-- 未提出: ${unsubmittedCount}名
-- 提出率: ${submissionRate}%
-
-## 未提出者一覧
-${unsubmittedList || "全員提出済み"}
-
-## 部門別未提出状況
-${departmentSummary || "全員提出済み"}
-
-## タスク
-以下の情報に基づいて、報告漏れ・遅延部員の一覧を作成し、部長への通知メール内容を生成してください。
-
-1. 未提出者を特定
-2. 遅延状況を判定
-3. 部門別の提出状況を集計
-4. 部長への通知メール本文を作成
-
-## 出力形式
-JSON形式で以下の構造で返してください:
+Output Format:
+Return a JSON object with the following structure:
 {
-  "unsubmittedMembers": [
+  "nonReportingEngineers": [
     {
-      "memberId": "string",
-      "memberName": "string",
-      "email": "string",
-      "department": "string",
-      "status": "unsubmitted" | "delayed",
-      "hoursOverdue": number (遅延の場合のみ)
+      "engineerId": string,
+      "name": string,
+      "department": string,
+      "lastSubmissionTime": string | null
     }
   ],
-  "summaryList": {
-    "totalMembers": number,
-    "submittedCount": number,
-    "unsubmittedCount": number,
-    "delayedCount": number,
-    "submissionRate": number
-  },
+  "delayedEngineers": [
+    {
+      "engineerId": string,
+      "name": string,
+      "department": string,
+      "submissionTime": string,
+      "delayMinutes": number
+    }
+  ],
   "notificationContent": {
-    "recipientEmail": "string",
-    "subject": "string",
-    "body": "string",
-    "attachmentData": "string"
+    "subject": string,
+    "body": string,
+    "priority": "high" | "medium" | "low"
   }
 }
-`;
 
-  return prompt;
+Ensure accuracy in identifying submission status and calculate delays correctly.`;
+
+  return {
+    prompt,
+    version: ACTION_02_PROMPT_VERSION,
+  };
 }

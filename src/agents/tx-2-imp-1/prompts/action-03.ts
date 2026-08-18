@@ -5,110 +5,130 @@ const ACTION_03_PROMPT_VERSION = "1.0.0";
 
 interface Action03PromptInput {
   reportingDeadline: string;
-  overdueThresholdHours: number;
-  reminderFrequencyMinutes: number;
-  escalationContactEmail: string;
+  escalationThreshold: number;
+  reportingMembers: Array<{
+    memberId: string;
+    memberName: string;
+    email: string;
+  }>;
+  submittedReports: Array<{
+    memberId: string;
+    submittedAt: string;
+    content: string;
+  }>;
 }
 
 interface Action03PromptOutput {
   version: string;
   systemPrompt: string;
-  userPromptTemplate: string;
-  expectedOutputFormat: string;
+  userPrompt: string;
+  context: {
+    deadline: string;
+    threshold: number;
+    totalMembers: number;
+    submittedCount: number;
+    unsubmittedMembers: Array<{
+      memberId: string;
+      memberName: string;
+      email: string;
+    }>;
+    delayedMembers: Array<{
+      memberId: string;
+      memberName: string;
+      email: string;
+      submittedAt: string;
+      delayMinutes: number;
+    }>;
+  };
 }
 
 function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
-  const systemPrompt = `You are an AI agent responsible for identifying and notifying engineers who have not submitted their daily reports.
+  const deadlineTime = new Date(input.reportingDeadline);
+  const now = new Date();
 
-Your role is to:
-1. Monitor the daily report submission status at the configured time
-2. Identify engineers who have not submitted reports (未提出者)
-3. Identify engineers whose reports are delayed (遅延者)
-4. Create a comprehensive list of non-submitters and delayed submitters
-5. Send notification emails to the department head with the compiled list
+  const submittedMemberIds = new Set(input.submittedReports.map(r => r.memberId));
+  const unsubmittedMembers = input.reportingMembers.filter(
+    m => !submittedMemberIds.has(m.memberId)
+  );
 
-You must follow these constraints:
-- Reporting deadline: ${input.reportingDeadline}
-- Overdue threshold: ${input.overdueThresholdHours} hours after deadline
-- Reminder frequency: ${input.reminderFrequencyMinutes} minutes
-- Escalation contact: ${input.escalationContactEmail}
+  const delayedMembers = input.submittedReports
+    .map(report => {
+      const member = input.reportingMembers.find(m => m.memberId === report.memberId);
+      if (!member) return null;
 
-When identifying non-submitters and delayed submitters:
-- Compare current timestamp against the reporting deadline
-- Classify engineers into: submitted on-time, submitted late, not submitted
-- Generate a structured report with clear categorization
-- Include submission timestamps for all submitted reports
-- Flag any system errors that prevent status verification
+      const submittedTime = new Date(report.submittedAt);
+      const delayMs = submittedTime.getTime() - deadlineTime.getTime();
+      const delayMinutes = Math.floor(delayMs / 60000);
 
-Output must be machine-readable JSON format with clear categorization.`;
+      if (delayMinutes > 0) {
+        return {
+          memberId: member.memberId,
+          memberName: member.memberName,
+          email: member.email,
+          submittedAt: report.submittedAt,
+          delayMinutes,
+        };
+      }
+      return null;
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null);
 
-  const userPromptTemplate = `Please analyze the current report submission status and generate a notification list.
+  const systemPrompt = `You are an AI agent responsible for identifying non-submitters and delayed reporters from daily report submissions.
+Your task is to:
+1. Identify members who have not submitted their daily reports by the deadline
+2. Identify members who submitted reports after the deadline
+3. Determine which members require escalation based on the escalation threshold
+4. Generate a clear summary of submission status for management review
 
-Current timestamp: {currentTimestamp}
-Reporting deadline: ${input.reportingDeadline}
-Overdue threshold: ${input.overdueThresholdHours} hours
+Be precise and factual in your analysis. Focus on identifying patterns and providing actionable information.`;
 
-Engineer submission data:
-{submissionData}
+  const userPrompt = `Analyze the following daily report submission status:
+
+Reporting Deadline: ${input.reportingDeadline}
+Escalation Threshold (minutes): ${input.escalationThreshold}
+Total Team Members: ${input.reportingMembers.length}
+Reports Submitted: ${input.submittedReports.length}
+
+Non-Submitters (${unsubmittedMembers.length}):
+${unsubmittedMembers.length > 0
+  ? unsubmittedMembers
+      .map(m => `- ${m.memberName} (${m.memberId}): ${m.email}`)
+      .join('\n')
+  : 'None'}
+
+Delayed Submitters (${delayedMembers.length}):
+${delayedMembers.length > 0
+  ? delayedMembers
+      .map(
+        m =>
+          `- ${m.memberName} (${m.memberId}): Submitted at ${m.submittedAt} (${m.delayMinutes} minutes late)`
+      )
+      .join('\n')
+  : 'None'}
+
+Escalation Required (delay > ${input.escalationThreshold} minutes):
+${delayedMembers
+  .filter(m => m.delayMinutes > input.escalationThreshold)
+  .map(m => `- ${m.memberName}: ${m.delayMinutes} minutes delay`)
+  .join('\n') || 'None'}
 
 Please provide:
-1. List of engineers who submitted on time
-2. List of engineers who submitted late (with delay duration)
-3. List of engineers who have not submitted
-4. Recommended action items for the department head`;
-
-  const expectedOutputFormat = `{
-  "version": "${ACTION_03_PROMPT_VERSION}",
-  "analysisTimestamp": "ISO8601 timestamp",
-  "reportingDeadline": "${input.reportingDeadline}",
-  "submittedOnTime": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "submissionTime": "ISO8601 timestamp"
-    }
-  ],
-  "submittedLate": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "submissionTime": "ISO8601 timestamp",
-      "delayMinutes": number
-    }
-  ],
-  "notSubmitted": [
-    {
-      "engineerId": "string",
-      "engineerName": "string",
-      "email": "string"
-    }
-  ],
-  "summary": {
-    "totalEngineers": number,
-    "onTimeCount": number,
-    "lateCount": number,
-    "notSubmittedCount": number,
-    "submissionRate": number
-  },
-  "notificationEmail": {
-    "to": "${input.escalationContactEmail}",
-    "subject": "string",
-    "body": "string"
-  },
-  "systemErrors": [
-    {
-      "errorCode": "string",
-      "errorMessage": "string",
-      "affectedEngineers": ["string"]
-    }
-  ]
-}`;
+1. A summary of the current submission status
+2. List of members requiring immediate escalation
+3. Recommended actions for non-submitters and delayed submitters`;
 
   return {
     version: ACTION_03_PROMPT_VERSION,
     systemPrompt,
-    userPromptTemplate,
-    expectedOutputFormat,
+    userPrompt,
+    context: {
+      deadline: input.reportingDeadline,
+      threshold: input.escalationThreshold,
+      totalMembers: input.reportingMembers.length,
+      submittedCount: input.submittedReports.length,
+      unsubmittedMembers,
+      delayedMembers,
+    },
   };
 }
 

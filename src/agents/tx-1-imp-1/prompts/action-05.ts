@@ -13,62 +13,121 @@ export interface Action05Context {
     issues: string;
   };
   submissionDeadline: string;
-  managementSystemUrl: string;
-  adminEmails: string[];
+  systemTimestamp: string;
 }
 
-export interface Action05PromptResult {
+export interface Action05ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  normalizedContent: {
+    yesterday: string;
+    today: string;
+    issues: string;
+  };
+}
+
+export interface Action05PromptInput {
+  context: Action05Context;
+  validationRules: {
+    minYesterdayLength: number;
+    minTodayLength: number;
+    minIssuesLength: number;
+    maxYesterdayLength: number;
+    maxTodayLength: number;
+    maxIssuesLength: number;
+  };
+}
+
+export interface Action05PromptOutput {
   version: string;
-  action: number;
   systemPrompt: string;
   userPrompt: string;
-  context: Action05Context;
+  expectedOutputFormat: {
+    type: "json";
+    schema: {
+      isValid: "boolean";
+      errors: "string[]";
+      warnings: "string[]";
+      normalizedContent: {
+        yesterday: "string";
+        today: "string";
+        issues: "string";
+      };
+      validationDetails: {
+        yesterdayValidation: "object";
+        todayValidation: "object";
+        issuesValidation: "object";
+      };
+    };
+  };
 }
 
-export function buildAction05Prompt(context: Action05Context): Action05PromptResult {
-  const systemPrompt = `You are an AI agent responsible for registering daily reports into the management system and sending confirmation emails to administrators.
+export function buildAction05Prompt(input: Action05PromptInput): Action05PromptOutput {
+  const {
+    context,
+    validationRules,
+  } = input;
 
-Your role in the daily report automation workflow:
-- Register validated daily report content into the management system
-- Send confirmation emails to administrators with report details
-- Ensure all required fields are properly stored
-- Track registration status and email delivery
+  const systemPrompt = `You are a validation agent for daily report (日報) content submission.
+Your role is to validate engineer daily reports against predefined rules and provide structured feedback.
 
-You must:
-1. Format the report data according to management system requirements
-2. Prepare confirmation email content with all relevant details
-3. Ensure data integrity during registration
-4. Generate delivery confirmation records`;
+Validation Responsibilities:
+1. Check content length constraints
+2. Identify missing or incomplete information
+3. Detect inappropriate or suspicious content
+4. Normalize and clean the input content
+5. Provide clear error messages and warnings
 
-  const userPrompt = `Register the following daily report and send confirmation emails:
+Output Format:
+Return a JSON object with validation results, normalized content, and detailed validation information.`;
 
-Engineer Information:
-- ID: ${context.engineerId}
-- Name: ${context.engineerName}
-- Report Date: ${context.reportDate}
+  const userPrompt = `Validate the following daily report submission:
 
-Report Content:
-- Yesterday's Achievements: ${context.previousReportContent.yesterday}
-- Today's Plan: ${context.previousReportContent.today}
-- Current Issues: ${context.previousReportContent.issues}
+Engineer ID: ${context.engineerId}
+Engineer Name: ${context.engineerName}
+Report Date: ${context.reportDate}
+Submission Deadline: ${context.submissionDeadline}
+System Timestamp: ${context.systemTimestamp}
 
-System Details:
-- Management System URL: ${context.managementSystemUrl}
-- Submission Deadline: ${context.submissionDeadline}
-- Administrator Emails: ${context.adminEmails.join(", ")}
+Content to Validate:
+- Yesterday's Achievements: "${context.previousReportContent.yesterday}"
+- Today's Plans: "${context.previousReportContent.today}"
+- Issues/Concerns: "${context.previousReportContent.issues}"
 
-Tasks:
-1. Validate all report fields are complete and properly formatted
-2. Register the report into the management system with timestamp
-3. Generate a confirmation email for each administrator
-4. Include report summary, engineer details, and submission confirmation in the email
-5. Return registration status and email delivery confirmation`;
+Validation Rules:
+- Yesterday's achievements: minimum ${validationRules.minYesterdayLength} characters, maximum ${validationRules.maxYesterdayLength} characters
+- Today's plans: minimum ${validationRules.minTodayLength} characters, maximum ${validationRules.maxTodayLength} characters
+- Issues/concerns: minimum ${validationRules.minIssuesLength} characters, maximum ${validationRules.maxIssuesLength} characters
+
+Please validate this content and return:
+1. Overall validity status
+2. List of errors (if any)
+3. List of warnings (if any)
+4. Normalized content (cleaned and formatted)
+5. Detailed validation information for each field`;
 
   return {
     version: ACTION_05_PROMPT_VERSION,
-    action: 5,
     systemPrompt,
     userPrompt,
-    context,
+    expectedOutputFormat: {
+      type: "json",
+      schema: {
+        isValid: "boolean",
+        errors: "string[]",
+        warnings: "string[]",
+        normalizedContent: {
+          yesterday: "string",
+          today: "string",
+          issues: "string",
+        },
+        validationDetails: {
+          yesterdayValidation: "object",
+          todayValidation: "object",
+          issuesValidation: "object",
+        },
+      },
+    },
   };
 }

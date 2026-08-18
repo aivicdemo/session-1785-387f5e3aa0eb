@@ -8,66 +8,75 @@ export interface Action03Context {
   engineerName: string;
   submittedContent: {
     yesterdayAccomplishments: string;
-    todayPlan: string;
-    issues: string;
+    todayPlans: string;
+    currentIssues: string;
   };
   submissionTimestamp: string;
-  systemDeadline: string;
+  deadline: string;
 }
 
 export interface Action03ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-  validatedContent: {
-    yesterdayAccomplishments: string;
-    todayPlan: string;
-    issues: string;
-  };
 }
 
-export function buildAction03Prompt(context: Action03Context): string {
-  const deadlineExceeded = new Date(context.submissionTimestamp) > new Date(context.systemDeadline);
+export interface Action03PromptInput {
+  context: Action03Context;
+}
+
+export interface Action03PromptOutput {
+  prompt: string;
+  version: string;
+}
+
+export function buildAction03Prompt(input: Action03PromptInput): Action03PromptOutput {
+  const { context } = input;
   
-  const prompt = `You are validating a daily report submission for the morning meeting automation system.
+  const validationInstructions = `
+You are validating a daily report submission for an engineer.
 
 Engineer Information:
 - ID: ${context.engineerId}
 - Name: ${context.engineerName}
 - Submission Time: ${context.submissionTimestamp}
-- System Deadline: ${context.systemDeadline}
-- Deadline Status: ${deadlineExceeded ? "EXCEEDED" : "ON TIME"}
+- Deadline: ${context.deadline}
 
 Submitted Content:
-Yesterday's Accomplishments:
+1. Yesterday's Accomplishments:
 ${context.submittedContent.yesterdayAccomplishments}
 
-Today's Plan:
-${context.submittedContent.todayPlan}
+2. Today's Plans:
+${context.submittedContent.todayPlans}
 
-Issues/Challenges:
-${context.submittedContent.issues}
+3. Current Issues:
+${context.submittedContent.currentIssues}
 
 Validation Tasks:
-1. Check if all three sections (yesterday's accomplishments, today's plan, issues) are present and non-empty
-2. Verify that content is substantive (not just placeholder text like "N/A" or "None")
-3. Identify any concerning patterns (e.g., repeated issues, blocked tasks, resource constraints)
-4. Flag any content that appears incomplete or unclear
-5. Validate that the submission follows the expected format and structure
+1. Check if all three sections are filled with meaningful content (not empty or placeholder text)
+2. Verify that yesterday's accomplishments are specific and measurable
+3. Verify that today's plans are clear and actionable
+4. Verify that current issues are clearly described with context
+5. Check for consistency between yesterday's plans and today's accomplishments
+6. Identify any red flags or concerns that require escalation
+7. Assess whether the submission is on time or late
 
-Provide validation results in the following JSON format:
+Output your validation result as a JSON object with the following structure:
 {
   "isValid": boolean,
-  "errors": [list of critical issues that prevent registration],
-  "warnings": [list of non-critical issues or concerns],
-  "validatedContent": {
-    "yesterdayAccomplishments": "cleaned/normalized content",
-    "todayPlan": "cleaned/normalized content",
-    "issues": "cleaned/normalized content"
-  }
+  "errors": string[],
+  "warnings": string[],
+  "requiresEscalation": boolean,
+  "escalationReason": string | null,
+  "submissionStatus": "on-time" | "late",
+  "hoursLate": number | null
 }
 
-Be strict about completeness but reasonable about minor formatting issues.`;
+Be thorough but fair in your assessment. Minor formatting issues should be warnings, not errors.
+`;
 
-  return prompt;
+  return {
+    prompt: validationInstructions,
+    version: ACTION_03_PROMPT_VERSION,
+  };
 }
