@@ -1,5 +1,7 @@
 import { formatAndSortReports } from '../../src/logic/it-1-br-1-1-1';
 
+const fetchMock = require('jest-fetch-mock');
+
 describe('日報統一フォーマット整形・表示機能', () => {
   // SCEN-242
   test('複数部員の日報が送信順序と逆順で整列される場合に正しい順序に並び替えられる', () => {

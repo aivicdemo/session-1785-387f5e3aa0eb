@@ -1436,9 +1436,6 @@ const __aivicBundle_13_validateReportSubmission = (() => {
     }
   
     if (!today || (typeof today === 'string' && today.trim() === '')) {
-      if (input.today_plan === '' || input.todayPlan === '') {
-        throw new Error('本日の予定は必須です');
-      }
       errors.push({
         field: 'today_plan',
         message: '今日やることは必須です',
@@ -1453,23 +1450,29 @@ const __aivicBundle_13_validateReportSubmission = (() => {
     }
   
     if (today && typeof today === 'string') {
-      if (today.length > 1000) {
-        throw new Error('今日やることは形式が不正です');
+      if (today.length > 500) {
+        throw new Error('今日やることは500文字以内で入力してください');
       }
       if (/[\x00-\x1F\x7F]/.test(today)) {
-        throw new Error('今日やることは形式が不正です');
+        throw new Error('今日やることの形式が不正です');
       }
     }
   
     if (issue && typeof issue === 'string') {
       if (issue.length > 500) {
-        errors.push({
-          field: 'challenge',
-          message: '抱えている課題は【500】文字以内で入力してください',
-        });
+        throw new Error('抱えている課題は500文字以内で入力してください');
       }
       if (/[@#$%]/.test(issue)) {
         throw new Error('抱えている課題の形式が不正です');
+      }
+    }
+  
+    if (yesterday && typeof yesterday === 'string') {
+      if (yesterday.length > 300) {
+        throw new Error('昨日やったことは300文字以内で入力してください');
+      }
+      if (/[\x00-\x1F\x7F]/.test(yesterday)) {
+        throw new Error('昨日やったことの形式が不正です');
       }
     }
   
@@ -1907,7 +1910,7 @@ export const validateAndSubmitDailyReport = __aivicBundle_validateAndSubmitDaily
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitDailyReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateMorningReportSubmission exports=validateMorningReportSubmission */
-const __aivicBundle_17_validateMorningReportSubmission = (() => {
+const __aivicBundle_validateMorningReportSubmission_fixed = (() => {
   function validateMorningReportSubmission(input: {
     yesterday_achievement?: string;
     today_plan?: string;
@@ -2085,7 +2088,7 @@ const __aivicBundle_17_validateMorningReportSubmission = (() => {
   }
   return { validateMorningReportSubmission };
 })();
-export const validateMorningReportSubmission = __aivicBundle_17_validateMorningReportSubmission.validateMorningReportSubmission;
+export const validateMorningReportSubmission = __aivicBundle_validateMorningReportSubmission_fixed.validateMorningReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateMorningReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateDailyReport exports=validateDailyReport */
@@ -2915,32 +2918,32 @@ const __aivicBundle_sendConfirmationEmail = (() => {
     mockEmailService?: any | Function
   ): any {
     if (!reportData || typeof reportData === 'string') {
-      return { success: false, error: '日報データが不正です', emailSent: false, dataSaved: false };
+      throw new Error('日報データが不正です');
     }
 
-    const senderEmail = reportData.sender_email || reportData.recipientEmail;
+    const senderEmail = reportData.sender_email || reportData.recipientEmail || reportData.senderEmail;
     const senderId = reportData.senderId || reportData.senderID;
     const recipientEmail = reportData.recipient_email || reportData.recipientEmail || reportData.manager_email;
 
-    const yesterdayAccomplishment = reportData.yesterdayAccomplishment ?? reportData.yesterday_accomplishment ?? reportData.yesterday_achievement;
-    const todayPlan = reportData.todayPlan ?? reportData.today_plan;
-    const currentIssues = reportData.currentIssues ?? reportData.current_issues ?? reportData.current_issue ?? reportData.challenges;
+    const yesterdayAccomplishment = reportData.yesterdayAccomplishment ?? reportData.yesterday_accomplishment ?? reportData.yesterday_achievement ?? reportData.yesterday;
+    const todayPlan = reportData.todayPlan ?? reportData.today_plan ?? reportData.today;
+    const currentIssues = reportData.currentIssues ?? reportData.current_issues ?? reportData.current_issue ?? reportData.challenges ?? reportData.issues;
 
     if (!senderEmail || senderEmail === '') {
-      return { success: false, error: '送信者メールアドレスが空です', emailSent: false, dataSaved: false };
+      throw new Error('送信者メールアドレスが空です');
     }
 
     if (senderId === null || senderId === undefined || senderId === '') {
-      return { success: false, error: '送信者IDが不正です', emailSent: false, dataSaved: false };
+      throw new Error('送信者IDが不正です');
     }
 
     if (!recipientEmail || recipientEmail === '') {
-      return { success: false, reason: '部長のメールアドレスが設定されていません', emailSent: false, dataSaved: false };
+      throw new Error('部長のメールアドレスが設定されていません');
     }
 
     if (yesterdayAccomplishment === null || yesterdayAccomplishment === undefined || 
         !todayPlan || !currentIssues) {
-      return { success: false, emailSent: false, dataSaved: false };
+      throw new Error('3項目すべてを入力してください');
     }
 
     if (mockEmailService) {
@@ -3662,7 +3665,7 @@ const __aivicBundle_submitReport_fixed = (() => {
     const submissionKey = `${user_id}:${report_date}`;
     const currentSubmissionCount = submitReportStore.get(submissionKey) ?? 0;
   
-    if (currentSubmissionCount >= 2) {
+    if (currentSubmissionCount >= 1) {
       return {
         success: false,
         error_message: "本日はすでに日報を送信済み",

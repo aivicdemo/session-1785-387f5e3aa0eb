@@ -126,14 +126,14 @@ describe('日報収集から報告漏れ特定までの自動判定と通知', (
     const department_id = 'DEV';
 
     const mock_agent_client = {
-      detectAbsentMembers: jest.fn().mockResolvedValue({
+      detectAbsentMembers: jest.fn<(...args: any[]) => any>().mockResolvedValue({
         all_submitted: true,
         submitted_count: 10,
         absent_members: [],
         delayed_members: [],
         total_members: 10,
       }),
-      generateAbsenceNotification: jest.fn().mockResolvedValue({
+      generateAbsenceNotification: jest.fn<(...args: any[]) => any>().mockResolvedValue({
         subject: '【朝会報告】日報提出状況 - 全員提出完了',
         body: `朝会報告管理システムからのお知らせです。
 
@@ -151,13 +151,13 @@ describe('日報収集から報告漏れ特定までの自動判定と通知', (
 
 朝会を予定どおり開始できます。`,
       }),
-      sendManagerNotification: jest.fn().mockResolvedValue({
+      sendManagerNotification: jest.fn<(...args: any[]) => any>().mockResolvedValue({
         message_id: 'MSG20240115001',
         recipient: manager_email,
         sent_timestamp: new Date('2024-01-15T08:55:30Z'),
         status: 'sent',
       }),
-      recordAuditEvent: jest.fn().mockResolvedValue({
+      recordAuditEvent: jest.fn<(...args: any[]) => any>().mockResolvedValue({
         event_id: 'AUDIT20240115001',
         event_type: '日報自動監視実行',
         timestamp: new Date('2024-01-15T08:55:00Z'),
