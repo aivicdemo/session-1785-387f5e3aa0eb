@@ -4,12 +4,12 @@ import { submitDailyReport } from "../../src/logic/it-1";
 describe("日報入力フォームの提供と送信機能", () => {
   // SCEN-141
   test("確認メール自動配信機能 - 日報送信が月初日の場合、メール送信ログに正しく記録される", () => {
-    const mock_send_email = jest.fn().mockResolvedValue({
+    const mock_send_email = jest.fn<(...args: any[]) => any>().mockResolvedValue({
       success: true,
       message_id: "msg_20240101_001",
     });
 
-    const mock_log_email_send = jest.fn().mockResolvedValue({
+    const mock_log_email_send = jest.fn<(...args: any[]) => any>().mockResolvedValue({
       id: "log_001",
       sent_at: "2024-01-01T09:00:00Z",
       status: "success",

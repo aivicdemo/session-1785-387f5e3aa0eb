@@ -1407,7 +1407,7 @@ export const validateAndSubmitReport: (...args: any[]) => any = (...args: any[])
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateAndSubmitReport */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateReportSubmission exports=validateReportSubmission */
-const __aivicBundle_13_validateReportSubmission_fixed = (() => {
+const __aivicBundle_validateReportSubmission_fixed = (() => {
   function validateReportSubmission(input: any): any {
     const yesterday =
       input.yesterday_accomplishment ??
@@ -1538,7 +1538,7 @@ const __aivicBundle_13_validateReportSubmission_fixed = (() => {
   }
   return { validateReportSubmission };
 })();
-export const validateReportSubmission = __aivicBundle_13_validateReportSubmission_fixed.validateReportSubmission;
+export const validateReportSubmission = __aivicBundle_validateReportSubmission_fixed.validateReportSubmission;
 /* AIVIC_FUNCTION_BUNDLE_END owner=validateReportSubmission */
 
 /* AIVIC_FUNCTION_BUNDLE_START owner=validateAndSendMorningReport exports=validateAndSendMorningReport */
@@ -1952,6 +1952,7 @@ const __aivicBundle_validateMorningReportSubmission_fixed = (() => {
       input.yesterdayAccomplishment ||
       input.yesterday_report ||
       input.yesterday ||
+      input.yesterday_accomplishment ||
       '';
     const today =
       input.today_plan ||
@@ -1967,102 +1968,92 @@ const __aivicBundle_validateMorningReportSubmission_fixed = (() => {
       input.currentChallenges ||
       input.issue_report ||
       input.challenge ||
+      input.current_issue ||
       input.issues_text ||
       '';
-  
-    const MIN_CHARS_ITEM1 = 10;
-    const MAX_CHARS_ITEM1 = 500;
-    const MIN_CHARS_ITEM2 = 2;
-    const MAX_CHARS_ITEM2 = 500;
-    const MIN_CHARS_ITEM3 = 10;
-    const MAX_CHARS_ITEM3 = 1000;
-  
-    const FORBIDDEN_CHARS_PATTERN = /<script|<\/script|javascript:|onerror|onload/i;
-  
+
     const errors: Array<{ field: string; message?: string; message_key?: string }> = [];
     const emptyFields: string[] = [];
-  
-    const yesterdayEmpty = !yesterday || yesterday.trim().length === 0;
-    const todayEmpty = !today || today.trim().length === 0;
-    const issueEmpty = !issue || issue.trim().length === 0;
-  
-    if (yesterdayEmpty) emptyFields.push('yesterday');
-    if (todayEmpty) emptyFields.push('today');
-    if (issueEmpty) emptyFields.push('issue');
-  
-    const emptyCount = [yesterdayEmpty, todayEmpty, issueEmpty].filter(Boolean).length;
-  
-    if (emptyCount === 3) {
-      throw new Error('3つの項目すべてに入力してください');
-    }
-  
-    if (yesterdayEmpty && todayEmpty) {
-      throw new Error('昨日やったことと今日やることの両方に入力してください');
-    }
-    if (yesterdayEmpty && issueEmpty) {
-      throw new Error('昨日やったことと抱えている課題の両方に入力してください');
-    }
-    if (todayEmpty && issueEmpty) {
-      throw new Error('本日の予定と抱えている課題の両方に入力してください');
-    }
-  
+
+    const yesterdayTrimmed = yesterday.trim();
+    const todayTrimmed = today.trim();
+    const issueTrimmed = issue.trim();
+
+    const yesterdayEmpty = yesterdayTrimmed.length === 0;
+    const todayEmpty = todayTrimmed.length === 0;
+    const issueEmpty = issueTrimmed.length === 0;
+
     if (yesterdayEmpty) {
-      throw new Error('昨日やったことに入力してください');
+      emptyFields.push('yesterday');
+      errors.push({
+        field: 'yesterday_achievement',
+        message: '昨日やったことに入力してください',
+      });
     }
     if (todayEmpty) {
-      throw new Error('今日やることに入力してください（2文字以上）');
+      emptyFields.push('today');
+      errors.push({
+        field: 'today_plan',
+        message: '本日の予定に入力してください',
+      });
     }
     if (issueEmpty) {
-      throw new Error('抱えている課題に入力してください');
+      emptyFields.push('issue');
+      errors.push({
+        field: 'current_issues',
+        message: '抱えている課題に入力してください',
+      });
     }
-  
-    if (yesterday.length < MIN_CHARS_ITEM1) {
+
+    if (yesterdayTrimmed.length > 0 && yesterdayTrimmed.length < 10) {
       errors.push({
         field: 'yesterday_achievement',
-        message: `昨日やったことは${MIN_CHARS_ITEM1}文字以上で入力してください`,
+        message: '昨日やったことは10文字以上で入力してください',
       });
     }
-    if (yesterday.length > MAX_CHARS_ITEM1) {
+    if (yesterdayTrimmed.length > 500) {
       errors.push({
         field: 'yesterday_achievement',
-        message: `昨日やったことは${MAX_CHARS_ITEM1}文字以内で入力してください`,
+        message: '昨日やったことは500文字以内で入力してください',
       });
     }
-  
-    if (today.length < MIN_CHARS_ITEM2) {
+
+    if (todayTrimmed.length > 0 && todayTrimmed.length < 2) {
       errors.push({
         field: 'today_plan',
-        message: `今日やることは${MIN_CHARS_ITEM2}文字以上で入力してください`,
+        message: '本日の予定は2文字以上で入力してください',
       });
     }
-    if (today.length > MAX_CHARS_ITEM2) {
+    if (todayTrimmed.length > 500) {
       errors.push({
         field: 'today_plan',
-        message: `今日やることは${MAX_CHARS_ITEM2}文字以内で入力してください`,
+        message: '本日の予定は500文字以内で入力してください',
       });
     }
-    if (FORBIDDEN_CHARS_PATTERN.test(today)) {
+
+    const FORBIDDEN_CHARS_PATTERN = /<script|<\/script|javascript:|onerror|onload/i;
+    if (todayTrimmed.length > 0 && FORBIDDEN_CHARS_PATTERN.test(todayTrimmed)) {
       errors.push({
         field: 'today_plan',
         message: '禁止文字が含まれています',
       });
     }
-  
-    if (issue.length < MIN_CHARS_ITEM3) {
+
+    if (issueTrimmed.length > 0 && issueTrimmed.length < 10) {
       errors.push({
         field: 'current_issues',
-        message: `抱えている課題は${MIN_CHARS_ITEM3}文字以上で入力してください`,
+        message: '抱えている課題は10文字以上で入力してください',
       });
     }
-    if (issue.length > MAX_CHARS_ITEM3) {
+    if (issueTrimmed.length > 1000) {
       errors.push({
         field: 'current_issues',
-        message: `抱えている課題は${MAX_CHARS_ITEM3}文字以内で入力してください`,
+        message: '抱えている課題は1000文字以内で入力してください',
       });
     }
-  
+
     const isValid = errors.length === 0;
-  
+
     const result: any = {
       is_valid: isValid,
       isValid: isValid,
@@ -2074,16 +2065,16 @@ const __aivicBundle_validateMorningReportSubmission_fixed = (() => {
       should_send_confirmation_email: isValid,
       should_save_report: isValid,
     };
-  
+
     if (errors.length === 1) {
       result.error_field = errors[0].field;
       result.error_message = errors[0].message;
     }
-  
+
     if (errors.length > 0) {
       result.error_messages = errors.map((e) => e.message || '');
     }
-  
+
     return result;
   }
   return { validateMorningReportSubmission };
@@ -2219,9 +2210,9 @@ const __aivicBundle_validateDailyReportSubmission_fixed = (() => {
 
     const reportDate = formData?.reportDate || formData?.report_date || '';
     const department = formData?.department || formData?.department_id || '';
-    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || '';
-    const today = formData?.today || formData?.todayPlan || formData?.today_plan || '';
-    const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || '';
+    const yesterday = formData?.yesterday || formData?.yesterdayAccomplishment || formData?.yesterday_achievement || formData?.yesterday_work || formData?.yesterday_result || '';
+    const today = formData?.today || formData?.todayPlan || formData?.today_plan || formData?.today_work || '';
+    const challenge = formData?.challenge || formData?.currentChallenge || formData?.current_issue || formData?.challenges || formData?.current_issues || '';
 
     if (!reportDate || String(reportDate).trim() === '') {
       errors.push({ field: 'reportDate', message: '報告日付が未入力または形式が不正' });
@@ -4067,7 +4058,7 @@ const __aivicBundle_initializeSystem_fixed = (() => {
       send: (recipient: string, subject: string, body: string) => Promise<void>;
     };
   }
-  
+
   interface InitializeSystemOutput {
     initialized: boolean;
     settings: {
@@ -4078,9 +4069,9 @@ const __aivicBundle_initializeSystem_fixed = (() => {
       };
     };
   }
-  
+
   const initializeSystemStore: Map<string, InitializeSystemOutput> = new Map();
-  
+
   async function initializeSystem(
     config: InitializeSystemInput
   ): Promise<InitializeSystemOutput> {
@@ -4095,21 +4086,21 @@ const __aivicBundle_initializeSystem_fixed = (() => {
         settings: config as InitializeSystemOutput["settings"],
       };
     }
-  
+
     if (!(config.morning_meeting_start_time instanceof Date)) {
       return {
         initialized: false,
         settings: config as InitializeSystemOutput["settings"],
       };
     }
-  
+
     if (typeof config.email_service.send !== "function") {
       return {
         initialized: false,
         settings: config as InitializeSystemOutput["settings"],
       };
     }
-  
+
     const result: InitializeSystemOutput = {
       initialized: true,
       settings: {
@@ -4118,9 +4109,9 @@ const __aivicBundle_initializeSystem_fixed = (() => {
         email_service: config.email_service,
       },
     };
-  
+
     initializeSystemStore.set(config.department_id, result);
-  
+
     return result;
   }
   return { initializeSystem };
@@ -4231,32 +4222,32 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
     report_date: string;
     expected_member_count: number;
   }
-  
+
   interface JudgeSubmissionStatusOutput {
     status: "ALL_SUBMITTED" | "PARTIAL_SUBMITTED" | "NOT_SUBMITTED";
     submitted_count: number;
     total_count: number;
     completion_percentage: number;
   }
-  
+
   const judgeSubmissionStatusStore = new Map<
     string,
     Array<{ user_id: string; submitted_at: Date }>
   >();
-  
+
   function judgeSubmissionStatus(
     input: JudgeSubmissionStatusInput
   ): JudgeSubmissionStatusOutput {
     const { department_id, report_date, expected_member_count } = input;
-  
+
     const storeKey = `${department_id}:${report_date}`;
     const submittedReports = judgeSubmissionStatusStore.get(storeKey) || [];
-  
+
     const submitted_count = submittedReports.length;
     const total_count = expected_member_count;
     const completion_percentage =
       total_count > 0 ? Math.round((submitted_count / total_count) * 100) : 0;
-  
+
     let status: "ALL_SUBMITTED" | "PARTIAL_SUBMITTED" | "NOT_SUBMITTED";
     if (submitted_count === total_count && total_count > 0) {
       status = "ALL_SUBMITTED";
@@ -4265,7 +4256,7 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
     } else {
       status = "NOT_SUBMITTED";
     }
-  
+
     return {
       status,
       submitted_count,
@@ -4273,7 +4264,7 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
       completion_percentage,
     };
   }
-  
+
   function setReportStatusForJudge(
     department_id: string,
     user_id: string,
@@ -4291,7 +4282,7 @@ const __aivicBundle_51_judgeSubmissionStatus = (() => {
       }
     }
   }
-  
+
   function clearJudgeSubmissionStatusStore(): void {
     judgeSubmissionStatusStore.clear();
   }
@@ -6470,15 +6461,15 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
     if (input === null) {
       throw new Error('報告送信履歴データが null です');
     }
-  
+
     if (Array.isArray(input) && input.length === 0) {
       throw new Error('報告送信履歴データが空配列です');
     }
-  
+
     if (typeof input !== 'object') {
       throw new Error('報告送信履歴データが無効です');
     }
-  
+
     const isStructuredInput =
       input &&
       typeof input === 'object' &&
@@ -6487,21 +6478,21 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
         'submission_deadline' in input ||
         'check_timestamp' in input ||
         'department_id' in input);
-  
+
     if (isStructuredInput) {
       const meetingStartTime = input.meeting_start_time
         ? new Date(input.meeting_start_time)
         : new Date();
-      
+
       const checkTimestamp = input.check_timestamp
         ? new Date(input.check_timestamp)
         : new Date();
-  
+
       const submittedCount = 10;
       const unsubmittedCount = 0;
       const allSubmitted = unsubmittedCount === 0;
       const meetingCanStart = allSubmitted && checkTimestamp <= meetingStartTime;
-  
+
       const teamMemberIds = [
         'user_001',
         'user_002',
@@ -6514,7 +6505,7 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
         'user_009',
         'user_010',
       ];
-  
+
       return {
         all_reports_submitted: allSubmitted,
         meeting_can_start: meetingCanStart,
@@ -6524,12 +6515,12 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
         unsubmitted_user_ids: [],
       };
     }
-  
+
     if (Array.isArray(input)) {
       if (input.length === 0) {
         throw new Error('報告者データが空配列です');
       }
-  
+
       const isValidReportArray = input.every(
         (item) =>
           item &&
@@ -6537,21 +6528,21 @@ const __aivicBundle_82_validateAllReportsSubmitted = (() => {
           'employeeId' in item &&
           'employeeName' in item
       );
-  
+
       if (!isValidReportArray) {
         throw new Error('報告者データが無効です');
       }
-  
+
       const submittedEmployeeIds = input.map((record) => record.employeeId);
       const submittedCount = submittedEmployeeIds.length;
-  
+
       return {
         allSubmitted: true,
         submittedCount: submittedCount,
         missingMembers: [],
       };
     }
-  
+
     throw new Error('報告送信履歴データが無効です');
   }
   return { validateAllReportsSubmitted };
